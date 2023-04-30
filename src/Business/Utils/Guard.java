@@ -62,7 +62,7 @@ public class Guard {
         });
     }
 
-    public static <T extends IEntity & INamedEntity, TParent extends IEntity> void сheckExistedChildrenInTheGroup
+    public static <T extends IEntity & INamedEntity, TParent extends IEntity> void checkexistedchildreninthegroup
             (@NotNull IChildEntityDataAccess<T, TParent> query, UUID parentId) {
         if (query.getCount(parentId) > 0) {
             throw new UnsupportedOperationException("Parent cannot be deleted. It contains items");

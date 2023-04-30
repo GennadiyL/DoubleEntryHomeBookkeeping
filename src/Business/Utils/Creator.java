@@ -14,9 +14,7 @@ public class Creator {
         Class<T> entityType = (Class) serviceParameterizedType.getActualTypeArguments()[typeIndex];
         try {
             return entityType.newInstance();
-        } catch (InstantiationException e) {
-            return null;
-        } catch (IllegalAccessException e) {
+        } catch (InstantiationException | IllegalAccessException e) {
             return null;
         }
     }

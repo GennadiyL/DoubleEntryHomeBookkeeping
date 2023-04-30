@@ -6,7 +6,7 @@ import Common.Utils.OrderedEntityComparator;
 import java.util.ArrayList;
 
 public class OrderedUtils {
-    private static OrderedEntityComparator orderedEntityComparator= new OrderedEntityComparator();
+    private static final OrderedEntityComparator orderedEntityComparator= new OrderedEntityComparator();
 
     public static <T extends IOrderedEntity> void reorder(ArrayList<T> entities) {
         entities.sort(orderedEntityComparator);

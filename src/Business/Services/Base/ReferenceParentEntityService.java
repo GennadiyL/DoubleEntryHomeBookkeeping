@@ -68,7 +68,7 @@ public abstract class ReferenceParentEntityService<T extends IReferenceParentEnt
         this.globalDataAccess.Load();
 
         T deletedEntity = Guard.checkAndGetEntityById(this.entityDataAccess, entityId);
-        Guard.сheckExistedChildrenInTheGroup(this.childEntityDataAccess, deletedEntity.getId());
+        Guard.checkexistedchildreninthegroup(this.childEntityDataAccess, deletedEntity.getId());
 
         this.entityDataAccess.delete(deletedEntity);
 

@@ -14,10 +14,10 @@ import java.util.*;
 public abstract class ReferenceChildEntityService<T extends IReferenceChildEntity<TParent>, TParent extends IReferenceParentEntity<T>>
         implements IReferenceChildEntityService<T> {
 
-    private IGlobalDataAccess globalDataAccess;
-    private IReferenceChildEntityDataAccess<T, TParent> entityDataAccess;
-    private IReferenceParentEntityDataAccess<TParent, T> parentEntityDataAccess;
-    private IAccountDataAccess accountDataAccess;
+    private final IGlobalDataAccess globalDataAccess;
+    private final IReferenceChildEntityDataAccess<T, TParent> entityDataAccess;
+    private final IReferenceParentEntityDataAccess<TParent, T> parentEntityDataAccess;
+    private final IAccountDataAccess accountDataAccess;
 
     public ReferenceChildEntityService(
             IGlobalDataAccess globalDataAccess,
