@@ -164,7 +164,6 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
         this.globalDataAccess.Save();
     }
 
-    @Override
     public void combineTwoEntities(UUID primaryId, UUID secondaryId) {
         this.globalDataAccess.Load();
 
