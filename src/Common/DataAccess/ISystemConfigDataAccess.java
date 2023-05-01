@@ -1,9 +1,10 @@
 package Common.DataAccess;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public interface ISystemConfigDataAccess {
-    String GetMainCurrencyIsoCode();
-    LocalDate GetMinDate();
-    LocalDate GetMaxDate();
+    String getMainCurrencyIsoCode();
+    LocalDateTime getMinDate();
+    LocalDateTime getMaxDate();
 }

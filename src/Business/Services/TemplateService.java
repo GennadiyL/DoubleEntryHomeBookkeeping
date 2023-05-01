@@ -13,11 +13,10 @@ public class TemplateService implements ITemplateService {
     private final ITemplateGroupDataAccess templateGroupDataAccess;
     private final IAccountDataAccess accountDataAccess;
 
-    public TemplateService(
-            IGlobalDataAccess globalDataAccess,
-            ITemplateDataAccess templateDataAccess,
-            ITemplateGroupDataAccess templateGroupDataAccess,
-            IAccountDataAccess accountDataAccess) {
+    public TemplateService(IGlobalDataAccess globalDataAccess,
+                           ITemplateDataAccess templateDataAccess,
+                           ITemplateGroupDataAccess templateGroupDataAccess,
+                           IAccountDataAccess accountDataAccess) {
         this.globalDataAccess = globalDataAccess;
         this.templateDataAccess = templateDataAccess;
         this.templateGroupDataAccess = templateGroupDataAccess;
@@ -165,6 +164,4 @@ public class TemplateService implements ITemplateService {
 
         return entries;
     }
-
-
 }
