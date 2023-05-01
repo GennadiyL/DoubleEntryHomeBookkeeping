@@ -20,7 +20,6 @@ public class CorrespondentService extends ReferenceChildEntityService<Correspond
     protected ArrayList<Account> GetAccountsByEntity(Correspondent entity) {
         return this.getAccountDataAccess().GetAccountsByCorrespondent(entity);
     }
-
     @Override
     protected void AccountEntitySetter(Correspondent entity, Account account) {
         account.setCorrespondent(entity);

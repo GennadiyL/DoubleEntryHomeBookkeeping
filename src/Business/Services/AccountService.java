@@ -202,15 +202,13 @@ public class AccountService implements IAccountService {
             }
 
             ArrayList<TemplateEntry> templates = this.templateDataAccess.GetEntriesByAccount(secondaryAccount);
-            for(TemplateEntry templateEntry : templates)
-            {
+            for (TemplateEntry templateEntry : templates) {
                 templateEntry.setAccount(primaryAccount);
                 this.templateDataAccess.update(templateEntry.getTemplate());
             }
 
             List<TransactionEntry> transactions = this.transactionDataAccess.GetEntriesByAccount(secondaryAccount);
-            for(TransactionEntry transactionEntry : transactions)
-            {
+            for (TransactionEntry transactionEntry : transactions) {
                 transactionEntry.setAccount(primaryAccount);
                 this.transactionDataAccess.update(transactionEntry.getTransaction());
             }

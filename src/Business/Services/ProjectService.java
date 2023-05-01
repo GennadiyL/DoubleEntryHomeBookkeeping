@@ -20,7 +20,6 @@ public class ProjectService extends ReferenceChildEntityService<Project, Project
     protected ArrayList<Account> GetAccountsByEntity(Project entity) {
         return this.getAccountDataAccess().GetAccountsByProject(entity);
     }
-
     @Override
     protected void AccountEntitySetter(Project entity, Account account) {
         account.setProject(entity);
