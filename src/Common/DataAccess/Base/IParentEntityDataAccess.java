@@ -5,7 +5,7 @@ import Common.Models.Interfaces.INamedEntity;
 
 import java.util.ArrayList;
 
-public interface IParentEntityDataAccess<T extends IEntity & INamedEntity, TChild extends IEntity>  {
+public interface IParentEntityDataAccess<T extends IEntity & INamedEntity>  {
     ArrayList<T> getByName(String name);
     int getMaxOrder();
     int getCount();

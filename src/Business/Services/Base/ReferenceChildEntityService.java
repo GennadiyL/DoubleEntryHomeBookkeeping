@@ -15,14 +15,14 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
         implements IReferenceChildEntityService<T> {
 
     private final IGlobalDataAccess globalDataAccess;
-    private final IReferenceChildEntityDataAccess<T, TParent> entityDataAccess;
-    private final IReferenceParentEntityDataAccess<TParent, T> parentEntityDataAccess;
+    private final IReferenceChildEntityDataAccess<T> entityDataAccess;
+    private final IReferenceParentEntityDataAccess<TParent> parentEntityDataAccess;
     private final IAccountDataAccess accountDataAccess;
 
     public ReferenceChildEntityService(
             IGlobalDataAccess globalDataAccess,
-            IReferenceChildEntityDataAccess<T, TParent> entityDataAccess,
-            IReferenceParentEntityDataAccess<TParent, T> parentEntityDataAccess,
+            IReferenceChildEntityDataAccess<T> entityDataAccess,
+            IReferenceParentEntityDataAccess<TParent> parentEntityDataAccess,
             IAccountDataAccess accountDataAccess)
     {
         this.globalDataAccess = globalDataAccess;

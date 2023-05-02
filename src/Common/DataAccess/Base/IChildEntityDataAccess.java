@@ -6,7 +6,7 @@ import Common.Models.Interfaces.INamedEntity;
 import java.util.ArrayList;
 import java.util.UUID;
 
-public interface IChildEntityDataAccess<T extends IEntity & INamedEntity, TParent extends IEntity>  {
+public interface IChildEntityDataAccess<T extends IEntity & INamedEntity>  {
     ArrayList<T> getByName(UUID parentId, String name);
     int getMaxOrder(UUID parentId);
     int getCount(UUID parentId);

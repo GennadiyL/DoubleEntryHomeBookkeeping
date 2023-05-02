@@ -38,14 +38,14 @@ public class Guard {
         return entity;
     }
 
-    public static <T extends IEntity & INamedEntity, TChild extends IEntity> void checkentitywithsamename
-            (@NotNull IParentEntityDataAccess<T, TChild> query, @NotNull T entity) {
+    public static <T extends IEntity & INamedEntity> void checkentitywithsamename
+            (@NotNull IParentEntityDataAccess<T> query, @NotNull T entity) {
         ArrayList<T> entities = query.getByName(entity.getName());
         checkEntityWithSameName(entities, entity);
     }
 
-    public static <T extends IEntity & INamedEntity, TParent extends IEntity> void checkEntityWithSameName
-            (@NotNull IChildEntityDataAccess<T, TParent> query, UUID parentId, @NotNull T entity) {
+    public static <T extends IEntity & INamedEntity> void checkEntityWithSameName
+            (@NotNull IChildEntityDataAccess<T> query, UUID parentId, @NotNull T entity) {
         ArrayList<T> entities = query.getByName(parentId, entity.getName());
         checkEntityWithSameName(entities, entity);
     }
@@ -62,8 +62,8 @@ public class Guard {
         });
     }
 
-    public static <T extends IEntity & INamedEntity, TParent extends IEntity> void checkExistedChildrenInTheGroup
-            (@NotNull IChildEntityDataAccess<T, TParent> query, UUID parentId) {
+    public static <T extends IEntity & INamedEntity> void checkExistedChildrenInTheGroup
+            (@NotNull IChildEntityDataAccess<T> query, UUID parentId) {
         if (query.getCount(parentId) > 0) {
             throw new UnsupportedOperationException("Parent cannot be deleted. It contains items");
         }
