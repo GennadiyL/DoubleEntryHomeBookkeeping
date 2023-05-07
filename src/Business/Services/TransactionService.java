@@ -30,7 +30,7 @@ public class TransactionService implements ITransactionService {
     }
 
     public void add(Transaction entity) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         checkInputTransactionEntity(entity);
         Guard.checkEntityWithSameId(this.globalDataAccess, entity.getId());
@@ -48,11 +48,11 @@ public class TransactionService implements ITransactionService {
 
         this.transactionDataAccess.add(addedTransaction);
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void update(Transaction entity) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
         checkInputTransactionEntity(entity);
         Transaction updatedTransaction = Guard.checkAndGetEntityById(this.transactionDataAccess, entity.getId());
 
@@ -67,21 +67,21 @@ public class TransactionService implements ITransactionService {
         updatedTransaction.getEntries().addAll(addedEntries);
         this.transactionDataAccess.update(updatedTransaction);
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void delete(UUID entityId) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Transaction deletedTransaction = Guard.checkAndGetEntityById(this.transactionDataAccess, entityId);
         this.transactionDataAccess.delete(deletedTransaction);
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     @Override
     public void deleteTransactionList(ArrayList<UUID> transactionIds) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         ArrayList<Transaction> deletedTransactions = new ArrayList<Transaction>();
         for (UUID transactionId : transactionIds) {
@@ -90,7 +90,7 @@ public class TransactionService implements ITransactionService {
         }
         this.transactionDataAccess.deleteList(deletedTransactions);
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     private void checkInputTransactionEntity(Transaction entity) {
@@ -116,7 +116,7 @@ public class TransactionService implements ITransactionService {
             }
             Guard.checkInputForNull(entry.getAccount());
             Account account = Guard.checkAndGetEntityById(this.accountDataAccess, entry.getAccount().getId());
-            this.accountDataAccess.LoadCurrency(account);
+            this.accountDataAccess.loadCurrency(account);
 
             if (account.getCurrency().getIsoCode() == mainCurrencyIsoCode && entry.getRate().compareTo(one) != 0) {
                 throw new IllegalArgumentException("Rate for main Currency should be 1");

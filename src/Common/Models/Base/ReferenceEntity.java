@@ -2,7 +2,7 @@ package Common.Models.Base;
 
 import Common.Models.Interfaces.IReferenceEntity;
 
-public class ReferenceEntity extends  Entity implements IReferenceEntity {
+public class ReferenceEntity extends Entity implements IReferenceEntity {
 
     //region IsFavorite
     private boolean isFavorite;

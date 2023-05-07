@@ -11,10 +11,12 @@ import java.util.stream.Stream;
 
 public abstract class MemoryDbEntityDataAccess<T extends IEntity & ITrackedEntity> implements IEntityDataAccess<T> {
     private final ILedgerFactory factory;
+
     public MemoryDbEntityDataAccess(ILedgerFactory ledgerFactory) {
         this.factory = ledgerFactory;
     }
 
+    //region Interface Implementation
     @Override
     public T get(@NotNull UUID id) {
         return this.getEntitiesStream().filter(g -> g.getId().equals(id)).findFirst().orElse(null);
@@ -65,13 +67,13 @@ public abstract class MemoryDbEntityDataAccess<T extends IEntity & ITrackedEntit
             this.getDeletedIds().add(e.getId());
         });
     }
+    //endregion
 
     //region Protected Virtual
     protected abstract ArrayList<T> getEntities();
     //endregion
 
     //region Protected non-virtual
-
     protected Ledger getLedger() {
         return factory.get();
     }

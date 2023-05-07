@@ -15,6 +15,7 @@ public abstract class MemoryDbReferenceParentEntityDataAccess<T extends IEntity 
         super(ledgerFactory);
     }
 
+    //region Interface Implementation
     @Override
     public ArrayList<T> getByName(String name) {
         return this.getEntitiesStream().filter(g -> g.getName().equalsIgnoreCase(name)).collect(Collectors.toCollection(ArrayList::new));
@@ -39,4 +40,5 @@ public abstract class MemoryDbReferenceParentEntityDataAccess<T extends IEntity 
     public void loadChildren(T entity) {
         //Only for Relational Db
     }
+    //endregion
 }

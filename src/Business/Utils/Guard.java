@@ -23,7 +23,7 @@ public class Guard {
     }
 
     public static void checkEntityWithSameId(@NotNull IGlobalDataAccess dataAccess, UUID entityId) {
-        if (dataAccess.Get(entityId) != null) {
+        if (dataAccess.get(entityId) != null) {
             throw new IllegalArgumentException("Entity with the same Id has already existed");
         }
     }

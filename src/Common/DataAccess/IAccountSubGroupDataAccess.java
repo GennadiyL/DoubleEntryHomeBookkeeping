@@ -4,7 +4,6 @@ import Common.DataAccess.Base.*;
 import Common.Models.*;
 
 public interface IAccountSubGroupDataAccess
-        extends IReferenceParentEntityDataAccess<AccountSubGroup>
-        , IReferenceChildEntityDataAccess<AccountSubGroup>
+        extends IReferenceParentEntityDataAccess<AccountSubGroup>, IReferenceChildEntityDataAccess<AccountSubGroup>
 {
 }

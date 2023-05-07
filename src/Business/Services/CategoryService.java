@@ -18,7 +18,7 @@ public class CategoryService extends ReferenceChildEntityService<Category, Categ
 
     @Override
     protected ArrayList<Account> GetAccountsByEntity(Category entity) {
-        return this.getAccountDataAccess().GetAccountsByCategory(entity);
+        return this.getAccountDataAccess().getAccountsByCategory(entity);
     }
     @Override
     protected void AccountEntitySetter(Category entity, Account account) {

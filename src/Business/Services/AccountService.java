@@ -39,7 +39,7 @@ public class AccountService implements IAccountService {
     }
 
     public void add(Account entity) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Guard.checkInputForNull(entity);
         Guard.checkInputNameForNull(entity);
@@ -74,11 +74,11 @@ public class AccountService implements IAccountService {
         addedEntity.setParent(subGroup);
         this.accountDataAccess.add(addedEntity);
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void update(Account entity) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Guard.checkInputForNull(entity);
         Guard.checkInputNameForNull(entity);
@@ -104,17 +104,17 @@ public class AccountService implements IAccountService {
 
         this.accountDataAccess.update(updatedEntity);
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void delete(UUID entityId) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Account account = Guard.checkAndGetEntityById(this.accountDataAccess, entityId);
-        if (this.transactionDataAccess.GetTransactionEntriesCount(account.getId()) > 0) {
+        if (this.transactionDataAccess.getTransactionEntriesCount(account.getId()) > 0) {
             throw new IllegalArgumentException("Account cannot be delete, it contains transaction.");
         }
-        if (this.templateDataAccess.GetTemplateEntriesCount(account.getId()) > 0) {
+        if (this.templateDataAccess.getTemplateEntriesCount(account.getId()) > 0) {
             throw new IllegalArgumentException("Account cannot be delete, it contains template.");
         }
 
@@ -128,11 +128,11 @@ public class AccountService implements IAccountService {
         OrderedUtils.reorder(subGroup.getChildren());
         this.accountDataAccess.updateList(subGroup.getChildren());
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void setFavoriteStatus(UUID entityId, boolean isFavorite) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Account account = Guard.checkAndGetEntityById(this.accountDataAccess, entityId);
         if (account.getIsFavorite() != isFavorite) {
@@ -140,11 +140,11 @@ public class AccountService implements IAccountService {
             this.accountDataAccess.update(account);
         }
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void setOrder(UUID entityId, int order) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Account account = Guard.checkAndGetEntityById(this.accountDataAccess, entityId);
         if (account.getOrder() != order) {
@@ -156,11 +156,11 @@ public class AccountService implements IAccountService {
             this.accountDataAccess.updateList(subGroup.getChildren());
         }
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void moveToAnotherParent(UUID entityId, UUID parentId) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Account account = Guard.checkAndGetEntityById(this.accountDataAccess, entityId);
         this.accountDataAccess.loadParent(account);
@@ -185,29 +185,29 @@ public class AccountService implements IAccountService {
             this.accountDataAccess.updateList(fromAccountSubGroup.getChildren());
         }
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void combineTwoEntities(UUID primaryId, UUID secondaryId) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Account primaryAccount = Guard.checkAndGetEntityById(this.accountDataAccess, primaryId);
         Account secondaryAccount = Guard.checkAndGetEntityById(this.accountDataAccess, secondaryId);
 
         if (primaryAccount.getId() != secondaryAccount.getId()) {
-            this.accountDataAccess.LoadCurrency(primaryAccount);
-            this.accountDataAccess.LoadCurrency(secondaryAccount);
+            this.accountDataAccess.loadCurrency(primaryAccount);
+            this.accountDataAccess.loadCurrency(secondaryAccount);
             if (primaryAccount.getCurrency().getId() != secondaryAccount.getCurrency().getId()) {
                 throw new IllegalArgumentException("Can't combine accounts with different currencies");
             }
 
-            ArrayList<TemplateEntry> templates = this.templateDataAccess.GetEntriesByAccount(secondaryAccount);
+            ArrayList<TemplateEntry> templates = this.templateDataAccess.getEntriesByAccount(secondaryAccount);
             for (TemplateEntry templateEntry : templates) {
                 templateEntry.setAccount(primaryAccount);
                 this.templateDataAccess.update(templateEntry.getTemplate());
             }
 
-            List<TransactionEntry> transactions = this.transactionDataAccess.GetEntriesByAccount(secondaryAccount);
+            List<TransactionEntry> transactions = this.transactionDataAccess.getEntriesByAccount(secondaryAccount);
             for (TransactionEntry transactionEntry : transactions) {
                 transactionEntry.setAccount(primaryAccount);
                 this.transactionDataAccess.update(transactionEntry.getTransaction());
@@ -224,6 +224,6 @@ public class AccountService implements IAccountService {
             this.accountDataAccess.updateList(secondarySubGroup.getChildren());
         }
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 }

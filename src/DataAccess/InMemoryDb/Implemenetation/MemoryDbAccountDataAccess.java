@@ -27,6 +27,11 @@ public class MemoryDbAccountDataAccess implements IAccountDataAccess {
     }
 
     @Override
+    public ArrayList<Account> getList(UUID parentId) {
+        return null;
+    }
+
+    @Override
     public void loadParent(Account entity) {
 
     }
@@ -67,22 +72,22 @@ public class MemoryDbAccountDataAccess implements IAccountDataAccess {
     }
 
     @Override
-    public void LoadCurrency(Account account) {
+    public void loadCurrency(Account account) {
 
     }
 
     @Override
-    public ArrayList<Account> GetAccountsByCorrespondent(Correspondent correspondent) {
+    public ArrayList<Account> getAccountsByCorrespondent(Correspondent correspondent) {
         return null;
     }
 
     @Override
-    public ArrayList<Account> GetAccountsByCategory(Category category) {
+    public ArrayList<Account> getAccountsByCategory(Category category) {
         return null;
     }
 
     @Override
-    public ArrayList<Account> GetAccountsByProject(Project project) {
+    public ArrayList<Account> getAccountsByProject(Project project) {
         return null;
     }
 }

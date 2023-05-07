@@ -24,7 +24,7 @@ public class TemplateService implements ITemplateService {
     }
 
     public void add(Template entity) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Guard.checkInputForNull(entity);
         Guard.checkInputNameForNull(entity);
@@ -52,11 +52,11 @@ public class TemplateService implements ITemplateService {
         addedEntity.setParent(templateGroup);
         this.templateDataAccess.add(addedEntity);
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void update(Template entity) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Guard.checkInputForNull(entity);
         Guard.checkInputNameForNull(entity);
@@ -77,11 +77,11 @@ public class TemplateService implements ITemplateService {
 
         this.templateDataAccess.update(updatedTemplate);
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void delete(UUID entityId) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Template deletedTemplate = Guard.checkAndGetEntityById(this.templateDataAccess, entityId);
         this.templateDataAccess.loadParent(deletedTemplate);
@@ -94,11 +94,11 @@ public class TemplateService implements ITemplateService {
         OrderedUtils.reorder(templateGroup.getChildren());
         this.templateDataAccess.updateList(templateGroup.getChildren());
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void setFavoriteStatus(UUID entityId, boolean isFavorite) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Template template = Guard.checkAndGetEntityById(this.templateDataAccess, entityId);
         if (template.getIsFavorite() != isFavorite) {
@@ -106,11 +106,11 @@ public class TemplateService implements ITemplateService {
             this.templateDataAccess.update(template);
         }
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void setOrder(UUID entityId, int order) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Template template = Guard.checkAndGetEntityById(this.templateDataAccess, entityId);
         if (template.getOrder() != order) {
@@ -121,11 +121,11 @@ public class TemplateService implements ITemplateService {
             this.templateDataAccess.updateList(group.getChildren());
         }
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void moveToAnotherParent(UUID entityId, UUID parentId) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Template template = Guard.checkAndGetEntityById(this.templateDataAccess, entityId);
         this.templateDataAccess.loadParent(template);
@@ -146,7 +146,7 @@ public class TemplateService implements ITemplateService {
             this.templateDataAccess.updateList(fromTemplateGroup.getChildren());
         }
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     private ArrayList<TemplateEntry> createEntries(Template entity) {

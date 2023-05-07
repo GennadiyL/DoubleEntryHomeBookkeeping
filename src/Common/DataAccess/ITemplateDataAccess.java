@@ -7,6 +7,6 @@ import java.util.ArrayList;
 import java.util.UUID;
 
 public interface ITemplateDataAccess extends IReferenceChildEntityDataAccess<Template>{
-    ArrayList<TemplateEntry> GetEntriesByAccount(Account account);
-    int GetTemplateEntriesCount(UUID accountId);
+    ArrayList<TemplateEntry> getEntriesByAccount(Account account);
+    int getTemplateEntriesCount(UUID accountId);
 }

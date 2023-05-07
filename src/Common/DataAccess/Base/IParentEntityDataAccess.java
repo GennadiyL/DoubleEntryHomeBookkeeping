@@ -10,5 +10,6 @@ public interface IParentEntityDataAccess<T extends IEntity & INamedEntity>  {
     int getMaxOrder();
     int getCount();
     ArrayList<T> getList();
+
     void loadChildren(T entity);
 }

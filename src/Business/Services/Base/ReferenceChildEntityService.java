@@ -37,7 +37,7 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
 
     @Override
     public void add(T entity) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Guard.checkInputForNull(entity);
         Guard.checkInputNameForNull(entity);
@@ -58,12 +58,12 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
         parent.getChildren().add(addedEntity);
 
         this.entityDataAccess.add(addedEntity);
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     @Override
     public void update(T entity) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Guard.checkInputForNull(entity);
         Guard.checkInputNameForNull(entity);
@@ -79,12 +79,12 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
         updatedEntity.setIsFavorite(entity.getIsFavorite());
 
         this.entityDataAccess.update(updatedEntity);
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     @Override
     public void delete(UUID entityId) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         T deletedEntity = Guard.checkAndGetEntityById(this.entityDataAccess, entityId);
         this.entityDataAccess.loadParent(deletedEntity);
@@ -104,12 +104,12 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
         OrderedUtils.reorder(parent.getChildren());
         this.entityDataAccess.updateList(parent.getChildren());
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     @Override
     public void setFavoriteStatus(UUID entityId, boolean isFavorite) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         T etrity = Guard.checkAndGetEntityById(this.entityDataAccess, entityId);
         if (etrity.getIsFavorite() != isFavorite)
@@ -118,12 +118,12 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
             this.entityDataAccess.update(etrity);
         }
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     @Override
     public void setOrder(UUID entityId, int order) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         T entity = Guard.checkAndGetEntityById(this.entityDataAccess, entityId);
         if (entity.getOrder() != order)
@@ -135,11 +135,11 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
             this.entityDataAccess.updateList(parent.getChildren());
         }
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
     @Override
     public void moveToAnotherParent(UUID entityId, UUID parentId) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         T entity = Guard.checkAndGetEntityById(this.entityDataAccess, entityId);
         this.entityDataAccess.loadParent(entity);
@@ -161,11 +161,11 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
             this.entityDataAccess.updateList(fromParent.getChildren());
         }
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void combineTwoEntities(UUID primaryId, UUID secondaryId) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         T primaryItem = Guard.checkAndGetEntityById(this.entityDataAccess, primaryId);
         T secondaryItem = Guard.checkAndGetEntityById(this.entityDataAccess, secondaryId);
@@ -190,6 +190,6 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
             this.entityDataAccess.updateList(parent.getChildren());
         }
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 }

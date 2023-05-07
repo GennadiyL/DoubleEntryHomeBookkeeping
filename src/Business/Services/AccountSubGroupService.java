@@ -25,7 +25,7 @@ public class AccountSubGroupService implements IAccountSubGroupService {
     }
 
     public void add(AccountSubGroup entity) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Guard.checkInputForNull(entity);
         Guard.checkInputNameForNull(entity);
@@ -47,11 +47,11 @@ public class AccountSubGroupService implements IAccountSubGroupService {
 
         this.accountSubGroupDataAccess.add(addedEntity);
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void update(AccountSubGroup entity) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         Guard.checkInputForNull(entity);
         Guard.checkInputNameForNull(entity);
@@ -69,11 +69,11 @@ public class AccountSubGroupService implements IAccountSubGroupService {
 
         this.accountSubGroupDataAccess.update(subGroup);
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void delete(UUID entityId) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         AccountSubGroup subGroup = Guard.checkAndGetEntityById(this.accountSubGroupDataAccess, entityId);
         Guard.checkExistedChildrenInTheGroup(this.accountDataAccess, subGroup.getId());
@@ -88,11 +88,11 @@ public class AccountSubGroupService implements IAccountSubGroupService {
         OrderedUtils.reorder(group.getChildren());
         this.accountSubGroupDataAccess.updateList(group.getChildren());
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void setFavoriteStatus(UUID entityId, boolean isFavorite) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         AccountSubGroup subGroup = Guard.checkAndGetEntityById(this.accountSubGroupDataAccess, entityId);
         if (subGroup.getIsFavorite() != isFavorite) {
@@ -100,11 +100,11 @@ public class AccountSubGroupService implements IAccountSubGroupService {
             this.accountSubGroupDataAccess.update(subGroup);
         }
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void setOrder(UUID entityId, int order) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         AccountSubGroup subGroup = Guard.checkAndGetEntityById(this.accountSubGroupDataAccess, entityId);
         if (subGroup.getOrder() != order) {
@@ -115,11 +115,11 @@ public class AccountSubGroupService implements IAccountSubGroupService {
             this.accountSubGroupDataAccess.updateList(group.getChildren());
         }
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 
     public void moveToAnotherParent(UUID entityId, UUID groupId) {
-        this.globalDataAccess.Load();
+        this.globalDataAccess.load();
 
         AccountSubGroup subGroup = Guard.checkAndGetEntityById(this.accountSubGroupDataAccess, entityId);
         this.accountSubGroupDataAccess.loadParent(subGroup);
@@ -143,6 +143,6 @@ public class AccountSubGroupService implements IAccountSubGroupService {
             this.accountSubGroupDataAccess.updateList(fromAccountGroup.getChildren());
         }
 
-        this.globalDataAccess.Save();
+        this.globalDataAccess.save();
     }
 }

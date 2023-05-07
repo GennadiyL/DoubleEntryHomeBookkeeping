@@ -30,11 +30,11 @@ public class DateTimeUtils {
         return time.format(DATE_TIME_FORMATTER);
     }
 
-    public static LocalDateTime getDateTime(String stamp) {
+    public static LocalDateTime getDateTimeFromStamp(String stamp) {
         return LocalDateTime.parse(stamp, DATE_TIME_FORMATTER);
     }
 
-    public static LocalDate getDate(String stamp) {
+    public static LocalDate getDateFromStamp(String stamp) {
         return LocalDate.parse(stamp, DATE_FORMATTER);
     }
 }

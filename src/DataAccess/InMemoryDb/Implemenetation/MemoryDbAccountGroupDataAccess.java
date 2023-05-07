@@ -1,69 +1,20 @@
 package DataAccess.InMemoryDb.Implemenetation;
 
-import Common.DataAccess.IAccountGroupDataAccess;
-import Common.Models.AccountGroup;
+import Common.DataAccess.*;
+import Common.Models.*;
+import DataAccess.InMemoryDb.*;
+import DataAccess.InMemoryDb.Implemenetation.Base.*;
 
-import java.util.ArrayList;
-import java.util.UUID;
+import java.util.*;
 
-public class MemoryDbAccountGroupDataAccess implements IAccountGroupDataAccess {
-    @Override
-    public AccountGroup get(UUID id) {
-        return null;
+public class MemoryDbAccountGroupDataAccess extends MemoryDbReferenceParentEntityDataAccess<AccountGroup> implements IAccountGroupDataAccess {
+
+    public MemoryDbAccountGroupDataAccess(ILedgerFactory ledgerFactory) {
+        super(ledgerFactory);
     }
 
     @Override
-    public void add(AccountGroup entity) {
-
-    }
-
-    @Override
-    public void addList(ArrayList<AccountGroup> list) {
-
-    }
-
-    @Override
-    public void update(AccountGroup entity) {
-
-    }
-
-    @Override
-    public void updateList(ArrayList<AccountGroup> list) {
-
-    }
-
-    @Override
-    public void delete(AccountGroup entity) {
-
-    }
-
-    @Override
-    public void deleteList(ArrayList<AccountGroup> list) {
-
-    }
-
-    @Override
-    public ArrayList<AccountGroup> getByName(String name) {
-        return null;
-    }
-
-    @Override
-    public int getMaxOrder() {
-        return 0;
-    }
-
-    @Override
-    public int getCount() {
-        return 0;
-    }
-
-    @Override
-    public ArrayList<AccountGroup> getList() {
-        return null;
-    }
-
-    @Override
-    public void loadChildren(AccountGroup entity) {
-
+    protected ArrayList<AccountGroup> getEntities() {
+         return this.getLedger().getAccountGroups();
     }
 }
