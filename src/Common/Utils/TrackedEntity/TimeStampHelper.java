@@ -5,27 +5,27 @@ import org.jetbrains.annotations.NotNull;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 
-public class TimeStampUtils {
+public class TimeStampHelper {
 
     public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSSSSS");
     public static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
     public static final ZoneId UTC_ZONE_ID = ZoneId.of("UTC");
     public static final ZoneId CURRENT_ZONE_ID = ZoneId.systemDefault();
 
-    public static @NotNull String getDateTimeStamp(@NotNull LocalDateTime dateTime) {
+    public static  String getDateTimeStamp( LocalDateTime dateTime) {
         return dateTime.format(DATE_TIME_FORMATTER);
     }
 
-    public static @NotNull String getDateTimeStamp() {
+    public static  String getDateTimeStamp() {
         LocalDateTime dateTime = LocalDateTime.now(UTC_ZONE_ID);
         return getDateTimeStamp(dateTime);
     }
 
-    public static @NotNull String getDateStamp(@NotNull LocalDate date) {
+    public static  String getDateStamp( LocalDate date) {
         return date.format(DATE_FORMATTER);
     }
 
-    public static @NotNull String getDateStamp() {
+    public static  String getDateStamp() {
         LocalDate time = LocalDate.now(UTC_ZONE_ID);
         return time.format(DATE_TIME_FORMATTER);
     }

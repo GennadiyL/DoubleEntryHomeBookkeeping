@@ -5,7 +5,7 @@ import Common.DataAccess.Base.*;
 import Common.DataAccess.*;
 import Common.Models.Interfaces.*;
 import Common.Services.Base.*;
-import Common.Utils.Misk.Creator;
+import Common.Utils.Misk.CreateHelper;
 import Common.Utils.OrderedEntity.OrderedEntityHelper;
 
 import java.util.*;
@@ -35,7 +35,7 @@ public abstract class ReferenceParentEntityService<T extends IReferenceParentEnt
         Guard.checkEntityWithSameId(this.globalDataAccess, entity.getId());
         Guard.checkentitywithsamename(this.entityDataAccess, entity);
 
-        T addedEntity = (T) Creator.createGenericType(this);
+        T addedEntity = (T) CreateHelper.createGenericType(this);
         addedEntity.setId(entity.getId());
         addedEntity.setName(entity.getName());
         addedEntity.setDescription(entity.getDescription());

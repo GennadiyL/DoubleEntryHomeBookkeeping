@@ -15,21 +15,21 @@ public class Guard {
         }
     }
 
-    public static <T extends INamedEntity> void checkInputNameForNull(@NotNull T entity) {
+    public static <T extends INamedEntity> void checkInputNameForNull( T entity) {
         if (entity.getName() == null) {
             String typeName = entity.getClass().getSimpleName();
             throw new NullPointerException("In " + typeName + " the Name cannot be a null");
         }
     }
 
-    public static void checkEntityWithSameId(@NotNull IGlobalDataAccess dataAccess, UUID entityId) {
+    public static void checkEntityWithSameId( IGlobalDataAccess dataAccess, UUID entityId) {
         if (dataAccess.get(entityId) != null) {
             throw new IllegalArgumentException("Entity with the same Id has already existed");
         }
     }
 
-    public static <T extends IEntity> @NotNull T checkAndGetEntityById
-            (@NotNull IEntityDataAccess<T> dataAccess, UUID entityId) {
+    public static <T extends IEntity>  T checkAndGetEntityById
+            ( IEntityDataAccess<T> dataAccess, UUID entityId) {
         T entity = dataAccess.get(entityId);
         if (entity == null) {
             String typeName = entity.getClass().getSimpleName();
@@ -39,13 +39,13 @@ public class Guard {
     }
 
     public static <T extends IEntity & INamedEntity> void checkentitywithsamename
-            (@NotNull IParentEntityDataAccess<T> query, @NotNull T entity) {
+            ( IParentEntityDataAccess<T> query,  T entity) {
         ArrayList<T> entities = query.getByName(entity.getName());
         checkEntityWithSameName(entities, entity);
     }
 
     public static <T extends IEntity & INamedEntity> void checkEntityWithSameName
-            (@NotNull IChildEntityDataAccess<T> query, UUID parentId, @NotNull T entity) {
+            ( IChildEntityDataAccess<T> query, UUID parentId,  T entity) {
         ArrayList<T> entities = query.getByName(parentId, entity.getName());
         checkEntityWithSameName(entities, entity);
     }
@@ -63,7 +63,7 @@ public class Guard {
     }
 
     public static <T extends IEntity & INamedEntity> void checkExistedChildrenInTheGroup
-            (@NotNull IChildEntityDataAccess<T> query, UUID parentId) {
+            ( IChildEntityDataAccess<T> query, UUID parentId) {
         if (query.getCount(parentId) > 0) {
             throw new UnsupportedOperationException("Parent cannot be deleted. It contains items");
         }

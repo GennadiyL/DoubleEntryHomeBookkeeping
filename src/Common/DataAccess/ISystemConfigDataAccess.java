@@ -1,7 +1,6 @@
 package Common.DataAccess;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.*;
 
 public interface ISystemConfigDataAccess {
     String getMainCurrencyIsoCode();

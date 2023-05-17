@@ -1,9 +1,8 @@
 package Common.DataAccess.Base;
 
-import Common.Models.Interfaces.IEntity;
+import Common.Models.Interfaces.*;
 
-import java.util.ArrayList;
-import java.util.UUID;
+import java.util.*;
 
 public interface IEntityDataAccess<T extends IEntity> {
     T get(UUID id);

@@ -2,7 +2,7 @@ package DataAccess.InMemoryDb.Implemenetation.Base;
 
 import Common.DataAccess.Base.*;
 import Common.Models.Interfaces.*;
-import Common.Utils.TrackedEntity.TimeStampUtils;
+import Common.Utils.TrackedEntity.TimeStampHelper;
 import DataAccess.InMemoryDb.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -18,20 +18,20 @@ public abstract class MemoryDbEntityDataAccess<T extends IEntity & ITrackedEntit
 
     //region Interface Implementation
     @Override
-    public T get(@NotNull UUID id) {
+    public T get( UUID id) {
         return this.getEntitiesStream().filter(g -> g.getId().equals(id)).findFirst().orElse(null);
     }
 
     @Override
-    public void add(@NotNull T entity) {
-        entity.setTimeStamp(TimeStampUtils.getDateTimeStamp());
+    public void add( T entity) {
+        entity.setTimeStamp(TimeStampHelper.getDateTimeStamp());
         this.getEntities().add(entity);
         this.getAddedIds().add(entity.getId());
     }
 
     @Override
-    public void addList(@NotNull ArrayList<T> list) {
-        String dateTimeStamp = TimeStampUtils.getDateTimeStamp();
+    public void addList( ArrayList<T> list) {
+        String dateTimeStamp = TimeStampHelper.getDateTimeStamp();
         list.forEach(e -> {
             e.setTimeStamp(dateTimeStamp);
             this.getEntities().add(e);
@@ -40,14 +40,14 @@ public abstract class MemoryDbEntityDataAccess<T extends IEntity & ITrackedEntit
     }
 
     @Override
-    public void update(@NotNull T entity) {
-        entity.setTimeStamp(TimeStampUtils.getDateTimeStamp());
+    public void update( T entity) {
+        entity.setTimeStamp(TimeStampHelper.getDateTimeStamp());
         this.getUpdatedIds().add(entity.getId());
     }
 
     @Override
-    public void updateList(@NotNull ArrayList<T> list) {
-        String dateTimeStamp = TimeStampUtils.getDateTimeStamp();
+    public void updateList( ArrayList<T> list) {
+        String dateTimeStamp = TimeStampHelper.getDateTimeStamp();
         list.forEach(e -> {
             e.setTimeStamp(dateTimeStamp);
             this.getUpdatedIds().add(e.getId());
@@ -55,13 +55,13 @@ public abstract class MemoryDbEntityDataAccess<T extends IEntity & ITrackedEntit
     }
 
     @Override
-    public void delete(@NotNull T entity) {
+    public void delete( T entity) {
         this.getEntities().remove(entity);
         this.getDeletedIds().add(entity.getId());
     }
 
     @Override
-    public void deleteList(@NotNull ArrayList<T> list) {
+    public void deleteList( ArrayList<T> list) {
         list.forEach(e -> {
             this.getEntities().remove(e);
             this.getDeletedIds().add(e.getId());

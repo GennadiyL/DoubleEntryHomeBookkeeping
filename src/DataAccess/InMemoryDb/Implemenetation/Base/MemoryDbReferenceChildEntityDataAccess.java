@@ -18,7 +18,7 @@ public abstract class MemoryDbReferenceChildEntityDataAccess
         super(ledgerFactory);
     }
 
-    //region Interface immplementation
+    //region Interface implementation
     @Override
     public ArrayList<T> getByName(UUID parentId, String name) {
         return this.getEntitiesStream(parentId).filter(e -> e.getName().equalsIgnoreCase(name)).collect(Collectors.toCollection(ArrayList::new));

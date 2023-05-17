@@ -1,11 +1,11 @@
 package Common.DataAccess.Base;
 
-import Common.Models.Interfaces.IEntity;
-import Common.Models.Interfaces.INamedEntity;
+import Common.Models.Interfaces.*;
 
-import java.util.ArrayList;
+import java.util.*;
 
-public interface IParentEntityDataAccess<T extends IEntity & INamedEntity> extends IParentDataAccess<T> {
+public interface IParentEntityDataAccess<T extends IEntity & INamedEntity>
+        extends IParentDataAccess<T> {
     ArrayList<T> getByName(String name);
     int getMaxOrder();
     int getCount();

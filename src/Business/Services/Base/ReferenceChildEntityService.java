@@ -1,6 +1,6 @@
 package Business.Services.Base;
 
-import Common.Utils.Misk.Creator;
+import Common.Utils.Misk.CreateHelper;
 import Business.Utils.Guard;
 import Common.Utils.OrderedEntity.OrderedEntityHelper;
 import Common.DataAccess.Base.*;
@@ -47,7 +47,7 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
         TParent parent = Guard.checkAndGetEntityById(this.parentEntityDataAccess, entity.getParent().getId());
         Guard.checkEntityWithSameName(this.entityDataAccess, parent.getId(), entity);
 
-        T addedEntity = (T) Creator.createGenericType(this);
+        T addedEntity = (T) CreateHelper.createGenericType(this);
         addedEntity.setId(entity.getId());
         addedEntity.setName(entity.getName());
         addedEntity.setDescription(entity.getDescription());

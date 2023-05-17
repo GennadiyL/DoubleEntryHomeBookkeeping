@@ -5,7 +5,8 @@ import Common.Models.*;
 
 import java.util.ArrayList;
 
-public interface IAccountDataAccess extends IReferenceChildEntityDataAccess<Account> {
+public interface IAccountDataAccess
+        extends IReferenceChildEntityDataAccess<Account> {
     void loadCurrency(Account account);
     ArrayList<Account> getAccountsByCorrespondent(Correspondent correspondent);
     ArrayList<Account> getAccountsByCategory(Category category);

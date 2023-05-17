@@ -2,7 +2,7 @@ package Common.Utils.Misk;
 
 import java.lang.reflect.*;
 
-public class Creator {
+public class CreateHelper {
 
     public static <T> T createGenericType(T service) {
         return createGenericType(service, 0);

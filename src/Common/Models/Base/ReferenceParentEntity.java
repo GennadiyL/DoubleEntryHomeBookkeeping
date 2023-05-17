@@ -5,11 +5,10 @@ import java.util.ArrayList;
 
 public class ReferenceParentEntity <T> extends ReferenceEntity implements IReferenceParentEntity<T> {
 
-    //region Children
-    private ArrayList<T> children = new ArrayList<>();
-    @Override
+    private final ArrayList<T> children = new ArrayList<>();
+
     public ArrayList<T> getChildren() {
         return this.children;
     }
-    //endregion
+
 }
