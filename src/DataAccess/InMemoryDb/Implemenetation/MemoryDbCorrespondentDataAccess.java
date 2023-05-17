@@ -6,7 +6,10 @@ import DataAccess.InMemoryDb.*;
 import DataAccess.InMemoryDb.Implemenetation.Base.*;
 
 import java.util.*;
-public class MemoryDbCorrespondentDataAccess extends MemoryDbReferenceChildEntityDataAccess<Correspondent, CorrespondentGroup> implements ICorrespondentDataAccess {
+
+public class MemoryDbCorrespondentDataAccess
+        extends MemoryDbReferenceChildEntityDataAccess<Correspondent, CorrespondentGroup>
+        implements ICorrespondentDataAccess {
     public MemoryDbCorrespondentDataAccess(ILedgerFactory ledgerFactory) {
         super(ledgerFactory);
     }

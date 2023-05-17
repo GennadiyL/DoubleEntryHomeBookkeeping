@@ -63,6 +63,16 @@ public class Currency extends Entity implements ITrackedEntity, IFavoriteEntity,
     }
     //endregion
 
+    //region Desctipton
+    String desctipton;
+    public String geDesctipton() {
+        return this.desctipton;
+    }
+    public void setDesctipton(String desctipton) {
+        this.desctipton = desctipton;
+    }
+    //endregion-
+
     //region Rates
     ArrayList<CurrencyRate> rates;
     public ArrayList<CurrencyRate> getRates() {

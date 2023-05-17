@@ -1,11 +1,10 @@
-package Business.Utils;
+package Common.Utils.OrderedEntity;
 
 import Common.Models.Interfaces.IOrderedEntity;
-import Common.Utils.OrderedEntityComparator;
 
 import java.util.ArrayList;
 
-public class OrderedUtils {
+public class OrderedEntityHelper {
     public static final OrderedEntityComparator ORDERED_ENTITY_COMPARATOR = new OrderedEntityComparator();
 
     public static <T extends IOrderedEntity> void reorder(ArrayList<T> entities) {

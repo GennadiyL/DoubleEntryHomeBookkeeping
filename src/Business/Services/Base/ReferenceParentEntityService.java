@@ -5,6 +5,8 @@ import Common.DataAccess.Base.*;
 import Common.DataAccess.*;
 import Common.Models.Interfaces.*;
 import Common.Services.Base.*;
+import Common.Utils.Misk.Creator;
+import Common.Utils.OrderedEntity.OrderedEntityHelper;
 
 import java.util.*;
 
@@ -73,7 +75,7 @@ public abstract class ReferenceParentEntityService<T extends IReferenceParentEnt
         this.entityDataAccess.delete(deletedEntity);
 
         ArrayList<T> list = this.entityDataAccess.getList();
-        OrderedUtils.reorder(list);
+        OrderedEntityHelper.reorder(list);
         this.entityDataAccess.updateList(list);
 
         this.globalDataAccess.save();
@@ -102,7 +104,7 @@ public abstract class ReferenceParentEntityService<T extends IReferenceParentEnt
         if (entity.getOrder() != order)
         {
             ArrayList<T> list = this.entityDataAccess.getList();
-            OrderedUtils.setOrder(list, entity, order);
+            OrderedEntityHelper.setOrder(list, entity, order);
             this.entityDataAccess.updateList(list);
         }
 

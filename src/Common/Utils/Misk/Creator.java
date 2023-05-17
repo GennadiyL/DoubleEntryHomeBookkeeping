@@ -1,4 +1,4 @@
-package Business.Utils;
+package Common.Utils.Misk;
 
 import java.lang.reflect.*;
 

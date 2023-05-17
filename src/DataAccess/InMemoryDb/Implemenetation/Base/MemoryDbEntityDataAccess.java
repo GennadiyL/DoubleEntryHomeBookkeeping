@@ -2,7 +2,7 @@ package DataAccess.InMemoryDb.Implemenetation.Base;
 
 import Common.DataAccess.Base.*;
 import Common.Models.Interfaces.*;
-import Common.Utils.DateTimeUtils;
+import Common.Utils.TrackedEntity.TimeStampUtils;
 import DataAccess.InMemoryDb.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -24,14 +24,14 @@ public abstract class MemoryDbEntityDataAccess<T extends IEntity & ITrackedEntit
 
     @Override
     public void add(@NotNull T entity) {
-        entity.setTimeStamp(DateTimeUtils.getDateTimeStamp());
+        entity.setTimeStamp(TimeStampUtils.getDateTimeStamp());
         this.getEntities().add(entity);
         this.getAddedIds().add(entity.getId());
     }
 
     @Override
     public void addList(@NotNull ArrayList<T> list) {
-        String dateTimeStamp = DateTimeUtils.getDateTimeStamp();
+        String dateTimeStamp = TimeStampUtils.getDateTimeStamp();
         list.forEach(e -> {
             e.setTimeStamp(dateTimeStamp);
             this.getEntities().add(e);
@@ -41,13 +41,13 @@ public abstract class MemoryDbEntityDataAccess<T extends IEntity & ITrackedEntit
 
     @Override
     public void update(@NotNull T entity) {
-        entity.setTimeStamp(DateTimeUtils.getDateTimeStamp());
+        entity.setTimeStamp(TimeStampUtils.getDateTimeStamp());
         this.getUpdatedIds().add(entity.getId());
     }
 
     @Override
     public void updateList(@NotNull ArrayList<T> list) {
-        String dateTimeStamp = DateTimeUtils.getDateTimeStamp();
+        String dateTimeStamp = TimeStampUtils.getDateTimeStamp();
         list.forEach(e -> {
             e.setTimeStamp(dateTimeStamp);
             this.getUpdatedIds().add(e.getId());

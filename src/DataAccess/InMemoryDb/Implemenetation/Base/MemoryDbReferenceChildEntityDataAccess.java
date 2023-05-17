@@ -21,16 +21,12 @@ public abstract class MemoryDbReferenceChildEntityDataAccess
     //region Interface immplementation
     @Override
     public ArrayList<T> getByName(UUID parentId, String name) {
-        return this.getEntitiesStream(parentId)
-                .filter(e -> e.getName().equalsIgnoreCase(name))
-                .collect(Collectors.toCollection(ArrayList::new));
+        return this.getEntitiesStream(parentId).filter(e -> e.getName().equalsIgnoreCase(name)).collect(Collectors.toCollection(ArrayList::new));
     }
 
     @Override
     public int getMaxOrder(UUID parentId) {
-        return this.getEntitiesStream(parentId)
-                .max(Comparator.comparing(e -> e.getOrder()))
-                .get().getOrder();
+        return this.getEntitiesStream(parentId).max(Comparator.comparing(e -> e.getOrder())).get().getOrder();
     }
 
     @Override
@@ -51,7 +47,7 @@ public abstract class MemoryDbReferenceChildEntityDataAccess
 
     //region Private Members
     protected Stream<T> getEntitiesStream(UUID parentId) {
-        return this.getEntities().stream().filter(e -> e.getParent().getId() == parentId);
+        return this.getEntitiesStream().filter(e -> e.getParent().getId() == parentId);
     }
     //endregion
 }

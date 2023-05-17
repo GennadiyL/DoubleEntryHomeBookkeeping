@@ -1,11 +1,11 @@
-package Common.Utils;
+package Common.Utils.TrackedEntity;
 
 import org.jetbrains.annotations.NotNull;
 
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 
-public class DateTimeUtils {
+public class TimeStampUtils {
 
     public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSSSSS");
     public static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");

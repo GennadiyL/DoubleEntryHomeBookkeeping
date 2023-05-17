@@ -4,6 +4,7 @@ import Common.DataAccess.*;
 import Common.Models.*;
 import Common.Services.*;
 import Business.Utils.*;
+import Common.Utils.OrderedEntity.OrderedEntityHelper;
 
 import java.util.*;
 
@@ -91,7 +92,7 @@ public class TemplateService implements ITemplateService {
         templateGroup.getChildren().remove(deletedTemplate);
         this.templateDataAccess.delete(deletedTemplate);
 
-        OrderedUtils.reorder(templateGroup.getChildren());
+        OrderedEntityHelper.reorder(templateGroup.getChildren());
         this.templateDataAccess.updateList(templateGroup.getChildren());
 
         this.globalDataAccess.save();
@@ -117,7 +118,7 @@ public class TemplateService implements ITemplateService {
             this.templateDataAccess.loadParent(template);
             TemplateGroup group = template.getParent();
             this.templateGroupDataAccess.loadChildren(group);
-            OrderedUtils.setOrder(group.getChildren(), template, order);
+            OrderedEntityHelper.setOrder(group.getChildren(), template, order);
             this.templateDataAccess.updateList(group.getChildren());
         }
 
@@ -142,7 +143,7 @@ public class TemplateService implements ITemplateService {
 
             fromTemplateGroup.getChildren().remove(template);
             this.templateDataAccess.update(template);
-            OrderedUtils.reorder(fromTemplateGroup.getChildren());
+            OrderedEntityHelper.reorder(fromTemplateGroup.getChildren());
             this.templateDataAccess.updateList(fromTemplateGroup.getChildren());
         }
 

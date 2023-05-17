@@ -5,7 +5,7 @@ import Common.Models.*;
 import Common.Models.Enums.*;
 import Common.Services.*;
 import Business.Utils.*;
-import Common.Utils.Tuple2;
+import Common.Utils.Tuples.Tuple2;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

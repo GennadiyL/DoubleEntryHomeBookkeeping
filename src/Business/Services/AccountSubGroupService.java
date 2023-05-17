@@ -4,6 +4,7 @@ import Common.DataAccess.*;
 import Common.Models.*;
 import Common.Services.*;
 import Business.Utils.*;
+import Common.Utils.OrderedEntity.OrderedEntityHelper;
 
 import java.util.*;
 
@@ -85,7 +86,7 @@ public class AccountSubGroupService implements IAccountSubGroupService {
         group.getChildren().remove(subGroup);
         this.accountSubGroupDataAccess.delete(subGroup);
 
-        OrderedUtils.reorder(group.getChildren());
+        OrderedEntityHelper.reorder(group.getChildren());
         this.accountSubGroupDataAccess.updateList(group.getChildren());
 
         this.globalDataAccess.save();
@@ -111,7 +112,7 @@ public class AccountSubGroupService implements IAccountSubGroupService {
             this.accountSubGroupDataAccess.loadParent(subGroup);
             AccountGroup group = subGroup.getParent();
             this.accountGroupDataAccess.loadChildren(group);
-            OrderedUtils.setOrder(group.getChildren(), subGroup, order);
+            OrderedEntityHelper.setOrder(group.getChildren(), subGroup, order);
             this.accountSubGroupDataAccess.updateList(group.getChildren());
         }
 
@@ -139,7 +140,7 @@ public class AccountSubGroupService implements IAccountSubGroupService {
             subGroup.setParent(toAccountGroup);
             this.accountSubGroupDataAccess.update(subGroup);
 
-            OrderedUtils.reorder(fromAccountGroup.getChildren());
+            OrderedEntityHelper.reorder(fromAccountGroup.getChildren());
             this.accountSubGroupDataAccess.updateList(fromAccountGroup.getChildren());
         }
 

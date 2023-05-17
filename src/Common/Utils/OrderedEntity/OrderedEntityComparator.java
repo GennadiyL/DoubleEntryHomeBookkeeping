@@ -1,4 +1,4 @@
-package Common.Utils;
+package Common.Utils.OrderedEntity;
 
 import Common.Models.Interfaces.IOrderedEntity;
 
