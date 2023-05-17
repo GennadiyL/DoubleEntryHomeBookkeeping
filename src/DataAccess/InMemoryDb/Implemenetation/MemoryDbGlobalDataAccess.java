@@ -19,7 +19,7 @@ public class MemoryDbGlobalDataAccess
     }
 
     public IEntity getEntity(UUID id) {
-        Ledger ledger = this.factory.receive();
+        Ledger ledger = this.factory.get();
         ArrayList<ArrayList<? extends IEntity>> lists = ledger.getAllLists();
         for (ArrayList<? extends IEntity> list : lists) {
             IEntity entity = this.findInCollection(list, id);

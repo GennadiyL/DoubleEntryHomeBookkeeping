@@ -18,7 +18,7 @@ public class JsonLedgerFactory implements ILedgerFactory {
         this.serializer = serializer;
     }
 
-    public Ledger receive() {
+    public Ledger get() {
         if (ledger == null)
         {
             Document doc = storage.load();

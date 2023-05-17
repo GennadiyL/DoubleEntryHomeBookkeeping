@@ -1,6 +1,6 @@
 package DataAccess.InMemoryDb;
 
 public interface ILedgerFactory {
-    Ledger receive();
+    Ledger get();
     void send();
 }

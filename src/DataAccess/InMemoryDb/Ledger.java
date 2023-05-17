@@ -1,8 +1,9 @@
 package DataAccess.InMemoryDb;
 
 import Common.Models.*;
+import Common.Models.Config.*;
 import Common.Models.Currency;
-import Common.Models.Interfaces.IEntity;
+import Common.Models.Interfaces.*;
 
 import java.util.*;
 
@@ -31,6 +32,9 @@ public class Ledger {
     private final ArrayList<UUID> addedIds = new ArrayList<UUID>();
     private final ArrayList<UUID> updatedIds = new ArrayList<UUID>();
     private final ArrayList<UUID> deletedIds = new ArrayList<UUID>();
+
+    private SystemConfig systemConfig;
+    private UserConfig userConfig;
     //endregion
 
 
@@ -132,6 +136,22 @@ public class Ledger {
 
     public ArrayList<ArrayList<? extends IEntity>> getAllLists() {
         return allLists;
+    }
+
+    public SystemConfig getSystemConfig() {
+        return systemConfig;
+    }
+
+    public void setSystemConfig(SystemConfig systemConfig) {
+        this.systemConfig = systemConfig;
+    }
+
+    public UserConfig getUserConfig() {
+        return userConfig;
+    }
+
+    public void setUserConfig(UserConfig userConfig) {
+        this.userConfig = userConfig;
     }
 
     //endregion

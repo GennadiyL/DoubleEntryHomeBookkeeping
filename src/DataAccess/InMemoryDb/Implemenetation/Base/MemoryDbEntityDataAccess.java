@@ -65,7 +65,7 @@ public abstract class MemoryDbEntityDataAccess<T extends IEntity & ITrackedEntit
 
     //region Protected non-virtual
     protected Ledger getLedger() {
-        return factory.receive();
+        return factory.get();
     }
 
     protected Stream<T> getEntitiesStream() {
@@ -73,17 +73,17 @@ public abstract class MemoryDbEntityDataAccess<T extends IEntity & ITrackedEntit
     }
 
     protected ArrayList<UUID> getAddedIds() {
-        Ledger ledger = factory.receive();
+        Ledger ledger = factory.get();
         return ledger.getAddedIds();
     }
 
     protected ArrayList<UUID> getUpdatedIds() {
-        Ledger ledger = factory.receive();
+        Ledger ledger = factory.get();
         return ledger.getUpdatedIds();
     }
 
     protected ArrayList<UUID> getDeletedIds() {
-        Ledger ledger = factory.receive();
+        Ledger ledger = factory.get();
         return ledger.getDeletedIds();
     }
     //endregion
