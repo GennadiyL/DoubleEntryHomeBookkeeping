@@ -8,7 +8,8 @@ import DataAccess.InMemoryDb.Implemenetation.Base.*;
 import java.util.*;
 import java.util.stream.*;
 
-public class MemoryDbAccountDataAccess extends MemoryDbReferenceChildEntityDataAccess<Account, AccountSubGroup>
+public class MemoryDbAccountDataAccess
+        extends MemoryDbReferenceChildEntityDataAccess<Account, AccountSubGroup>
         implements IAccountDataAccess {
     public MemoryDbAccountDataAccess(ILedgerFactory ledgerFactory) {
         super(ledgerFactory);
