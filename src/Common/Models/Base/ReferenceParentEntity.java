@@ -1,7 +1,7 @@
 package Common.Models.Base;
 
-import Common.Models.Interfaces.IReferenceParentEntity;
-import java.util.ArrayList;
+import Common.Models.Interfaces.*;
+import java.util.*;
 
 public class ReferenceParentEntity <T> extends ReferenceEntity implements IReferenceParentEntity<T> {
 

@@ -7,13 +7,14 @@ import DataAccess.InMemoryDb.Implemenetation.Base.*;
 
 import java.util.*;
 
-public class MemoryDbCategoryGroupDataAccess extends MemoryDbReferenceParentEntityDataAccess<CategoryGroup> implements ICategoryGroupDataAccess {
+public class MemoryDbCategoryGroupDataAccess
+        extends MemoryDbReferenceParentEntityDataAccess<CategoryGroup>
+        implements ICategoryGroupDataAccess {
 
     public MemoryDbCategoryGroupDataAccess(ILedgerFactory ledgerFactory, ILedgerFactory factory) {
         super(ledgerFactory);
     }
 
-    @Override
     protected ArrayList<CategoryGroup> getEntities() {
         return this.getLedger().getCategoryGroups();
     }

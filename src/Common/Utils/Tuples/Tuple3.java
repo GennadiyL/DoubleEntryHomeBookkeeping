@@ -32,7 +32,7 @@ public class Tuple3<T1, T2, T3> implements Serializable {
         return value3;
     }
 
-    @Override
+    
     public String toString() {
         return "Tuple3 {" + "1: " + value1 + ", 2: " + value2 + ", 3: " + value3 + '}';
     }

@@ -9,27 +9,49 @@ import java.util.*;
 public class Ledger {
 
     //region Fields
-    private ArrayList<AccountGroup> accountGroups = new ArrayList<AccountGroup>();
-    private ArrayList<AccountSubGroup> accountSubGroups = new ArrayList<AccountSubGroup>();
-    private ArrayList<Account> accounts = new ArrayList<Account>();
-    private ArrayList<CategoryGroup> categoryGroups = new ArrayList<CategoryGroup>();
-    private ArrayList<Category> categories = new ArrayList<Category>();
-    private ArrayList<CorrespondentGroup> correspondentGroups = new ArrayList<CorrespondentGroup>();
-    private ArrayList<Correspondent> correspondents = new ArrayList<Correspondent>();
-    private ArrayList<Currency> currencies = new ArrayList<Currency>();
-    private ArrayList<CurrencyRate> currencyRates = new ArrayList<CurrencyRate>();
-    private ArrayList<ProjectGroup> projectGroups = new ArrayList<ProjectGroup>();
-    private ArrayList<Project> projects = new ArrayList<Project>();
-    private ArrayList<TemplateGroup> templateGroups = new ArrayList<TemplateGroup>();
-    private ArrayList<Template> templates = new ArrayList<Template>();
-    private ArrayList<TemplateEntry> templateEntries = new ArrayList<TemplateEntry>();
-    private ArrayList<Transaction> transactions = new ArrayList<Transaction>();
-    private ArrayList<TransactionEntry> transactionEntries = new ArrayList<TransactionEntry>();
+    private final ArrayList<AccountGroup> accountGroups = new ArrayList<AccountGroup>();
+    private final ArrayList<AccountSubGroup> accountSubGroups = new ArrayList<AccountSubGroup>();
+    private final ArrayList<Account> accounts = new ArrayList<Account>();
+    private final ArrayList<CategoryGroup> categoryGroups = new ArrayList<CategoryGroup>();
+    private final ArrayList<Category> categories = new ArrayList<Category>();
+    private final ArrayList<CorrespondentGroup> correspondentGroups = new ArrayList<CorrespondentGroup>();
+    private final ArrayList<Correspondent> correspondents = new ArrayList<Correspondent>();
+    private final ArrayList<Currency> currencies = new ArrayList<Currency>();
+    private final ArrayList<CurrencyRate> currencyRates = new ArrayList<CurrencyRate>();
+    private final ArrayList<ProjectGroup> projectGroups = new ArrayList<ProjectGroup>();
+    private final ArrayList<Project> projects = new ArrayList<Project>();
+    private final ArrayList<TemplateGroup> templateGroups = new ArrayList<TemplateGroup>();
+    private final ArrayList<Template> templates = new ArrayList<Template>();
+    private final ArrayList<TemplateEntry> templateEntries = new ArrayList<TemplateEntry>();
+    private final ArrayList<Transaction> transactions = new ArrayList<Transaction>();
+    private final ArrayList<TransactionEntry> transactionEntries = new ArrayList<TransactionEntry>();
 
-    private ArrayList<UUID> addedIds = new ArrayList<UUID>();
-    private ArrayList<UUID> updatedIds = new ArrayList<UUID>();
-    private ArrayList<UUID> deletedIds = new ArrayList<UUID>();
+    private final ArrayList<ArrayList<? extends IEntity>> allLists = new ArrayList<>();
+
+    private final ArrayList<UUID> addedIds = new ArrayList<UUID>();
+    private final ArrayList<UUID> updatedIds = new ArrayList<UUID>();
+    private final ArrayList<UUID> deletedIds = new ArrayList<UUID>();
     //endregion
+
+
+    public Ledger() {
+        allLists.add(accountGroups);
+        allLists.add(accountSubGroups);
+        allLists.add(accounts);
+        allLists.add(categoryGroups);
+        allLists.add(categories);
+        allLists.add(correspondentGroups);
+        allLists.add(correspondents);
+        allLists.add(currencies);
+        allLists.add(currencyRates);
+        allLists.add(projectGroups);
+        allLists.add(projects);
+        allLists.add(templateGroups);
+        allLists.add(templates);
+        allLists.add(templateEntries);
+        allLists.add(transactions);
+        allLists.add(transactionEntries);
+    }
 
     //region Getters
     public ArrayList<AccountGroup> getAccountGroups() {
@@ -106,6 +128,10 @@ public class Ledger {
 
     public ArrayList<UUID> getDeletedIds() {
         return deletedIds;
+    }
+
+    public ArrayList<ArrayList<? extends IEntity>> getAllLists() {
+        return allLists;
     }
 
     //endregion

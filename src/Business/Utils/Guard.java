@@ -3,15 +3,14 @@ package Business.Utils;
 import Common.DataAccess.Base.*;
 import Common.DataAccess.*;
 import Common.Models.Interfaces.*;
-import org.jetbrains.annotations.*;
+import Common.Utils.Misk.*;
 
 import java.util.*;
 
 public class Guard {
     public static <T> void checkInputForNull(T entity) {
         if (entity == null) {
-            String typeName = entity.getClass().getSimpleName();
-            throw new NullPointerException(typeName + " cannot be a null");
+            throw new NullPointerException("Entity cannot be a null");
         }
     }
 
@@ -23,7 +22,7 @@ public class Guard {
     }
 
     public static void checkEntityWithSameId( IGlobalDataAccess dataAccess, UUID entityId) {
-        if (dataAccess.get(entityId) != null) {
+        if (dataAccess.getEntity(entityId) != null) {
             throw new IllegalArgumentException("Entity with the same Id has already existed");
         }
     }
@@ -32,20 +31,20 @@ public class Guard {
             ( IEntityDataAccess<T> dataAccess, UUID entityId) {
         T entity = dataAccess.get(entityId);
         if (entity == null) {
-            String typeName = entity.getClass().getSimpleName();
+            String typeName = GenericHelper.getGenericType(dataAccess).getSimpleName();
             throw new NoSuchElementException("Entity " + typeName + " does not exist");
         }
         return entity;
     }
 
-    public static <T extends IEntity & INamedEntity> void checkentitywithsamename
-            ( IParentEntityDataAccess<T> query,  T entity) {
+    public static <T extends IEntity & INamedEntity> void checkEntityWithSameName
+            (IParentEntityDataAccess<T> query,  T entity) {
         ArrayList<T> entities = query.getByName(entity.getName());
         checkEntityWithSameName(entities, entity);
     }
 
     public static <T extends IEntity & INamedEntity> void checkEntityWithSameName
-            ( IChildEntityDataAccess<T> query, UUID parentId,  T entity) {
+            (IChildEntityDataAccess<T> query, UUID parentId,  T entity) {
         ArrayList<T> entities = query.getByName(parentId, entity.getName());
         checkEntityWithSameName(entities, entity);
     }

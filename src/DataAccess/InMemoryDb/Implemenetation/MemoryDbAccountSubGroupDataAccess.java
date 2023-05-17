@@ -14,12 +14,10 @@ public class MemoryDbAccountSubGroupDataAccess
         super(ledgerFactory);
     }
 
-    @Override
     public void loadChildren(AccountSubGroup entity) {
         //Only for Relational Db
     }
 
-    @Override
     protected ArrayList<AccountSubGroup> getEntities() {
         return this.getLedger().getAccountSubGroups();
     }

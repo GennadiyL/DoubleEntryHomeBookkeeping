@@ -26,7 +26,7 @@ public class Tuple2<T1, T2> implements Serializable {
         return value2;
     }
 
-    @Override
+    
     public String toString() {
         return "Pair{" + "1: " + value1 + ", 2: " + value2 + '}';
     }

@@ -1,12 +1,11 @@
 package Common.Models.Base;
 
-import Common.Models.Interfaces.IEntity;
-import java.util.UUID;
-import static java.util.UUID.randomUUID;
+import Common.Models.Interfaces.*;
+import java.util.*;
 
 public abstract class Entity implements IEntity {
 
-    private UUID id = randomUUID();
+    private UUID id = UUID.randomUUID();
 
     public UUID getId() {
         return id;

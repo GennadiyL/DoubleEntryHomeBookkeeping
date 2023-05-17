@@ -16,11 +16,11 @@ public class ProjectService extends ReferenceChildEntityService<Project, Project
         super(globalDataAccess, entityDataAccess, parentEntityDataAccess, accountDataAccess);
     }
 
-    @Override
+    
     protected ArrayList<Account> GetAccountsByEntity(Project entity) {
         return this.getAccountDataAccess().getAccountsByProject(entity);
     }
-    @Override
+    
     protected void AccountEntitySetter(Project entity, Account account) {
         account.setProject(entity);
     }

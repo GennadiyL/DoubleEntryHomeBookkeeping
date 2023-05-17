@@ -30,8 +30,6 @@ public class TransactionService implements ITransactionService {
     }
 
     public void add(Transaction entity) {
-        this.globalDataAccess.load();
-
         checkInputTransactionEntity(entity);
         Guard.checkEntityWithSameId(this.globalDataAccess, entity.getId());
 
@@ -52,7 +50,6 @@ public class TransactionService implements ITransactionService {
     }
 
     public void update(Transaction entity) {
-        this.globalDataAccess.load();
         checkInputTransactionEntity(entity);
         Transaction updatedTransaction = Guard.checkAndGetEntityById(this.transactionDataAccess, entity.getId());
 
@@ -71,18 +68,14 @@ public class TransactionService implements ITransactionService {
     }
 
     public void delete(UUID entityId) {
-        this.globalDataAccess.load();
-
         Transaction deletedTransaction = Guard.checkAndGetEntityById(this.transactionDataAccess, entityId);
         this.transactionDataAccess.delete(deletedTransaction);
 
         this.globalDataAccess.save();
     }
 
-    @Override
+    
     public void deleteTransactionList(ArrayList<UUID> transactionIds) {
-        this.globalDataAccess.load();
-
         ArrayList<Transaction> deletedTransactions = new ArrayList<Transaction>();
         for (UUID transactionId : transactionIds) {
             Transaction deletedTransaction = Guard.checkAndGetEntityById(this.transactionDataAccess, transactionId);

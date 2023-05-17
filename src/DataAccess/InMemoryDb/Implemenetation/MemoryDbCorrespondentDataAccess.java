@@ -14,7 +14,6 @@ public class MemoryDbCorrespondentDataAccess
         super(ledgerFactory);
     }
 
-    @Override
     protected ArrayList<Correspondent> getEntities() {
         return this.getLedger().getCorrespondents();
     }

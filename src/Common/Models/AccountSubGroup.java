@@ -1,7 +1,7 @@
 package Common.Models;
 
-import Common.Models.Base.ReferenceParentEntity;
-import Common.Models.Interfaces.IReferenceChildEntity;
+import Common.Models.Base.*;
+import Common.Models.Interfaces.*;
 
 public class AccountSubGroup extends ReferenceParentEntity<Account> implements IReferenceChildEntity<AccountGroup> {
 

@@ -40,8 +40,6 @@ public class AccountService implements IAccountService {
     }
 
     public void add(Account entity) {
-        this.globalDataAccess.load();
-
         Guard.checkInputForNull(entity);
         Guard.checkInputNameForNull(entity);
         Guard.checkInputForNull(entity.getParent());
@@ -79,8 +77,6 @@ public class AccountService implements IAccountService {
     }
 
     public void update(Account entity) {
-        this.globalDataAccess.load();
-
         Guard.checkInputForNull(entity);
         Guard.checkInputNameForNull(entity);
 
@@ -92,7 +88,7 @@ public class AccountService implements IAccountService {
 
         Category category = entity.getCategory() == null ? null : (Guard.checkAndGetEntityById(this.categoryDataAccess, entity.getCategory().getId()));
         Project project = entity.getProject() == null ? null : (Guard.checkAndGetEntityById(this.projectDataAccess, entity.getProject().getId()));
-        Correspondent correndent = entity.getCorrespondent() == null
+        Correspondent correspondent = entity.getCorrespondent() == null
                 ? null : (Guard.checkAndGetEntityById(this.correspondentDataAccess, entity.getCorrespondent().getId()));
 
         updatedEntity.setName(entity.getName());
@@ -101,7 +97,7 @@ public class AccountService implements IAccountService {
 
         updatedEntity.setCategory(category);
         updatedEntity.setProject(project);
-        updatedEntity.setCorrespondent(correndent);
+        updatedEntity.setCorrespondent(correspondent);
 
         this.accountDataAccess.update(updatedEntity);
 
@@ -109,8 +105,6 @@ public class AccountService implements IAccountService {
     }
 
     public void delete(UUID entityId) {
-        this.globalDataAccess.load();
-
         Account account = Guard.checkAndGetEntityById(this.accountDataAccess, entityId);
         if (this.transactionDataAccess.getTransactionEntriesCount(account.getId()) > 0) {
             throw new IllegalArgumentException("Account cannot be delete, it contains transaction.");
@@ -133,8 +127,6 @@ public class AccountService implements IAccountService {
     }
 
     public void setFavoriteStatus(UUID entityId, boolean isFavorite) {
-        this.globalDataAccess.load();
-
         Account account = Guard.checkAndGetEntityById(this.accountDataAccess, entityId);
         if (account.getIsFavorite() != isFavorite) {
             account.setIsFavorite(isFavorite);
@@ -145,8 +137,6 @@ public class AccountService implements IAccountService {
     }
 
     public void setOrder(UUID entityId, int order) {
-        this.globalDataAccess.load();
-
         Account account = Guard.checkAndGetEntityById(this.accountDataAccess, entityId);
         if (account.getOrder() != order) {
             this.accountDataAccess.loadParent(account);
@@ -161,8 +151,6 @@ public class AccountService implements IAccountService {
     }
 
     public void moveToAnotherParent(UUID entityId, UUID parentId) {
-        this.globalDataAccess.load();
-
         Account account = Guard.checkAndGetEntityById(this.accountDataAccess, entityId);
         this.accountDataAccess.loadParent(account);
         AccountSubGroup fromAccountSubGroup = account.getParent();
@@ -190,8 +178,6 @@ public class AccountService implements IAccountService {
     }
 
     public void combineTwoEntities(UUID primaryId, UUID secondaryId) {
-        this.globalDataAccess.load();
-
         Account primaryAccount = Guard.checkAndGetEntityById(this.accountDataAccess, primaryId);
         Account secondaryAccount = Guard.checkAndGetEntityById(this.accountDataAccess, secondaryId);
 

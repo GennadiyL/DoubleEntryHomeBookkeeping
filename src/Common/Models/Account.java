@@ -1,6 +1,6 @@
 package Common.Models;
 
-import Common.Models.Base.ReferenceChildEntity;
+import Common.Models.Base.*;
 
 public class Account extends ReferenceChildEntity<AccountSubGroup> {
 

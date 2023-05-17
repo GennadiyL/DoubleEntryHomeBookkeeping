@@ -12,7 +12,6 @@ public class MemoryDbProjectDataAccess extends MemoryDbReferenceChildEntityDataA
         super(ledgerFactory);
     }
 
-    @Override
     protected ArrayList<Project> getEntities() {
         return this.getLedger().getProjects();
     }

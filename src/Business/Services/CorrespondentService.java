@@ -16,11 +16,11 @@ public class CorrespondentService extends ReferenceChildEntityService<Correspond
         super(globalDataAccess, entityDataAccess, parentEntityDataAccess, accountDataAccess);
     }
 
-    @Override
+    
     protected ArrayList<Account> GetAccountsByEntity(Correspondent entity) {
         return this.getAccountDataAccess().getAccountsByCorrespondent(entity);
     }
-    @Override
+    
     protected void AccountEntitySetter(Correspondent entity, Account account) {
         account.setCorrespondent(entity);
     }

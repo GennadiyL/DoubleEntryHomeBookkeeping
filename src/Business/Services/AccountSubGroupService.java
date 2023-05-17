@@ -26,8 +26,6 @@ public class AccountSubGroupService implements IAccountSubGroupService {
     }
 
     public void add(AccountSubGroup entity) {
-        this.globalDataAccess.load();
-
         Guard.checkInputForNull(entity);
         Guard.checkInputNameForNull(entity);
         Guard.checkInputForNull(entity.getParent());
@@ -52,8 +50,6 @@ public class AccountSubGroupService implements IAccountSubGroupService {
     }
 
     public void update(AccountSubGroup entity) {
-        this.globalDataAccess.load();
-
         Guard.checkInputForNull(entity);
         Guard.checkInputNameForNull(entity);
         Guard.checkInputForNull(entity.getParent());
@@ -74,8 +70,6 @@ public class AccountSubGroupService implements IAccountSubGroupService {
     }
 
     public void delete(UUID entityId) {
-        this.globalDataAccess.load();
-
         AccountSubGroup subGroup = Guard.checkAndGetEntityById(this.accountSubGroupDataAccess, entityId);
         Guard.checkExistedChildrenInTheGroup(this.accountDataAccess, subGroup.getId());
 
@@ -93,8 +87,6 @@ public class AccountSubGroupService implements IAccountSubGroupService {
     }
 
     public void setFavoriteStatus(UUID entityId, boolean isFavorite) {
-        this.globalDataAccess.load();
-
         AccountSubGroup subGroup = Guard.checkAndGetEntityById(this.accountSubGroupDataAccess, entityId);
         if (subGroup.getIsFavorite() != isFavorite) {
             subGroup.setIsFavorite(isFavorite);
@@ -105,8 +97,6 @@ public class AccountSubGroupService implements IAccountSubGroupService {
     }
 
     public void setOrder(UUID entityId, int order) {
-        this.globalDataAccess.load();
-
         AccountSubGroup subGroup = Guard.checkAndGetEntityById(this.accountSubGroupDataAccess, entityId);
         if (subGroup.getOrder() != order) {
             this.accountSubGroupDataAccess.loadParent(subGroup);
@@ -120,8 +110,6 @@ public class AccountSubGroupService implements IAccountSubGroupService {
     }
 
     public void moveToAnotherParent(UUID entityId, UUID groupId) {
-        this.globalDataAccess.load();
-
         AccountSubGroup subGroup = Guard.checkAndGetEntityById(this.accountSubGroupDataAccess, entityId);
         this.accountSubGroupDataAccess.loadParent(subGroup);
         AccountGroup fromAccountGroup = subGroup.getParent();

@@ -1,10 +1,10 @@
 package Common.Models;
 
-import Common.Models.Base.Entity;
-import Common.Models.Interfaces.ITrackedEntity;
+import Common.Models.Base.*;
+import Common.Models.Interfaces.*;
 
 import java.math.*;
-import java.time.LocalDate;
+import java.time.*;
 
 public class CurrencyRate extends Entity implements ITrackedEntity {
 

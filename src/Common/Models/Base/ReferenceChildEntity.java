@@ -1,6 +1,6 @@
 package Common.Models.Base;
 
-import Common.Models.Interfaces.IReferenceChildEntity;
+import Common.Models.Interfaces.*;
 
 public class ReferenceChildEntity<T> extends ReferenceEntity implements IReferenceChildEntity<T> {
 

@@ -7,13 +7,14 @@ import DataAccess.InMemoryDb.Implemenetation.Base.*;
 
 import java.util.*;
 
-public class MemoryDbAccountGroupDataAccess extends MemoryDbReferenceParentEntityDataAccess<AccountGroup> implements IAccountGroupDataAccess {
+public class MemoryDbAccountGroupDataAccess
+        extends MemoryDbReferenceParentEntityDataAccess<AccountGroup>
+        implements IAccountGroupDataAccess {
 
     public MemoryDbAccountGroupDataAccess(ILedgerFactory ledgerFactory) {
         super(ledgerFactory);
     }
 
-    @Override
     protected ArrayList<AccountGroup> getEntities() {
          return this.getLedger().getAccountGroups();
     }

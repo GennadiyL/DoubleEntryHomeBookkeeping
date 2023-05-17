@@ -5,7 +5,7 @@ import Common.DataAccess.Base.*;
 import Common.DataAccess.*;
 import Common.Models.Interfaces.*;
 import Common.Services.Base.*;
-import Common.Utils.Misk.CreateHelper;
+import Common.Utils.Misk.GenericHelper;
 import Common.Utils.OrderedEntity.OrderedEntityHelper;
 
 import java.util.*;
@@ -25,17 +25,13 @@ public abstract class ReferenceParentEntityService<T extends IReferenceParentEnt
         this.childEntityDataAccess = childEntityDataAccess;
     }
 
-    @Override
-    public void add(T entity)
-    {
-         this.globalDataAccess.load();
-
+    public void add(T entity) {
         Guard.checkInputForNull(entity);
         Guard.checkInputNameForNull(entity);
         Guard.checkEntityWithSameId(this.globalDataAccess, entity.getId());
-        Guard.checkentitywithsamename(this.entityDataAccess, entity);
+        Guard.checkEntityWithSameName(this.entityDataAccess, entity);
 
-        T addedEntity = (T) CreateHelper.createGenericType(this);
+        T addedEntity = (T) GenericHelper.createGenericType(this);
         addedEntity.setId(entity.getId());
         addedEntity.setName(entity.getName());
         addedEntity.setDescription(entity.getDescription());
@@ -47,13 +43,10 @@ public abstract class ReferenceParentEntityService<T extends IReferenceParentEnt
         this.globalDataAccess.save();
     }
 
-    @Override
     public void update(T entity) {
-        this.globalDataAccess.load();
-
         Guard.checkInputForNull(entity);
         Guard.checkInputNameForNull(entity);
-        Guard.checkentitywithsamename(this.entityDataAccess, entity);
+        Guard.checkEntityWithSameName(this.entityDataAccess, entity);
 
         T updatedEntity = Guard.checkAndGetEntityById(this.entityDataAccess, entity.getId());
         updatedEntity.setName(entity.getName());
@@ -65,10 +58,7 @@ public abstract class ReferenceParentEntityService<T extends IReferenceParentEnt
         this.globalDataAccess.save();
     }
 
-    @Override
     public void delete(UUID entityId) {
-        this.globalDataAccess.load();
-
         T deletedEntity = Guard.checkAndGetEntityById(this.entityDataAccess, entityId);
         Guard.checkExistedChildrenInTheGroup(this.childEntityDataAccess, deletedEntity.getId());
 
@@ -82,10 +72,7 @@ public abstract class ReferenceParentEntityService<T extends IReferenceParentEnt
 
     }
 
-    @Override
     public void setFavoriteStatus(UUID entityId, boolean isFavorite) {
-        this.globalDataAccess.load();
-
         T etrity = Guard.checkAndGetEntityById(this.entityDataAccess, entityId);
         if (etrity.getIsFavorite() != isFavorite)
         {
@@ -96,10 +83,8 @@ public abstract class ReferenceParentEntityService<T extends IReferenceParentEnt
         this.globalDataAccess.save();
     }
 
-    @Override
-    public void setOrder(UUID entityId, int order) {
-        this.globalDataAccess.load();
 
+    public void setOrder(UUID entityId, int order) {
         T entity = Guard.checkAndGetEntityById(this.entityDataAccess, entityId);
         if (entity.getOrder() != order)
         {

@@ -13,7 +13,7 @@ public class Transaction extends Entity implements ITrackedEntity {
     private LocalDateTime dateTime;
     private TransactionState state;
     private String comment;
-    private ArrayList<TransactionEntry> entries = new ArrayList<>();
+    private final ArrayList<TransactionEntry> entries = new ArrayList<>();
 
     public String getTimeStamp() {
         return this.timeStamp;

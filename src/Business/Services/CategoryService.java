@@ -16,11 +16,11 @@ public class CategoryService extends ReferenceChildEntityService<Category, Categ
         super(globalDataAccess, entityDataAccess, parentEntityDataAccess, accountDataAccess);
     }
 
-    @Override
+    
     protected ArrayList<Account> GetAccountsByEntity(Category entity) {
         return this.getAccountDataAccess().getAccountsByCategory(entity);
     }
-    @Override
+    
     protected void AccountEntitySetter(Category entity, Account account) {
         account.setCategory(entity);
     }

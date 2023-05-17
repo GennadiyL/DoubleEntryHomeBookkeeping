@@ -25,8 +25,6 @@ public class TemplateService implements ITemplateService {
     }
 
     public void add(Template entity) {
-        this.globalDataAccess.load();
-
         Guard.checkInputForNull(entity);
         Guard.checkInputNameForNull(entity);
         Guard.checkInputForNull(entity.getParent());
@@ -57,8 +55,6 @@ public class TemplateService implements ITemplateService {
     }
 
     public void update(Template entity) {
-        this.globalDataAccess.load();
-
         Guard.checkInputForNull(entity);
         Guard.checkInputNameForNull(entity);
         Guard.checkInputForNull(entity.getParent());
@@ -82,8 +78,6 @@ public class TemplateService implements ITemplateService {
     }
 
     public void delete(UUID entityId) {
-        this.globalDataAccess.load();
-
         Template deletedTemplate = Guard.checkAndGetEntityById(this.templateDataAccess, entityId);
         this.templateDataAccess.loadParent(deletedTemplate);
         TemplateGroup templateGroup = deletedTemplate.getParent();
@@ -99,8 +93,6 @@ public class TemplateService implements ITemplateService {
     }
 
     public void setFavoriteStatus(UUID entityId, boolean isFavorite) {
-        this.globalDataAccess.load();
-
         Template template = Guard.checkAndGetEntityById(this.templateDataAccess, entityId);
         if (template.getIsFavorite() != isFavorite) {
             template.setIsFavorite(isFavorite);
@@ -111,8 +103,6 @@ public class TemplateService implements ITemplateService {
     }
 
     public void setOrder(UUID entityId, int order) {
-        this.globalDataAccess.load();
-
         Template template = Guard.checkAndGetEntityById(this.templateDataAccess, entityId);
         if (template.getOrder() != order) {
             this.templateDataAccess.loadParent(template);
@@ -126,8 +116,6 @@ public class TemplateService implements ITemplateService {
     }
 
     public void moveToAnotherParent(UUID entityId, UUID parentId) {
-        this.globalDataAccess.load();
-
         Template template = Guard.checkAndGetEntityById(this.templateDataAccess, entityId);
         this.templateDataAccess.loadParent(template);
         TemplateGroup fromTemplateGroup = template.getParent();

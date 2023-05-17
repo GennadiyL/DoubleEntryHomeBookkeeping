@@ -1,9 +1,7 @@
 package Common.Models.Interfaces;
 
-import java.util.ArrayList;
+import java.util.*;
 
 public interface IParentEntity<T> {
-
     ArrayList<T> getChildren();
-
 }

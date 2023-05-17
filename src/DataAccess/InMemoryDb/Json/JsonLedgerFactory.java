@@ -18,8 +18,7 @@ public class JsonLedgerFactory implements ILedgerFactory {
         this.serializer = serializer;
     }
 
-    @Override
-    public Ledger get() {
+    public Ledger receive() {
         if (ledger == null)
         {
             Document doc = storage.load();
@@ -32,13 +31,11 @@ public class JsonLedgerFactory implements ILedgerFactory {
         return ledger;
     }
 
-    @Override
-    public void set(Ledger ledger) {
-        if (ledger == null)
+    public void send() {
+        if (this.ledger == null)
         {
             throw new NullPointerException("Ledger cannot be null");
         }
-        this.ledger = ledger;
         Document doc = serializer.serialize(ledger);
         storage.save(doc);
     }

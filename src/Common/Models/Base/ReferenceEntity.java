@@ -1,6 +1,6 @@
 package Common.Models.Base;
 
-import Common.Models.Interfaces.IReferenceEntity;
+import Common.Models.Interfaces.*;
 
 public class ReferenceEntity extends Entity implements IReferenceEntity {
 
