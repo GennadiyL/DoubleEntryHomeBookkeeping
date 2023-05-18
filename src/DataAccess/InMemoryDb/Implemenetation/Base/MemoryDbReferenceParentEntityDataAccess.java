@@ -1,6 +1,7 @@
 package DataAccess.InMemoryDb.Implemenetation.Base;
 
 import Common.DataAccess.Base.*;
+import Common.Models.Currency;
 import Common.Models.Interfaces.*;
 import DataAccess.InMemoryDb.*;
 
@@ -21,7 +22,11 @@ public abstract class MemoryDbReferenceParentEntityDataAccess<T extends IEntity 
     }
 
     public int getMaxOrder() {
-        return this.getEntitiesStream().max(Comparator.comparing(e -> e.getOrder())).get().getOrder();
+        Optional<T> t = this.getEntitiesStream().max(Comparator.comparing(IOrderedEntity::getOrder));
+        if(t.isPresent()){
+            return t.get().getOrder();
+        }
+        return 0;
     }
 
     public int getCount() {
