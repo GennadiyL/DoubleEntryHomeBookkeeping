@@ -25,9 +25,9 @@ public class TemplateService implements ITemplateService {
     }
 
     public void add(Template entity) {
-        Guard.checkInputForNull(entity);
-        Guard.checkInputNameForNull(entity);
-        Guard.checkInputForNull(entity.getParent());
+        Guard.checkEntityForNull(entity);
+        Guard.checkEntityNameForNull(entity);
+        Guard.checkEntityForNull(entity.getParent());
         Guard.checkEntityWithSameId(this.globalDataAccess, entity.getId());
         if (entity.getEntries() == null || entity.getEntries().size() < 2) {
             throw new IllegalArgumentException("Invalid amount of Transaction Entries: amount must be more than 1");
@@ -55,9 +55,9 @@ public class TemplateService implements ITemplateService {
     }
 
     public void update(Template entity) {
-        Guard.checkInputForNull(entity);
-        Guard.checkInputNameForNull(entity);
-        Guard.checkInputForNull(entity.getParent());
+        Guard.checkEntityForNull(entity);
+        Guard.checkEntityNameForNull(entity);
+        Guard.checkEntityForNull(entity.getParent());
         if (entity.getEntries() == null || entity.getEntries().size() < 2) {
             throw new IllegalArgumentException("Template entity is not correct: number of Entries must be more or equal 2");
         }
@@ -78,6 +78,7 @@ public class TemplateService implements ITemplateService {
     }
 
     public void delete(UUID entityId) {
+        Guard.checkObjectForNull(entityId, "entityId");
         Template deletedTemplate = Guard.checkAndGetEntityById(this.templateDataAccess, entityId);
         this.templateDataAccess.loadParent(deletedTemplate);
         TemplateGroup templateGroup = deletedTemplate.getParent();
@@ -93,6 +94,7 @@ public class TemplateService implements ITemplateService {
     }
 
     public void setFavoriteStatus(UUID entityId, boolean isFavorite) {
+        Guard.checkObjectForNull(entityId, "entityId");
         Template template = Guard.checkAndGetEntityById(this.templateDataAccess, entityId);
         if (template.getIsFavorite() != isFavorite) {
             template.setIsFavorite(isFavorite);
@@ -103,6 +105,7 @@ public class TemplateService implements ITemplateService {
     }
 
     public void setOrder(UUID entityId, int order) {
+        Guard.checkObjectForNull(entityId, "entityId");
         Template template = Guard.checkAndGetEntityById(this.templateDataAccess, entityId);
         if (template.getOrder() != order) {
             this.templateDataAccess.loadParent(template);
@@ -116,6 +119,8 @@ public class TemplateService implements ITemplateService {
     }
 
     public void moveToAnotherParent(UUID entityId, UUID parentId) {
+        Guard.checkObjectForNull(entityId, "entityId");
+        Guard.checkObjectForNull(parentId, "parentId");
         Template template = Guard.checkAndGetEntityById(this.templateDataAccess, entityId);
         this.templateDataAccess.loadParent(template);
         TemplateGroup fromTemplateGroup = template.getParent();
@@ -141,7 +146,7 @@ public class TemplateService implements ITemplateService {
     private ArrayList<TemplateEntry> createEntries(Template entity) {
         ArrayList<TemplateEntry> entries = new ArrayList<TemplateEntry>();
         for (TemplateEntry entry : entity.getEntries()) {
-            Guard.checkInputForNull(entry.getAccount());
+            Guard.checkEntityForNull(entry.getAccount());
             TemplateEntry templateEntry = new TemplateEntry();
 
             templateEntry.setId(UUID.randomUUID());

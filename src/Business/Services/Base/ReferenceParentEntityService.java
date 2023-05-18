@@ -26,8 +26,8 @@ public abstract class ReferenceParentEntityService<T extends IReferenceParentEnt
     }
 
     public void add(T entity) {
-        Guard.checkInputForNull(entity);
-        Guard.checkInputNameForNull(entity);
+        Guard.checkEntityForNull(entity);
+        Guard.checkEntityNameForNull(entity);
         Guard.checkEntityWithSameId(this.globalDataAccess, entity.getId());
         Guard.checkEntityWithSameName(this.entityDataAccess, entity);
 
@@ -44,8 +44,8 @@ public abstract class ReferenceParentEntityService<T extends IReferenceParentEnt
     }
 
     public void update(T entity) {
-        Guard.checkInputForNull(entity);
-        Guard.checkInputNameForNull(entity);
+        Guard.checkEntityForNull(entity);
+        Guard.checkEntityNameForNull(entity);
         Guard.checkEntityWithSameName(this.entityDataAccess, entity);
 
         T updatedEntity = Guard.checkAndGetEntityById(this.entityDataAccess, entity.getId());
@@ -59,6 +59,7 @@ public abstract class ReferenceParentEntityService<T extends IReferenceParentEnt
     }
 
     public void delete(UUID entityId) {
+        Guard.checkObjectForNull(entityId, "entityId");
         T deletedEntity = Guard.checkAndGetEntityById(this.entityDataAccess, entityId);
         Guard.checkExistedChildrenInTheGroup(this.childEntityDataAccess, deletedEntity.getId());
 
@@ -73,6 +74,7 @@ public abstract class ReferenceParentEntityService<T extends IReferenceParentEnt
     }
 
     public void setFavoriteStatus(UUID entityId, boolean isFavorite) {
+        Guard.checkObjectForNull(entityId, "entityId");
         T etrity = Guard.checkAndGetEntityById(this.entityDataAccess, entityId);
         if (etrity.getIsFavorite() != isFavorite)
         {
@@ -85,6 +87,7 @@ public abstract class ReferenceParentEntityService<T extends IReferenceParentEnt
 
 
     public void setOrder(UUID entityId, int order) {
+        Guard.checkObjectForNull(entityId, "entityId");
         T entity = Guard.checkAndGetEntityById(this.entityDataAccess, entityId);
         if (entity.getOrder() != order)
         {

@@ -68,6 +68,7 @@ public class TransactionService implements ITransactionService {
     }
 
     public void delete(UUID entityId) {
+        Guard.checkObjectForNull(entityId, "entityId");
         Transaction deletedTransaction = Guard.checkAndGetEntityById(this.transactionDataAccess, entityId);
         this.transactionDataAccess.delete(deletedTransaction);
 
@@ -76,6 +77,7 @@ public class TransactionService implements ITransactionService {
 
     
     public void deleteTransactionList(ArrayList<UUID> transactionIds) {
+        Guard.checkObjectForNull(transactionIds, "transactionIds");
         ArrayList<Transaction> deletedTransactions = new ArrayList<Transaction>();
         for (UUID transactionId : transactionIds) {
             Transaction deletedTransaction = Guard.checkAndGetEntityById(this.transactionDataAccess, transactionId);
@@ -87,7 +89,7 @@ public class TransactionService implements ITransactionService {
     }
 
     private void checkInputTransactionEntity(Transaction entity) {
-        Guard.checkInputForNull(entity);
+        Guard.checkEntityForNull(entity);
 
         LocalDateTime minDate = this.systemConfigDataAccess.getMinDate();
         if (entity.getDateTime().isBefore(minDate) || entity.getDateTime().isAfter(this.systemConfigDataAccess.getMaxDate())) {
@@ -107,7 +109,7 @@ public class TransactionService implements ITransactionService {
             if (entry.getRate().compareTo(zero) <= 0) {
                 throw new IllegalArgumentException("Currency rate must be more than 0");
             }
-            Guard.checkInputForNull(entry.getAccount());
+            Guard.checkEntityForNull(entry.getAccount());
             Account account = Guard.checkAndGetEntityById(this.accountDataAccess, entry.getAccount().getId());
             this.accountDataAccess.loadCurrency(account);
 

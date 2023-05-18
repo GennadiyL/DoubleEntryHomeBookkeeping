@@ -40,10 +40,10 @@ public class AccountService implements IAccountService {
     }
 
     public void add(Account entity) {
-        Guard.checkInputForNull(entity);
-        Guard.checkInputNameForNull(entity);
-        Guard.checkInputForNull(entity.getParent());
-        Guard.checkInputForNull(entity.getCurrency());
+        Guard.checkEntityForNull(entity);
+        Guard.checkEntityNameForNull(entity);
+        Guard.checkEntityForNull(entity.getParent());
+        Guard.checkEntityForNull(entity.getCurrency());
         Guard.checkEntityWithSameId(this.globalDataAccess, entity.getId());
 
         AccountSubGroup subGroup = Guard.checkAndGetEntityById(this.accountSubGroupDataAccess, entity.getParent().getId());
@@ -77,8 +77,8 @@ public class AccountService implements IAccountService {
     }
 
     public void update(Account entity) {
-        Guard.checkInputForNull(entity);
-        Guard.checkInputNameForNull(entity);
+        Guard.checkEntityForNull(entity);
+        Guard.checkEntityNameForNull(entity);
 
         Account updatedEntity = Guard.checkAndGetEntityById(this.accountDataAccess, entity.getId());
         this.accountDataAccess.loadParent(updatedEntity);
@@ -105,6 +105,7 @@ public class AccountService implements IAccountService {
     }
 
     public void delete(UUID entityId) {
+        Guard.checkObjectForNull(entityId, "entityId");
         Account account = Guard.checkAndGetEntityById(this.accountDataAccess, entityId);
         if (this.transactionDataAccess.getTransactionEntriesCount(account.getId()) > 0) {
             throw new IllegalArgumentException("Account cannot be delete, it contains transaction.");
@@ -127,6 +128,7 @@ public class AccountService implements IAccountService {
     }
 
     public void setFavoriteStatus(UUID entityId, boolean isFavorite) {
+        Guard.checkObjectForNull(entityId, "entityId");
         Account account = Guard.checkAndGetEntityById(this.accountDataAccess, entityId);
         if (account.getIsFavorite() != isFavorite) {
             account.setIsFavorite(isFavorite);
@@ -137,6 +139,7 @@ public class AccountService implements IAccountService {
     }
 
     public void setOrder(UUID entityId, int order) {
+        Guard.checkObjectForNull(entityId, "entityId");
         Account account = Guard.checkAndGetEntityById(this.accountDataAccess, entityId);
         if (account.getOrder() != order) {
             this.accountDataAccess.loadParent(account);
@@ -151,6 +154,8 @@ public class AccountService implements IAccountService {
     }
 
     public void moveToAnotherParent(UUID entityId, UUID parentId) {
+        Guard.checkObjectForNull(entityId, "entityId");
+        Guard.checkObjectForNull(parentId, "parentId");
         Account account = Guard.checkAndGetEntityById(this.accountDataAccess, entityId);
         this.accountDataAccess.loadParent(account);
         AccountSubGroup fromAccountSubGroup = account.getParent();
@@ -178,6 +183,8 @@ public class AccountService implements IAccountService {
     }
 
     public void combineTwoEntities(UUID primaryId, UUID secondaryId) {
+        Guard.checkObjectForNull(primaryId, "primaryId");
+        Guard.checkObjectForNull(secondaryId, "secondaryId");
         Account primaryAccount = Guard.checkAndGetEntityById(this.accountDataAccess, primaryId);
         Account secondaryAccount = Guard.checkAndGetEntityById(this.accountDataAccess, secondaryId);
 

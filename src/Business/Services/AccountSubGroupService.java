@@ -26,9 +26,9 @@ public class AccountSubGroupService implements IAccountSubGroupService {
     }
 
     public void add(AccountSubGroup entity) {
-        Guard.checkInputForNull(entity);
-        Guard.checkInputNameForNull(entity);
-        Guard.checkInputForNull(entity.getParent());
+        Guard.checkEntityForNull(entity);
+        Guard.checkEntityNameForNull(entity);
+        Guard.checkEntityForNull(entity.getParent());
         Guard.checkEntityWithSameId(this.globalDataAccess, entity.getId());
 
         AccountGroup group = Guard.checkAndGetEntityById(this.accountGroupDataAccess, entity.getParent().getId());
@@ -50,9 +50,9 @@ public class AccountSubGroupService implements IAccountSubGroupService {
     }
 
     public void update(AccountSubGroup entity) {
-        Guard.checkInputForNull(entity);
-        Guard.checkInputNameForNull(entity);
-        Guard.checkInputForNull(entity.getParent());
+        Guard.checkEntityForNull(entity);
+        Guard.checkEntityNameForNull(entity);
+        Guard.checkEntityForNull(entity.getParent());
 
         AccountSubGroup subGroup = Guard.checkAndGetEntityById(this.accountSubGroupDataAccess, entity.getId());
         this.accountSubGroupDataAccess.loadParent(subGroup);
@@ -70,6 +70,7 @@ public class AccountSubGroupService implements IAccountSubGroupService {
     }
 
     public void delete(UUID entityId) {
+        Guard.checkObjectForNull(entityId, "entityId");
         AccountSubGroup subGroup = Guard.checkAndGetEntityById(this.accountSubGroupDataAccess, entityId);
         Guard.checkExistedChildrenInTheGroup(this.accountDataAccess, subGroup.getId());
 
@@ -87,6 +88,7 @@ public class AccountSubGroupService implements IAccountSubGroupService {
     }
 
     public void setFavoriteStatus(UUID entityId, boolean isFavorite) {
+        Guard.checkObjectForNull(entityId, "entityId");
         AccountSubGroup subGroup = Guard.checkAndGetEntityById(this.accountSubGroupDataAccess, entityId);
         if (subGroup.getIsFavorite() != isFavorite) {
             subGroup.setIsFavorite(isFavorite);
@@ -97,6 +99,7 @@ public class AccountSubGroupService implements IAccountSubGroupService {
     }
 
     public void setOrder(UUID entityId, int order) {
+        Guard.checkObjectForNull(entityId, "entityId");
         AccountSubGroup subGroup = Guard.checkAndGetEntityById(this.accountSubGroupDataAccess, entityId);
         if (subGroup.getOrder() != order) {
             this.accountSubGroupDataAccess.loadParent(subGroup);
@@ -110,6 +113,8 @@ public class AccountSubGroupService implements IAccountSubGroupService {
     }
 
     public void moveToAnotherParent(UUID entityId, UUID groupId) {
+        Guard.checkObjectForNull(entityId, "entityId");
+        Guard.checkObjectForNull(groupId, "groupId");
         AccountSubGroup subGroup = Guard.checkAndGetEntityById(this.accountSubGroupDataAccess, entityId);
         this.accountSubGroupDataAccess.loadParent(subGroup);
         AccountGroup fromAccountGroup = subGroup.getParent();

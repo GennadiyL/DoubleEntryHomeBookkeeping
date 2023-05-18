@@ -37,9 +37,9 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
 
     
     public void add(T entity) {
-        Guard.checkInputForNull(entity);
-        Guard.checkInputNameForNull(entity);
-        Guard.checkInputForNull(entity.getParent());
+        Guard.checkEntityForNull(entity);
+        Guard.checkEntityNameForNull(entity);
+        Guard.checkEntityForNull(entity.getParent());
         Guard.checkEntityWithSameId(this.globalDataAccess, entity.getId());
 
         TParent parent = Guard.checkAndGetEntityById(this.parentEntityDataAccess, entity.getParent().getId());
@@ -61,9 +61,9 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
 
     
     public void update(T entity) {
-        Guard.checkInputForNull(entity);
-        Guard.checkInputNameForNull(entity);
-        Guard.checkInputForNull(entity.getParent());
+        Guard.checkEntityForNull(entity);
+        Guard.checkEntityNameForNull(entity);
+        Guard.checkEntityForNull(entity.getParent());
 
         T updatedEntity = Guard.checkAndGetEntityById(this.entityDataAccess, entity.getId());
         this.entityDataAccess.loadParent(updatedEntity);
@@ -80,6 +80,7 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
 
     
     public void delete(UUID entityId) {
+        Guard.checkObjectForNull(entityId, "entityId");
         T deletedEntity = Guard.checkAndGetEntityById(this.entityDataAccess, entityId);
         this.entityDataAccess.loadParent(deletedEntity);
         TParent parent = deletedEntity.getParent();
@@ -103,6 +104,7 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
 
     
     public void setFavoriteStatus(UUID entityId, boolean isFavorite) {
+        Guard.checkObjectForNull(entityId, "entityId");
         T etrity = Guard.checkAndGetEntityById(this.entityDataAccess, entityId);
         if (etrity.getIsFavorite() != isFavorite)
         {
@@ -115,6 +117,7 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
 
     
     public void setOrder(UUID entityId, int order) {
+        Guard.checkObjectForNull(entityId, "entityId");
         T entity = Guard.checkAndGetEntityById(this.entityDataAccess, entityId);
         if (entity.getOrder() != order)
         {
@@ -129,6 +132,7 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
     }
     
     public void moveToAnotherParent(UUID entityId, UUID parentId) {
+        Guard.checkObjectForNull(entityId, "entityId");
         T entity = Guard.checkAndGetEntityById(this.entityDataAccess, entityId);
         this.entityDataAccess.loadParent(entity);
         TParent fromParent = entity.getParent();
@@ -153,6 +157,8 @@ public abstract class ReferenceChildEntityService<T extends IReferenceChildEntit
     }
 
     public void combineTwoEntities(UUID primaryId, UUID secondaryId) {
+        Guard.checkObjectForNull(primaryId, "primaryId");
+        Guard.checkObjectForNull(secondaryId, "secondaryId");
         T primaryItem = Guard.checkAndGetEntityById(this.entityDataAccess, primaryId);
         T secondaryItem = Guard.checkAndGetEntityById(this.entityDataAccess, secondaryId);
 
