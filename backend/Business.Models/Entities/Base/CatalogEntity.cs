@@ -12,11 +12,11 @@ namespace Business.Models.Entities.Base;
 /// </summary>
 public abstract class CatalogEntity : BaseEntity, ICatalogEntity
 {
-    public DateTime Original { get; set; }
-    public DateTime Current { get; set; }
-    public bool IsDeleted { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public int Order { get; set; }
-    public bool IsFavorite { get; set; }
+	public DateTime Original { get; set; }
+	public DateTime Current { get; set; }
+	public bool IsDeleted { get; set; }
+	public string Name { get; set; } = string.Empty;
+	public string? Description { get; set; }
+	public int Order { get; set; }
+	public bool IsFavorite { get; set; }
 }

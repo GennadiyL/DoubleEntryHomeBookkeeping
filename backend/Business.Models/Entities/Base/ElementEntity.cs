@@ -14,5 +14,5 @@ public abstract class ElementEntity<TGroup, TElement> : CatalogEntity, IElementE
 	where TElement : class, IElementEntity<TGroup, TElement>
 {
 	public TGroup Group { get; set; } = null!;
-    public Guid GroupId { get; set; }
+	public Guid GroupId { get; set; }
 }

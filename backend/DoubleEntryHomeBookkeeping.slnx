@@ -1,12 +1,29 @@
 <Solution>
   <Folder Name="/Business/">
     <Project Path="Business.Contracts/Business.Contracts.csproj" />
+    <Project Path="Business.Impl/Business.Impl.csproj" />
     <Project Path="Business.Models/Business.Models.csproj" />
   </Folder>
   <Folder Name="/Core/">
     <Project Path="Business.Core/Business.Core.csproj" />
+    <Project Path="DataAccess.Core.EntityFramework/DataAccess.Core.EntityFramework.csproj" />
     <Project Path="DataAccess.Core/DataAccess.Core.csproj" />
   </Folder>
-  <Folder Name="/DataAccess/" />
-  <Folder Name="/Shared/" />
+  <Folder Name="/DataAccess/">
+    <Project Path="DataAccess.Contracts/DataAccess.Contracts.csproj" />
+    <Project Path="DataAccess.EntityFramework.SqLite/DataAccess.EntityFramework.SqLite.csproj" />
+    <Project Path="DataAccess.EntityFramework/DataAccess.EntityFramework.csproj" />
+  </Folder>
+  <Folder Name="/Infrastructure/">
+    <Project Path="Dehb.WebApi/Dehb.WebApi.csproj" Id="ac1383b1-e2ce-4a58-a0a2-31917e110108" />
+  </Folder>
+  <Folder Name="/Messaging/">
+    <Project Path="Messaging.Contracts/Messaging.Contracts.csproj" />
+    <Project Path="Messaging.InProcessBus/Messaging.InProcessBus.csproj" />
+  </Folder>
+  <Folder Name="/Shared/">
+    <Project Path="Shared.Contracts/Shared.Contracts.csproj" />
+    <Project Path="Shared.Impl/Shared.Impl.csproj" />
+  </Folder>
+  <Folder Name="/Tests/" />
 </Solution>

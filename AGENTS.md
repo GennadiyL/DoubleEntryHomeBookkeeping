@@ -21,3 +21,9 @@ DoubleEntryHomeBookkeeping is home accounting software based on strict double-en
 - Treat the prompt as permission for all actions needed to perform its requested activities. Do not ask for additional confirmation unless required by a higher-priority safety or platform rule.
 - Keep explanations very short and simple. Use caveman style.
 - The VM shared folder has two equivalent path forms: `\\MYLEGION\Shared` and `S:\Gena\Local\Work\_Drive\Shared`. A file under one path is the same file under the other. If one form is inaccessible, use the other.
+
+## Requirements documents
+
+- [BRD](docs/requirements/BRD.md): business requirements and open questions. Consult it when relevant to implementation, review, or further requirements work. Unresolved questions are not approved requirements.
+- [TRD](docs/requirements/TRD.md): technical requirements. Consult it when relevant to implementation, review, or technical design.
+- Keep requirements documents in `docs/requirements/`. Update the BRD during brainstorming and expand the TRD as requirements become stable.

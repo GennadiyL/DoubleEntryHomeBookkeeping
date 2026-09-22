@@ -10,8 +10,4 @@
     <ProjectReference Include="..\Business.Models\Business.Models.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Adapters\" />
-  </ItemGroup>
-
 </Project>

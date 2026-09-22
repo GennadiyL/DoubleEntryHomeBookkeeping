@@ -10,4 +10,5 @@ public class TransactionEntry : BaseEntity
 	public Guid AccountId { get; set; }
 	public decimal Amount { get; set; }
 	public decimal Rate { get; set; }
+	public decimal BaseAmount => Amount * Rate;
 }

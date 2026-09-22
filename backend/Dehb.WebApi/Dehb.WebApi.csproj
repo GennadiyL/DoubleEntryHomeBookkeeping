@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Endpoints\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Business.Impl\Business.Impl.csproj" />
+    <ProjectReference Include="..\DataAccess.EntityFramework.SqLite\DataAccess.EntityFramework.SqLite.csproj" />
+    <ProjectReference Include="..\Messaging.InProcessBus\Messaging.InProcessBus.csproj" />
+    <ProjectReference Include="..\Shared.Impl\Shared.Impl.csproj" />
+  </ItemGroup>
+
+</Project>
