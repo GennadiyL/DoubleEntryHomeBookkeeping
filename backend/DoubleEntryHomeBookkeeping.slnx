@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/Business/">
+    <Project Path="Business.Contracts/Business.Contracts.csproj" />
+    <Project Path="Business.Models/Business.Models.csproj" />
+  </Folder>
+  <Folder Name="/Core/">
+    <Project Path="Business.Core/Business.Core.csproj" />
+    <Project Path="DataAccess.Core/DataAccess.Core.csproj" />
+  </Folder>
+  <Folder Name="/DataAccess/" />
+  <Folder Name="/Shared/" />
+</Solution>
