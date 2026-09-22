@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Compile Remove="NewFolder\**" />
+      <EmbeddedResource Remove="NewFolder\**" />
+      <None Remove="NewFolder\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Business.Impl\Business.Impl.csproj" />
+        <ProjectReference Include="..\DataAccess.Contracts\DataAccess.Contracts.csproj" />
+        <ProjectReference Include="..\Messaging.Contracts\Messaging.Contracts.csproj" />
+        <ProjectReference Include="..\Messaging.InProcessBus\Messaging.InProcessBus.csproj" />
+        <ProjectReference Include="..\Shared.Impl\Shared.Impl.csproj" />
+        <ProjectReference Include="..\Tests.Common\Tests.Common.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+        <PackageReference Include="NSubstitute" Version="5.3.0" />
+        <PackageReference Include="NUnit" Version="4.4.0" />
+        <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Services\" />
+    </ItemGroup>
+
+</Project>
