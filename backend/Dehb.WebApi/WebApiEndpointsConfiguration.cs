@@ -13,6 +13,14 @@ public static class WebApiEndpointsConfiguration
 {
 	public static void AddEndpointsConfiguration(this WebApplication app)
 	{
+		app.MapPost("/accounts/add", AccountsEndpoint.AddHandler);
+		app.MapPost("/accounts/update", AccountsEndpoint.UpdateHandler);
+		app.MapPost("/accounts/delete", AccountsEndpoint.DeleteHandler);
+		app.MapPost("/accounts/set-order", AccountsEndpoint.SetOrderHandler);
+		app.MapPost("/accounts/set-favorite-status", AccountsEndpoint.SetFavoriteStatusHandler);
+		app.MapPost("/accounts/move-to-another-group", AccountsEndpoint.MoveToAnotherGroupHandler);
+		app.MapPost("/accounts/combine-elements", AccountsEndpoint.CombineElementsHandler);
+
 		app.MapPost("/account-groups/add", AccountGroupsEndpoint.AddHandler);
 		app.MapPost("/category-groups/add", CategoryGroupsEndpoint.AddHandler);
 		app.MapPost("/correspondent-groups/add", CorrespondentGroupsEndpoint.AddHandler);

@@ -15,6 +15,7 @@ public static class BusinessDiConfiguration
 {
 	public static void AddBusinessModule(this IServiceCollection services)
 	{
+		services.AddScoped<IAccountService, AccountService>();
 		services.AddScoped<IAccountGroupService, AccountGroupService>();
 		services.AddScoped<ICategoryGroupService, CategoryGroupService>();
 		services.AddScoped<ICorrespondentGroupService, CorrespondentGroupService>();
