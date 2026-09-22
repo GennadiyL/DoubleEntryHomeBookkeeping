@@ -9,7 +9,7 @@ namespace Business.Impl.Services;
 internal sealed class TemplateGroupService : GroupService<TemplateGroup, Template>, ITemplateGroupService
 {
 	public TemplateGroupService(ISharedContext sharedContext, IAppUnitOfWork unitOfWork)
-		: base(sharedContext, unitOfWork, unitOfWork.TemplateGroupRepo)
+		: base(sharedContext, unitOfWork, unitOfWork.TemplateGroupRepo, unitOfWork.TemplateRepo)
 	{
 	}
 }

@@ -79,7 +79,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 			new TGroup { Id = Guid.NewGuid(), ParentId = _parent.Id, Order = 3 }
 		];
 		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
-		_repository.GetParentWithChildrenByParentId(_parent.Id).Returns(_parent);
+		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns(_parent);
 	}
 
 	[TearDown]
@@ -269,7 +269,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 	[Test]
 	public void SetOrder_MissingParent_RejectsWithoutSaving()
 	{
-		_repository.GetParentWithChildrenByParentId(_parent.Id).Returns((TGroup?)null);
+		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns((TGroup?)null);
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.SetOrder(_group.Id, 1));
 		AssertNoWrites();
 	}
@@ -302,7 +302,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 	[Test]
 	public void SetOrder_ParentLookupFails_PropagatesFailureWithoutWrites()
 	{
-		_repository.GetParentWithChildrenByParentId(_parent.Id).ThrowsAsync(new InvalidOperationException("Read failed."));
+		_repository.GetWithChildrenByIdAsync(_parent.Id).ThrowsAsync(new InvalidOperationException("Read failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetOrder(_group.Id, 1));
 		AssertNoWrites();
 	}

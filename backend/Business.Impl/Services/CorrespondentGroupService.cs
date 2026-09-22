@@ -9,7 +9,7 @@ namespace Business.Impl.Services;
 internal sealed class CorrespondentGroupService : GroupService<CorrespondentGroup, Correspondent>, ICorrespondentGroupService
 {
 	public CorrespondentGroupService(ISharedContext sharedContext, IAppUnitOfWork unitOfWork)
-		: base(sharedContext, unitOfWork, unitOfWork.CorrespondentGroupRepo)
+		: base(sharedContext, unitOfWork, unitOfWork.CorrespondentGroupRepo, unitOfWork.CorrespondentRepo)
 	{
 	}
 }

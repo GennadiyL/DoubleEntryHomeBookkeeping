@@ -9,7 +9,7 @@ namespace Business.Impl.Services;
 internal sealed class AccountGroupService : GroupService<AccountGroup, Account>, IAccountGroupService
 {
 	public AccountGroupService(ISharedContext sharedContext, IAppUnitOfWork unitOfWork)
-		: base(sharedContext, unitOfWork, unitOfWork.AccountGroupRepo)
+		: base(sharedContext, unitOfWork, unitOfWork.AccountGroupRepo, unitOfWork.AccountRepo)
 	{
 	}
 }

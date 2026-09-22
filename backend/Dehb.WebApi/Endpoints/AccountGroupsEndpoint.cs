@@ -14,6 +14,24 @@ internal static class AccountGroupsEndpoint
 		return Results.Ok();
 	}
 
+	public static async Task<IResult> SetFavoriteStatusHandler(Guid entityId, bool isFavorite, IAccountGroupService service)
+	{
+		await service.SetFavoriteStatus(entityId, isFavorite);
+		return Results.Ok();
+	}
+
+	public static async Task<IResult> MoveToAnotherParentHandler(Guid groupId, Guid toParentId, IAccountGroupService service)
+	{
+		await service.MoveToAnotherParent(groupId, toParentId);
+		return Results.Ok();
+	}
+
+	public static async Task<IResult> CombineGroupsHandler(Guid toGroupId, Guid fromGroupId, IAccountGroupService service)
+	{
+		await service.CombineGroups(toGroupId, fromGroupId);
+		return Results.Ok();
+	}
+
 	public static async Task<IResult> DeleteHandler(Guid entityId, IAccountGroupService service)
 	{
 		await service.Delete(entityId);

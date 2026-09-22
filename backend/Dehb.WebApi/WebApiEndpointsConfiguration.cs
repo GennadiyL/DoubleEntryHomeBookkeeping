@@ -33,5 +33,20 @@ public static class WebApiEndpointsConfiguration
 		app.MapPost("/correspondent-groups/{entityId:guid}/set-order", CorrespondentGroupsEndpoint.SetOrderHandler);
 		app.MapPost("/project-groups/{entityId:guid}/set-order", ProjectGroupsEndpoint.SetOrderHandler);
 		app.MapPost("/template-groups/{entityId:guid}/set-order", TemplateGroupsEndpoint.SetOrderHandler);
+		app.MapPost("/account-groups/{entityId:guid}/set-favorite-status", AccountGroupsEndpoint.SetFavoriteStatusHandler);
+		app.MapPost("/category-groups/{entityId:guid}/set-favorite-status", CategoryGroupsEndpoint.SetFavoriteStatusHandler);
+		app.MapPost("/correspondent-groups/{entityId:guid}/set-favorite-status", CorrespondentGroupsEndpoint.SetFavoriteStatusHandler);
+		app.MapPost("/project-groups/{entityId:guid}/set-favorite-status", ProjectGroupsEndpoint.SetFavoriteStatusHandler);
+		app.MapPost("/template-groups/{entityId:guid}/set-favorite-status", TemplateGroupsEndpoint.SetFavoriteStatusHandler);
+		app.MapPost("/account-groups/{groupId:guid}/move-to-another-parent", AccountGroupsEndpoint.MoveToAnotherParentHandler);
+		app.MapPost("/category-groups/{groupId:guid}/move-to-another-parent", CategoryGroupsEndpoint.MoveToAnotherParentHandler);
+		app.MapPost("/correspondent-groups/{groupId:guid}/move-to-another-parent", CorrespondentGroupsEndpoint.MoveToAnotherParentHandler);
+		app.MapPost("/project-groups/{groupId:guid}/move-to-another-parent", ProjectGroupsEndpoint.MoveToAnotherParentHandler);
+		app.MapPost("/template-groups/{groupId:guid}/move-to-another-parent", TemplateGroupsEndpoint.MoveToAnotherParentHandler);
+		app.MapPost("/account-groups/{toGroupId:guid}/combine-groups", AccountGroupsEndpoint.CombineGroupsHandler);
+		app.MapPost("/category-groups/{toGroupId:guid}/combine-groups", CategoryGroupsEndpoint.CombineGroupsHandler);
+		app.MapPost("/correspondent-groups/{toGroupId:guid}/combine-groups", CorrespondentGroupsEndpoint.CombineGroupsHandler);
+		app.MapPost("/project-groups/{toGroupId:guid}/combine-groups", ProjectGroupsEndpoint.CombineGroupsHandler);
+		app.MapPost("/template-groups/{toGroupId:guid}/combine-groups", TemplateGroupsEndpoint.CombineGroupsHandler);
 	}
 }

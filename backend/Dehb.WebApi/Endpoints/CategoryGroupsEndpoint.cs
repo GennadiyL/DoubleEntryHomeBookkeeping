@@ -14,6 +14,24 @@ internal static class CategoryGroupsEndpoint
 		return Results.Ok();
 	}
 
+	public static async Task<IResult> SetFavoriteStatusHandler(Guid entityId, bool isFavorite, ICategoryGroupService service)
+	{
+		await service.SetFavoriteStatus(entityId, isFavorite);
+		return Results.Ok();
+	}
+
+	public static async Task<IResult> MoveToAnotherParentHandler(Guid groupId, Guid toParentId, ICategoryGroupService service)
+	{
+		await service.MoveToAnotherParent(groupId, toParentId);
+		return Results.Ok();
+	}
+
+	public static async Task<IResult> CombineGroupsHandler(Guid toGroupId, Guid fromGroupId, ICategoryGroupService service)
+	{
+		await service.CombineGroups(toGroupId, fromGroupId);
+		return Results.Ok();
+	}
+
 	public static async Task<IResult> DeleteHandler(Guid entityId, ICategoryGroupService service)
 	{
 		await service.Delete(entityId);

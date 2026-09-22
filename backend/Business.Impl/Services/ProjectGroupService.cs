@@ -9,7 +9,7 @@ namespace Business.Impl.Services;
 internal sealed class ProjectGroupService : GroupService<ProjectGroup, Project>, IProjectGroupService
 {
 	public ProjectGroupService(ISharedContext sharedContext, IAppUnitOfWork unitOfWork)
-		: base(sharedContext, unitOfWork, unitOfWork.ProjectGroupRepo)
+		: base(sharedContext, unitOfWork, unitOfWork.ProjectGroupRepo, unitOfWork.ProjectRepo)
 	{
 	}
 }

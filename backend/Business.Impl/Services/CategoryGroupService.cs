@@ -9,7 +9,7 @@ namespace Business.Impl.Services;
 internal sealed class CategoryGroupService : GroupService<CategoryGroup, Category>, ICategoryGroupService
 {
 	public CategoryGroupService(ISharedContext sharedContext, IAppUnitOfWork unitOfWork)
-		: base(sharedContext, unitOfWork, unitOfWork.CategoryGroupRepo)
+		: base(sharedContext, unitOfWork, unitOfWork.CategoryGroupRepo, unitOfWork.CategoryRepo)
 	{
 	}
 }

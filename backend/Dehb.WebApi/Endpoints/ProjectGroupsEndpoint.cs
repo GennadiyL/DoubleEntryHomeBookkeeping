@@ -14,6 +14,24 @@ internal static class ProjectGroupsEndpoint
 		return Results.Ok();
 	}
 
+	public static async Task<IResult> SetFavoriteStatusHandler(Guid entityId, bool isFavorite, IProjectGroupService service)
+	{
+		await service.SetFavoriteStatus(entityId, isFavorite);
+		return Results.Ok();
+	}
+
+	public static async Task<IResult> MoveToAnotherParentHandler(Guid groupId, Guid toParentId, IProjectGroupService service)
+	{
+		await service.MoveToAnotherParent(groupId, toParentId);
+		return Results.Ok();
+	}
+
+	public static async Task<IResult> CombineGroupsHandler(Guid toGroupId, Guid fromGroupId, IProjectGroupService service)
+	{
+		await service.CombineGroups(toGroupId, fromGroupId);
+		return Results.Ok();
+	}
+
 	public static async Task<IResult> DeleteHandler(Guid entityId, IProjectGroupService service)
 	{
 		await service.Delete(entityId);

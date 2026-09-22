@@ -31,11 +31,11 @@ internal abstract class GroupRepository<TGroup, TElement, TD> : Repository<AppDb
 		Context.Entry(tracked).CurrentValues.SetValues(Mapper.Map<TD, TGroup>(entity));
 	}
 
-	public async Task<TGroup?> GetParentWithChildrenByParentId(Guid parentId)
+	public async Task<TGroup?> GetWithChildrenByIdAsync(Guid id)
 	{
-		TD? parent = await Entities.AsNoTracking().Include("Children")
-			.SingleOrDefaultAsync(entity => entity.Id == parentId);
-		return parent is null ? null : Mapper.Map<TD, TGroup>(parent);
+		TD? group = await Entities.AsNoTracking().Include("Children")
+			.SingleOrDefaultAsync(entity => entity.Id == id);
+		return group is null ? null : Mapper.Map<TD, TGroup>(group);
 	}
 
 	public Task<int> GetMaxOrderInParent(Guid? parentId) => throw new NotImplementedException();

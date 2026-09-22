@@ -61,7 +61,7 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<TService>();
 		_parent = new TGroup { Id = Guid.NewGuid(), Name = "Parent" };
-		_repository.GetParentWithChildrenByParentId(_parent.Id).Returns(_parent);
+		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns(_parent);
 		_param = new GroupParam
 		{
 			ParentId = _parent.Id,
@@ -91,7 +91,7 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 			group.IsFavorite && !group.IsDeleted && group.Order == 1 &&
 			group.Original == now && group.Current == now));
 		await _unitOfWork.Received(1).SaveChangesAsync();
-		await _repository.Received(1).GetParentWithChildrenByParentId(_parent.Id);
+		await _repository.Received(1).GetWithChildrenByIdAsync(_parent.Id);
 	}
 
 	[Test]
@@ -156,7 +156,7 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 	[Test]
 	public void Add_MissingParent_RejectsWithoutSaving()
 	{
-		_repository.GetParentWithChildrenByParentId(_parent.Id).Returns((TGroup?)null);
+		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns((TGroup?)null);
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}

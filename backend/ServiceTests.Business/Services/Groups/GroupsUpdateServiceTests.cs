@@ -62,7 +62,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<TService>();
 		_parent = new TGroup { Id = Guid.NewGuid(), Name = "Parent" };
-		_repository.GetParentWithChildrenByParentId(_parent.Id).Returns(_parent);
+		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns(_parent);
 		_group = new TGroup
 		{
 			Id = Guid.NewGuid(),
@@ -109,7 +109,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 		_repository.DidNotReceive().Add(Arg.Any<TGroup>());
 		await _unitOfWork.Received(1).SaveChangesAsync();
 		await _repository.Received(1).GetByIdAsync(id, CancellationToken.None);
-		await _repository.Received(1).GetParentWithChildrenByParentId(_parent.Id);
+		await _repository.Received(1).GetWithChildrenByIdAsync(_parent.Id);
 	}
 
 	[Test]
@@ -194,7 +194,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 	[Test]
 	public void Update_MissingParent_RejectsWithoutSaving()
 	{
-		_repository.GetParentWithChildrenByParentId(_parent.Id).Returns((TGroup?)null);
+		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns((TGroup?)null);
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Update(_group.Id, _param));
 		AssertNoChangesOrWrites();
 	}
@@ -231,7 +231,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 		_group.Parent = _group;
 		_group.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = _param.Name });
 		_param.ParentId = _group.Id;
-		_repository.GetParentWithChildrenByParentId(_group.Id).Returns(_group);
+		_repository.GetWithChildrenByIdAsync(_group.Id).Returns(_group);
 		await _service.Update(_group.Id, _param);
 		Assert.That(_group.ParentId, Is.EqualTo(_group.Id));
 		Assert.That(_group.Parent, Is.SameAs(_group));
