@@ -1,12 +1,13 @@
 using DataAccess.Contracts.Repositories;
+using DataAccess.Contracts.Repositories.Base;
 using DataAccess.Core.Behaviors;
-using DataAccess.Core.EntityFramework.Behaviors;
-using DalEntity = DataAccess.EntityFramework.Models.ProjectGroup;
+using DataAccess.EntityFramework.Models;
 using ProjectGroupEntity = Business.Models.Entities.ProjectGroup;
+using ProjectEntity = Business.Models.Entities.Project;
 
 namespace DataAccess.EntityFramework.Repositories;
 
-internal sealed class ProjectGroupRepository : Repository<AppDbContext, ProjectGroupEntity, DalEntity>, IProjectGroupRepository
+internal sealed class ProjectGroupRepository : GroupRepository<ProjectGroupEntity, ProjectEntity, ProjectGroup>, IProjectGroupRepository
 {
 	public ProjectGroupRepository(AppDbContext context, IMapper mapper) : base(context, mapper)
 	{

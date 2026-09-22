@@ -4,7 +4,7 @@ namespace Business.Models.Entities;
 
 public class Account : ElementEntity<AccountGroup, Account>
 {
-	public required Currency Currency { get; set; }
+	public Currency Currency { get; set; } = null!;
 	public Guid CurrencyId { get; set; }
 	public Category? Category { get; set; }
 	public Guid? CategoryId { get; set; }
