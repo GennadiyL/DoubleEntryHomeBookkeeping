@@ -8,7 +8,8 @@ public interface IGroupRepository<TGroup, TElement> : IRepository<TGroup>
 	where TElement : class, IElementEntity<TGroup, TElement>
 {
 	public Task<ICollection<TGroup>> GetByName(string name);
-	public Task<TGroup> GetParentWithChildrenByParentId(Guid parentId);
+	public Task<TGroup?> GetParentWithChildrenByParentId(Guid parentId);
+	public Task<TGroup?> GetWithContentsByIdAsync(Guid id);
 	public Task<int> GetMaxOrderInParent(Guid? parentId);
 	public Task<int> GetCountInParent(Guid? parentId);
 }

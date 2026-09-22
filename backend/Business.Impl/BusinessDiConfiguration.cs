@@ -1,3 +1,5 @@
+using Business.Contracts.Services;
+using Business.Impl.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Business.Impl;
@@ -13,5 +15,10 @@ public static class BusinessDiConfiguration
 {
 	public static void AddBusinessModule(this IServiceCollection services)
 	{
+		services.AddScoped<IAccountGroupService, AccountGroupService>();
+		services.AddScoped<ICategoryGroupService, CategoryGroupService>();
+		services.AddScoped<ICorrespondentGroupService, CorrespondentGroupService>();
+		services.AddScoped<IProjectGroupService, ProjectGroupService>();
+		services.AddScoped<ITemplateGroupService, TemplateGroupService>();
 	}
 }

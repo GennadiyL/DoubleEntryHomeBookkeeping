@@ -1,3 +1,4 @@
+using Business.Models.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts;
@@ -26,9 +27,8 @@ internal class WebApiExceptionHandler : IExceptionHandler
 
 		int statusCode = exception switch
 		{
-			// GuestUnavailableException
-			// 	or PaymentUnavailableException
-			// => StatusCodes.Status404NotFound,
+			GroupNotFoundException => StatusCodes.Status404NotFound,
+			InvalidGroupException => StatusCodes.Status400BadRequest,
 
 			_ => StatusCodes.Status500InternalServerError
 		};
