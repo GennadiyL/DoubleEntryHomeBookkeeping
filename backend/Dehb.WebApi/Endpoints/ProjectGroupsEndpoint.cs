@@ -1,5 +1,6 @@
 using Business.Contracts.Params;
 using Business.Contracts.Services;
+using Dehb.WebApi.Params;
 
 namespace Dehb.WebApi.Endpoints;
 
@@ -8,39 +9,39 @@ internal static class ProjectGroupsEndpoint
 	public static async Task<IResult> AddHandler(GroupParam param, IProjectGroupService service) =>
 		Results.Ok(await service.Add(param));
 
-	public static async Task<IResult> SetOrderHandler(Guid entityId, int order, IProjectGroupService service)
+	public static async Task<IResult> SetOrderHandler(SetOrderParam param, IProjectGroupService service)
 	{
-		await service.SetOrder(entityId, order);
+		await service.SetOrder(param.EntityId, param.Order);
 		return Results.Ok();
 	}
 
-	public static async Task<IResult> SetFavoriteStatusHandler(Guid entityId, bool isFavorite, IProjectGroupService service)
+	public static async Task<IResult> SetFavoriteStatusHandler(SetFavoriteStatusParam param, IProjectGroupService service)
 	{
-		await service.SetFavoriteStatus(entityId, isFavorite);
+		await service.SetFavoriteStatus(param.EntityId, param.IsFavorite);
 		return Results.Ok();
 	}
 
-	public static async Task<IResult> MoveToAnotherParentHandler(Guid groupId, Guid toParentId, IProjectGroupService service)
+	public static async Task<IResult> MoveToAnotherParentHandler(MoveToAnotherParentParam param, IProjectGroupService service)
 	{
-		await service.MoveToAnotherParent(groupId, toParentId);
+		await service.MoveToAnotherParent(param.GroupId, param.ToParentId);
 		return Results.Ok();
 	}
 
-	public static async Task<IResult> CombineGroupsHandler(Guid toGroupId, Guid fromGroupId, IProjectGroupService service)
+	public static async Task<IResult> CombineGroupsHandler(CombineGroupsParam param, IProjectGroupService service)
 	{
-		await service.CombineGroups(toGroupId, fromGroupId);
+		await service.CombineGroups(param.ToGroupId, param.FromGroupId);
 		return Results.Ok();
 	}
 
-	public static async Task<IResult> DeleteHandler(Guid entityId, IProjectGroupService service)
+	public static async Task<IResult> DeleteHandler(DeleteParam param, IProjectGroupService service)
 	{
-		await service.Delete(entityId);
+		await service.Delete(param.EntityId);
 		return Results.Ok();
 	}
 
-	public static async Task<IResult> UpdateHandler(Guid entityId, GroupParam param, IProjectGroupService service)
+	public static async Task<IResult> UpdateHandler(UpdateGroupParam param, IProjectGroupService service)
 	{
-		await service.Update(entityId, param);
+		await service.Update(param.EntityId, param);
 		return Results.Ok();
 	}
 }

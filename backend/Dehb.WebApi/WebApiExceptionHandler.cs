@@ -28,7 +28,9 @@ internal class WebApiExceptionHandler : IExceptionHandler
 		int statusCode = exception switch
 		{
 			GroupNotFoundException => StatusCodes.Status404NotFound,
+			ElementNotFoundException => StatusCodes.Status404NotFound,
 			InvalidGroupException => StatusCodes.Status400BadRequest,
+			InvalidElementException => StatusCodes.Status400BadRequest,
 
 			_ => StatusCodes.Status500InternalServerError
 		};

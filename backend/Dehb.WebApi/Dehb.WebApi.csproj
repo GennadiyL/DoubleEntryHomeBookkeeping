@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <Folder Include="Endpoints\" />
+    <Folder Include="Params\" />
   </ItemGroup>
 
   <ItemGroup>

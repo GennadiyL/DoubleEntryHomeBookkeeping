@@ -20,5 +20,8 @@ public static class BusinessDiConfiguration
 		services.AddScoped<ICorrespondentGroupService, CorrespondentGroupService>();
 		services.AddScoped<IProjectGroupService, ProjectGroupService>();
 		services.AddScoped<ITemplateGroupService, TemplateGroupService>();
+		services.AddScoped<ICategoryService, CategoryService>();
+		services.AddScoped<ICorrespondentService, CorrespondentService>();
+		services.AddScoped<IProjectService, ProjectService>();
 	}
 }
