@@ -7,17 +7,17 @@ public interface IMapper
 {
 	public TDal Map<TDal, TBus>(TBus bus)
 		where TDal : class, IDalEntity, new()
-		where TBus : class, IBaseEntity, new();
+		where TBus : class, IBaseEntity;
 
 	public ICollection<TDal> Map<TDal, TBus>(ICollection<TBus> bus)
 		where TDal : class, IDalEntity, new()
-		where TBus : class, IBaseEntity, new();
+		where TBus : class, IBaseEntity;
 
 	public TBus Map<TDal, TBus>(TDal dal)
 		where TDal : class, IDalEntity, new()
-		where TBus : class, IBaseEntity, new();
+		where TBus : class, IBaseEntity;
 
 	public ICollection<TBus> Map<TDal, TBus>(ICollection<TDal> dal)
 		where TDal : class, IDalEntity, new()
-		where TBus : class, IBaseEntity, new();
+		where TBus : class, IBaseEntity;
 }

@@ -14,14 +14,23 @@ namespace DataAccess.Core.EntityFramework.Behaviors;
 /// </summary>
 public abstract class Repository<TContext, TB, TD> : IRepository<TB>
 	where TContext : DbContext
-	where TB : class, IBaseEntity, new()
+	where TB : class, IBaseEntity
 	where TD : class, IDalEntity, new()
 {
-	protected TContext Context { get; }
+	protected TContext Context
+	{
+		get;
+	}
 
-	protected IMapper Mapper { get; }
+	protected IMapper Mapper
+	{
+		get;
+	}
 
-	protected DbSet<TD> Entities { get; }
+	protected DbSet<TD> Entities
+	{
+		get;
+	}
 
 	protected Repository(TContext context, IMapper mapper)
 	{

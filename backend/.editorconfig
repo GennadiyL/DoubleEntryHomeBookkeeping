@@ -218,8 +218,30 @@ dotnet_code_quality_unused_parameters = all:warning
 dotnet_remove_unnecessary_suppression_exclusions = none:warning
 csharp_style_unused_value_expression_statement_preference = discard_variable:suggestion
 csharp_style_unused_value_assignment_preference = discard_variable:suggestion
+
 # Resharper rules
 resharper_csharp_initializer_braces = next_line_shifted
+resharper_place_type_constraints_on_same_line = true
+resharper_place_simple_accessor_on_single_line = true
+resharper_place_property_attribute_on_same_line = true
+resharper_place_simple_property_on_single_line = true
+resharper_wrap_property_declaration = do_not_wrap
+resharper_place_accessorholder_attribute_on_same_line = true
+resharper_keep_blank_lines_in_declarations = 0
+resharper_wrap_lines = false
+resharper_csharp_place_simple_accessor_on_single_line = true
+resharper_csharp_place_simple_property_on_single_line = true
+resharper_csharp_wrap_property_declaration = do_not_wrap
+resharper_csharp_place_type_constraints_on_same_line = true
+resharper_csharp_place_property_attribute_on_same_line = true
+
+resharper_csharp_place_abstract_accessorholder_on_single_line = true
+resharper_csharp_place_simple_accessorholder_on_single_line = true
+resharper_csharp_place_simple_blocks_on_single_line = true
+resharper_csharp_place_simple_declaration_blocks_on_single_line = true
+resharper_place_abstract_accessorholder_on_single_line = true
+resharper_place_simple_accessorholder_on_single_line = true
+
 #
 # Formatting Rules
 #
@@ -270,7 +292,7 @@ csharp_space_between_empty_square_brackets = false
 csharp_space_between_square_brackets = false
 # Wrap options
 csharp_preserve_single_line_statements = false
-csharp_preserve_single_line_blocks = false
+csharp_preserve_single_line_blocks = true
 # Namespace options
 csharp_style_namespace_declarations = file_scoped:warning
 

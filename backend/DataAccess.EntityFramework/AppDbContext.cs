@@ -1,22 +1,29 @@
+using DataAccess.EntityFramework.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace DataAccess.EntityFramework;
 
-/// <summary>
-/// Defines the application database context.
-/// Defines the Entity Framework session and entity sets used by application persistence.
-/// The dependency injection container creates scoped contexts from provider-specific options.
-/// Repositories and units of work share this context to coordinate persistence.
-/// It does not expose business workflows or provider-specific connection setup.
-/// </summary>
 public class AppDbContext : DbContext
 {
 	public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
 	{
 	}
 
-	protected override void OnModelCreating(ModelBuilder modelBuilder)
-	{
-		base.OnModelCreating(modelBuilder);
-	}
+	internal DbSet<Account> Accounts { get; set; } = null!;
+	internal DbSet<AccountGroup> AccountGroups { get; set; } = null!;
+	internal DbSet<Category> Categories { get; set; } = null!;
+	internal DbSet<CategoryGroup> CategoryGroups { get; set; } = null!;
+	internal DbSet<Correspondent> Correspondents { get; set; } = null!;
+	internal DbSet<CorrespondentGroup> CorrespondentGroups { get; set; } = null!;
+	internal DbSet<Currency> Currencies { get; set; } = null!;
+	internal DbSet<CurrencyRate> CurrencyRates { get; set; } = null!;
+	internal DbSet<Project> Projects { get; set; } = null!;
+	internal DbSet<ProjectGroup> ProjectGroups { get; set; } = null!;
+	internal DbSet<Template> Templates { get; set; } = null!;
+	internal DbSet<TemplateEntry> TemplateEntries { get; set; } = null!;
+	internal DbSet<TemplateGroup> TemplateGroups { get; set; } = null!;
+	internal DbSet<Transaction> Transactions { get; set; } = null!;
+	internal DbSet<TransactionEntry> TransactionEntries { get; set; } = null!;
+	internal DbSet<SystemConfig> SystemConfigs { get; set; } = null!;
+	internal DbSet<UserConfig> UserConfigs { get; set; } = null!;
 }

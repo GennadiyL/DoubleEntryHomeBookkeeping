@@ -1,21 +1,34 @@
 using DataAccess.Contracts;
+using DataAccess.Contracts.Repositories;
 using DataAccess.Core.Behaviors;
+using DataAccess.EntityFramework.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DataAccess.EntityFramework;
 
-/// <summary>
-/// Defines the Entity Framework composition entry point.
-/// Registers the mapper, unit of work, and application repositories.
-/// Provider-specific modules call this configuration during startup.
-/// It exposes composition publicly while concrete persistence implementations remain internal.
-/// It does not select a database provider or connection string.
-/// </summary>
 public static class EntityFrameworkDiConfiguration
 {
 	public static void AddDataAccessEntityFrameworkModule(this IServiceCollection services)
 	{
 		services.AddScoped<IMapper, AppMapper>();
 		services.AddScoped<IAppUnitOfWork, AppUnitOfWork>();
+		
+		services.AddScoped<IAccountRepository, AccountRepository>();
+		services.AddScoped<IAccountGroupRepository, AccountGroupRepository>();
+		services.AddScoped<ICategoryRepository, CategoryRepository>();
+		services.AddScoped<ICategoryGroupRepository, CategoryGroupRepository>();
+		services.AddScoped<ICorrespondentRepository, CorrespondentRepository>();
+		services.AddScoped<ICorrespondentGroupRepository, CorrespondentGroupRepository>();
+		services.AddScoped<ICurrencyRepository, CurrencyRepository>();
+		services.AddScoped<ICurrencyRateRepository, CurrencyRateRepository>();
+		services.AddScoped<IProjectRepository, ProjectRepository>();
+		services.AddScoped<IProjectGroupRepository, ProjectGroupRepository>();
+		services.AddScoped<ITemplateRepository, TemplateRepository>();
+		services.AddScoped<ITemplateEntryRepository, TemplateEntryRepository>();
+		services.AddScoped<ITemplateGroupRepository, TemplateGroupRepository>();
+		services.AddScoped<ITransactionRepository, TransactionRepository>();
+		services.AddScoped<ITransactionEntryRepository, TransactionEntryRepository>();
+		services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
+		services.AddScoped<IUserConfigRepository, UserConfigRepository>();
 	}
 }
