@@ -1,7 +1,13 @@
 # Business Requirements Document (BRD)
 
 Status: Draft 0.1 — brainstorming; not yet a stable baseline.
-Updated: 2026-09-22.
+Updated: 2026-09-25.
+
+## Brainstorming continuation — 2026-09-25
+
+Today's complete decisions, reversals, deferred topics, and remaining questions are recorded in [Discovery Draft 0.1](001-personal-bookkeeping/discovery.md). Its **Legacy question disposition** maps Q-01–Q-14 to the answers. This BRD remains a legacy, unapproved draft pending GL Analysis template rework; the older unanswered statements below are historical source material and must not be mistaken for the latest conversation state.
+
+Key corrections include permanent account-currency locking after transaction/template use; rounded four-place BaseAmount with exact zero balance; constrained unbalanced drafts; immutable roots; account-name duplicates; optional transaction Comment instead of Description; current historical classifications; templates; and saved reports with dynamic tree selections. See discovery for full details. No requirements approval is implied by saving these notes.
 
 ## 1. Purpose and process
 
@@ -110,3 +116,4 @@ Resolve these during brainstorming. Possible answers below are not confirmed req
 
 - [Repository instructions](../../AGENTS.md).
 - [TRD](TRD.md): technical requirements, including child-to-parent references; these do not resolve the business questions above.
+
