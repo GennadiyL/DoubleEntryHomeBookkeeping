@@ -5,11 +5,11 @@
 - Feature folder: `docs/requirements/001-personal-bookkeeping/`.
 - Version: 0.1.
 - Status: Draft. Non-authoritative working record, including confirmed brainstorming decisions.
-- Recorded: 2026-09-25.
+- Recorded: 2026-09-25; updated: 2026-09-26. Sources for subsequent clarifications and feature separation: requesting user in this task.
 - Approval decision: None recorded for this artifact version.
 - Approval provenance: Not supplied. Conversational confirmations below are not document approval.
 - Separate discovery-to-business promotion decision: None recorded here. The user requested discovery first, followed later by BRD/TRD template rework.
-- Sources: This task's brainstorming conversation, recorded 2026-09-25; legacy [BRD Draft 0.1](../BRD.md) and [TRD Draft 0.1](../TRD.md), dated 2026-09-22; repository AGENTS.md; GL Analysis discovery template and artifact contract.
+- Sources: This task's brainstorming conversation, recorded 2026-09-25 and 2026-09-26; legacy [BRD Draft 0.1](../BRD.md) and [TRD Draft 0.1](../TRD.md), dated 2026-09-22; repository AGENTS.md; GL Analysis discovery template and artifact contract.
 - Source distinction: Decisions below were explicitly confirmed by the user in this conversation unless identified as legacy, an assumption, or an open question. The original earlier conversation behind the legacy documents was not available separately.
 - Authority: Discovery does not approve a BRD or authorize implementation. BRD drafting requires a qualifying promotion decision; TRD rework requires an approved BRD. Existing documents are drafts, not approved baselines.
 
@@ -25,6 +25,13 @@ Save/pause instruction:
 
 > Yes. Put all into appropriate documents. Let's continue tomorrow
 
+
+Session-close instruction, 2026-09-26:
+
+> Ok. In this case. Put all info in docs. And I am going to start separate chat for each of 3 features
+
+The three features named by the user are First using, Administration, and Synchronisation. This separates future discovery work; it does not approve document versions.
+
 ## Problem or Opportunity
 
 Interpretation: consolidate the existing personal double-entry bookkeeping requirements and today's decisions into discovery before reorganizing the BRD and TRD using GL Analysis. Existing documents predate that plugin and contain unresolved questions and outdated wording.
@@ -37,7 +44,7 @@ The product is personal home accounting software. Users organize accounts and cl
 - Personal SQLite database in all versions; no separate multi-user roles/access-rights model requested.
 - Strict double-entry accounting for active transactions; unbalanced drafts excluded from calculations.
 - Preserve future synchronization needs, particularly permanent account-currency locking.
-- Continue brainstorming next session, starting with synchronization as the user indicated; migration of BRD/TRD is subsequent work.
+- Core-functionality brainstorming concluded on 2026-09-26 as sufficiently clarified for subsequent document review. User will open separate chats for First using, Administration, and Synchronisation; BRD/TRD template rework remains subsequent work.
 
 ## Stakeholders
 
@@ -80,23 +87,23 @@ The product is personal home accounting software. Users organize accounts and cl
 
 No remaining gap currently prevents a clearly labeled draft describing the agreed first-version behavior. The following can remain explicit questions in a draft, but material details must be settled before approval:
 
-1. Synchronization: user requested discussion next session. First-version synchronization remains deferred. What future behavior creates the currency-lock concern? The legacy synchronization trigger is unspecified.
+1. Synchronisation is assigned to a separate feature chat. Carry forward permanent account-currency locking and the unresolved legacy synchronization trigger; no new synchronization behavior or release scope was decided here.
 2. Success criteria and approval: what constitutes a usable first release, and who will approve exact document versions? No formal document approval or promotion decision has been recorded.
-3. Report grouping: define exact Account Group aggregation depth/rollups and overlapping ancestor display. Checkbox discussions settled filtering; they did not fully settle Account Group output structure. Currency is optional first level; one other grouping follows.
-4. Saved report selection: define nested subgroup overrides beyond the explicit GroupA/GroupC/ElementX example; partial checkbox display; conflicts after hierarchy moves; missing IDs that later reappear; exact stored representation. Do not replace the confirmed explicit-element override with global exclusion precedence.
-5. Saved reports: exact timestamp-based default-name format, empty-name behavior, edit/delete workflow, and default initial selections. Names may duplicate.
-6. Account naming: final predefined format list, behavior when all three classifications are absent, and handling resulting empty/only-separator names. Strict positional formatting was chosen; missing slots are not automatically removed.
-7. Numeric boundaries: maximum magnitudes, excess decimal input handling, overflow, and display precision settings remain unspecified. Four-place nearest-even BaseAmount rounding is settled.
-8. Dates: exact hidden initial-rate sentinel, timezone source, and interpretation of the 2001-01-01 limit at timezone boundaries. UTC rate lookup and local report boundaries are settled.
+3. Account and Account Group report grouping are deferred to the next version; their aggregation details are not first-version open questions (user correction, 2026-09-26).
+4. Saved report selection: nested group inheritance and minimal included/excluded ID storage are resolved (2026-09-26). Remaining: partial checkbox display; conflicting inherited states after hierarchy moves; missing IDs that later reappear. Preserve saved choices until resave and explicit-element overrides.
+5. Saved reports: exact timestamp-based default-name format, empty-name behavior, and edit/delete workflow remain open. Names may duplicate. New reports start with every selection unchecked, including unassigned (user confirmation, 2026-09-26).
+6. Account naming: final predefined format list remains open. All classifications absent is resolved for the slash format: default Name is // and is valid without manual replacement (user confirmation, 2026-09-26). Strict positional formatting preserves separators.
+7. Numeric boundaries: maximum magnitudes, overflow, and display precision settings remain unspecified. Excess decimal input is resolved: UI prevents more than four fractional digits; API validates and rounds to four using midpoint-to-even (user answer, 2026-09-26). Four-place nearest-even BaseAmount rounding is settled.
+8. Dates: exact hidden initial-rate sentinel remains open. The minimum transaction timestamp is 2001-01-01 00:00:00 UTC, checked after conversion to UTC. Current timezone means the device timezone, with no separate app setting (user confirmations, 2026-09-26). UTC rate lookup and local report boundaries are settled.
 9. Currency catalog: supported platforms, source refresh behavior, unsupported ISO currencies, and which region's default Name/Symbol to restore. The Windows example is input, not a mandate for a Windows-only implementation.
-10. Merge edge cases: root as source is forbidden by root immutability; clarify root as destination and ancestor/descendant merges while preserving cycle prevention and fixed-root behavior. Recursive coalescing of same-name subgroups was not requested; collision renaming was chosen.
-11. Transaction/template details: whether a draft may be used to create a template; whether zero-entry template application opens an unsavable transaction editor until two accounts are added; exact definition of required fields beyond agreed account/count/rate rules. These must not relax the confirmed save constraints.
-12. Description defaults: whether renaming Name later changes Description; no automatic ongoing synchronization was agreed.
-13. Other first-release non-functional needs such as backup/recovery and measurable performance are not yet discussed. SQLite speed was a user expectation, not a measured target.
+10. Merge edge cases: root as source is forbidden by root immutability; merging into a descendant is rejected by cycle prevention (confirmed 2026-09-26). Root as destination and merging into an ancestor remain unspecified. Recursive coalescing of same-name subgroups was not requested; collision renaming was chosen.
+11. Transaction/template details: creating a template from an unbalanced draft is allowed (user confirmation, 2026-09-26). Remaining details: whether zero-entry template application opens an unsavable transaction editor until two accounts are added; exact definition of required fields beyond agreed account/count/rate rules. These must not relax the confirmed save constraints.
+12. Description defaults resolved (2026-09-26): Name and Description are edited independently; renaming does not change Description.
+13. Backup/recovery belongs to Administration and will be discussed in its separate chat. The question about first-version backup/restore was not answered; no inclusion or deferral decision was made. Measurable performance remains a later document-review detail; SQLite speed was an expectation, not a measured target.
 
 ## Decisions and Rationale
 
-All session decisions in this section are attributed to the requesting user, recorded 2026-09-25. Rationale is included only where stated or explicitly distinguished as explanation.
+Session decisions in this section are attributed to the requesting user, recorded 2026-09-25 with subsequent clarifications dated 2026-09-26. Rationale is included only where stated or explicitly distinguished as explanation.
 
 ### Scope and storage
 
@@ -132,12 +139,13 @@ All session decisions in this section are attributed to the requesting user, rec
 ### Calculation and precision
 
 - Amount, Rate, and BaseAmount use decimal values with four decimal places; visible precision can be 0-4 places.
+- For Amount and Rate input, UI prevents entering more than four fractional digits. API validates input and rounds excess fractional digits to four using midpoint-to-even (user answer to the nearest-even input question, 2026-09-26).
 - BaseAmount = Amount multiplied by Rate, rounded per entry to four decimal places using midpoint-to-even rounding.
 - Sum rounded BaseAmounts; require exactly zero for an active transaction. No tolerance-based acceptance.
 - Balances and reports use those rounded BaseAmounts for base-currency totals.
 - Example: 55555.5555 * 0.2222 = 12344.4444321, rounded to 12344.4444. An opposite entry Amount -12344.4444 at Rate 1 produces -12344.4444; sum is zero.
 - User fixes imbalance manually. App may show the remaining difference; it does not create balancing adjustments or silently alter entries.
-- All rates must be greater than zero. Base-currency rate is always 1 and cannot be overridden.
+- All rates must be greater than zero after rounding to four decimal places. API raises an exception if rounding produces zero, e.g. 0.00001 becomes 0.0000 (user clarification, 2026-09-26; supersedes the initial negative answer). Base-currency rate is always 1 and cannot be overridden.
 
 ### Currency and rates
 
@@ -154,10 +162,10 @@ All session decisions in this section are attributed to the requesting user, rec
 
 ### Dates and timezones
 
-- Store transaction date/time in UTC; display in the current timezone.
+- Store transaction date/time in UTC; display in the current timezone. Current timezone means the device timezone, with no separate app timezone setting (user confirmation, 2026-09-26).
 - Report date boundaries and day/week/month grouping use the current timezone.
 - Rate lookup uses UTC date, not displayed local date.
-- User-entered transaction dates and ordinary rate dates cannot be earlier than 2001-01-01. Hidden initial-rate date is the system exception.
+- User-entered transaction timestamps must be on or after 2001-01-01 00:00:00 UTC; validate the UTC timestamp after converting local input. For example, 2001-01-01 00:30 in Warsaw corresponds to 2000-12-31 23:30 UTC and is rejected (UTC boundary confirmed by user, 2026-09-26). Ordinary rate dates cannot be earlier than 2001-01-01 UTC. Hidden initial-rate date is the system exception.
 
 ### Account lifecycle and classifications
 
@@ -175,7 +183,7 @@ All session decisions in this section are attributed to the requesting user, rec
 - Root Parent points to itself; root does not occur in its own Children collection.
 - Root can directly contain elements.
 - Users can rearrange non-root groups and elements within their types, including already-used elements.
-- Reject cycles when moving groups.
+- Reject cycles when moving groups. Merging a group into its own descendant is also rejected under this rule (user clarification, 2026-09-26).
 - A group can be deleted only if it has no child groups and no elements.
 - Merge A into B moves A's elements and child groups into B, resolves naming conflicts, then deletes the empty A.
 - Individual operations with a forbidden name collision are rejected (user explicitly described throwing an exception).
@@ -188,11 +196,11 @@ All session decisions in this section are attributed to the requesting user, rec
 - Child-group names and element names have separate uniqueness scopes: a subgroup Travel and an element Travel may coexist.
 - Template names are unique within their group.
 - Accounts, groups, categories, projects, correspondents have mandatory Description, trimmed but not unique, separate from Name.
-- All Descriptions default to a copy of Name, not a concatenation of long descriptions or an English currency label. Users may edit Description separately.
+- All Descriptions initially default to a copy of Name, not a concatenation of long descriptions or an English currency label. Name and Description are edited independently: later changes to either do not update the other (user confirmation, 2026-09-26).
 - Transactions, templates, currencies have optional Comment. Earlier transaction 'description' wording is replaced by Comment.
 - Default Account Name combines classification short Names in a strict predefined format.
 - Format is selected for the whole database from options such as `{Category}/{Project}/{Correspondent}` or `{Category}-{Correspondent}-{Project}`. Exact complete list remains open.
-- Missing classifications keep their positions/separators; smarter formatting is deferred.
+- Missing classifications keep their positions/separators; smarter formatting is deferred. With the {Category}/{Project}/{Correspondent} format and all three classifications absent, default Account Name is // (two slashes), valid without requiring manual replacement (user confirmation, 2026-09-26).
 - Users can override Account Name and Restore Default Name.
 - Changes to classifications leave Account Name unchanged until explicitly restored.
 - Account Names may duplicate; the earlier proposal to reject generated duplicates was explicitly reversed.
@@ -205,13 +213,14 @@ All session decisions in this section are attributed to the requesting user, rec
 - Applying template opens a transaction for immediate review; persistence occurs only on Save.
 - New entry Rates default from CurrencyRate for the transaction date; base-currency rate remains 1.
 - Copy template Comment into transaction Comment.
-- Users may create a template from a transaction, copying accounts, amounts, and comment.
+- Users may create a template from an active transaction or an unbalanced draft, copying accounts, amounts, and comment (draft eligibility confirmed by user, 2026-09-26).
 
 ### Report filtering
 
 - First version has exactly three entity selection trees: Category, Project, Correspondent. No Account or Account Group filter.
 - Within one entity type, selected elements/groups/null combine using OR. Combine the three entity filters using AND to determine matching accounts.
 - Null/unassigned is an explicit selectable option in each classification.
+- New reports start with all Category, Project, and Correspondent selections unchecked, including groups, elements, and null/unassigned (user confirmation, 2026-09-26).
 - No selection for an entity type yields an empty report with a warning, not an unrestricted filter.
 - Group checkboxes select descendants recursively for convenience. User can uncheck subgroups/elements and recheck individual descendants.
 - Report considers active transactions only, using matching accounts' entries.
@@ -222,22 +231,24 @@ All session decisions in this section are attributed to the requesting user, rec
 - Saved settings preserve group IDs, individual element IDs, checked/unchecked choices, and null choices rather than only a snapshot of group members.
 - Recalculate matching elements using current group membership each time. An element moving out stops matching that group unless individually selected.
 - Missing element/group IDs are ignored, including deleted groups or merge sources. Saved report references do not prevent deletion of otherwise-unused entities.
-- Both individual elements and groups can be explicitly excluded.
+- Both individual elements and groups can be explicitly excluded. Individual element IDs follow the same minimal storage rule as groups: save an inclusion or exclusion only when the element selection differs from the inherited state of its parent group; otherwise omit its ID (user confirmation, 2026-09-26).
 - Explicit inclusion of an element overrides its parent group's exclusion. It must not be modeled as unconditional global subtraction of all excluded groups.
 - Confirmed example: select GroupA (which contains GroupB, GroupC, GroupD); deselect GroupC; explicitly select ElementX in GroupC. Include A's current descendants outside C, and X inside C.
 - Checking GroupC again selects all descendants and clears earlier individual overrides within it. The user confirmed the same propagation/reset principle for checking/unchecking a group.
 - New members follow the selected group's state unless an applicable saved override changes it. Earlier saved choices persist until settings are resaved; do not rewrite them merely because membership changed.
-- Exact handling of deeper nested group overrides remains a clarification item.
+- Nested group selections inherit the nearest saved ancestor state; the default with no applicable inclusion is unchecked. Save a checked group ID in included only where its parent state is unchecked, and an unchecked group ID in excluded only where its parent state is checked. Descendants sharing the inherited state are not individually stored (user rule, 2026-09-26).
+- Confirmed example: check Group1Level; uncheck its child Group2LevelA; leave Group3LevelAA under A unchecked; check Group4LevelAAA under Group3LevelAA. Group2LevelB remains checked under Group1Level, and Group4LevelAAB remains unchecked under Group3LevelAA. JSON stores included = [Group1Level, Group4LevelAAA], excluded = [Group2LevelA], using their IDs.
+- Checking Group2LevelA again selects its whole subtree and clears descendant overrides. Remove both its exclusion and the now-redundant Group4LevelAAA inclusion: JSON retains only Group1Level in included and no exclusions in this example (user confirmation, 2026-09-26).
 
 ### Report grouping and values
 
-- Optional Currency is the first grouping level. The second level is one selected grouping: time period, Category, Project, Correspondent, Account, or Account Group.
-- Time grouping supports day, week, month, quarter, year. Weeks run Monday-Sunday; quarters/years use calendar boundaries in current timezone.
+- Optional Currency is the first grouping level. The next level is one selected grouping: Category, Project, Correspondent, day, week, month, or year. Account and Account Group grouping are deferred to the next version (user correction, 2026-09-26).
+- Time grouping supports day, week, month, year. Weeks run Monday-Sunday; months/years use calendar boundaries in current timezone. Quarter is outside the first-version grouping list (user correction, 2026-09-26).
 - Show a single signed net total, not separate positive/negative subtotals.
 - Without Currency grouping: if all included accounts share one currency, show two amount columns, account currency and base currency; otherwise show base currency only.
 - With Currency grouping: currency groups show own-currency and base-currency totals. Mixed-currency grand totals use base currency only.
 - Reports are totals only; no click-through to constituent transactions.
-- Account/Account Group grouping remains in scope despite removing their selection filters. Exact hierarchy rollup display remains open.
+- First-version grouping is limited to the choices above; no Account or Account Group rollup display is needed.
 
 ### Saved report definitions
 
@@ -261,7 +272,7 @@ All session decisions in this section are attributed to the requesting user, rec
 | Q-09 properties / uniqueness | Name/Description/Comment rules above; accounts may duplicate names; other uniqueness per group/parent. |
 | Q-10 historical classifications | Current classifications apply to history. |
 | Q-11 signs / zero / duplicates | Positive increases, negative decreases; zero amounts/repeated accounts allowed. |
-| Q-12 reporting | Three classification filters, saved dynamic tree choices, net totals, grouping; output hierarchy details open. |
+| Q-12 reporting | Three classification filters; minimal included/excluded IDs with inherited states; net totals; Category/Project/Correspondent or day/week/month/year grouping. Account/Account Group grouping deferred. |
 | Q-13 templates | Accounts/amounts/comment; mandatory account; empty/unbalanced allowed; save reviewed transaction. |
 | Q-14 timezones | UTC persistence/rate date; current timezone display/report grouping and bounds. |
 
@@ -276,7 +287,7 @@ All session decisions in this section are attributed to the requesting user, rec
 - Rejecting duplicate Account Names (earlier proposal reversed).
 - Root included as its own child, or user-editable root labels.
 - Incrementing bulk conflict suffix numbers instead of repeatedly appending `_1`.
-- Account/Account Group filters in first-version reports; grouping by them remains allowed.
+- Account/Account Group filters in first-version reports. Grouping by them is also deferred to the next version.
 - Empty entity selection meaning unrestricted selection.
 - Relative report date periods, separate positive/negative report totals, and report drill-through.
 - Fixed snapshot-only group membership and unconditional exclusion precedence over explicitly selected elements.
@@ -286,7 +297,11 @@ All session decisions in this section are attributed to the requesting user, rec
 
 | Topic | Owner / revisit trigger |
 | --- | --- |
-| Bank imports and synchronization implementation | User; later version. Synchronization discussion requested for next session. |
+| Bank imports | User; later version. |
+| First using | User will open a separate feature chat; carry forward base-currency choice, immutable base currency, and existing opening-balance rules. Detailed first-use workflow remains undecided. |
+| Administration | User will open a separate feature chat; backup/restore belongs here and its release scope is undecided. |
+| Synchronisation | User will open a separate feature chat; carry forward permanent account-currency locking and personal SQLite storage. Earlier implementation deferral remains unchanged pending that discussion. |
+| Account and Account Group report grouping | User; next version, confirmed 2026-09-26. |
 | Archive flags | User; future version. |
 | Account presets, including Opening Balance | User; future version. |
 | Bulk account copying for correspondents in a group | User; future version. |
@@ -296,9 +311,14 @@ All session decisions in this section are attributed to the requesting user, rec
 
 ## Promotion Readiness
 
-- Ready to seek a discovery-to-business promotion decision: Not yet requested in this pause/save turn; user wants to continue brainstorming next session.
+- Ready to seek a discovery-to-business promotion decision: Core brainstorming is sufficiently clarified for a draft with the remaining review details explicitly marked. User requested saving and separate feature chats, not document approval or template rework in this turn.
 - Questions blocking a safe BRD draft: No presently identified core gap prevents a draft with explicit open questions; formal promotion authorization still needs to be established before that phase.
 - Questions that may remain in a draft BRD: Open Questions above, with material first-version behaviors resolved before approval. Deferred synchronization must not silently become first-version scope.
 - Promotion decision reference: None recorded. Saving this session does not approve discovery, BRD, or TRD.
-- Next recommended phase: Continue discovery, starting with the user's planned synchronization discussion and remaining material ambiguities. Then make the separate promotion decision and rework BRD; rework TRD after BRD approval.
-- Resume note: User paused due to tiredness. Avoid re-asking settled questions; use the legacy-question disposition and decisions above.
+- Next recommended phase: User-led separate chats for First using, Administration, and Synchronisation. Read this discovery and the BRD continuation notes in each chat, retain confirmed core rules, and record any proposed changes explicitly. Later rework BRD from discovery and TRD after BRD approval.
+- Handoff, 2026-09-26: Core brainstorming is closed for now. Remaining core details are retained for BRD/TRD review, not silently resolved. User will create the three feature chats. No additional chats were created by the assistant. Avoid re-asking settled questions; use the decisions above.
+
+## Synchronization handoff update — 2026-09-27
+
+Subsequent user decisions are consolidated in [Synchronization discovery v0.21](../002-synchronization/discovery.md). They supersede this record's earlier synchronization deferral: synchronization is included in the first release for Android and Windows desktop, with one user and one MasterDb. See that feature record for all confirmed rules, current copy-and-publish recovery direction, corrections, and remaining questions. Other core decisions remain applicable, including permanent account-currency locking and business-rule-protected deletion. Historical deferral wording above is retained as provenance only. No document approval or BRD/TRD promotion is implied.
+
