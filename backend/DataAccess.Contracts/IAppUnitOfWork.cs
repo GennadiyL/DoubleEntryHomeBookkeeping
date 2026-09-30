@@ -37,5 +37,5 @@ public interface IAppUnitOfWork : IUnitOfWork
 
 	public ISystemConfigRepository SystemConfigRepo { get; }
 
-	public IUserConfigRepository UserConfigRepo { get; }
+	public ILocalConfigRepository LocalConfigRepo { get; }
 }

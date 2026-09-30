@@ -1,3 +1,4 @@
+using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
@@ -69,8 +70,8 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 			Name = "Old name",
 			Description = "Old description",
 			Order = 7,
-			Original = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-			Current = new DateTime(2021, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+			EditRevision = 1,
+			ModificationType = ModificationType.None
 		};
 		_parent.Children.Add(_group);
 		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
@@ -89,9 +90,8 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 	{
 		_group.IsFavorite = !isFavorite;
 		Guid id = _group.Id;
-		DateTime original = _group.Original;
-		DateTime now = _scope.ServiceProvider.GetRequiredService<IDateTimeService>().UtcNow;
-		TGroup child = new() { Id = Guid.NewGuid(), IsFavorite = !isFavorite };
+		long? originalRevision = _group.EditRevision;
+				TGroup child = new() { Id = Guid.NewGuid(), IsFavorite = !isFavorite };
 		TElement element = new() { Id = Guid.NewGuid(), IsFavorite = !isFavorite };
 		_group.Children.Add(child);
 		_group.Elements.Add(element);
@@ -99,8 +99,8 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 		await _service.SetFavoriteStatus(id, isFavorite);
 
 		_repository.Received(1).Update(Arg.Is<TGroup>(group =>
-			group.Id == id && group.IsFavorite == isFavorite && group.Current == now &&
-			group.Original == original && group.ParentId == _parent.Id &&
+			group.Id == id && group.IsFavorite == isFavorite && group.ModificationType.HasFlag(ModificationType.Content) &&
+			group.EditRevision == originalRevision && group.ParentId == _parent.Id &&
 			ReferenceEquals(group.Parent, _parent) && group.Order == 7 &&
 			group.Name == "Old name" && group.Description == "Old description" && !group.IsDeleted));
 		await _repository.Received(1).GetByIdAsync(id, CancellationToken.None);
@@ -118,9 +118,9 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 	public async Task SetFavoriteStatus_UnchangedValue_DoesNotSaveOrChangeTimestamp(bool isFavorite)
 	{
 		_group.IsFavorite = isFavorite;
-		DateTime current = _group.Current;
+		ModificationType previousModification = _group.ModificationType;
 		await _service.SetFavoriteStatus(_group.Id, isFavorite);
-		Assert.That(_group.Current, Is.EqualTo(current));
+		Assert.That(_group.ModificationType, Is.EqualTo(previousModification));
 		Assert.That(_group.IsFavorite, Is.EqualTo(isFavorite));
 		AssertNoWrites();
 	}
@@ -147,11 +147,11 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 	[TestCase(false)]
 	public void SetFavoriteStatus_DeletedGroup_RejectsEvenWhenValueMatches(bool isFavorite)
 	{
-		_group.IsDeleted = true;
+		_group.DeleteRevision = 0;
 		_group.IsFavorite = isFavorite;
-		DateTime current = _group.Current;
+		ModificationType previousModification = _group.ModificationType;
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.SetFavoriteStatus(_group.Id, isFavorite));
-		Assert.That(_group.Current, Is.EqualTo(current));
+		Assert.That(_group.ModificationType, Is.EqualTo(previousModification));
 		Assert.That(_group.IsFavorite, Is.EqualTo(isFavorite));
 		AssertNoWrites();
 	}

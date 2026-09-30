@@ -1,5 +1,6 @@
 using Business.Contracts.Params;
 using Business.Contracts.Services.Base;
+using Business.Contracts.Utils.Merging;
 using Business.Contracts.Utils.Ordering;
 using Business.Models.Entities;
 using Business.Models.Entities.Base;
@@ -37,7 +38,7 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 		}
 
 		TGroup? group = await _groupRepository.GetWithContentsByIdAsync(param.GroupId);
-		if (group is null || group.IsDeleted)
+		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
@@ -53,7 +54,6 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 			throw new InvalidElementException("The group has no available element ordering position.");
 		}
 
-		DateTime now = _sharedContext.DateTimeService.UtcNow;
 		TElement element = new()
 		{
 			Id = Guid.NewGuid(),
@@ -63,8 +63,6 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 			GroupId = group.Id,
 			Group = group,
 			Order = maxOrder + 1,
-			Original = now,
-			Current = now
 		};
 		_repository.Add(element);
 		await _unitOfWork.SaveChangesAsync();
@@ -86,7 +84,7 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 		}
 
 		TGroup? group = await _groupRepository.GetWithContentsByIdAsync(element.GroupId);
-		if (group is null || group.IsDeleted)
+		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
@@ -99,7 +97,7 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 		element.Name = param.Name;
 		element.Description = param.Description;
 		element.IsFavorite = param.IsFavorite;
-		element.Current = _sharedContext.DateTimeService.UtcNow;
+		element.SetEditedContent();
 		_repository.Update(element);
 		await _unitOfWork.SaveChangesAsync();
 	}
@@ -107,8 +105,7 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 	public async Task Delete(Guid entityId)
 	{
 		TElement element = await GetActiveElement(entityId);
-		element.IsDeleted = true;
-		element.Current = _sharedContext.DateTimeService.UtcNow;
+		element.SetDeleted();
 		_repository.Update(element);
 		await _unitOfWork.SaveChangesAsync();
 	}
@@ -122,7 +119,7 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 
 		TElement element = await GetActiveElement(entityId);
 		TGroup? group = await _groupRepository.GetWithContentsByIdAsync(element.GroupId);
-		if (group is null || group.IsDeleted)
+		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
@@ -148,10 +145,9 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 			return;
 		}
 
-		DateTime now = _sharedContext.DateTimeService.UtcNow;
 		foreach (TElement sibling in changed)
 		{
-			sibling.Current = now;
+			sibling.SetEditedOrder();
 			_repository.Update(sibling);
 		}
 		await _unitOfWork.SaveChangesAsync();
@@ -166,7 +162,7 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 		}
 
 		element.IsFavorite = isFavorite;
-		element.Current = _sharedContext.DateTimeService.UtcNow;
+		element.SetEditedContent();
 		_repository.Update(element);
 		await _unitOfWork.SaveChangesAsync();
 	}
@@ -180,7 +176,7 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 
 		TElement element = await GetActiveElement(entityId);
 		TGroup? destination = await _groupRepository.GetWithContentsByIdAsync(toGroupId);
-		if (destination is null || destination.IsDeleted)
+		if (destination is null || destination.IsDeleted())
 		{
 			throw new GroupNotFoundException("The destination group does not exist or is deleted.");
 		}
@@ -202,7 +198,7 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 		element.GroupId = destination.Id;
 		element.Group = destination;
 		element.Order = maxOrder + 1;
-		element.Current = _sharedContext.DateTimeService.UtcNow;
+		element.SetEditedContent();
 		_repository.Update(element);
 		await _unitOfWork.SaveChangesAsync();
 	}
@@ -217,16 +213,14 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 		TElement source = await GetActiveElement(fromElementId);
 		TElement destination = await GetActiveElement(toElementId);
 		ICollection<Account> accounts = await GetReferencingAccounts(fromElementId);
-		DateTime now = _sharedContext.DateTimeService.UtcNow;
 		foreach (Account account in accounts)
 		{
 			ReplaceAccountReference(account, destination);
-			account.Current = now;
+			account.SetEditedContent();
 			_unitOfWork.AccountRepo.Update(account);
 		}
 
-		source.IsDeleted = true;
-		source.Current = now;
+		source.SetDeleted();
 		_repository.Update(source);
 		await _unitOfWork.SaveChangesAsync();
 	}

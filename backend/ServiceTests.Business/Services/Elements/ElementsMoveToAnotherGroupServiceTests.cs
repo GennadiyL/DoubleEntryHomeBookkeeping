@@ -1,3 +1,4 @@
+using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
@@ -75,7 +76,7 @@ public sealed class ElementsMoveToAnotherGroupServiceTests<TGroup, TElement, TSe
 		{
 			Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
 			Name = "Existing", Description = "Original description", Order = 1,
-			Original = new DateTime(2020, 1, 1), Current = new DateTime(2020, 1, 2)
+			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(_element);
 		_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns(_element);
@@ -89,18 +90,18 @@ public sealed class ElementsMoveToAnotherGroupServiceTests<TGroup, TElement, TSe
 	}
 
 	[Test]
-	public async Task MoveToAnotherGroup_ValidMove_ChangesOnlyGroupOrderAndCurrent()
+	public async Task MoveToAnotherGroup_ValidMove_ChangesOnlyGroupOrderAndTracking()
 	{
 		_destination.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = "Other", Order = 3 });
-		_destination.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = "Deleted", Order = 7, IsDeleted = true });
+		_destination.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = "Deleted", Order = 7, DeleteRevision = 0 });
 		await _service.MoveToAnotherGroup(_element.Id, _destination.Id);
 		Assert.Multiple(() =>
 		{
 			Assert.That(_element.GroupId, Is.EqualTo(_destination.Id));
 			Assert.That(_element.Group, Is.SameAs(_destination));
 			Assert.That(_element.Order, Is.EqualTo(8));
-			Assert.That(_element.Current, Is.EqualTo(Now));
-			Assert.That(_element.Original, Is.EqualTo(new DateTime(2020, 1, 1)));
+			Assert.That(_element.ModificationType.HasFlag(ModificationType.Content), Is.True);
+			Assert.That(_element.EditRevision, Is.EqualTo(1));
 			Assert.That(_element.Name, Is.EqualTo("Existing"));
 			Assert.That(_element.Description, Is.EqualTo("Original description"));
 			Assert.That(_element.IsFavorite, Is.False);
@@ -132,7 +133,7 @@ public sealed class ElementsMoveToAnotherGroupServiceTests<TGroup, TElement, TSe
 	public async Task MoveToAnotherGroup_SameGroup_DoesNotWrite()
 	{
 		await _service.MoveToAnotherGroup(_element.Id, _group.Id);
-		Assert.That(_element.Current, Is.EqualTo(new DateTime(2020, 1, 2)));
+		Assert.That(_element.ModificationType, Is.EqualTo(ModificationType.None));
 		Assert.That(_element.Group, Is.SameAs(_group));
 		AssertNoWrites();
 	}
@@ -141,7 +142,7 @@ public sealed class ElementsMoveToAnotherGroupServiceTests<TGroup, TElement, TSe
 	[TestCase(true)]
 	public void MoveToAnotherGroup_DuplicateName_RejectsIncludingDeleted(bool deleted)
 	{
-		_destination.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = _element.Name, IsDeleted = deleted });
+		_destination.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = _element.Name, DeleteRevision = deleted ? 0 : null });
 		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.MoveToAnotherGroup(_element.Id, _destination.Id));
 		AssertUnchanged();
 	}
@@ -173,7 +174,7 @@ public sealed class ElementsMoveToAnotherGroupServiceTests<TGroup, TElement, TSe
 	{
 		if (deleted)
 		{
-			_element.IsDeleted = true;
+			_element.DeleteRevision = 0;
 		}
 		else
 		{
@@ -189,7 +190,7 @@ public sealed class ElementsMoveToAnotherGroupServiceTests<TGroup, TElement, TSe
 	{
 		if (deleted)
 		{
-			_destination.IsDeleted = true;
+			_destination.DeleteRevision = 0;
 		}
 		else
 		{
@@ -243,11 +244,10 @@ public sealed class ElementsMoveToAnotherGroupServiceTests<TGroup, TElement, TSe
 		Assert.That(_element.GroupId, Is.EqualTo(_group.Id));
 		Assert.That(_element.Group, Is.SameAs(_group));
 		Assert.That(_element.Order, Is.EqualTo(1));
-		Assert.That(_element.Current, Is.EqualTo(new DateTime(2020, 1, 2)));
+		Assert.That(_element.ModificationType, Is.EqualTo(ModificationType.None));
 		AssertNoWrites();
 	}
 
-	private DateTime Now => _scope.ServiceProvider.GetRequiredService<IDateTimeService>().UtcNow;
 
 	private void AssertNoWrites()
 	{

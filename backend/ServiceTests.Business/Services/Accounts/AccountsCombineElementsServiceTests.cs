@@ -1,3 +1,6 @@
+using Business.Models.Enums;
+using Business.Models.Entities.Config;
+using Business.Contracts.Utils.Models;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Impl;
@@ -58,7 +61,7 @@ public sealed class AccountsCombineElementsServiceTests
 		{
 			Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
 			Name = "Existing", Description = "Original description", Order = 1,
-			Original = new DateTime(2020, 1, 1), Current = new DateTime(2020, 1, 2)
+			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(_element);
 		_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns(_element);
@@ -68,7 +71,7 @@ public sealed class AccountsCombineElementsServiceTests
 			Id = Guid.NewGuid(), Name = "Destination", GroupId = Guid.NewGuid(),
 			CurrencyId = _element.CurrencyId, Order = 4, CategoryId = Guid.NewGuid(),
 			ProjectId = Guid.NewGuid(), CorrespondentId = Guid.NewGuid(),
-			Original = new DateTime(2020, 2, 1), Current = new DateTime(2020, 2, 2)
+			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_repository.GetByIdAsync(_destination.Id, CancellationToken.None).Returns(_destination);
 		_transactions = [];
@@ -88,8 +91,8 @@ public sealed class AccountsCombineElementsServiceTests
 	[TestCase(true)]
 	public async Task CombineElements_References_RedirectsEntriesAndPreservesAmountsAndParents(bool deletedParents)
 	{
-		Transaction transaction = new() { Id = Guid.NewGuid(), IsDeleted = deletedParents };
-		Template template = new() { Id = Guid.NewGuid(), IsDeleted = deletedParents };
+		Transaction transaction = new() { Id = Guid.NewGuid(), DeleteRevision = deletedParents ? 0 : null };
+		Template template = new() { Id = Guid.NewGuid(), DeleteRevision = deletedParents ? 0 : null };
 		TransactionEntry entry = new()
 		{
 			Id = Guid.NewGuid(), TransactionId = transaction.Id, Transaction = transaction,
@@ -114,7 +117,7 @@ public sealed class AccountsCombineElementsServiceTests
 			Assert.That(entry.Account, Is.SameAs(_destination));
 			Assert.That(entry.Amount, Is.EqualTo(-12.5m));
 			Assert.That(entry.Rate, Is.EqualTo(1.2m));
-			Assert.That(entry.BaseAmount, Is.EqualTo(-15m));
+			Assert.That(entry.GetBaseAmount(new SystemConfig()), Is.EqualTo(-15m));
 			Assert.That(entry.TransactionId, Is.EqualTo(transaction.Id));
 			Assert.That(entry.Transaction, Is.SameAs(transaction));
 			Assert.That(templateEntry.AccountId, Is.EqualTo(_destination.Id));
@@ -123,13 +126,13 @@ public sealed class AccountsCombineElementsServiceTests
 			Assert.That(templateEntry.TemplateId, Is.EqualTo(template.Id));
 			Assert.That(templateEntry.Template, Is.SameAs(template));
 			Assert.That(_element.IsDeleted, Is.True);
-			Assert.That(_element.Current, Is.EqualTo(Now));
-			Assert.That(_element.Original, Is.EqualTo(new DateTime(2020, 1, 1)));
+			Assert.That(_element.DeleteRevision, Is.EqualTo(0));
+			Assert.That(_element.EditRevision, Is.EqualTo(1));
 			Assert.That(_element.Name, Is.EqualTo("Existing"));
 			Assert.That(_element.GroupId, Is.EqualTo(_group.Id));
 			Assert.That(_element.CurrencyId, Is.EqualTo(_destination.CurrencyId));
 			Assert.That(_destination.IsDeleted, Is.False);
-			Assert.That(_destination.Current, Is.EqualTo(new DateTime(2020, 2, 2)));
+			Assert.That(_destination.ModificationType, Is.EqualTo(ModificationType.None));
 			Assert.That(_destination.CategoryId, Is.EqualTo(categoryId));
 			Assert.That(_destination.ProjectId, Is.EqualTo(projectId));
 			Assert.That(_destination.CorrespondentId, Is.EqualTo(correspondentId));
@@ -198,7 +201,7 @@ public sealed class AccountsCombineElementsServiceTests
 		Account account = destination ? _destination : _element;
 		if (deleted)
 		{
-			account.IsDeleted = true;
+			account.DeleteRevision = 0;
 		}
 		else
 		{
@@ -275,7 +278,6 @@ public sealed class AccountsCombineElementsServiceTests
 	private TransactionEntry NewTransactionEntry() =>
 		new() { Id = Guid.NewGuid(), Transaction = new Transaction(), Account = _element, AccountId = _element.Id, Amount = 10, Rate = 1 };
 
-	private DateTime Now => _scope.ServiceProvider.GetRequiredService<IDateTimeService>().UtcNow;
 
 	private void AssertNoWrites()
 	{

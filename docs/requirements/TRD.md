@@ -2,8 +2,8 @@
 
 ## Document Control and BRD Reference
 
-- Version: **0.44**. Status: **Draft**. Date: **2026-09-28**.
-- Business source: [BRD 0.48](BRD.md), controlled Draft revision of approved BRD 0.32, incorporating the explicitly accepted 2026-09-28 date-rule, account-currency and template-description and optional-rate-comment corrections. Prior 0.32 approval: requesting user, 2026-09-27, “I approve BRD. Lets start with TRD”; no personal name inferred. That approval does not cover 0.48; full-version approval remains outstanding.
+- Version: **0.58**. Status: **Draft**. Date: **2026-09-30**.
+- Business source: [BRD 0.49](BRD.md), controlled Draft revision of approved BRD 0.32, incorporating the explicitly accepted 2026-09-28 date-rule, account-currency and template-description and optional-rate-comment corrections. Prior 0.32 approval: requesting user, 2026-09-27, “I approve BRD. Lets start with TRD”; no personal name inferred. That approval does not cover 0.49; full-version approval remains outstanding.
 - Scope: core bookkeeping, synchronization and first use. Owner/intended approver: requesting user.
 - Revision basis: replaces legacy TRD 0.1 while retaining its parent-reference constraint. Discovery sources: [core](001-personal-bookkeeping/discovery.md), [synchronization](002-synchronization/discovery.md), [first use](003-first-using/discovery.md). Later BRD decisions supersede their historical statements.
 - Naming: BRD uses Business Capabilities `BC-###`; this TRD uses Detailed Use Cases `UC-###-##`, linked to `OP-###` under `SVC-###`. This is the user-selected convention, replacing the skill's default BRD UC convention.
@@ -17,7 +17,7 @@
 - Android and Windows desktop, single-user prototype, one master and multiple registered complete local copies (BR-001–BR-005, NFR-001).
 - SQLite business data locally and on Azure; first-version SQLite Admin.db. Azure Functions perform initial creation/connection. Prototype deployment address hardcoded. Version-two administration planned for Microsoft SQL Server; business datasets remain SQLite. These are explicit user technical inputs retained by BRD, not newly selected architecture.
 - Two configuration tables: System synchronizes; Local does not. Base currency and APr/RPr: selected at creation, immutable, stored in System. Display amounts/BaseAmount with APr and rates with RPr; no independent display precision. Local: default account-name order/separator, sync trigger, conflict priority (BR-005, BR-012, BR-017).
-- Versioned master files such as `{Guid}.db`; prepare changes in a copy and publish a complete candidate; download a complete local replacement. Recovery selects latest published version, not original failed snapshot. SyncId/outcome/receipt tracking is necessary to resolve lost responses without duplicate business application (BR-038–BR-040; synchronization source).
+- Versioned master files such as `{Guid}.db`; prepare changes in a copy and publish a complete candidate; download a complete local replacement. Recovery selects latest published version, not original failed snapshot. SyncKey/outcome/receipt tracking is necessary to resolve lost responses without duplicate business application (BR-038–BR-040; synchronization source).
 - TransactionEntry and TemplateEntry retain BOTH parent navigation/reference and parent foreign-key identity; both identify the same parent. This explicit legacy TRD requirement survives; language mapping is deferred. Group root refers to itself as parent but is excluded from its own Children. Groups have child groups and corresponding elements; every element has a group identity/reference (core source).
 - UTC transaction time; APr/RPr decimal calculation with midpoint-to-even; on-demand balances/reports. Stored entry rate is independent of rate catalog. JSON saved-report instructions preserve identities and explicit overrides; do not rewrite except user save (BR-015–BR-028).
 - Currency catalog follows the user-supplied CultureInfo/RegionInfo enumeration recorded in BRD: exclude neutral/invalid regions, map ISO code/symbol/English name, keep first entry per code. No new catalog source selected.
@@ -115,7 +115,7 @@ Confirmed identity for persistent business entities (PM-001–PM-010): `Id: uuid
 
 #### Favorite flags — confirmed 2026-09-28
 
-PM-001, PM-002, PM-003, PM-005 and PM-008 include required persisted IsFavorite: bool for each group, element or currency, defaulting to false on creation. Users can mark/unmark favorites on non-root groups, elements and currencies and filter by that flag in the first release. All five root groups have IsFavorite fixed to false; UI must not offer a favorite toggle for them, and save/sync validation must preserve this invariant regardless of conflict priority. Changing IsFavorite adds ModificationType.Content, preserves any Order bit, and uses the existing EditRevision and configured content-conflict priority. IsFavorite does not use the special Local-wins Order policy. Template favorites participate in whole-template content synchronization. No inheritance/cascade to descendants is selected. Favorites filtering retains the ancestor path to matching favorite groups/elements, including non-favorite parents and the root as needed. These ancestors are navigation context only, not favorite matches; no flags or sync metadata change merely because the path is displayed. Opening a favorite group does not bypass the active favorites filter: show only favorite descendants, plus non-favorite ancestor groups needed to reach them. Other non-favorite children remain hidden; favorite status is not inherited.
+PM-001, PM-002, PM-003, PM-005 and PM-008 include required persisted IsFavorite: bool for each group, element or currency, defaulting to false on creation. Users can mark/unmark favorites on non-root groups, elements and currencies and filter by that flag in the first release. All five root groups have IsFavorite fixed to false; UI must not offer a favorite toggle for them, and save/sync validation must preserve this invariant regardless of conflict priority. Changing IsFavorite adds ModificationType.Content, preserves any Order bit, and uses the shared EditRevision content-conflict rules, including the same-Local priority exception. IsFavorite does not use the special Local-wins Order policy. Template favorites participate in whole-template content synchronization. No inheritance/cascade to descendants is selected. Favorites filtering retains the ancestor path to matching favorite groups/elements, including non-favorite parents and the root as needed. These ancestors are navigation context only, not favorite matches; no flags or sync metadata change merely because the path is displayed. Opening a favorite group does not bypass the active favorites filter: show only favorite descendants, plus non-favorite ancestor groups needed to reach them. Other non-favorite children remain hidden; favorite status is not inherited.
 
 Catalog DTO projections/mutations must support IsFavorite and favorite filtering; exact read/write shapes and operation selection remain TQ-05. Favorites filtering does not change persisted collection Order or the separate subgroup/element sequence rules.
 
@@ -123,7 +123,7 @@ Catalog DTO projections/mutations must support IsFavorite and favorite filtering
 
 Confirmed 2026-09-27, extended 2026-09-28: ordering of child groups (PM-001) and grouped elements (PM-002, PM-005, PM-008) is shared data, synchronized separately from entity content. Each ordered catalog entity has a required persisted Order field of signed 32-bit integer type (int32). Each parent has two independent sequences: Children (direct subgroups) and Elements (direct elements). The user does not see a mixed subgroup/element list. Normalize Children to 0..G-1 and Elements to 0..E-1, where G and E are their respective accepted member counts. No shared index space or cross-collection tie exists; both sequences can start at 0. Empty collections have no Order values to assign. The self-parent root is excluded from Children and its numbering. Apply the merge, priority, append and GUID tie-break rules below independently to each collection. TransactionEntry/TemplateEntry Position remains part of its parent aggregate under PM-007/009, not this contract. Currency (PM-003) also supports manual ordering under this same separate synchronization contract. The currency catalog is one independent sequence per business dataset: required persisted Order: int32, normalized to 0..C-1 for C accepted currencies. Apply the same priority-relative order, GUID ascending tie-breaks, append-missing rule and post-merge normalization. Currency ordering changes do not modify currency content or its content revision or Content flag. This decision does not apply manual ordering to CurrencyRate records.
 
-For each collection, first resolve content, accepted membership and deletions. Content uses EditRevision and the Content bit with configured conflict priority; ordering is handled independently. A Local member with the Order bit set supplies its local Order regardless of the configured content priority. Without that bit, retain the accepted Master order. No OrderRevision or separate IsOrderModified boolean is selected; ModificationType carries the per-member Order flag. Ordering alone must not overwrite content or increment EditRevision.
+For each collection, first resolve content, accepted membership and deletions. Content uses EditRevision and the Content bit with the shared conflict-priority rules, including the same-Local exception; ordering is handled independently. A Local member with the Order bit set supplies its local Order regardless of the configured content priority. Without that bit, retain the accepted Master order. No OrderRevision or separate IsOrderModified boolean is selected; ModificationType carries the per-member Order flag. Ordering alone must not overwrite content or increment EditRevision.
 
 After membership/content reconciliation, select each accepted member Order independently: use Local Order when its Order bit is set; otherwise retain accepted Master Order. Sort the merged values by Order ascending, then Id (GUID) ascending, and assign consecutive 0..N-1 positions. Concurrent changes may therefore shift the intended local or master placement; this outcome is explicitly accepted, and no exact drag-and-drop intent replay is required. Accepted members absent from the selected ordering sequence are appended in GUID ascending order before final renumbering. Never restore deleted/rejected members merely because they appear in an order list. Apply this procedure independently to each subgroup, element and currency collection. The previous unconditional configured-priority collection selection is superseded. Confirmed GUID comparison: represent each Id as a canonical lowercase GUID string in 8-4-4-4-12 hexadecimal format (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx, without braces), then compare strings ordinally in ascending order. Master and every Local use this same rule for equal-Order tie-breaks and ordering appended members; comparison is culture-independent. This defines comparison only, not physical GUID storage or a change of identity.
 
@@ -133,12 +133,12 @@ Local flag rules (confirmed 2026-09-28):
 - Content edit: add Content without clearing an existing Order bit.
 - Reorder: add Order on every member whose numeric Order changes, without adding Content for ordering alone.
 - Move to another group: add Content | Order on the moved member; normalize source/destination collections and add Order to siblings whose positions change.
-- Delete: apply the existing deletion/content rules to the deleted member; immediately normalize the surviving local collection and add Order to every shifted member. A never-synchronized creation is still hard-deleted under the existing rule.
-- An existing Content bit survives all order-only operations. Both bits clear only after successful installation of accepted state; uncertain/failed synchronization preserves pending changes under the recovery rules.
+- Delete: apply the existing deletion/content rules to the deleted member; immediately normalize the surviving local collection and add Order to every shifted member. Only a never-submitted creation with EditRevision null is eligible for immediate local hard deletion under the existing rule.
+- An existing Content bit survives all order-only operations. Captured bits clear atomically with durable saving of their outgoing delta batch. Later local edits set the appropriate bits again. Uncertain/failed synchronization preserves the saved batches and any newer uncaptured flags.
 
-These flags are per entity, not per collection. TransactionEntry/TemplateEntry Position remains part of parent aggregate content: changing entry positions marks the parent Content, not independent entry Order flags. Unordered tracked entities use Content only. IsModified is no longer stored; if a convenience indicator is needed, it is derived from ModificationType != None.
+These flags are per entity, not per collection. TransactionEntry/TemplateEntry Position remains part of parent aggregate content: changing entry positions marks the parent Content, not independent entry Order flags. Unordered tracked entities use Content only. IsModified is no longer stored; if a convenience indicator is needed, ModificationType != None indicates changes not yet captured in a batch, not all pending synchronization work.
 
-Confirmed change-detection rule (2026-09-28): any tracked entity with ModificationType != None means pending local changes to synchronize. Content alone, Order alone, and Content | Order all qualify. Include pending ordering changes in synchronization even when no Content bits are set; an order-only edit cannot take the no-local-change path. Transfer only the applicable change semantics: an Order bit does not authorize overwriting content. Wire shape and detection implementation remain TQ-04/TQ-12. Normalization during accepted snapshot preparation is not a new local edit. No source database is mutated before publication succeeds; the existing publication/recovery rules remain binding. Separate order synchronization remains an explicit exception to previous whole-item wording; BRD alignment must be reviewed before full TRD approval, and BRD is unchanged here.
+Confirmed change-detection rule (updated 2026-09-30): synchronization is pending when at least one durable outgoing batch exists OR any tracked entity has ModificationType != None. Flags represent local changes not yet captured in a batch; queued batches remain pending even when all entity flags are None. Content alone, Order alone, and Content | Order all qualify. Include pending ordering changes in synchronization even when no Content bits are set; an order-only edit cannot take the no-local-change path. Transfer only the applicable change semantics: an Order bit does not authorize overwriting content. Wire shape and detection implementation remain TQ-04/TQ-12. Normalization during accepted snapshot preparation is not a new local edit. Master prepares changes on a copy before publication. Local batch capture updates tracking metadata atomically before sending, as specified below; it does not imply Master acceptance. Separate order synchronization remains an explicit exception to previous whole-item wording; BRD alignment must be reviewed before full TRD approval, and BRD is unchanged here.
 
 #### Confirmed concrete-entity table layout — 2026-09-27
 
@@ -156,26 +156,43 @@ MasterDb and LocalDb have identical business database schemas, including redunda
 
 | Property | Canonical type | Nullability | Confirmed meaning and authority |
 | --- | --- | --- | --- |
-| EditRevision | int64 | Nullable | Entity revision; null for local creation. Master assigns first revision 1, then increments only when accepted entity content changes, including deletion/restoration; catalog Order is excluded under the separate ordering contract. Local never generates or increments it; installation copies the Master value. |
-| DeleteVersion | int64 | Nullable | Null = alive; 0 = pending local deletion; positive = snapshot Version in which Master accepted deletion. Local actions assign only null or 0; Master assigns positive values. No separate deletion flag or datetime. |
-| ModificationType | flags enum | Required | None = 0, Content = 1, Order = 2; Content and Order combine as 3. Replaces IsModified. Local accumulates pending bits per tracked entity and resets to None after successful installation of accepted state. Present but redundant as local-change metadata on Master; downloaded bits are not authoritative. |
+| EditRevision | int64 | Nullable | Revision of the last accepted delta batch that changed this entity content; null for a new, never-submitted local creation; 0 for a creation prepared for submission whose Master revision is unknown; positive for a known Master-assigned revision. Master allocates one global revision per newly accepted SyncKey within the dataset and assigns it to all entities whose accepted content changes in that batch, including creation/deletion/restoration. Unchanged, rejected and Order-only entities retain their previous EditRevision. Local may change null to the sentinel 0 when durably preparing the creation batch before sending; Local never generates or increments positive revisions. Installation copies the Master value. Master never stores 0 as an accepted entity revision. |
+| DeleteRevision | int64 | Nullable | Null = alive, settable on both Local and Master; 0 = pending soft deletion, settable only by Local; >= 1 = Revision of the snapshot accepting deletion, assigned only by Master. Local may copy Master-assigned positive values during synchronization but never generates them. No negative values, separate deletion flag or datetime. |
+| ModificationType | flags enum | Required | None = 0, Content = 1, Order = 2; Content and Order combine as 3. Replaces IsModified. Local accumulates uncaptured change bits per tracked entity. Capturing those changes in a durable outgoing batch clears the captured bits in the same local transaction; later edits set bits again. Saved batches remain pending until successful installation of their accepted result. Present but redundant as local-change metadata on Master; downloaded bits are not authoritative. |
 
-Signed 64-bit integer (`int64`) width is confirmed for EditRevision, DeleteVersion and all snapshot-version references, including AcknowledgedVersion. Scalar storage mapping remains TQ-02/TQ-04. Entity **Revision** and database snapshot **Version** are separate counters, not timestamps.
+Signed 64-bit integer (`int64`) width is confirmed for EditRevision, DeleteRevision and all snapshot-version references, including AcknowledgedVersion. Scalar storage mapping remains TQ-02/TQ-04. **Revision** means the positive int64 identity of a Master database snapshot within MasterDatasetKey. Each newly accepted delta batch produces one snapshot and one Revision; merge revision and snapshot version are the same counter, not separate counters or timestamps. EditRevision and DeleteRevision both reference this counter. Existing fields named Version, PublishedVersion, InstalledVersion and AcknowledgedVersion refer to this same snapshot Revision; their names are retained here. An entity stores the Revision of its last accepted content change, not an entity-specific counter.
 
-| Activity | EditRevision | DeleteVersion | ModificationType / outcome |
+Assignment authority: Local initializes EditRevision to null for a new entity and sets it to 0 when durably preparing its first creation batch. Zero means that entity may exist on Master but its accepted Revision is unknown; it does not mean Master itself is unavailable. An ordinary edit to an entity with a known positive EditRevision preserves that value. Only Master assigns positive EditRevision values; Local copies them during installation. Accepted Master entities always have EditRevision >= 1. EditRevision must never be negative. DeleteRevision null is valid on both sides; only Local originates 0 and only Master originates a positive deletion Revision. Accepting deletion at Revision R sets both EditRevision and DeleteRevision to R. Accepting restoration at Revision S sets EditRevision to S and DeleteRevision to null.
+
+| Activity | EditRevision | DeleteRevision | ModificationType / outcome |
 | --- | --- | --- | --- |
 | Create locally | null | null | Content; also Order for a new ordered catalog member |
 | Edit content locally | Keep received revision | null for live entity | Add Content; preserve existing Order bit |
 | Delete locally after prior Master acceptance | Keep received revision | 0 | Add Content; normalize survivors under ordering rules |
-| Delete locally before first sync, never received by Master | null | No marker retained | Immediately hard-delete locally; no outgoing creation/deletion |
+| Delete locally before creation is prepared for submission | null | No marker retained | Immediately hard-delete locally subject to reference rules; no outgoing creation/deletion |
+| Prepare new creation batch before sending | Set null to 0 | null | Save the immutable creation batch and local sentinel atomically before network transmission |
+| Edit submitted creation with unknown Master outcome | Keep 0 | null | Add Content; queue the edit in a later batch, not as a new creation |
+| Delete submitted creation with unknown Master outcome | Keep 0 | 0 | Soft-delete and queue deletion in a later batch; never immediately hard-delete |
 | Install accepted live state | Copy Master revision | null | None |
 | Install accepted deletion | Revision retained on Master marker | Positive on Master marker | Hard-delete locally after accepted outcome and successful installation |
 
-Immediate deletion of a never-synchronized local creation remains subject to existing business deletion/reference rules. A null EditRevision alone does not authorize disposal while a previous publication outcome is uncertain; resolve that outcome first under the existing recovery contract.
+Immediate deletion of a never-submitted local creation remains subject to existing business deletion/reference rules. Preparing its first immutable outgoing batch and changing its local EditRevision from null to 0 must be one durable local transaction completed before sending. The saved first batch retains creation semantics; changing the live local row to 0 must not turn that batch into an edit. Keep 0 after timeout, cancellation or failed transmission, including when Master might never have received the request. Later batches contain edits or soft deletion of the same identity and are processed after the creation batch; Master skips that earlier batch if already accepted. A revision of 0 means possibly present on Master, not safe to hard-delete. Successful installation replaces 0 with the accepted positive Master revision, or removes the row after accepted deletion. No return from 0 to null is authorized by an uncertain outcome.
 
-For an existing entity, the Content bit is set and the revision differs from Master, this indicates a content conflict. Matching revision allows the local change subject to validation. An absent Content bit means receive Master content without a content conflict, even if Order is set and revisions differ. Null revision identifies a local creation; identity-collision handling remains TQ-04. Priority selects whole entity content, excluding catalog Order governed by the separate ordering contract; there is no general content-field merge; business validity overrides priority (BR-029–BR-033). Keeping unchanged Master state does not increase revision. A winning local change that changes accepted state increments the current Master revision, not the stale incoming revision.
+For an existing entity, when the Content bit is set and the revision differs from Master, this indicates a content conflict. Confirmed same-Local priority exception (2026-09-30): resolve the entity current Master EditRevision through the accepted-batch record, scoped to MasterDatasetKey. If that revision was produced by the incoming batch LocalDatasetKey, incoming content wins regardless of configured priority; otherwise use configured conflict priority. Compare the source of the current entity revision, not the latest dataset-wide revision or merely any earlier batch from that Local. Apply the exception to content edits, deletion and restoration, subject to business validity. Already accepted SyncKeys are skipped before conflict resolution. An accepted incoming content change receives the new batch revision. For example, K1 from Local1 produces B revision 16; K2 from Local1 still based on revision 15 wins over revision 16. If Local2 has since produced B revision 17, K2 uses configured priority instead. Matching revision allows the local change subject to validation. An absent Content bit means receive Master content without a content conflict, even if Order is set and revisions differ. Null revision in the saved creation batch identifies creation; 0 in a subsequent batch identifies an edit/deletion whose accepted Master revision is not yet known. Apply preceding batches first and then the shared content-conflict rules, including the same-Local exception. Unrelated creation identity-collision handling remains TQ-04. Priority selects whole entity content, excluding catalog Order governed by the separate ordering contract; there is no general content-field merge; business validity overrides priority (BR-029–BR-033). Keeping unchanged Master state does not increase revision. A winning local change that changes accepted state receives the newly allocated batch revision, not the previous entity revision plus one.
 
-A winning restoration clears DeleteVersion and increments revision. A Local that previously hard-deleted the entity inserts the restored row with the same Id, accepted revision and ModificationType None; it is not a new local creation. Failed/uncertain sync preserves pending non-expired changes until its outcome is resolved. SyncId/outcome recovery remains mandatory.
+A winning restoration clears DeleteRevision and receives the accepted batch revision. A Local that previously hard-deleted the entity inserts the restored row with the same Id, accepted revision and ModificationType None; it is not a new local creation. Failed/uncertain sync preserves pending non-expired changes until its outcome is resolved. SyncKey/outcome recovery remains mandatory.
+
+#### Durable batch capture and modification flags — confirmed 2026-09-30
+
+Save an immutable outgoing delta batch and clear exactly the ModificationType flags captured by that batch in one local transaction. Capture both the values and applicable Content/Order semantics. If capture fails, neither the batch nor its flag clearing is committed. For first submission of a creation, the same transaction changes the live row EditRevision from null to 0 while preserving creation semantics in the batch. Flags set by subsequent edits belong to a later batch; do not clear them as acknowledgement of an earlier batch.
+
+A failed or uncertain network attempt retains the saved batch; do not rebuild it from current entity values or restore its flags merely to retry. Pending synchronization means queued batches exist OR uncaptured flags exist. The no-local-change path is permitted only when neither exists. Saving a batch is not sync success: retain it until successful installation of the accepted result. Exact queue storage and atomic installation/queue removal remain TQ-04.
+
+#### Global merge revision allocation — confirmed 2026-09-30
+
+For each newly accepted delta batch identified by SyncKey, Master allocates the next monotonically increasing int64 merge revision within that MasterDatasetKey. Several new batches in one HTTP request produce separate snapshots with consecutive Revisions in processing order; Local downloads only the final resulting snapshot. Replaying an already accepted SyncKey reuses its recorded outcome and revision; it neither allocates a new Revision, produces another snapshot nor reapplies changes. Every entity whose content changes in a batch receives that same revision. For example, with current merge revision 15, a batch creating A, editing B and deleting C assigns EditRevision 16 to all three; unchanged entities retain earlier values. A newly accepted batch with no content changes still produces its snapshot Revision, but changes no entity EditRevision.
+
+The accepted batch outcome records the association between its merge revision, LocalDatasetKey and SyncKey, scoped to MasterDatasetKey. Entity revision equality remains the basis for detecting stale content. These records must remain available while needed to resolve the source of a current entity EditRevision and to recognize retried SyncKeys. Exact storage, safe retention/compaction and allocation/publication atomicity remain TQ-04. The confirmed same-Local exception above uses this association; BRD priority wording requires alignment before full approval. No LastContentLocalDatasetKey property on every entity is required by this revision decision.
 
 #### Confirmed snapshot versions and deletion acknowledgement
 
@@ -183,9 +200,9 @@ Published Master snapshots have positive int64 Version, starting at 1. A new sna
 
 Each LocalDb stores AcknowledgedVersion; Master administration stores it per registered LocalDb (PM-014). It means the snapshot successfully installed, not merely sent/published. Local durably records successful installation; Master advances the registration only after receipt confirming that actual Version. Lost receipts can be retried without moving acknowledgements backwards. AcknowledgedVersion is non-null, initially 0 on Local and in its Master registration before the first successful installation/receipt respectively. Zero means no snapshot acknowledged; published snapshot versions start at 1. A failed initial download leaves the value at 0.
 
-Master accepts deletion by incrementing entity revision and setting DeleteVersion to the snapshot Version publishing that deletion. Local hard-deletes the accepted deleted row during installation. Master retains its deletion marker until every remaining non-expired registration has AcknowledgedVersion >= DeleteVersion; then a subsequent snapshot may omit the marker. Download failure/missing receipt does not satisfy this condition. Winning restoration clears the marker and cancels deletion eligibility.
+Master accepts deletion by assigning the accepted batch revision and setting DeleteRevision to the snapshot Version publishing that deletion. Local hard-deletes the accepted deleted row during installation. Master retains its deletion marker until every remaining non-expired registration has AcknowledgedVersion >= DeleteRevision; then a subsequent snapshot may omit the marker. Download failure/missing receipt does not satisfy this condition. Winning restoration clears the marker and cancels deletion eligibility.
 
-Example: X revision 1 is deleted in snapshot 10, becoming revision 2 with DeleteVersion 10. Local1/Local2 acknowledge 10; Local3 acknowledges 8, so Master retains X. After Local3 acknowledges 10 or later, Master may remove the marker. If Local3's valid stale edit wins first, X instead becomes live at revision 3 and is restored to other Locals with its original identity.
+Example: X with EditRevision 1 is deleted in snapshot Revision 10, receiving EditRevision 10 and DeleteRevision 10. Local1/Local2 acknowledge 10; Local3 acknowledges 8, so Master retains X. After Local3 acknowledges 10 or later, Master may remove the marker. If Local3's valid stale edit wins first, X instead becomes live at the Revision of the snapshot accepting restoration (for example 11), with DeleteRevision null, and is restored to other Locals with its original identity.
 
 These are tracking semantics, not a complete wire protocol or local optimistic-edit token. EditRevision does not change between local edits and cannot alone detect concurrent local edits; that mechanism remains TQ-02.
 
@@ -198,7 +215,7 @@ Base currency, APr and RPr are selected at dataset creation and stored in System
 
 For any nonzero current total, the editor offers Add balancing entry. On an explicit click, append an entry using the configured account whose currency is the base currency, Amount = -total, Rate = 1 and derived BaseAmount = -total. Recalculate the whole transaction and require exactly zero for confirmation; all other save rules still apply. No tolerance or maximum-difference threshold is imposed. The user can alternatively add this entry manually. Appending edits the unsaved transaction; the normal save action persists it. Subsequent edits can create a new imbalance and must be revalidated. No entry is added silently.
 
-The balancing-account selection is stored in synchronized SystemConfiguration (PM-011), shared across Master and all Local copies. It references an Account whose currency is the dataset base currency. Initialization creates one rebalancing Account in the Account root group with the dataset base currency and sets BalancingAccountId to its Id. It is an ordinary account: transaction/template references still prevent deletion, but this settings selection alone does not. The user may change the selection in Settings to another base-currency account. If the configured account is absent or soft-deleted, Add balancing entry must leave the transaction unchanged and show: "Cannot add a balancing entry: the rebalancing account is missing. Please choose a rebalancing account in Settings." Manual balancing remains available. Do not recreate the account automatically. Exact initial account name and representation of a cleared/dangling selection remain TQ-05. Base currency/APr/RPr immutability does not apply to this selection. APr and RPr each accept integers 0–4 inclusive, with defaults APr = 2 and RPr = 4. Creation rejects values outside this range. Display precision follows APr/RPr as defined above. DTO-016 creation/configuration DTOs and balancing-action contracts require alignment under TQ-05; existing DTO omissions cannot override these confirmed requirements.
+The balancing-account selection is stored in synchronized SystemConfiguration (PM-011), shared across Master and all Local copies. It references an Account whose currency is the dataset base currency. Initialization creates one Account initially named Rebalancing in the Account root group with the dataset base currency and sets BalancingAccountId to its Id. It is an ordinary account: transaction/template references still prevent deletion, but this settings selection alone does not. The user may change the selection in Settings to another base-currency account. If the configured account is absent or soft-deleted, Add balancing entry must leave the transaction unchanged and show: "Cannot add a balancing entry: the rebalancing account is missing. Please choose a rebalancing account in Settings." Manual balancing remains available. Do not recreate the account automatically. BalancingAccountId is a nullable GUID property of SystemConfiguration. When the selected account is deleted, clear BalancingAccountId to null. A null selection uses the same missing-account message and leaves the transaction unchanged. Base currency/APr/RPr immutability does not apply to this selection. APr and RPr each accept integers 0–4 inclusive, with defaults APr = 2 and RPr = 4. Creation rejects values outside this range. Display precision follows APr/RPr as defined above. DTO-016 creation/configuration DTOs and balancing-action contracts require alignment under TQ-05; existing DTO omissions cannot override these confirmed requirements.
 
 ### PM-001 — Group
 
@@ -354,26 +371,29 @@ Shared Id/sync tracking. Referenced group/element identities are soft references
 
 | Property | Canonical type | Nullability | Constraint / relationship | Source/status |
 | --- | --- | --- | --- | --- |
-| DatasetId | uuid | Required | Proposed singleton key for master/local dataset | BR-005; proposed |
-| BaseCurrencyId | uuid | Required | Immutable base PM-003; placement in this table proposed | BR-004; proposed placement |
-| BalancingAccountId | uuid | Requiredness pending TQ-05 | Initially references the generated rebalancing PM-005 in Account root; base-currency account selection shared through System sync; missing account must not block deletion solely due to this setting | BR-018; System ownership confirmed 2026-09-28 |
+| MasterDatasetKey | string | Required | Generate once during dataset initialization using Guid.ToString(); preserve unchanged in Master and all Local copies. Reject synchronization between different dataset keys. Not the SystemConfiguration primary key. | User naming/type decision and lifecycle confirmed 2026-09-29 |
+| BaseCurrencyId | uuid | Required | References the dataset base Currency (PM-003); stored in SystemConfiguration, selected during initialization and immutable afterward | BR-004; type, requiredness and System placement confirmed 2026-09-29 |
+| BalancingAccountId | uuid | Nullable | Initially references the generated rebalancing PM-005 in Account root; base-currency account selection shared through System sync; clear to null when the selected account is deleted; selection alone does not prevent deletion | BR-018; System ownership confirmed 2026-09-28; nullable GUID and clearing accepted 2026-09-29 |
 | APr | int32 | Required | Amount and rounded BaseAmount fractional places; range 0–4 inclusive, default 2; selected at creation, immutable | BR-017; confirmed |
 | RPr | int32 | Required | Rate fractional places; range 0–4 inclusive, default 4; selected at creation, immutable | BR-017; confirmed |
-| EditRevision / DeleteVersion / ModificationType | Shared tracking contract | As defined above | Synchronized configuration tracking | Confirmed 2026-09-27 |
+| EditRevision / DeleteRevision / ModificationType | Shared tracking contract | As defined above | Synchronized configuration tracking | Confirmed 2026-09-27 |
 
-Purpose: synchronized System table; table existence/scope confirmed, column placement proposed. One per dataset. Lifecycle initialize, edit mutable settings, sync. Shared synchronization contract applies; local concurrency/publication mechanisms remain TQ-02/TQ-04.
+Identifier naming convention (2026-09-29): use Id for entity primary keys, {Entity}Id for foreign keys/references between entities, and Key for other identifiers. MasterDatasetKey is a GUID-formatted string using Guid.ToString(), separate from the table primary key. Corresponding dataset identifiers elsewhere in this TRD use the same name and representation; their proposed contracts remain proposed. Other identifier roles and their final names require review before finalizing schemas.
+
+Purpose: synchronized System table; base currency, precision and balancing-account setting placement confirmed; singleton key remains proposed. One per dataset. Lifecycle initialize, edit mutable settings, sync. Shared synchronization contract applies; local concurrency/publication mechanisms remain TQ-02/TQ-04.
 
 ### PM-012 — LocalConfiguration
 
 | Property | Canonical type | Nullability | Constraint / relationship | Source/status |
 | --- | --- | --- | --- | --- |
-| LocalCopyId | uuid | Required | Registration identity; proposed singleton key | BR-001/005; proposed |
+| LocalDatasetKey | string | Required | Local copy identity generated with Guid.NewGuid().ToString() when registering a new Local copy; stored in LocalConfiguration and registered on Master. Preserve through synchronization database replacement; a fresh installation gets a new key. Not the configuration primary key. | BR-001/005; name, type, placement and lifecycle confirmed 2026-09-29 |
 | AcknowledgedVersion | int64 | Required; default 0 | Successfully installed snapshot Version; placement here proposed | Confirmed 2026-09-27 |
-| AccountNameOrder | enum | Required | All six orders listed in BRD; default Correspondent,Category,Project | BR-012; proposed representation |
-| AccountNameSeparator | string | Required | Exactly one non-whitespace character; default /; Unicode counting TQ-01 | BR-012; proposed type |
-| DefaultAccountName | string | Required | Derived format, e.g. {Correspondent}/{Category}/{Project}; persistence vs derivation TQ-01 | BR-012; proposed representation |
+| DefaultAccountNameOrder | enum | Required | Stored component order; exactly six values: CorrespondentCategoryProject (default), CorrespondentProjectCategory, CategoryCorrespondentProject, CategoryProjectCorrespondent, ProjectCorrespondentCategory, ProjectCategoryCorrespondent. Each value specifies the corresponding component sequence; numeric assignments remain unresolved. | BR-012; stored setting/name and six-value enum confirmed 2026-09-29 |
+| DefaultAccountNameSeparator | string | Required | Stored separator; exactly one non-whitespace character; default /; Unicode counting TQ-01 | BR-012; stored setting/name confirmed 2026-09-29; type proposed |
 | SyncTrigger | enum | Required | ManualOnly, OnStart, OnExit; default ManualOnly | BR-034; proposed names |
 | ConflictPriority | enum | Required | Master, Local; default Master | BR-029; proposed names |
+
+Confirmed account-name format (2026-09-29): derive the default format from stored DefaultAccountNameOrder and DefaultAccountNameSeparator; do not persist a separate DefaultAccountName format string.
 
 One per local copy; survives replacement, never synchronized. No login/password assumed here. Lifecycle initialize/update locally. Concurrency local settings TQ-02; auditing unresolved. Defaults/format constraints are confirmed business rules; physical columns are proposals.
 
@@ -384,7 +404,7 @@ One per local copy; survives replacement, never synchronized. No login/password 
 | OwnerId | uuid | Required | Proposed identity; single owner in prototype | BR-001; proposed |
 | Login | string | Required | Required only; case/normalization TQ-03 | BR-003; proposed |
 | PasswordHash | string | Required | User specified hash, never plaintext; algorithm/encoding/salt TQ-03 | F technical input; representation proposed |
-| DatasetId | uuid | Required | Owned master | BR-001; proposed |
+| MasterDatasetKey | string | Required | Owned master | BR-001; proposed |
 | ActiveVersion | int64 | Required | Current published PM-016 | S publication; proposed |
 
 Lives in Admin.db, not exported as business snapshot. No first-release change/recovery workflow. Lifecycle first creation; concurrency serialized publication/creation unresolved TQ-04. Audit fields unresolved. No multi-owner roles added.
@@ -393,8 +413,8 @@ Lives in Admin.db, not exported as business snapshot. No first-release change/re
 
 | Property | Canonical type | Nullability | Constraint / relationship | Source/status |
 | --- | --- | --- | --- | --- |
-| LocalCopyId | uuid | Required | Identity; reinstall new value | BR-001; proposed |
-| DatasetId | uuid | Required | Exactly one owner master | BR-001; proposed |
+| LocalDatasetKey | string | Required | Registered Local copy identity; same value as LocalConfiguration.LocalDatasetKey; lifecycle defined in PM-012 | BR-001; confirmed 2026-09-29 |
+| MasterDatasetKey | string | Required | Exactly one owner master | BR-001; proposed |
 | LastSuccessfulSyncAt | datetime | Nullable | UTC master clock; absent before completed initial download | BR-041; proposed |
 | AcknowledgedVersion | int64 | Required; default 0 | Per-registration installed snapshot Version; advance only after receipt | BR-040; confirmed 2026-09-27 |
 
@@ -404,8 +424,8 @@ Purpose: expiry/deletion acknowledgements. No display name in v1. Lifecycle regi
 
 | Property | Canonical type | Nullability | Constraint / relationship | Source/status |
 | --- | --- | --- | --- | --- |
-| SyncId | uuid | Required | Durable operation identity | S technical direction; representation proposed |
-| LocalCopyId | uuid | Required | Initiating registration | BR-038; proposed |
+| SyncKey | string | Required | Generate with Guid.NewGuid().ToString() for each new synchronization operation. Persist and reuse the same key for retries and recovery of that operation; a new operation gets a new key. Master uses the key to recognize an already applied operation and avoid applying its changes twice. | Name, type and lifecycle confirmed 2026-09-29 |
+| LocalDatasetKey | string | Required | Initiating registration | BR-038; proposed |
 | PublishedVersion | int64 | Nullable | Outcome if publication completed | BR-038; proposed |
 | InstalledVersion | int64 | Nullable | Actual local installed result | BR-040; proposed |
 | Stage | enum | Required | Prepared, OutcomeUnknown, Published, Installed, Acknowledged, FailedBeforePublication | BR-038–BR-040; proposed state names |
@@ -417,7 +437,7 @@ Logical record covers durable cloud outcome and local pending-install evidence; 
 | Property | Canonical type | Nullability | Constraint / relationship | Source/status |
 | --- | --- | --- | --- | --- |
 | Version | int64 | Required | Ordered snapshot identity; shared version contract | Confirmed 2026-09-27 |
-| DatasetId | uuid | Required | Owner dataset | BR-001; proposed |
+| MasterDatasetKey | string | Required | Owner dataset | BR-001; proposed |
 | FileName | string | Required | Unique version filename, e.g. {Guid}.db | S explicit example; shape proposed |
 | PublishedAt | datetime | Required | UTC; separate from conflict priority | S direction; proposed |
 
@@ -447,16 +467,16 @@ Each property cell uses `name: canonical type`; the following column lists nulla
 | DTO-012 ReportDefinition / shared | Category: object; Project: object; Correspondent: object; From: date; To: date; CurrencyFirst: bool; GroupBy: enum | Required; Required; Required; Nullable; Nullable; Required; Required | Each dimension shape S below. GroupBy Category,Project,Correspondent,Day,Week,Month,Year. PM-010 JSON definition; BR-023–027. | OP-037; nested DTO-013 in OP-038/039 |
 | DTO-013 SavedReportData / shared | Id: uuid; Name: string; Definition: object; EditRevision: int64 | Nullable; Required; Required; Nullable | Definition exactly DTO-012. PM-010; name validation BR-028. Read preserves raw intent; save minimization TQ-05. | OP-038 via DTO-002, OP-039 |
 | DTO-014 CalculationResult / response | Rows: array<object>; Warnings: array<string> | Required; Required | Each row shape R below; signed amounts; no transaction drill-through. Balances/report preview only, not stored business data; BR-019/026/027. | OP-031,037 |
-| DTO-015 ConfigurationData / shared | Scope: enum; APr: int32; RPr: int32; AccountNameOrder: enum; Separator: string; SyncTrigger: enum; ConflictPriority: enum | Required; Nullable; Nullable; Nullable; Nullable; Nullable; Nullable | Scope System,Local. System exposes APr/RPr read-only after creation; balancing-account selection belongs to System, with exact DTO shape pending TQ-05; Local requires its four settings. Enums per PM-012. No scope-crossing writes. PM-011/012; BR-005/012/017/034. | OP-041,042 |
-| DTO-016 SetupRequest / request | Login: string; Password: string; BaseCurrencyCode: string; LocalCopyId: uuid; RequestId: uuid | Required; Required; Nullable; Required; Required | BR-003 required credentials; base code required only Create, not Open. Registration/request IDs proposed for retry; password transport/local retention TQ-03. | OP-003,004 |
-| DTO-017 SetupResult / response | DatasetId: uuid; LocalCopyId: uuid; AuthorizationHandle: string; Transfer: object | Required; Required; Required; Required | Owner dataset/registration, proposed opaque authorization handle, Transfer DTO-021; do not expose hash/Admin.db. BR-003/005. | OP-003,004 |
-| DTO-018 StatusResult / response | State: enum; MasterExists: bool; SyncId: uuid; PublishedVersion: int64; InstalledVersion: int64; LastSuccessAt: datetime; Message: string | Required; Nullable; Nullable; Nullable; Nullable; Nullable; Nullable | State CreatingMode,OpenMode,MasterAbsent,MasterPresent,Waiting,Running,OutcomeUnknown,Published,Installed,Complete,Expired,Failed. Per-OP allowed subset TQ-04; ownership-scoped, no global directory listing. | OP-001,002,044,045,047,051,052 |
-| DTO-019 SyncRequest / request | SyncId: uuid; LocalCopyId: uuid; KnownVersion: int64; Priority: enum; Trigger: enum; Changes: object | Required; Required; Nullable; Required; Required; Required | Priority Master,Local; Trigger Manual,OnStart,OnExit,Recovery. Changes closed wire shape unresolved TQ-04 (not PM exposure); do not activate this input shape until specified. BR-029/034/038. | OP-043 |
-| DTO-020 SyncIdentity / request | SyncId: uuid; LocalCopyId: uuid | Required; Required | Owned registration/operation identity; auth separate from payload. BR-038–040. | OP-044,045,048 |
+| DTO-015 ConfigurationData / shared | Scope: enum; APr: int32; RPr: int32; DefaultAccountNameOrder: enum; DefaultAccountNameSeparator: string; SyncTrigger: enum; ConflictPriority: enum | Required; Nullable; Nullable; Nullable; Nullable; Nullable; Nullable | Scope System,Local. System exposes APr/RPr read-only after creation; balancing-account selection belongs to System, with exact DTO shape pending TQ-05; Local requires its four settings. Enums per PM-012. No scope-crossing writes. PM-011/012; BR-005/012/017/034. | OP-041,042 |
+| DTO-016 SetupRequest / request | Login: string; Password: string; BaseCurrencyCode: string; LocalDatasetKey: string; RequestId: uuid | Required; Required; Nullable; Required; Required | BR-003 required credentials; base code required only Create, not Open. Registration/request IDs proposed for retry; password transport/local retention TQ-03. | OP-003,004 |
+| DTO-017 SetupResult / response | MasterDatasetKey: string; LocalDatasetKey: string; AuthorizationHandle: string; Transfer: object | Required; Required; Required; Required | Owner dataset/registration, proposed opaque authorization handle, Transfer DTO-021; do not expose hash/Admin.db. BR-003/005. | OP-003,004 |
+| DTO-018 StatusResult / response | State: enum; MasterExists: bool; SyncKey: string; PublishedVersion: int64; InstalledVersion: int64; LastSuccessAt: datetime; Message: string | Required; Nullable; Nullable; Nullable; Nullable; Nullable; Nullable | State CreatingMode,OpenMode,MasterAbsent,MasterPresent,Waiting,Running,OutcomeUnknown,Published,Installed,Complete,Expired,Failed. Per-OP allowed subset TQ-04; ownership-scoped, no global directory listing. | OP-001,002,044,045,047,051,052 |
+| DTO-019 SyncRequest / request | SyncKey: string; LocalDatasetKey: string; KnownVersion: int64; Priority: enum; Trigger: enum; Changes: object | Required; Required; Nullable; Required; Required; Required | Priority Master,Local; Trigger Manual,OnStart,OnExit,Recovery. Changes closed wire shape unresolved TQ-04 (not PM exposure); do not activate this input shape until specified. BR-029/034/038. | OP-043 |
+| DTO-020 SyncIdentity / request | SyncKey: string; LocalDatasetKey: string | Required; Required | Owned registration/operation identity; auth separate from payload. BR-038–040. | OP-044,045,048 |
 | DTO-021 TransferDescriptor / response | Version: int64; TransferToken: string; IntegrityProof: string | Required; Required; Nullable | Logical authorized snapshot transfer, never Admin.db. Bytes travel outside this descriptor; encoding/checksum/expiry TQ-04. BR-039/040. | OP-043,046,048,049; nested OP-003/004 |
-| DTO-022 Receipt / request | SyncId: uuid; LocalCopyId: uuid; InstalledVersion: int64 | Required; Required; Required | Confirm actual installed snapshot version; repeat safely after lost reply; BR-040. | OP-047 |
-| DTO-023 TransferRequest / request | LocalCopyId: uuid; Version: int64; TransferToken: string | Required; Nullable; Nullable | Current owner copy; version/token required when downloading selected snapshot, absent in initial expiry replacement request. Precise handshake TQ-04. | OP-046,049 |
-| DTO-024 SyncReport / response | SyncId: uuid; Items: array<object>; Messages: array<string> | Nullable; Required; Required | Items shape C below; latest attempt/session only. BR-043. | OP-050 |
+| DTO-022 Receipt / request | SyncKey: string; LocalDatasetKey: string; InstalledVersion: int64 | Required; Required; Required | Confirm actual installed snapshot version; repeat safely after lost reply; BR-040. | OP-047 |
+| DTO-023 TransferRequest / request | LocalDatasetKey: string; Version: int64; TransferToken: string | Required; Nullable; Nullable | Current owner copy; version/token required when downloading selected snapshot, absent in initial expiry replacement request. Precise handshake TQ-04. | OP-046,049 |
+| DTO-024 SyncReport / response | SyncKey: string; Items: array<object>; Messages: array<string> | Nullable; Required; Required | Items shape C below; latest attempt/session only. BR-043. | OP-050 |
 | DTO-025 DiagnosticEvent / request | OccurredAt: datetime; OperationId: string; Message: string; Detail: string | Required; Required; Required; Nullable | Local log; secret redaction/content policy TQ-08. No password/token logging intended. BR-043. | OP-052 |
 | DTO-026 ValueResult / response | Name: string; Rate: decimal | Nullable; Nullable | Name only for account-name operations; Rate only for Restore Rate. No other field implied. BR-012/015. | OP-024,025,030 |
 
@@ -502,7 +522,7 @@ Every OP below names DTO input/output and source behavior. The operation list an
 - **L/W — local mutation:** ROLE-001; usable local state, no editing during sync/wait. Validate before commit; proposed atomic mutation of affected aggregate/dependencies. Existing data unchanged on numeric failure (BR-017). Retry deduplication/expected revisions unresolved TQ-02; do not assume all writes safely repeat. Effects supplied in row.
 - **P — preview:** same local authorization as L/R, no persistence; recalculated from current inputs; repeated call may reflect changed rates/catalog. Transaction save remains separate.
 - **S — setup:** ROLE-001 as prospective/existing owner; no local login gate. Create permitted only absent master; Open requires credential authentication; registration before download. Proposed request identity prevents duplicate partial setup; serialization/transaction boundary/idempotency TQ-03/TQ-04. Initial retry manual only.
-- **C — cloud sync:** ROLE-001 authenticated owner and owned LocalCopyId/SyncId/version; remembered authorization. Durable operation outcome; before-publication and after-publication boundaries are BR-038. Same SyncId must not reapply published batch; receipts repeat safely. Exact durable protocol TQ-04. No implicit rollback after cloud publication.
+- **C — cloud sync:** ROLE-001 authenticated owner and owned LocalDatasetKey/SyncKey/version; remembered authorization. Durable operation outcome; before-publication and after-publication boundaries are BR-038. Same SyncKey must not reapply published batch; receipts repeat safely. Exact durable protocol TQ-04. No implicit rollback after cloud publication.
 - **D — local diagnostics/status:** ROLE-001 or application acting for that owner; no cloud auth. Does not grant blocked business access. Session report read/log writes/cleanup effects specified below; timing and filesystem transaction policy TQ-08.
 
 For each operation the profile is its explicit authorization, transaction and idempotency policy reference. Where marked unresolved, approval is blocked until specified. No capability acquires an automatic new cloud endpoint just because listed here.
@@ -623,7 +643,7 @@ Only login/password requiredness is user-approved input policy. Do not impose in
 3. **Lifecycle/deletion:** apply the confirmed shared tracking and snapshot acknowledgement contracts. Full snapshots must not leak admin metadata or resurrect accepted deletion markers as live local rows. TQ-04 specifies safe preparation/installation.
 4. **Master publication:** obtain active snapshot, serialize one writer per master, prepare valid candidate, publish active version and durable operation outcome atomically. Local commit is separate; later failure never rolls master back. Primitive, hosting, lock ownership and atomicity unresolved.
 5. **Transfer:** pin selected immutable version for a consistent download; safe local activation before receipt. Restart partial transfer. Keep prior non-expired outgoing data while outcome unresolved. Confirm installed snapshot version, not merely latest master known. State machine and file switching TQ-04.
-6. **Recovery:** resolve prior SyncId before duplicate upload or disposal; recover latest master; repeat lost receipt safely. 90-day confirmed expiry supersedes preservation/recovery. Expiry is evaluated by master, not guessed by local wall clock.
+6. **Recovery:** resolve prior SyncKey before duplicate upload or disposal; recover latest master; repeat lost receipt safely. 90-day confirmed expiry supersedes preservation/recovery. Expiry is evaluated by master, not guessed by local wall clock.
 7. **Cleanup:** obsolete published files removable only after download/dependency safety; publication outcomes outlive files as needed. No backup retention; backup/restore version two. Registration that never completed initial download needs explicit lifecycle policy TQ-04.
 8. **Catalog:** local system culture/region data from user's example. First value per code as enumerated; platform differences do not rewrite already saved Currency Name/Symbol unless user restores/edits or normal sync conflict rules apply.
 9. **Migration:** schema version representation, upgrade compatibility, supported client versions and rollback behavior TQ-06. Do not activate a snapshot the local client cannot safely use; this is a proposed design constraint, not a replacement for existence-only mode selection.
@@ -653,18 +673,18 @@ These questions identify concrete draft contract gaps. They do not reopen settle
 
 | ID | Item / type | Affected contracts | Approval/handoff impact |
 | --- | --- | --- | --- |
-| TQ-01 | Partly resolved: display follows APr/RPr and SQLite Amount/Rate storage is int64 scaled by 10,000. Open: calculation magnitude limits and overflow detection for products/totals; Unicode definition of one separator; persisted versus derived account-name format. BaseAmount derivation is confirmed in PM-007; initial-rate date and derived IsInitial are confirmed in PM-004. | PM-003–009/012; DTO-006–011/014/015; OP-016–037 | Blocks exact storage/validation contract. BRD scale/rounding/overflow result remain binding. |
-| TQ-02 | Partly resolved: shared sync fields and entity revisions confirmed above. Open: configuration singleton-key choices, separate local expected-revision policy; local transaction boundaries for merge/save/deletion; idempotency of local mutation retries. | PM-001–012; L/W operations | Blocks schemas and mutation safety; never substitutes timestamps for sync outcomes. |
+| TQ-01 | Partly resolved: display follows APr/RPr and SQLite Amount/Rate storage is int64 scaled by 10,000. Open: calculation magnitude limits and overflow detection for products/totals; Unicode definition of one separator. Account-name format is derived from the two stored settings in PM-012. BaseAmount derivation is confirmed in PM-007; initial-rate date and derived IsInitial are confirmed in PM-004. | PM-003–009/012; DTO-006–011/014/015; OP-016–037 | Blocks exact storage/validation contract. BRD scale/rounding/overflow result remain binding. |
+| TQ-02 | Partly resolved: shared sync fields and entity revisions confirmed above. Open: configuration singleton-key choices, remaining identifier role/name alignment, separate local expected-revision policy; local transaction boundaries for merge/save/deletion; idempotency of local mutation retries. | PM-001–012; L/W operations | Blocks schemas and mutation safety; never substitutes timestamps for sync outcomes. |
 | TQ-03 | Open: first-owner bootstrap, login case/normalization, password-hash parameters, remembered authorization/expiry, local secret storage, per-operation ownership enforcement. | PM-013; DTO-016–020/023; OP-002–004/043–049 | Blocks secure setup/cloud contract; no new password complexity rule. |
 | TQ-04 | Open: Admin.db hosting/serialization, durable sync state machine, typed Changes DTO, no-change response, snapshot byte protocol, atomic publication/outcome and receipt persistence, writer wait/liveness, reader leases/cleanup, incomplete registration retry/expiry, null-revision identity collisions. Int64 snapshot versions and deletion acknowledgement thresholds confirmed above. | PM-014–016; DTO-018–023; OP-003/004/043–049 | Blocks complete sync contracts; combined conflicts must implement BR-029–033 or fail/report without invalid publication. |
-| TQ-05 | Proposal/open: creation/configuration DTOs for immutable APr/RPr and balancing-account setting/action contracts, initial account name and missing-reference representation; device-timezone/calendar-date context for rate lookup and reporting, entry-order serialization (array order versus explicit Position), type-specific DTO/service selection for derived group/element models (no Kind enum), final DTO read/write split, list paging/filter fields, report result grouping/selection-save versus rename, one/both configuration scopes in response, settings admission during recovery, ID remapping in reports. | DTO-001–015/026; OP-005–042 | Blocks exposed shapes/editor contracts; saved JSON preservation rules unchanged. |
+| TQ-05 | Proposal/open: creation/configuration DTOs for immutable APr/RPr and balancing-account setting/action contracts; device-timezone/calendar-date context for rate lookup and reporting, entry-order serialization (array order versus explicit Position), type-specific DTO/service selection for derived group/element models (no Kind enum), final DTO read/write split, list paging/filter fields, report result grouping/selection-save versus rename, one/both configuration scopes in response, settings admission during recovery, ID remapping in reports. | DTO-001–015/026; OP-005–042 | Blocks exposed shapes/editor contracts; saved JSON preservation rules unchanged. |
 | TQ-06 | Open: schema version and upgrade/download compatibility, migration failure behavior. | All PMs; snapshot operations | Blocks safe compatible local installation; no implementation schema inferred. |
 | TQ-07 | Proposal/open: domain error DTO/code taxonomy and local/transport mappings; canceled/absent result representation. | All OPs | Observable BRD errors fixed; exact response contracts incomplete. |
 | TQ-08 | Open: log folder per platform, seven-day clock/cleanup trigger, diagnostic secret redaction and latest report counts after full replacement. | DTO-024/025; OP-050–052 | Blocks diagnostic details; no new Share/Export feature. |
 | TQ-09 | Open: minimum supported client/runtime versions and verification workload; only propose capacity/latency limits if needed. | NFR-001–005/SC-001–004 | Runtime/deployment constraints unresolved; no new business target. |
 | TQ-10 | Proposal to review: explicit DeleteTemplate operation, self-merge rejection, exact preview input/output requiredness. | UC-006-04; OP-007/025/035/036 | These details are labeled proposals, not silent additions to BRD. Keep unsupported operations inactive until resolved. |
 | TQ-11 | Resolved 2026-09-27: int32 Position, consecutive 0..N-1 on saving edited collections; preserve accepted positions during whole-aggregate sync. Scope excludes catalog element/group ordering. | PM-007/009; DTO-009/011; OP-027/033 | Entry ordering resolved; DTO serialization remains TQ-05. |
-| TQ-12 | Partly resolved: per-entity ModificationType flags, Local-wins flagged Order independent of content priority, int32 separate zero-based catalog sequences, normalization and GUID tie-breaks. Merged per-member Order values sort ascending with GUID tie-break, then normalize; changed intended placement is accepted. Canonical lowercase GUID strings with ordinal ascending comparison are confirmed. Order-only changes are confirmed to require synchronization (ModificationType != None). Open: order transport and change-detection implementation. | PM-001/002/003/005/008; catalog DTOs and mutation/sync operations | Complete collection ordering protocol; review BRD alignment before approval. |
+| TQ-12 | Partly resolved: per-entity ModificationType flags, Local-wins flagged Order independent of content priority, int32 separate zero-based catalog sequences, normalization and GUID tie-breaks. Merged per-member Order values sort ascending with GUID tie-break, then normalize; changed intended placement is accepted. Canonical lowercase GUID strings with ordinal ascending comparison are confirmed. Order-only changes require synchronization, whether represented by uncaptured flags or a queued batch. Open: order transport and change-detection implementation. | PM-001/002/003/005/008; catalog DTOs and mutation/sync operations | Complete collection ordering protocol; review BRD alignment before approval. |
 | TQ-13 | Resolved 2026-09-28: favorites default false, roots permanently non-favorite, favorite changes synchronize as Content; filtering retains necessary ancestor paths and remains favorites-only inside favorite groups. | PM-001/002/003/005/008; catalog DTOs/mutations | Favorite behavior resolved; exact DTO shapes/operation selection remain TQ-05. |
 
 ## Complete Traceability Matrix
@@ -755,7 +775,7 @@ Each approved BRD ROLE, BC, BR, FR, NFR and SC receives one row. `Partial` means
 
 ## Development Handoff Readiness
 
-- **Not ready**. BRD 0.48 and TRD 0.44 are Draft; BRD 0.32 approval remains prior-baseline provenance only.
+- **Not ready**. BRD 0.49 and TRD 0.58 are Draft; BRD 0.32 approval remains prior-baseline provenance only.
 - Blockers: TQ-01–TQ-10 and TQ-12. TQ-11 and TQ-13 are resolved. Proposed schemas/directions/exposed fields, concurrency, authentication, sync wire protocol and transport/error definitions remain incomplete.
 - DTO/PM boundary: persistent models are not operation inputs/outputs. DTO-019 Changes and snapshot streaming are explicitly unresolved and cannot be treated as implemented contracts.
 - Traceability: all 79 applicable BRD IDs enumerated (2 roles, 12 capabilities, 44 rules, 12 functional, 5 nonfunctional, 4 success criteria). One non-system approval role; 78 Partial; zero Covered. This is drafting coverage, not a passing contract review or development handoff.
@@ -1140,6 +1160,130 @@ Each approved BRD ROLE, BC, BR, FR, NFR and SC receives one row. `Partial` means
 - Affected IDs: PM-005/011; UC-001-03; OP-003/023/042; balancing action; TQ-05.
 - TRD 0.43 becomes Draft 0.44; full-version approval remains outstanding.
 
+### 2026-09-29 — Initial rebalancing account name
+
+- Question: use "Rebalancing" as its initial name?
+- User answer: "yes".
+- Decision: the base-currency account created in the Account root during initialization has initial Name = Rebalancing.
+- TRD 0.44 becomes Draft 0.45. Full-version approval remains outstanding.
+
+### 2026-09-29 — Nullable balancing-account selection
+
+- Question: Next: I suggest nullable `BalancingAccountId`. When the selected account is deleted, clear it to `null`. The user selects a replacement in Settings. Agree?
+- User answer: agree. Is `BalancingAccountId` property of SystemConfig?
+- Source: requesting user in this clarification conversation.
+- Decision: nullable GUID selection belongs to synchronized SystemConfiguration; clear it on deletion of the selected account.
+- Affected IDs: PM-011; TQ-05.
+- TRD 0.45 becomes Draft 0.46; full-version approval remains outstanding.
+
+### 2026-09-29 — Base currency in SystemConfiguration
+
+- Question: Next: `BaseCurrencyId` placement is still marked as proposed. I recommend storing it in `SystemConfig`, alongside `APr`, `RPr`, and `BalancingAccountId`. Required GUID, selected during initialization, then immutable. Agree?
+- User answer: Obviously.
+- Source: requesting user in this clarification conversation.
+- Decision: confirm required GUID BaseCurrencyId in SystemConfiguration, selected during initialization and immutable afterward.
+- Affected ID: PM-011.
+- TRD 0.46 becomes Draft 0.47; full-version approval remains outstanding.
+
+### 2026-09-29 — Derive default account-name format
+
+- Question: Next: account-name format. We already store component order and separator. I suggest deriving `DefaultAccountName` from those settings instead of storing a duplicate format string. Agree?
+- User answer: Yes. Of course. We should store some kind of `DefaultAccountNameOrder` and `DefaultAccountNameSepatator`.
+- Source: requesting user in this clarification conversation.
+- Decision: store order and separator; derive the format. Normalize the spelling to DefaultAccountNameSeparator.
+- Affected IDs: PM-012; DTO-015 (proposed field names aligned); TQ-01.
+- TRD 0.47 becomes Draft 0.48; full-version approval remains outstanding.
+
+### 2026-09-29 — Account-name order enum
+
+- Question: Next: represent the order as an enum with six values, one for each permutation of Correspondent, Category, and Project?
+- User answer: agree
+- Source: requesting user in this clarification conversation.
+- Decision: DefaultAccountNameOrder is an enum with exactly six permutation values; retain the existing Correspondent,Category,Project default. Numeric assignments remain unresolved.
+- Affected ID: PM-012.
+- TRD 0.48 becomes Draft 0.49; full-version approval remains outstanding.
+
+### 2026-09-29 — DatasetKey naming and representation
+
+- Source: requesting user in this clarification conversation.
+- User direction: `SystemConfig.DatasetKey` as Guid.ToString(). Use Id as primary key, {Entity}Id as foreign key, and another suffix, preferably Key, for other identifiers.
+- Decision: record this explicit naming/type correction; DatasetKey is a string, not the SystemConfiguration primary key. Align corresponding dataset identifier names/types in proposed schemas. The earlier proposal to generate once, preserve across copies and reject mismatches is not treated as accepted by this correction.
+- Affected IDs: PM-011/013/014/016; DTO-017; TQ-02.
+- TRD 0.49 becomes Draft 0.50; full-version approval remains outstanding.
+
+### 2026-09-29 — DatasetKey lifecycle
+
+- Question: For its lifecycle: generate once during initialization, preserve across Master/Local copies, and reject sync between different dataset keys. Agree?
+- User answer: Agree.
+- Source: requesting user in this clarification conversation.
+- Decision: confirm DatasetKey initialization, preservation and mismatched-dataset rejection.
+- Affected IDs: PM-011; TQ-02.
+- TRD 0.50 becomes Draft 0.51; full-version approval remains outstanding.
+
+### 2026-09-29 — LocalCopyKey identity and lifecycle
+
+- Question: Next: identity of a Local database copy. I suggest `LocalCopyKey`, stored in `LocalConfig` and registered on Master: string generated with `Guid.NewGuid().ToString()`; created when registering a new Local copy; preserved when sync replaces its database; a fresh installation gets a new key. Agree?
+- User answer: agree
+- Source: requesting user in this clarification conversation.
+- Decision: confirm LocalCopyKey name, string representation, placement and lifecycle. Align corresponding proposed DTO fields without approving their complete shapes.
+- Affected IDs: PM-012/014/015; DTO-016/017/019/020/022/023.
+- TRD 0.51 becomes Draft 0.52; full-version approval remains outstanding.
+
+### 2026-09-29 — Master, Local and synchronization key names
+
+- Question: Next: use `SyncKey` for a synchronization operation, also generated with `Guid.NewGuid().ToString()`. Reuse it for retries of that operation; generate a new key for the next operation. This prevents a retry from applying changes twice. Agree?
+- User answer: Agree. But let's slightly rename: MasterDatasetKey, LocalDatasetKey, SyncKey.
+- Source: requesting user in this clarification conversation.
+- Decision: rename DatasetKey to MasterDatasetKey and LocalCopyKey to LocalDatasetKey, preserving their accepted placement and lifecycle; confirm SyncKey as a generated GUID string reused for retries of the same operation. Align active schema and prose references; retain historical clarification logs. Proposed DTO shapes and detailed durable sync protocol remain unresolved.
+- Affected IDs: PM-011–016; DTO-016–020/022–024; synchronization and recovery contracts.
+- TRD 0.52 becomes Draft 0.53; full-version approval remains outstanding.
+
+### 2026-09-30 — Global revision per accepted delta batch
+
+- User direction: use one incrementing merge revision for all entities changed in that merge; new A, edited B and deleted C all receive revision 16 when the previous merge revision was 15.
+- Question: I recommend one revision per newly accepted delta batch (`SyncKey`), rather than one per HTTP request containing several batches. Retrying an already accepted batch does not allocate another revision. Is that what you mean by each merge?
+- User answer: >>I recommend one revision per newly accepted delta batch — Totally agree
+- Source: requesting user in this clarification conversation.
+- Decision: replace per-entity increments with global per-batch revision allocation, preserving entity revision comparison and independent snapshot Version.
+- Affected IDs: shared tracking contract PM-001–006/008/010/011; PM-015; OP-043; TQ-04.
+- TRD 0.53 becomes Draft 0.54; full-version approval remains outstanding.
+
+### 2026-09-30 — Same-Local content-conflict priority
+
+- Question: Next: confirm your priority rule—if the entity current revision came from the same `LocalDatasetKey`, incoming content wins despite a revision mismatch; otherwise, use configured priority?
+- User answer: Confirm
+- Source: requesting user in this clarification conversation.
+- Decision: activate the same-Local exception using the source of the current entity revision in the accepted batch mapping; retain business validation and independent Order handling.
+- Affected IDs: shared tracking contract PM-001–006/008/010/011; PM-015; OP-043; TQ-04. BRD priority wording requires downstream alignment.
+- TRD 0.54 becomes Draft 0.55; full-version approval remains outstanding.
+
+### 2026-09-30 — Zero revision for submitted creation
+
+- Proposal: EditRevision null means new/never submitted; 0 means creation submitted with unknown Master revision; positive means a known Master revision. Atomically save the outgoing creation batch and set the local row to 0 before sending; preserve 0 after failure and use soft deletion until the outcome is known.
+- Question: Shall we adopt this?
+- User answer: Yes. Adopt
+- Source: requesting user in this clarification conversation, following the requirement that later batches edit or soft-delete an entity possibly present on Master.
+- Decision: adopt the three states and durable pre-send transition; preserve creation semantics in the original batch and process later edits/deletions in batch order.
+- Affected IDs: shared tracking contract PM-001–006/008/010/011; PM-015; OP-043; TQ-04.
+- TRD 0.55 becomes Draft 0.56; full-version approval remains outstanding.
+
+### 2026-09-30 — Clear captured flags when saving the batch
+
+- Question: Once changes are saved in a delta batch, clear their local ModificationType flags in the same local transaction. The saved batch remains pending until successful sync. Later edits set the flags again, so the next batch contains only newer changes. Sync is needed when queued batches exist or any modification flags are set. Agree?
+- User answer: Agree
+- Source: requesting user in this clarification conversation.
+- Decision: adopt atomic batch capture and captured-flag clearing; use queued batches OR uncaptured flags for pending-sync detection. Supersede clearing only after installation.
+- Affected IDs: shared tracking/order contracts; PM-015; OP-043; TQ-04/TQ-12.
+- TRD 0.56 becomes Draft 0.57; full-version approval remains outstanding.
+
+### 2026-09-30 — Unified snapshot Revision and field names
+
+- User direction: use EditRevision / DeleteRevision; define Revision in BRD or TRD and check assignment rules. EditRevision null (new) or 0 (unknown Master revision) is set on Local; >=1 is assigned by Master. DeleteRevision null (alive) is set on both, 0 (soft deletion) on Local, >=1 on Master.
+- Source: requesting user, following agreement that each accepted batch produces a snapshot.
+- Decision: define one snapshot Revision counter; rename DeleteVersion to DeleteRevision throughout active contracts. Clarify that Local can copy positive values from Master, that ordinary edits retain known revisions, and that accepted deletion sets both fields to the same Revision. Preserve historical logs.
+- Affected IDs: shared tracking and snapshot contracts; PM-001–016; OP-043–049.
+- TRD 0.57 becomes Draft 0.58; full-version approval remains outstanding.
+
 ## Approval
 
 - Current decision: **Not submitted**.
@@ -1147,5 +1291,5 @@ Each approved BRD ROLE, BC, BR, FR, NFR and SC receives one row. `Partial` means
 - Intended approver: requesting user.
 - Decision date: not applicable.
 - Scope: consolidated technical requirements, detailed use cases, proposed schemas and API/BFF contracts.
-- Next step: review this Draft 0.44 and settle technical choices in place. Do not reopen settled BRD questions. No TRD approval is inferred from the instruction to begin drafting.
+- Next step: review this Draft 0.58 and settle technical choices in place. Do not reopen settled BRD questions. No TRD approval is inferred from the instruction to begin drafting.
 

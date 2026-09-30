@@ -1,3 +1,4 @@
+using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
@@ -70,8 +71,8 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 			Name = "Old name",
 			Description = "Old description",
 			Order = 7,
-			Original = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-			Current = new DateTime(2021, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+			EditRevision = 1,
+			ModificationType = ModificationType.None
 		};
 		_parent.Children.Add(_group);
 		_parent.ParentId = _parent.Id;
@@ -99,15 +100,14 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 		_group.Elements.Add(element);
 		_group.IsFavorite = true;
 		Guid id = _group.Id;
-		DateTime original = _group.Original;
-		DateTime now = _scope.ServiceProvider.GetRequiredService<IDateTimeService>().UtcNow;
+		long? originalRevision = _group.EditRevision;
 
 		await _service.MoveToAnotherParent(id, _destination.Id);
 
 		_repository.Received(1).Update(Arg.Is<TGroup>(group =>
 			group.Id == id && group.ParentId == _destination.Id &&
 			ReferenceEquals(group.Parent, _destination) && group.Order == 1 &&
-			group.Current == now && group.Original == original && group.IsFavorite &&
+			group.ModificationType.HasFlag(ModificationType.Order) && group.EditRevision == originalRevision && group.IsFavorite &&
 			group.Name == "Old name" && group.Description == "Old description" && !group.IsDeleted));
 		Assert.That(_group.Children.Single(), Is.SameAs(child));
 		Assert.That(_group.Elements.Single(), Is.SameAs(element));
@@ -123,7 +123,7 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 	public async Task Move_SiblingsWithGaps_AppendsAfterMaximumIncludingDeleted()
 	{
 		TGroup sibling = new() { Id = Guid.NewGuid(), Name = "Sibling", Order = 3 };
-		TGroup deleted = new() { Id = Guid.NewGuid(), Name = "Deleted", Order = 9, IsDeleted = true };
+		TGroup deleted = new() { Id = Guid.NewGuid(), Name = "Deleted", Order = 9, DeleteRevision = 0 };
 		_destination.Children = [sibling, deleted];
 		await _service.MoveToAnotherParent(_group.Id, _destination.Id);
 		Assert.That(_group.Order, Is.EqualTo(10));
@@ -167,7 +167,7 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 	[TestCase(true)]
 	public void Move_MissingOrDeletedGroup_Rejects(bool deleted)
 	{
-		if (deleted) { _group.IsDeleted = true; }
+		if (deleted) { _group.DeleteRevision = 0; }
 		else { _repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns((TGroup?)null); }
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.MoveToAnotherParent(_group.Id, _destination.Id));
 		AssertUnchangedAndNoWrites();
@@ -225,7 +225,7 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 	[TestCase(true)]
 	public void Move_MissingOrDeletedDestination_Rejects(bool deleted)
 	{
-		if (deleted) { _destination.IsDeleted = true; }
+		if (deleted) { _destination.DeleteRevision = 0; }
 		else { _repository.GetWithChildrenByIdAsync(_destination.Id).Returns((TGroup?)null); }
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.MoveToAnotherParent(_group.Id, _destination.Id));
 		AssertUnchangedAndNoWrites();
@@ -235,7 +235,7 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 	[TestCase(true)]
 	public void Move_MissingOrDeletedAncestor_Rejects(bool deleted)
 	{
-		if (deleted) { _parent.IsDeleted = true; }
+		if (deleted) { _parent.DeleteRevision = 0; }
 		else { _repository.GetByIdAsync(_parent.Id, CancellationToken.None).Returns((TGroup?)null); }
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.MoveToAnotherParent(_group.Id, _destination.Id));
 		AssertUnchangedAndNoWrites();
@@ -245,7 +245,7 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 	[TestCase(true)]
 	public void Move_DuplicateName_RejectsIncludingDeletedSibling(bool deleted)
 	{
-		_destination.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = _group.Name, IsDeleted = deleted });
+		_destination.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = _group.Name, DeleteRevision = deleted ? 0 : null });
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.MoveToAnotherParent(_group.Id, _destination.Id));
 		AssertUnchangedAndNoWrites();
 	}
@@ -289,7 +289,7 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 		Assert.That(_group.ParentId, Is.EqualTo(_parent.Id));
 		Assert.That(_group.Parent, Is.SameAs(_parent));
 		Assert.That(_group.Order, Is.EqualTo(7));
-		Assert.That(_group.Current, Is.EqualTo(new DateTime(2021, 1, 1, 0, 0, 0, DateTimeKind.Utc)));
+		Assert.That(_group.ModificationType, Is.EqualTo(ModificationType.None));
 	}
 
 	private void AssertNoSave() =>

@@ -28,5 +28,5 @@ internal class AppUnitOfWork : UnitOfWork<AppDbContext>, IAppUnitOfWork
 	public ITransactionRepository TransactionRepo => ServiceProvider.Value.GetRequiredService<ITransactionRepository>();
 	public ITransactionEntryRepository TransactionEntryRepo => ServiceProvider.Value.GetRequiredService<ITransactionEntryRepository>();
 	public ISystemConfigRepository SystemConfigRepo => ServiceProvider.Value.GetRequiredService<ISystemConfigRepository>();
-	public IUserConfigRepository UserConfigRepo => ServiceProvider.Value.GetRequiredService<IUserConfigRepository>();
+	public ILocalConfigRepository LocalConfigRepo => ServiceProvider.Value.GetRequiredService<ILocalConfigRepository>();
 }

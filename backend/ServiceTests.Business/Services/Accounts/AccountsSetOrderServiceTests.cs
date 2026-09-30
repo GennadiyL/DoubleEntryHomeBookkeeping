@@ -1,3 +1,4 @@
+using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Impl;
@@ -49,7 +50,7 @@ public sealed class AccountsSetOrderServiceTests
 		{
 			Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
 			Name = "Existing", Description = "Original description", Order = 1,
-			Original = new DateTime(2020, 1, 1), Current = new DateTime(2020, 1, 2)
+			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(_element);
 		_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns(_element);
@@ -71,7 +72,7 @@ public sealed class AccountsSetOrderServiceTests
 		Account second = AddSibling(initial == 1 ? 2 : 1);
 		Account third = AddSibling(initial == 1 ? 3 : 2);
 		Account deleted = AddSibling(20);
-		deleted.IsDeleted = true;
+		deleted.DeleteRevision = 0;
 		List<Account> expected = [.. _group.Elements.Where(item => !item.IsDeleted).OrderBy(item => item.Order)];
 		Dictionary<Guid, int> previous = expected.ToDictionary(item => item.Id, item => item.Order);
 		expected.Remove(_element);
@@ -85,7 +86,7 @@ public sealed class AccountsSetOrderServiceTests
 			Assert.That(item.Order, Is.EqualTo(index + 1));
 			if (previous[item.Id] != item.Order)
 			{
-				Assert.That(item.Current, Is.EqualTo(Now));
+				Assert.That(item.ModificationType.HasFlag(ModificationType.Order), Is.True);
 				_repository.Received(1).Update(item);
 			}
 			else
@@ -94,10 +95,10 @@ public sealed class AccountsSetOrderServiceTests
 			}
 		}
 		Assert.That(deleted.Order, Is.EqualTo(20));
-		Assert.That(deleted.Current, Is.EqualTo(new DateTime(2020, 1, 2)));
+		Assert.That(deleted.ModificationType, Is.EqualTo(ModificationType.None));
 		_repository.DidNotReceive().Update(deleted);
 		Assert.That(_element.Name, Is.EqualTo("Existing"));
-		Assert.That(_element.Original, Is.EqualTo(new DateTime(2020, 1, 1)));
+		Assert.That(_element.EditRevision, Is.EqualTo(1));
 		Assert.That(_element.GroupId, Is.EqualTo(_group.Id));
 		await _unitOfWork.Received(1).SaveChangesAsync();
 	}
@@ -135,7 +136,7 @@ public sealed class AccountsSetOrderServiceTests
 	{
 		AddSibling(2);
 		await _service.SetOrder(_element.Id, 1);
-		Assert.That(_element.Current, Is.EqualTo(new DateTime(2020, 1, 2)));
+		Assert.That(_element.ModificationType, Is.EqualTo(ModificationType.None));
 		AssertNoWrites();
 	}
 
@@ -153,7 +154,7 @@ public sealed class AccountsSetOrderServiceTests
 	[TestCase(int.MaxValue)]
 	public void SetOrder_BeyondActiveCount_Rejects(int order)
 	{
-		AddSibling(2).IsDeleted = true;
+		AddSibling(2).DeleteRevision = 0;
 		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.SetOrder(_element.Id, order));
 		Assert.That(_element.Order, Is.EqualTo(1));
 		AssertNoWrites();
@@ -164,7 +165,7 @@ public sealed class AccountsSetOrderServiceTests
 	public void SetOrder_MissingActiveMember_Rejects(bool deleted)
 	{
 		_group.Elements = deleted
-			? [new Account { Id = _element.Id, Name = _element.Name, IsDeleted = true }]
+			? [new Account { Id = _element.Id, Name = _element.Name, DeleteRevision = 0 }]
 			: [];
 		Assert.ThrowsAsync<ElementNotFoundException>(async () => await _service.SetOrder(_element.Id, 1));
 		AssertNoWrites();
@@ -181,7 +182,7 @@ public sealed class AccountsSetOrderServiceTests
 	[Test]
 	public void SetOrder_DeletedGroup_Rejects()
 	{
-		_group.IsDeleted = true;
+		_group.DeleteRevision = 0;
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.SetOrder(_element.Id, 1));
 		AssertNoWrites();
 	}
@@ -200,7 +201,7 @@ public sealed class AccountsSetOrderServiceTests
 	{
 		if (deleted)
 		{
-			_element.IsDeleted = true;
+			_element.DeleteRevision = 0;
 		}
 		else
 		{
@@ -244,14 +245,13 @@ public sealed class AccountsSetOrderServiceTests
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetOrder(_element.Id, 1));
 	}
 
-	private DateTime Now => _scope.ServiceProvider.GetRequiredService<IDateTimeService>().UtcNow;
 
 	private Account AddSibling(int order)
 	{
 		Account sibling = new()
 		{
 			Id = Guid.NewGuid(), Name = "Sibling", GroupId = _group.Id, Group = _group, Order = order,
-			Original = new DateTime(2020, 1, 1), Current = new DateTime(2020, 1, 2)
+			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(sibling);
 		return sibling;

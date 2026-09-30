@@ -88,13 +88,12 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 	public async Task Add_ValidInput_PersistsFieldsAndReturnsGeneratedId()
 	{
 		Guid id = await _service.Add(_param);
-		DateTime now = _scope.ServiceProvider.GetRequiredService<IDateTimeService>().UtcNow;
-		Assert.That(id, Is.Not.EqualTo(Guid.Empty));
+				Assert.That(id, Is.Not.EqualTo(Guid.Empty));
 		_repository.Received(1).Add(Arg.Is<TElement>(element =>
 			element.Id == id && element.GroupId == _group.Id && ReferenceEquals(element.Group, _group) &&
 			element.Name == _param.Name && element.Description == _param.Description &&
 			element.IsFavorite && !element.IsDeleted && element.Order == 1 &&
-			element.Original == now && element.Current == now));
+			element.EditRevision == null && element.DeleteRevision == null));
 		await _groupRepository.Received(1).GetWithContentsByIdAsync(_group.Id);
 		await _unitOfWork.Received(1).SaveChangesAsync();
 		_groupRepository.DidNotReceive().Update(Arg.Any<TGroup>());
@@ -114,7 +113,7 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 	public async Task Add_ExistingElements_AppendsAfterMaximumIncludingDeleted()
 	{
 		TElement first = new() { Id = Guid.NewGuid(), Name = "First", Order = 2 };
-		TElement deleted = new() { Id = Guid.NewGuid(), Name = "Deleted", Order = 9, IsDeleted = true };
+		TElement deleted = new() { Id = Guid.NewGuid(), Name = "Deleted", Order = 9, DeleteRevision = 0 };
 		_group.Elements = [first, deleted];
 		await _service.Add(_param);
 		_repository.Received(1).Add(Arg.Is<TElement>(element => element.Order == 10));
@@ -127,7 +126,7 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 	[TestCase(true)]
 	public void Add_DuplicateElementName_RejectsIncludingDeleted(bool deleted)
 	{
-		_group.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = _param.Name, IsDeleted = deleted });
+		_group.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = _param.Name, DeleteRevision = deleted ? 0 : null });
 		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}
@@ -198,7 +197,7 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 	[Test]
 	public void Add_DeletedGroup_RejectsWithoutSaving()
 	{
-		_group.IsDeleted = true;
+		_group.DeleteRevision = 0;
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}

@@ -25,5 +25,5 @@ public class AppDbContext : DbContext
 	internal DbSet<Transaction> Transactions { get; set; } = null!;
 	internal DbSet<TransactionEntry> TransactionEntries { get; set; } = null!;
 	internal DbSet<SystemConfig> SystemConfigs { get; set; } = null!;
-	internal DbSet<UserConfig> UserConfigs { get; set; } = null!;
+	internal DbSet<LocalConfig> LocalConfigs { get; set; } = null!;
 }

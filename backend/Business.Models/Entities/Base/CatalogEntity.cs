@@ -1,5 +1,6 @@
 using Business.Core.Entities;
 using Business.Models.Entities.Interfaces;
+using Business.Models.Enums;
 
 namespace Business.Models.Entities.Base;
 
@@ -12,11 +13,12 @@ namespace Business.Models.Entities.Base;
 /// </summary>
 public abstract class CatalogEntity : BaseEntity, ICatalogEntity
 {
-	public DateTime Original { get; set; }
-	public DateTime Current { get; set; }
-	public bool IsDeleted { get; set; }
+	public long? EditRevision { get; set; }
+	public long? DeleteRevision { get; set; }
+	public ModificationType ModificationType { get; set; }
 	public string Name { get; set; } = string.Empty;
 	public string? Description { get; set; }
 	public int Order { get; set; }
 	public bool IsFavorite { get; set; }
+	public bool IsDeleted => DeleteRevision != null;
 }

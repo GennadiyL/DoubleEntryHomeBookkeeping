@@ -82,14 +82,13 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 	public async Task Add_ValidInput_PersistsGroupAndReturnsItsId()
 	{
 		Guid id = await _service.Add(_param);
-		DateTime now = _scope.ServiceProvider.GetRequiredService<IDateTimeService>().UtcNow;
 
 		_repository.Received(1).Add(Arg.Is<TGroup>(group =>
 			group.Id == id && group.Id != Guid.Empty &&
 			group.ParentId == _parent.Id && ReferenceEquals(group.Parent, _parent) &&
 			group.Name == _param.Name && group.Description == _param.Description &&
 			group.IsFavorite && !group.IsDeleted && group.Order == 1 &&
-			group.Original == now && group.Current == now));
+			group.EditRevision == null && group.DeleteRevision == null));
 		await _unitOfWork.Received(1).SaveChangesAsync();
 		await _repository.Received(1).GetWithChildrenByIdAsync(_parent.Id);
 	}
@@ -120,7 +119,7 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 	[TestCase(true)]
 	public void Add_DuplicateSibling_RejectsWithoutSaving(bool isDeleted)
 	{
-		_parent.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = _param.Name, IsDeleted = isDeleted });
+		_parent.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = _param.Name, DeleteRevision = isDeleted ? 0 : null });
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}
@@ -164,7 +163,7 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 	[Test]
 	public void Add_DeletedParent_RejectsWithoutSaving()
 	{
-		_parent.IsDeleted = true;
+		_parent.DeleteRevision = 0;
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}

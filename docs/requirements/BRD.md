@@ -3,7 +3,7 @@
 ## Document Control
 
 - Artifact: `docs/requirements/BRD.md`; consolidated BRD for core bookkeeping, synchronization and first use.
-- Status: **Draft**; version **0.48**, dated **2026-09-28**. Replaces legacy Draft 0.1 and its accumulated brainstorming updates.
+- Status: **Draft**; version **0.49**, dated **2026-09-29**. Replaces legacy Draft 0.1 and its accumulated brainstorming updates.
 - Business owner/approver: requesting user in this conversation (personal name not supplied).
 - Drafting authorization: requesting user, this conversation, 2026-09-27: **“Cool. Work with BRD”**, following the proposal to consolidate core bookkeeping, synchronization and first use with unresolved Administration details marked open.
 - Source status: discovery documents remain Draft. Individual user-confirmed decisions are evidence, not formal document approval. The current instruction authorizes this consolidated draft; no discovery approval is inferred. The requested consolidated scope/location takes precedence over the skill's default per-feature layout and preliminary approval workflow.
@@ -120,7 +120,7 @@ The measures below are proposed acceptance criteria for this personal prototype,
 | BR-001 | Version one has one owner per deployment and one master dataset. Each local copy belongs to that master; no direct device-to-device sync. Reinstalling the app registers a new local copy; the previous registration remains subject to the existing 90-day expiry rule. | S Ownership; F Decisions; U clarifications | BC-001, BC-002; FR-001, FR-002 |
 | BR-002 | Startup selects mode by local-copy existence only. Existing copy opens without internet/sign-in; absent copy requires online creating mode and completed setup before bookkeeping. Recovery/expiry exceptions still apply. | F Startup; S Recovery | BC-001, BC-002; FR-001, FR-002 |
 | BR-003 | Check master existence when setup opens. Keep Create disabled until absence confirmed, and disabled if master exists. Create takes login/password and base currency. Login and password are required fields only; no additional length, character or complexity rules in version one. Setup Open validates credentials and registers device before downloading existing business data. If initial setup fails, show the error and allow only user-initiated retries; no automatic setup retries. If master creation succeeded but the initial download failed, keep Create disabled and let the user select Open to retry downloading. No local copy means no bookkeeping access. | F Create/Open; U clarifications | BC-001, BC-002; FR-001, FR-002 |
-| BR-004 | Initial content: five required roots, selected base currency at rate 1, and one rebalancing account in the Account root group using base currency; no transactions. System configuration selects this account for balancing. Other currencies added later. Base currency is immutable. | F Initial content; C Currency | BC-001; FR-001 |
+| BR-004 | Initial content: five required roots, selected base currency at rate 1, and one account initially named Rebalancing in the Account root group using base currency; no transactions. System configuration selects this account for balancing. Other currencies added later. Base currency is immutable. | F Initial content; C Currency | BC-001; FR-001 |
 | BR-005 | Authenticate cloud access and prevent another owner's data access. Remember authorization after successful Create/Open so normal synchronization does not require entering login/password again; the authorization mechanism and credential-storage design remain later technical work. Each local copy contains complete business data. Configuration has two scopes: System settings synchronize with master; Local settings do not synchronize and survive local-copy replacement. Decimal display places belong to System. `DefaultAccountName`, sync trigger and conflict priority belong to Local. | S Ownership; U configuration correction 2026-09-27 | BC-002, BC-009–BC-011; FR-002, FR-009–FR-011 |
 
 ### Organization, accounts, currency and accounting
@@ -659,9 +659,16 @@ Legacy IDs remain permanent aliases or explicitly superseded references; never r
 - Affected IDs: BR-004/018/020; BC-001/005; FR-001.
 - BRD 0.47 becomes Draft 0.48; full-version approval remains outstanding.
 
+### 2026-09-29 — Initial rebalancing account name
+
+- Question: use "Rebalancing" as its initial name?
+- User answer: "yes".
+- Decision: the base-currency account created in the Account root during initialization has initial Name = Rebalancing.
+- BRD 0.48 becomes Draft 0.49. Full-version approval remains outstanding.
+
 ## Approval
 
-- Current version: **Draft 0.48**, not submitted for full-version approval. The date-rule and account-currency corrections are explicitly accepted; no full-document approval is inferred.
+- Current version: **Draft 0.49**, not submitted for full-version approval. The date-rule and account-currency corrections are explicitly accepted; no full-document approval is inferred.
 
 ### Prior approved baseline — provenance
 

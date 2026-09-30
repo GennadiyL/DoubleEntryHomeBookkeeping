@@ -9,4 +9,5 @@ public class TemplateEntry : BaseEntity
 	public required Account Account { get; set; }
 	public Guid AccountId { get; set; }
 	public decimal Amount { get; set; }
+	public int Position { get; set; }
 }

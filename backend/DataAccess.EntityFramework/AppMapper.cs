@@ -1,4 +1,5 @@
 using Business.Core.Entities;
+using LocalConfigEntity = Business.Models.Entities.Config.LocalConfig;
 using DataAccess.Core.Behaviors;
 using DataAccess.Core.Entities;
 using DataAccess.EntityFramework.Models;
@@ -18,7 +19,6 @@ using TemplateEntryEntity = Business.Models.Entities.TemplateEntry;
 using TemplateGroupEntity = Business.Models.Entities.TemplateGroup;
 using TransactionEntity = Business.Models.Entities.Transaction;
 using TransactionEntryEntity = Business.Models.Entities.TransactionEntry;
-using UserConfigEntity = Business.Models.Entities.Config.UserConfig;
 
 namespace DataAccess.EntityFramework;
 
@@ -100,7 +100,7 @@ internal class AppMapper : IMapper
 		TemplateGroupEntity value => Map(value),
 		TransactionEntity value => Map(value),
 		TransactionEntryEntity value => Map(value),
-		UserConfigEntity value => Map(value),
+		LocalConfigEntity value => Map(value),
 		_ => throw UnsupportedMapping(entity.GetType(), typeof(IDalEntity))
 	};
 
@@ -122,16 +122,16 @@ internal class AppMapper : IMapper
 		TemplateGroup value => Map(value, cache),
 		Transaction value => Map(value, cache),
 		TransactionEntry value => Map(value, cache),
-		UserConfig value => Map(value, cache),
+		LocalConfig value => Map(value, cache),
 		_ => throw UnsupportedMapping(entity.GetType(), typeof(IBaseEntity))
 	};
 
 	private static Account Map(AccountEntity value) => new()
 	{
 		Id = value.Id,
-		Original = value.Original,
-		Current = value.Current,
-		IsDeleted = value.IsDeleted,
+		EditRevision = value.EditRevision,
+		DeleteRevision = value.DeleteRevision,
+		ModificationType = value.ModificationType,
 		Name = value.Name,
 		Description = value.Description,
 		Order = value.Order,
@@ -153,9 +153,9 @@ internal class AppMapper : IMapper
 		AccountEntity mapped = new()
 		{
 			Id = value.Id,
-			Original = value.Original,
-			Current = value.Current,
-			IsDeleted = value.IsDeleted,
+			EditRevision = value.EditRevision,
+			DeleteRevision = value.DeleteRevision,
+			ModificationType = value.ModificationType,
 			Name = value.Name,
 			Description = value.Description,
 			Order = value.Order,
@@ -183,9 +183,9 @@ internal class AppMapper : IMapper
 	private static AccountGroup Map(AccountGroupEntity value) => new()
 	{
 		Id = value.Id,
-		Original = value.Original,
-		Current = value.Current,
-		IsDeleted = value.IsDeleted,
+		EditRevision = value.EditRevision,
+		DeleteRevision = value.DeleteRevision,
+		ModificationType = value.ModificationType,
 		Name = value.Name,
 		Description = value.Description,
 		Order = value.Order,
@@ -203,9 +203,9 @@ internal class AppMapper : IMapper
 		AccountGroupEntity mapped = new()
 		{
 			Id = value.Id,
-			Original = value.Original,
-			Current = value.Current,
-			IsDeleted = value.IsDeleted,
+			EditRevision = value.EditRevision,
+			DeleteRevision = value.DeleteRevision,
+			ModificationType = value.ModificationType,
 			Name = value.Name,
 			Description = value.Description,
 			Order = value.Order,
@@ -223,9 +223,9 @@ internal class AppMapper : IMapper
 	private static Category Map(CategoryEntity value) => new()
 	{
 		Id = value.Id,
-		Original = value.Original,
-		Current = value.Current,
-		IsDeleted = value.IsDeleted,
+		EditRevision = value.EditRevision,
+		DeleteRevision = value.DeleteRevision,
+		ModificationType = value.ModificationType,
 		Name = value.Name,
 		Description = value.Description,
 		Order = value.Order,
@@ -243,9 +243,9 @@ internal class AppMapper : IMapper
 		CategoryEntity mapped = new()
 		{
 			Id = value.Id,
-			Original = value.Original,
-			Current = value.Current,
-			IsDeleted = value.IsDeleted,
+			EditRevision = value.EditRevision,
+			DeleteRevision = value.DeleteRevision,
+			ModificationType = value.ModificationType,
 			Name = value.Name,
 			Description = value.Description,
 			Order = value.Order,
@@ -261,9 +261,9 @@ internal class AppMapper : IMapper
 	private static CategoryGroup Map(CategoryGroupEntity value) => new()
 	{
 		Id = value.Id,
-		Original = value.Original,
-		Current = value.Current,
-		IsDeleted = value.IsDeleted,
+		EditRevision = value.EditRevision,
+		DeleteRevision = value.DeleteRevision,
+		ModificationType = value.ModificationType,
 		Name = value.Name,
 		Description = value.Description,
 		Order = value.Order,
@@ -281,9 +281,9 @@ internal class AppMapper : IMapper
 		CategoryGroupEntity mapped = new()
 		{
 			Id = value.Id,
-			Original = value.Original,
-			Current = value.Current,
-			IsDeleted = value.IsDeleted,
+			EditRevision = value.EditRevision,
+			DeleteRevision = value.DeleteRevision,
+			ModificationType = value.ModificationType,
 			Name = value.Name,
 			Description = value.Description,
 			Order = value.Order,
@@ -301,9 +301,9 @@ internal class AppMapper : IMapper
 	private static Correspondent Map(CorrespondentEntity value) => new()
 	{
 		Id = value.Id,
-		Original = value.Original,
-		Current = value.Current,
-		IsDeleted = value.IsDeleted,
+		EditRevision = value.EditRevision,
+		DeleteRevision = value.DeleteRevision,
+		ModificationType = value.ModificationType,
 		Name = value.Name,
 		Description = value.Description,
 		Order = value.Order,
@@ -321,9 +321,9 @@ internal class AppMapper : IMapper
 		CorrespondentEntity mapped = new()
 		{
 			Id = value.Id,
-			Original = value.Original,
-			Current = value.Current,
-			IsDeleted = value.IsDeleted,
+			EditRevision = value.EditRevision,
+			DeleteRevision = value.DeleteRevision,
+			ModificationType = value.ModificationType,
 			Name = value.Name,
 			Description = value.Description,
 			Order = value.Order,
@@ -339,9 +339,9 @@ internal class AppMapper : IMapper
 	private static CorrespondentGroup Map(CorrespondentGroupEntity value) => new()
 	{
 		Id = value.Id,
-		Original = value.Original,
-		Current = value.Current,
-		IsDeleted = value.IsDeleted,
+		EditRevision = value.EditRevision,
+		DeleteRevision = value.DeleteRevision,
+		ModificationType = value.ModificationType,
 		Name = value.Name,
 		Description = value.Description,
 		Order = value.Order,
@@ -359,9 +359,9 @@ internal class AppMapper : IMapper
 		CorrespondentGroupEntity mapped = new()
 		{
 			Id = value.Id,
-			Original = value.Original,
-			Current = value.Current,
-			IsDeleted = value.IsDeleted,
+			EditRevision = value.EditRevision,
+			DeleteRevision = value.DeleteRevision,
+			ModificationType = value.ModificationType,
 			Name = value.Name,
 			Description = value.Description,
 			Order = value.Order,
@@ -379,10 +379,10 @@ internal class AppMapper : IMapper
 	private static Currency Map(CurrencyEntity value) => new()
 	{
 		Id = value.Id,
-		Original = value.Original,
-		Current = value.Current,
-		IsDeleted = value.IsDeleted,
-		IsoCode = value.IsoCode,
+		EditRevision = value.EditRevision,
+		DeleteRevision = value.DeleteRevision,
+		ModificationType = value.ModificationType,
+		Code = value.Code,
 		Symbol = value.Symbol,
 		Name = value.Name,
 		IsFavorite = value.IsFavorite,
@@ -399,10 +399,10 @@ internal class AppMapper : IMapper
 		CurrencyEntity mapped = new()
 		{
 			Id = value.Id,
-			Original = value.Original,
-			Current = value.Current,
-			IsDeleted = value.IsDeleted,
-			IsoCode = value.IsoCode,
+			EditRevision = value.EditRevision,
+			DeleteRevision = value.DeleteRevision,
+			ModificationType = value.ModificationType,
+			Code = value.Code,
 			Symbol = value.Symbol,
 			Name = value.Name,
 			IsFavorite = value.IsFavorite,
@@ -416,13 +416,13 @@ internal class AppMapper : IMapper
 	private static CurrencyRate Map(CurrencyRateEntity value) => new()
 	{
 		Id = value.Id,
-		Original = value.Original,
-		Current = value.Current,
-		IsDeleted = value.IsDeleted,
+		EditRevision = value.EditRevision,
+		DeleteRevision = value.DeleteRevision,
+		ModificationType = value.ModificationType,
 		CurrencyId = value.CurrencyId,
 		Date = value.Date,
 		Rate = value.Rate,
-		Comment = value.Comment
+		Description = value.Description
 	};
 
 	private static CurrencyRateEntity Map(CurrencyRate value, Dictionary<IDalEntity, IBaseEntity> cache)
@@ -435,13 +435,13 @@ internal class AppMapper : IMapper
 		CurrencyRateEntity mapped = new()
 		{
 			Id = value.Id,
-			Original = value.Original,
-			Current = value.Current,
-			IsDeleted = value.IsDeleted,
+			EditRevision = value.EditRevision,
+			DeleteRevision = value.DeleteRevision,
+			ModificationType = value.ModificationType,
 			CurrencyId = value.CurrencyId,
 			Date = value.Date,
 			Rate = value.Rate,
-			Comment = value.Comment,
+			Description = value.Description,
 			Currency = null!
 		};
 		cache.Add(value, mapped);
@@ -452,9 +452,9 @@ internal class AppMapper : IMapper
 	private static Project Map(ProjectEntity value) => new()
 	{
 		Id = value.Id,
-		Original = value.Original,
-		Current = value.Current,
-		IsDeleted = value.IsDeleted,
+		EditRevision = value.EditRevision,
+		DeleteRevision = value.DeleteRevision,
+		ModificationType = value.ModificationType,
 		Name = value.Name,
 		Description = value.Description,
 		Order = value.Order,
@@ -472,9 +472,9 @@ internal class AppMapper : IMapper
 		ProjectEntity mapped = new()
 		{
 			Id = value.Id,
-			Original = value.Original,
-			Current = value.Current,
-			IsDeleted = value.IsDeleted,
+			EditRevision = value.EditRevision,
+			DeleteRevision = value.DeleteRevision,
+			ModificationType = value.ModificationType,
 			Name = value.Name,
 			Description = value.Description,
 			Order = value.Order,
@@ -490,9 +490,9 @@ internal class AppMapper : IMapper
 	private static ProjectGroup Map(ProjectGroupEntity value) => new()
 	{
 		Id = value.Id,
-		Original = value.Original,
-		Current = value.Current,
-		IsDeleted = value.IsDeleted,
+		EditRevision = value.EditRevision,
+		DeleteRevision = value.DeleteRevision,
+		ModificationType = value.ModificationType,
 		Name = value.Name,
 		Description = value.Description,
 		Order = value.Order,
@@ -510,9 +510,9 @@ internal class AppMapper : IMapper
 		ProjectGroupEntity mapped = new()
 		{
 			Id = value.Id,
-			Original = value.Original,
-			Current = value.Current,
-			IsDeleted = value.IsDeleted,
+			EditRevision = value.EditRevision,
+			DeleteRevision = value.DeleteRevision,
+			ModificationType = value.ModificationType,
 			Name = value.Name,
 			Description = value.Description,
 			Order = value.Order,
@@ -530,9 +530,14 @@ internal class AppMapper : IMapper
 	private static SystemConfig Map(SystemConfigEntity value) => new()
 	{
 		Id = value.Id,
-		MainCurrencyIsoCode = value.MainCurrencyIsoCode,
-		MinDate = value.MinDate,
-		MaxDate = value.MaxDate
+		EditRevision = value.EditRevision,
+		DeleteRevision = value.DeleteRevision,
+		ModificationType = value.ModificationType,
+		BaseCurrencyId = value.BaseCurrencyId,
+		MasterDatasetKey = value.MasterDatasetKey,
+		BalancingAccountId = value.BalancingAccountId,
+		AmountPrecision = value.AmountPrecision,
+		RatePrecision = value.RatePrecision
 	};
 
 	private static SystemConfigEntity Map(SystemConfig value, Dictionary<IDalEntity, IBaseEntity> cache)
@@ -545,20 +550,27 @@ internal class AppMapper : IMapper
 		SystemConfigEntity mapped = new()
 		{
 			Id = value.Id,
-			MainCurrencyIsoCode = value.MainCurrencyIsoCode,
-			MinDate = value.MinDate,
-			MaxDate = value.MaxDate
+			EditRevision = value.EditRevision,
+			DeleteRevision = value.DeleteRevision,
+			ModificationType = value.ModificationType,
+			BaseCurrencyId = value.BaseCurrencyId,
+			MasterDatasetKey = value.MasterDatasetKey,
+			BalancingAccountId = value.BalancingAccountId,
+			AmountPrecision = value.AmountPrecision,
+			RatePrecision = value.RatePrecision
 		};
 		cache.Add(value, mapped);
+		mapped.BaseCurrency = value.BaseCurrency is null ? null! : Map(value.BaseCurrency, cache);
+		mapped.BalancingAccount = value.BalancingAccount is null ? null : Map(value.BalancingAccount, cache);
 		return mapped;
 	}
 
 	private static Template Map(TemplateEntity value) => new()
 	{
 		Id = value.Id,
-		Original = value.Original,
-		Current = value.Current,
-		IsDeleted = value.IsDeleted,
+		EditRevision = value.EditRevision,
+		DeleteRevision = value.DeleteRevision,
+		ModificationType = value.ModificationType,
 		Name = value.Name,
 		Description = value.Description,
 		Order = value.Order,
@@ -576,9 +588,9 @@ internal class AppMapper : IMapper
 		TemplateEntity mapped = new()
 		{
 			Id = value.Id,
-			Original = value.Original,
-			Current = value.Current,
-			IsDeleted = value.IsDeleted,
+			EditRevision = value.EditRevision,
+			DeleteRevision = value.DeleteRevision,
+			ModificationType = value.ModificationType,
 			Name = value.Name,
 			Description = value.Description,
 			Order = value.Order,
@@ -595,6 +607,7 @@ internal class AppMapper : IMapper
 	private static TemplateEntry Map(TemplateEntryEntity value) => new()
 	{
 		Id = value.Id,
+		Position = value.Position,
 		TemplateId = value.TemplateId,
 		AccountId = value.AccountId,
 		Amount = value.Amount
@@ -610,6 +623,7 @@ internal class AppMapper : IMapper
 		TemplateEntryEntity mapped = new()
 		{
 			Id = value.Id,
+			Position = value.Position,
 			TemplateId = value.TemplateId,
 			AccountId = value.AccountId,
 			Amount = value.Amount,
@@ -625,9 +639,9 @@ internal class AppMapper : IMapper
 	private static TemplateGroup Map(TemplateGroupEntity value) => new()
 	{
 		Id = value.Id,
-		Original = value.Original,
-		Current = value.Current,
-		IsDeleted = value.IsDeleted,
+		EditRevision = value.EditRevision,
+		DeleteRevision = value.DeleteRevision,
+		ModificationType = value.ModificationType,
 		Name = value.Name,
 		Description = value.Description,
 		Order = value.Order,
@@ -645,9 +659,9 @@ internal class AppMapper : IMapper
 		TemplateGroupEntity mapped = new()
 		{
 			Id = value.Id,
-			Original = value.Original,
-			Current = value.Current,
-			IsDeleted = value.IsDeleted,
+			EditRevision = value.EditRevision,
+			DeleteRevision = value.DeleteRevision,
+			ModificationType = value.ModificationType,
 			Name = value.Name,
 			Description = value.Description,
 			Order = value.Order,
@@ -665,12 +679,12 @@ internal class AppMapper : IMapper
 	private static Transaction Map(TransactionEntity value) => new()
 	{
 		Id = value.Id,
-		Original = value.Original,
-		Current = value.Current,
-		IsDeleted = value.IsDeleted,
+		EditRevision = value.EditRevision,
+		DeleteRevision = value.DeleteRevision,
+		ModificationType = value.ModificationType,
 		DateTime = value.DateTime,
 		State = value.State,
-		Comment = value.Comment
+		Description = value.Description
 	};
 
 	private static TransactionEntity Map(Transaction value, Dictionary<IDalEntity, IBaseEntity> cache)
@@ -683,12 +697,12 @@ internal class AppMapper : IMapper
 		TransactionEntity mapped = new()
 		{
 			Id = value.Id,
-			Original = value.Original,
-			Current = value.Current,
-			IsDeleted = value.IsDeleted,
+			EditRevision = value.EditRevision,
+			DeleteRevision = value.DeleteRevision,
+			ModificationType = value.ModificationType,
 			DateTime = value.DateTime,
 			State = value.State,
-			Comment = value.Comment
+			Description = value.Description
 		};
 		cache.Add(value, mapped);
 		mapped.Entries = [.. value.Entries.Select(item => Map(item, cache))];
@@ -698,6 +712,7 @@ internal class AppMapper : IMapper
 	private static TransactionEntry Map(TransactionEntryEntity value) => new()
 	{
 		Id = value.Id,
+		Position = value.Position,
 		TransactionId = value.TransactionId,
 		AccountId = value.AccountId,
 		Amount = value.Amount,
@@ -714,6 +729,7 @@ internal class AppMapper : IMapper
 		TransactionEntryEntity mapped = new()
 		{
 			Id = value.Id,
+			Position = value.Position,
 			TransactionId = value.TransactionId,
 			AccountId = value.AccountId,
 			Amount = value.Amount,
@@ -727,21 +743,27 @@ internal class AppMapper : IMapper
 		return mapped;
 	}
 
-	private static UserConfig Map(UserConfigEntity value) => new()
+	private static LocalConfig Map(LocalConfigEntity value) => new()
 	{
-		Id = value.Id
+		Id = value.Id,
+		LocalDatasetKey = value.LocalDatasetKey,
+		DefaultAccountNameOrder = value.DefaultAccountNameOrder,
+		DefaultAccountNameSeparator = value.DefaultAccountNameSeparator
 	};
 
-	private static UserConfigEntity Map(UserConfig value, Dictionary<IDalEntity, IBaseEntity> cache)
+	private static LocalConfigEntity Map(LocalConfig value, Dictionary<IDalEntity, IBaseEntity> cache)
 	{
 		if (cache.TryGetValue(value, out IBaseEntity? existing))
 		{
-			return (UserConfigEntity)existing;
+			return (LocalConfigEntity)existing;
 		}
 
-		UserConfigEntity mapped = new()
+		LocalConfigEntity mapped = new()
 		{
-			Id = value.Id
+			Id = value.Id,
+			LocalDatasetKey = value.LocalDatasetKey,
+			DefaultAccountNameOrder = value.DefaultAccountNameOrder,
+			DefaultAccountNameSeparator = value.DefaultAccountNameSeparator
 		};
 		cache.Add(value, mapped);
 		return mapped;

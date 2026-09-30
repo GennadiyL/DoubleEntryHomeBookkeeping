@@ -1,3 +1,4 @@
+using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
@@ -77,14 +78,14 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 		{
 			Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
 			Name = "Existing", Description = "Original description", Order = 1,
-			Original = new DateTime(2020, 1, 1), Current = new DateTime(2020, 1, 2)
+			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(_element);
 		_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns(_element);
 		_destination = new TElement
 		{
 			Id = Guid.NewGuid(), Name = "Destination", GroupId = Guid.NewGuid(), Order = 4,
-			Original = new DateTime(2020, 2, 1), Current = new DateTime(2020, 2, 2)
+			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_repository.GetByIdAsync(_destination.Id, CancellationToken.None).Returns(_destination);
 		_accounts = [];
@@ -122,8 +123,8 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 				Assert.That(account.CategoryId, Is.EqualTo(_element is Category ? _destination.Id : _element.Id));
 				Assert.That(account.CorrespondentId, Is.EqualTo(_element is Correspondent ? _destination.Id : _element.Id));
 				Assert.That(account.ProjectId, Is.EqualTo(_element is Project ? _destination.Id : _element.Id));
-				Assert.That(account.Current, Is.EqualTo(Now));
-				Assert.That(account.Original, Is.EqualTo(new DateTime(2020, 3, 1)));
+				Assert.That(account.ModificationType.HasFlag(ModificationType.Content), Is.True);
+				Assert.That(account.EditRevision, Is.EqualTo(1));
 				Assert.That(account.Name, Is.EqualTo("Account"));
 				Assert.That(account.Description, Is.EqualTo("Description"));
 				Assert.That(account.Order, Is.EqualTo(6));
@@ -154,8 +155,8 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 		Assert.That(active.IsDeleted, Is.False);
 		Assert.That(deleted.IsDeleted, Is.True);
 		Assert.That(_element.IsDeleted, Is.True);
-		Assert.That(_element.Current, Is.EqualTo(Now));
-		Assert.That(_element.Original, Is.EqualTo(new DateTime(2020, 1, 1)));
+		Assert.That(_element.DeleteRevision, Is.EqualTo(0));
+		Assert.That(_element.EditRevision, Is.EqualTo(1));
 		Assert.That(_element.Name, Is.EqualTo("Existing"));
 		Assert.That(_element.GroupId, Is.EqualTo(_group.Id));
 		Assert.That(_element.Order, Is.EqualTo(1));
@@ -204,7 +205,7 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 		Assert.That(unrelated.CategoryId, Is.EqualTo(categoryId));
 		Assert.That(unrelated.CorrespondentId, Is.EqualTo(correspondentId));
 		Assert.That(unrelated.ProjectId, Is.EqualTo(projectId));
-		Assert.That(unrelated.Current, Is.EqualTo(new DateTime(2020, 3, 2)));
+		Assert.That(unrelated.ModificationType, Is.EqualTo(ModificationType.None));
 		_accountRepository.DidNotReceive().Update(Arg.Any<Account>());
 	}
 
@@ -235,7 +236,7 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 		TElement target = destination ? _destination : _element;
 		if (deleted)
 		{
-			target.IsDeleted = true;
+			target.DeleteRevision = 0;
 		}
 		else
 		{
@@ -310,16 +311,16 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 	private Account AddAccount(bool deleted)
 	{
 		AccountGroup group = new() { Id = Guid.NewGuid() };
-		Currency currency = new() { Id = Guid.NewGuid(), IsoCode = "USD", Symbol = "$", Name = "US Dollar" };
+		Currency currency = new() { Id = Guid.NewGuid(), Code = "USD", Symbol = "$", Name = "US Dollar" };
 		Account account = new()
 		{
 			Id = Guid.NewGuid(), Name = "Account", Description = "Description", Order = 6,
-			IsFavorite = true, IsDeleted = deleted, GroupId = group.Id, Group = group,
+			IsFavorite = true, DeleteRevision = deleted ? 0 : null, GroupId = group.Id, Group = group,
 			CurrencyId = currency.Id, Currency = currency,
 			CategoryId = _element.Id, Category = new Category { Id = _element.Id },
 			CorrespondentId = _element.Id, Correspondent = new Correspondent { Id = _element.Id },
 			ProjectId = _element.Id, Project = new Project { Id = _element.Id },
-			Original = new DateTime(2020, 3, 1), Current = new DateTime(2020, 3, 2)
+			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_accounts.Add(account);
 		return account;
@@ -330,11 +331,10 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 		Assert.That(_destination.IsDeleted, Is.False);
 		Assert.That(_destination.Name, Is.EqualTo("Destination"));
 		Assert.That(_destination.Order, Is.EqualTo(4));
-		Assert.That(_destination.Current, Is.EqualTo(new DateTime(2020, 2, 2)));
-		Assert.That(_destination.Original, Is.EqualTo(new DateTime(2020, 2, 1)));
+		Assert.That(_destination.ModificationType, Is.EqualTo(ModificationType.None));
+		Assert.That(_destination.EditRevision, Is.EqualTo(1));
 	}
 
-	private DateTime Now => _scope.ServiceProvider.GetRequiredService<IDateTimeService>().UtcNow;
 
 	private void AssertNoWrites()
 	{

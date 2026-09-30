@@ -37,7 +37,7 @@ public sealed class AccountsAddServiceTests
 		_unitOfWork = Substitute.For<IAppUnitOfWork>();
 		_currencyRepository = Substitute.For<ICurrencyRepository>();
 		_unitOfWork.CurrencyRepo.Returns(_currencyRepository);
-		_currency = new Currency { Id = Guid.NewGuid(), IsoCode = "USD", Symbol = "$", Name = "US Dollar" };
+		_currency = new Currency { Id = Guid.NewGuid(), Code = "USD", Symbol = "$", Name = "US Dollar" };
 		_currencyRepository.GetByIdAsync(_currency.Id, CancellationToken.None).Returns(_currency);
 		_unitOfWork.AccountRepo.Returns(_repository);
 		_unitOfWork.AccountGroupRepo.Returns(_groupRepository);
@@ -72,13 +72,12 @@ public sealed class AccountsAddServiceTests
 	public async Task Add_ValidInput_PersistsFieldsAndReturnsGeneratedId()
 	{
 		Guid id = await _service.Add(_param);
-		DateTime now = _scope.ServiceProvider.GetRequiredService<IDateTimeService>().UtcNow;
-		Assert.That(id, Is.Not.EqualTo(Guid.Empty));
+				Assert.That(id, Is.Not.EqualTo(Guid.Empty));
 		_repository.Received(1).Add(Arg.Is<Account>(element =>
 			element.Id == id && element.GroupId == _group.Id && ReferenceEquals(element.Group, _group) &&
 			element.Name == _param.Name && element.Description == _param.Description &&
 			element.IsFavorite && !element.IsDeleted && element.Order == 1 &&
-			element.Original == now && element.Current == now));
+			element.EditRevision == null && element.DeleteRevision == null));
 		await _groupRepository.Received(1).GetWithContentsByIdAsync(_group.Id);
 		await _unitOfWork.Received(1).SaveChangesAsync();
 		_groupRepository.DidNotReceive().Update(Arg.Any<AccountGroup>());
@@ -98,7 +97,7 @@ public sealed class AccountsAddServiceTests
 	public async Task Add_ExistingElements_AppendsAfterMaximumIncludingDeleted()
 	{
 		Account first = new() { Id = Guid.NewGuid(), Name = "First", Order = 2 };
-		Account deleted = new() { Id = Guid.NewGuid(), Name = "Deleted", Order = 9, IsDeleted = true };
+		Account deleted = new() { Id = Guid.NewGuid(), Name = "Deleted", Order = 9, DeleteRevision = 0 };
 		_group.Elements = [first, deleted];
 		await _service.Add(_param);
 		_repository.Received(1).Add(Arg.Is<Account>(element => element.Order == 10));
@@ -111,7 +110,7 @@ public sealed class AccountsAddServiceTests
 	[TestCase(true)]
 	public void Add_DuplicateElementName_RejectsIncludingDeleted(bool deleted)
 	{
-		_group.Elements.Add(new Account { Id = Guid.NewGuid(), Name = _param.Name, IsDeleted = deleted });
+		_group.Elements.Add(new Account { Id = Guid.NewGuid(), Name = _param.Name, DeleteRevision = deleted ? 0 : null });
 		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}
@@ -182,7 +181,7 @@ public sealed class AccountsAddServiceTests
 	[Test]
 	public void Add_DeletedGroup_RejectsWithoutSaving()
 	{
-		_group.IsDeleted = true;
+		_group.DeleteRevision = 0;
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}
@@ -233,7 +232,7 @@ public sealed class AccountsAddServiceTests
 	{
 		if (deleted)
 		{
-			_currency.IsDeleted = true;
+			_currency.DeleteRevision = 0;
 		}
 		else
 		{
@@ -280,17 +279,17 @@ public sealed class AccountsAddServiceTests
 			case "Category":
 				_param.CategoryId = id;
 				_unitOfWork.CategoryRepo.GetByIdAsync(id, CancellationToken.None)
-					.Returns(state == "deleted" ? new Category { Id = id, IsDeleted = true } : null);
+					.Returns(state == "deleted" ? new Category { Id = id, DeleteRevision = 0 } : null);
 				break;
 			case "Correspondent":
 				_param.CorrespondentId = id;
 				_unitOfWork.CorrespondentRepo.GetByIdAsync(id, CancellationToken.None)
-					.Returns(state == "deleted" ? new Correspondent { Id = id, IsDeleted = true } : null);
+					.Returns(state == "deleted" ? new Correspondent { Id = id, DeleteRevision = 0 } : null);
 				break;
 			case "Project":
 				_param.ProjectId = id;
 				_unitOfWork.ProjectRepo.GetByIdAsync(id, CancellationToken.None)
-					.Returns(state == "deleted" ? new Project { Id = id, IsDeleted = true } : null);
+					.Returns(state == "deleted" ? new Project { Id = id, DeleteRevision = 0 } : null);
 				break;
 		}
 		if (state == "empty")

@@ -1,3 +1,4 @@
+using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
@@ -72,7 +73,7 @@ public sealed class ElementsDeleteServiceTests<TGroup, TElement, TService, TRepo
 		{
 			Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
 			Name = "Existing", Description = "Original description", Order = 1,
-			Original = new DateTime(2020, 1, 1), Current = new DateTime(2020, 1, 2)
+			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(_element);
 		_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns(_element);
@@ -92,8 +93,8 @@ public sealed class ElementsDeleteServiceTests<TGroup, TElement, TService, TRepo
 		Assert.Multiple(() =>
 		{
 			Assert.That(_element.IsDeleted, Is.True);
-			Assert.That(_element.Current, Is.EqualTo(Now));
-			Assert.That(_element.Original, Is.EqualTo(new DateTime(2020, 1, 1)));
+			Assert.That(_element.DeleteRevision, Is.EqualTo(0));
+			Assert.That(_element.EditRevision, Is.EqualTo(1));
 			Assert.That(_element.Name, Is.EqualTo("Existing"));
 			Assert.That(_element.Description, Is.EqualTo("Original description"));
 			Assert.That(_element.GroupId, Is.EqualTo(_group.Id));
@@ -119,7 +120,7 @@ public sealed class ElementsDeleteServiceTests<TGroup, TElement, TService, TRepo
 	{
 		if (deleted)
 		{
-			_element.IsDeleted = true;
+			_element.DeleteRevision = 0;
 		}
 		else
 		{
@@ -155,7 +156,6 @@ public sealed class ElementsDeleteServiceTests<TGroup, TElement, TService, TRepo
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Delete(_element.Id));
 	}
 
-	private DateTime Now => _scope.ServiceProvider.GetRequiredService<IDateTimeService>().UtcNow;
 
 	private void AssertNoWrites()
 	{

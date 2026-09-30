@@ -1,3 +1,4 @@
+using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
@@ -71,8 +72,8 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 			Name = "Old name",
 			Description = "Old description",
 			Order = 7,
-			Original = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-			Current = new DateTime(2021, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+			EditRevision = 1,
+			ModificationType = ModificationType.None
 		};
 		_parent.Children.Add(_group);
 		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
@@ -96,16 +97,15 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 	public async Task Update_ValidInput_ChangesEditableFieldsAndPreservesIdentityAndOrder()
 	{
 		Guid id = _group.Id;
-		DateTime original = _group.Original;
-		DateTime now = _scope.ServiceProvider.GetRequiredService<IDateTimeService>().UtcNow;
-		await _service.Update(id, _param);
+		long? originalRevision = _group.EditRevision;
+				await _service.Update(id, _param);
 
 		_repository.Received(1).Update(Arg.Is<TGroup>(group =>
 			group.Id == id && group.ParentId == _parent.Id &&
 			ReferenceEquals(group.Parent, _parent) &&
 			group.Name == _param.Name && group.Description == _param.Description &&
 			group.IsFavorite && !group.IsDeleted && group.Order == 7 &&
-			group.Original == original && group.Current == now));
+			group.EditRevision == originalRevision && group.ModificationType.HasFlag(ModificationType.Content)));
 		_repository.DidNotReceive().Add(Arg.Any<TGroup>());
 		await _unitOfWork.Received(1).SaveChangesAsync();
 		await _repository.Received(1).GetByIdAsync(id, CancellationToken.None);
@@ -125,7 +125,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 	[TestCase(true)]
 	public void Update_DuplicateSibling_RejectsWithoutChangingGroup(bool isDeleted)
 	{
-		_parent.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = _param.Name, IsDeleted = isDeleted });
+		_parent.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = _param.Name, DeleteRevision = isDeleted ? 0 : null });
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Update(_group.Id, _param));
 		AssertNoChangesOrWrites();
 	}
@@ -177,7 +177,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 	[Test]
 	public void Update_DeletedGroup_RejectsWithoutSaving()
 	{
-		_group.IsDeleted = true;
+		_group.DeleteRevision = 0;
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Update(_group.Id, _param));
 		AssertNoChangesOrWrites();
 	}
@@ -202,7 +202,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 	[Test]
 	public void Update_DeletedParent_RejectsWithoutSaving()
 	{
-		_parent.IsDeleted = true;
+		_parent.DeleteRevision = 0;
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Update(_group.Id, _param));
 		AssertNoChangesOrWrites();
 	}
@@ -267,7 +267,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 			Assert.That(_group.Description, Is.EqualTo("Old description"));
 			Assert.That(_group.IsFavorite, Is.False);
 			Assert.That(_group.Order, Is.EqualTo(7));
-			Assert.That(_group.Current, Is.EqualTo(new DateTime(2021, 1, 1, 0, 0, 0, DateTimeKind.Utc)));
+			Assert.That(_group.ModificationType, Is.EqualTo(ModificationType.None));
 		});
 	}
 }

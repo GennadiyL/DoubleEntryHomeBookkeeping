@@ -1,3 +1,4 @@
+using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
@@ -73,7 +74,7 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 		{
 			Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
 			Name = "Existing", Description = "Original description", Order = 1,
-			Original = new DateTime(2020, 1, 1), Current = new DateTime(2020, 1, 2)
+			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(_element);
 		_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns(_element);
@@ -106,8 +107,8 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 			Assert.That(_element.Order, Is.EqualTo(1));
 			Assert.That(_element.GroupId, Is.EqualTo(_group.Id));
 			Assert.That(_element.Group, Is.SameAs(_group));
-			Assert.That(_element.Original, Is.EqualTo(new DateTime(2020, 1, 1)));
-			Assert.That(_element.Current, Is.EqualTo(Now));
+			Assert.That(_element.EditRevision, Is.EqualTo(1));
+			Assert.That(_element.ModificationType.HasFlag(ModificationType.Content), Is.True);
 		});
 		_repository.Received(1).Update(_element);
 		await _unitOfWork.Received(1).SaveChangesAsync();
@@ -129,7 +130,7 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 	[TestCase(true)]
 	public void Update_DuplicateName_RejectsIncludingDeleted(bool deleted)
 	{
-		_group.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = _param.Name, IsDeleted = deleted });
+		_group.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = _param.Name, DeleteRevision = deleted ? 0 : null });
 		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, _param));
 		Assert.That(_element.Name, Is.EqualTo("Existing"));
 		AssertNoWrites();
@@ -192,7 +193,7 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 	[Test]
 	public void Update_DeletedGroup_Rejects()
 	{
-		_group.IsDeleted = true;
+		_group.DeleteRevision = 0;
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Update(_element.Id, _param));
 		AssertNoWrites();
 	}
@@ -211,7 +212,7 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 	{
 		if (deleted)
 		{
-			_element.IsDeleted = true;
+			_element.DeleteRevision = 0;
 		}
 		else
 		{
@@ -255,7 +256,6 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Update(_element.Id, _param));
 	}
 
-	private DateTime Now => _scope.ServiceProvider.GetRequiredService<IDateTimeService>().UtcNow;
 
 	private void AssertNoWrites()
 	{

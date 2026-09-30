@@ -1,5 +1,6 @@
 using Business.Contracts.Params;
 using Business.Contracts.Services;
+using Business.Contracts.Utils.Merging;
 using Business.Contracts.Utils.Ordering;
 using Business.Models.Entities;
 using Business.Models.Entities.Interfaces;
@@ -51,7 +52,6 @@ internal sealed class AccountService : IAccountService
 		}
 
 		(Currency currency, Category? category, Correspondent? correspondent, Project? project) = await ResolveReferences(param);
-		DateTime now = _sharedContext.DateTimeService.UtcNow;
 		Account element = new()
 		{
 			Id = Guid.NewGuid(),
@@ -69,8 +69,6 @@ internal sealed class AccountService : IAccountService
 			GroupId = group.Id,
 			Group = group,
 			Order = maxOrder + 1,
-			Original = now,
-			Current = now
 		};
 		_repository.Add(element);
 		await _unitOfWork.SaveChangesAsync();
@@ -120,7 +118,7 @@ internal sealed class AccountService : IAccountService
 		element.Name = param.Name;
 		element.Description = param.Description;
 		element.IsFavorite = param.IsFavorite;
-		element.Current = _sharedContext.DateTimeService.UtcNow;
+		element.SetEditedContent();
 		_repository.Update(element);
 		await _unitOfWork.SaveChangesAsync();
 	}
@@ -128,8 +126,7 @@ internal sealed class AccountService : IAccountService
 	public async Task Delete(Guid entityId)
 	{
 		Account element = await GetActiveElement(entityId);
-		element.IsDeleted = true;
-		element.Current = _sharedContext.DateTimeService.UtcNow;
+		element.SetDeleted();
 		_repository.Update(element);
 		await _unitOfWork.SaveChangesAsync();
 	}
@@ -169,10 +166,9 @@ internal sealed class AccountService : IAccountService
 			return;
 		}
 
-		DateTime now = _sharedContext.DateTimeService.UtcNow;
 		foreach (Account sibling in changed)
 		{
-			sibling.Current = now;
+			sibling.SetEditedOrder();
 			_repository.Update(sibling);
 		}
 		await _unitOfWork.SaveChangesAsync();
@@ -187,7 +183,7 @@ internal sealed class AccountService : IAccountService
 		}
 
 		element.IsFavorite = isFavorite;
-		element.Current = _sharedContext.DateTimeService.UtcNow;
+		element.SetEditedContent();
 		_repository.Update(element);
 		await _unitOfWork.SaveChangesAsync();
 	}
@@ -223,7 +219,7 @@ internal sealed class AccountService : IAccountService
 		element.GroupId = destination.Id;
 		element.Group = destination;
 		element.Order = maxOrder + 1;
-		element.Current = _sharedContext.DateTimeService.UtcNow;
+		element.SetEditedContent();
 		_repository.Update(element);
 		await _unitOfWork.SaveChangesAsync();
 	}
@@ -244,7 +240,6 @@ internal sealed class AccountService : IAccountService
 
 		ICollection<TransactionEntry> transactionEntries = await _unitOfWork.TransactionEntryRepo.GetByAccountIdAsync(fromElementId);
 		ICollection<TemplateEntry> templateEntries = await _unitOfWork.TemplateEntryRepo.GetByAccountIdAsync(fromElementId);
-		DateTime now = _sharedContext.DateTimeService.UtcNow;
 		foreach (TransactionEntry entry in transactionEntries)
 		{
 			entry.AccountId = destination.Id;
@@ -258,8 +253,7 @@ internal sealed class AccountService : IAccountService
 			_unitOfWork.TemplateEntryRepo.Update(entry);
 		}
 
-		source.IsDeleted = true;
-		source.Current = now;
+		source.SetDeleted();
 		_repository.Update(source);
 		await _unitOfWork.SaveChangesAsync();
 	}
@@ -282,7 +276,7 @@ internal sealed class AccountService : IAccountService
 	private async Task<(Currency Currency, Category? Category, Correspondent? Correspondent, Project? Project)> ResolveReferences(AccountParam param)
 	{
 		Currency? currency = await _unitOfWork.CurrencyRepo.GetByIdAsync(param.CurrencyId, CancellationToken.None);
-		if (currency is null || currency.IsDeleted)
+		if (currency is null || currency.IsDeleted())
 		{
 			throw new CurrencyNotFoundException("The currency does not exist or is deleted.");
 		}
@@ -306,7 +300,7 @@ internal sealed class AccountService : IAccountService
 		}
 
 		T? entity = await repository.GetByIdAsync(id.Value, CancellationToken.None);
-		if (entity is null || entity.IsDeleted)
+		if (entity is null || entity.IsDeleted())
 		{
 			throw new ElementNotFoundException("The referenced element does not exist or is deleted.");
 		}

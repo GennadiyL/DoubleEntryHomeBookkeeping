@@ -34,6 +34,8 @@ internal class TemplateEntry : IDalEntity
 		set;
 	}
 
+	public int Position { get; set; }
+
 	public decimal Amount
 	{
 		get;

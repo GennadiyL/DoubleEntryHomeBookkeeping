@@ -1,3 +1,4 @@
+using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
@@ -69,8 +70,8 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 			Name = "Old name",
 			Description = "Old description",
 			Order = 7,
-			Original = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-			Current = new DateTime(2021, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+			EditRevision = 1,
+			ModificationType = ModificationType.None
 		};
 		_parent.Children =
 		[
@@ -107,36 +108,35 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 		expected.RemoveAt(from - 1);
 		expected.Insert(to - 1, target.Id);
 		Dictionary<Guid, int> originalOrders = siblings.ToDictionary(child => child.Id, child => child.Order);
-		DateTime before = new(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+		long before = 1;
 		foreach (TGroup sibling in siblings)
 		{
 			sibling.Name = "Keep name";
 			sibling.Description = "Keep description";
 			sibling.IsFavorite = true;
-			sibling.Original = before;
-			sibling.Current = before;
+			sibling.EditRevision = before;
+			sibling.ModificationType = ModificationType.None;
 		}
 
 		await _service.SetOrder(target.Id, to);
 
 		Assert.That(siblings.OrderBy(child => child.Order).Select(child => child.Id), Is.EqualTo(expected));
 		Assert.That(siblings.OrderBy(child => child.Order).Select(child => child.Order), Is.EqualTo((int[])[1, 2, 3]));
-		DateTime now = _scope.ServiceProvider.GetRequiredService<IDateTimeService>().UtcNow;
-		foreach (TGroup sibling in siblings)
+				foreach (TGroup sibling in siblings)
 		{
 			if (sibling.Order == originalOrders[sibling.Id])
 			{
 				_repository.DidNotReceive().Update(Arg.Is<TGroup>(value => value.Id == sibling.Id));
-				Assert.That(sibling.Current, Is.EqualTo(before));
+				Assert.That(sibling.ModificationType, Is.EqualTo(ModificationType.None));
 			}
 			else
 			{
 				_repository.Received(1).Update(sibling);
-				Assert.That(sibling.Current, Is.EqualTo(now));
+				Assert.That(sibling.ModificationType.HasFlag(ModificationType.Order), Is.True);
 			}
 			Assert.Multiple(() =>
 			{
-				Assert.That(sibling.Original, Is.EqualTo(before));
+				Assert.That(sibling.EditRevision, Is.EqualTo(before));
 				Assert.That(sibling.ParentId, Is.EqualTo(_parent.Id));
 				Assert.That(sibling.Name, Is.EqualTo("Keep name"));
 				Assert.That(sibling.Description, Is.EqualTo("Keep description"));
@@ -190,14 +190,14 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 	[Test]
 	public async Task SetOrder_DeletedSiblingAndSelfParentRoot_AreExcluded()
 	{
-		TGroup deleted = new() { Id = Guid.NewGuid(), Order = 2, IsDeleted = true };
+		TGroup deleted = new() { Id = Guid.NewGuid(), Order = 2, DeleteRevision = 0 };
 		_parent.Children.Add(deleted);
 		_parent.ParentId = _parent.Id;
 		_parent.Children.Add(_parent);
 		await _service.SetOrder(_group.Id, 3);
 		Assert.That(_parent.Order, Is.Zero);
 		Assert.That(deleted.Order, Is.EqualTo(2));
-		Assert.That(deleted.Current, Is.EqualTo(default(DateTime)));
+		Assert.That(deleted.ModificationType, Is.EqualTo(ModificationType.None));
 		_repository.DidNotReceive().Update(_parent);
 		_repository.DidNotReceive().Update(deleted);
 	}
@@ -234,7 +234,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 	[TestCase(int.MaxValue)]
 	public void SetOrder_PositionExceedsActiveCount_RejectsWithoutChanges(int order)
 	{
-		_parent.Children.Add(new TGroup { Id = Guid.NewGuid(), IsDeleted = true });
+		_parent.Children.Add(new TGroup { Id = Guid.NewGuid(), DeleteRevision = 0 });
 		_parent.Children.Add(_parent);
 		int[] before = [.. _parent.Children.Select(child => child.Order)];
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.SetOrder(_group.Id, order));
@@ -253,7 +253,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 	[Test]
 	public void SetOrder_DeletedGroup_RejectsWithoutSaving()
 	{
-		_group.IsDeleted = true;
+		_group.DeleteRevision = 0;
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.SetOrder(_group.Id, 1));
 		AssertNoWrites();
 	}
@@ -277,7 +277,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 	[Test]
 	public void SetOrder_DeletedParent_RejectsWithoutSaving()
 	{
-		_parent.IsDeleted = true;
+		_parent.DeleteRevision = 0;
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.SetOrder(_group.Id, 1));
 		AssertNoWrites();
 	}
@@ -289,7 +289,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 		TGroup target = _parent.Children.Single(child => child.Id == _group.Id);
 		if (deleted)
 		{
-			target.IsDeleted = true;
+			target.DeleteRevision = 0;
 		}
 		else
 		{

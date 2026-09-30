@@ -9,6 +9,6 @@ public class TransactionEntry : BaseEntity
 	public required Account Account { get; set; }
 	public Guid AccountId { get; set; }
 	public decimal Amount { get; set; }
+	public int Position { get; set; }
 	public decimal Rate { get; set; }
-	public decimal BaseAmount => Amount * Rate;
 }

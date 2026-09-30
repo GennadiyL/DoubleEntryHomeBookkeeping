@@ -1,3 +1,4 @@
+using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Impl;
@@ -38,7 +39,7 @@ public sealed class AccountsUpdateServiceTests
 		_unitOfWork = Substitute.For<IAppUnitOfWork>();
 		_currencyRepository = Substitute.For<ICurrencyRepository>();
 		_unitOfWork.CurrencyRepo.Returns(_currencyRepository);
-		_currency = new Currency { Id = Guid.NewGuid(), IsoCode = "USD", Symbol = "$", Name = "US Dollar" };
+		_currency = new Currency { Id = Guid.NewGuid(), Code = "USD", Symbol = "$", Name = "US Dollar" };
 		_currencyRepository.GetByIdAsync(_currency.Id, CancellationToken.None).Returns(_currency);
 		_unitOfWork.AccountRepo.Returns(_repository);
 		_unitOfWork.AccountGroupRepo.Returns(_groupRepository);
@@ -57,7 +58,7 @@ public sealed class AccountsUpdateServiceTests
 			Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
 			CurrencyId = _currency.Id, Currency = _currency,
 			Name = "Existing", Description = "Original description", Order = 1,
-			Original = new DateTime(2020, 1, 1), Current = new DateTime(2020, 1, 2)
+			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(_element);
 		_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns(_element);
@@ -91,8 +92,8 @@ public sealed class AccountsUpdateServiceTests
 			Assert.That(_element.Order, Is.EqualTo(1));
 			Assert.That(_element.GroupId, Is.EqualTo(_group.Id));
 			Assert.That(_element.Group, Is.SameAs(_group));
-			Assert.That(_element.Original, Is.EqualTo(new DateTime(2020, 1, 1)));
-			Assert.That(_element.Current, Is.EqualTo(Now));
+			Assert.That(_element.EditRevision, Is.EqualTo(1));
+			Assert.That(_element.ModificationType.HasFlag(ModificationType.Content), Is.True);
 		});
 		_repository.Received(1).Update(_element);
 		await _unitOfWork.Received(1).SaveChangesAsync();
@@ -114,7 +115,7 @@ public sealed class AccountsUpdateServiceTests
 	[TestCase(true)]
 	public void Update_DuplicateName_RejectsIncludingDeleted(bool deleted)
 	{
-		_group.Elements.Add(new Account { Id = Guid.NewGuid(), Name = _param.Name, IsDeleted = deleted });
+		_group.Elements.Add(new Account { Id = Guid.NewGuid(), Name = _param.Name, DeleteRevision = deleted ? 0 : null });
 		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, _param));
 		Assert.That(_element.Name, Is.EqualTo("Existing"));
 		AssertNoWrites();
@@ -177,7 +178,7 @@ public sealed class AccountsUpdateServiceTests
 	[Test]
 	public void Update_DeletedGroup_Rejects()
 	{
-		_group.IsDeleted = true;
+		_group.DeleteRevision = 0;
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Update(_element.Id, _param));
 		AssertNoWrites();
 	}
@@ -196,7 +197,7 @@ public sealed class AccountsUpdateServiceTests
 	{
 		if (deleted)
 		{
-			_element.IsDeleted = true;
+			_element.DeleteRevision = 0;
 		}
 		else
 		{
@@ -240,7 +241,6 @@ public sealed class AccountsUpdateServiceTests
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Update(_element.Id, _param));
 	}
 
-	private DateTime Now => _scope.ServiceProvider.GetRequiredService<IDateTimeService>().UtcNow;
 
 	[Test]
 	public void Update_EmptyCurrency_Rejects()
@@ -256,7 +256,7 @@ public sealed class AccountsUpdateServiceTests
 	{
 		if (deleted)
 		{
-			_currency.IsDeleted = true;
+			_currency.DeleteRevision = 0;
 		}
 		else
 		{
@@ -303,17 +303,17 @@ public sealed class AccountsUpdateServiceTests
 			case "Category":
 				_param.CategoryId = id;
 				_unitOfWork.CategoryRepo.GetByIdAsync(id, CancellationToken.None)
-					.Returns(state == "deleted" ? new Category { Id = id, IsDeleted = true } : null);
+					.Returns(state == "deleted" ? new Category { Id = id, DeleteRevision = 0 } : null);
 				break;
 			case "Correspondent":
 				_param.CorrespondentId = id;
 				_unitOfWork.CorrespondentRepo.GetByIdAsync(id, CancellationToken.None)
-					.Returns(state == "deleted" ? new Correspondent { Id = id, IsDeleted = true } : null);
+					.Returns(state == "deleted" ? new Correspondent { Id = id, DeleteRevision = 0 } : null);
 				break;
 			case "Project":
 				_param.ProjectId = id;
 				_unitOfWork.ProjectRepo.GetByIdAsync(id, CancellationToken.None)
-					.Returns(state == "deleted" ? new Project { Id = id, IsDeleted = true } : null);
+					.Returns(state == "deleted" ? new Project { Id = id, DeleteRevision = 0 } : null);
 				break;
 		}
 		if (state == "empty")
@@ -381,7 +381,7 @@ public sealed class AccountsUpdateServiceTests
 		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, _param));
 		Assert.That(_element.CurrencyId, Is.EqualTo(_currency.Id));
 		Assert.That(_element.Name, Is.EqualTo("Existing"));
-		Assert.That(_element.Current, Is.EqualTo(new DateTime(2020, 1, 2)));
+		Assert.That(_element.ModificationType, Is.EqualTo(ModificationType.None));
 		AssertNoWrites();
 	}
 
@@ -408,7 +408,7 @@ public sealed class AccountsUpdateServiceTests
 
 	private Currency NewCurrency()
 	{
-		Currency currency = new() { Id = Guid.NewGuid(), IsoCode = "EUR", Symbol = "€", Name = "Euro" };
+		Currency currency = new() { Id = Guid.NewGuid(), Code = "EUR", Symbol = "€", Name = "Euro" };
 		_param.CurrencyId = currency.Id;
 		_currencyRepository.GetByIdAsync(currency.Id, CancellationToken.None).Returns(currency);
 		return currency;

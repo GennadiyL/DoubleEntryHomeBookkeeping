@@ -1,3 +1,4 @@
+using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
@@ -97,8 +98,8 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 			Name = "Old name",
 			Description = "Old description",
 			Order = 7,
-			Original = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-			Current = new DateTime(2021, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+			EditRevision = 1,
+			ModificationType = ModificationType.None
 		};
 		_parent.Children.Add(_group);
 		_parent.ParentId = _parent.Id;
@@ -122,15 +123,14 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 	public async Task Combine_MovesAllContentsAndSoftDeletesSourceInOneSave()
 	{
 		TGroup child = new() { Id = Guid.NewGuid(), ParentId = _group.Id, Parent = _group,
-			Name = "Child", Description = "Keep", IsFavorite = true, Original = _group.Original };
+			Name = "Child", Description = "Keep", IsFavorite = true, EditRevision = _group.EditRevision };
 		TGroup grandchild = new() { Id = Guid.NewGuid(), ParentId = child.Id };
 		child.Children.Add(grandchild);
 		TElement element = new() { Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
-			Name = "Element", Description = "Keep element", IsFavorite = true, Original = _group.Original };
+			Name = "Element", Description = "Keep element", IsFavorite = true, EditRevision = _group.EditRevision };
 		_group.Children.Add(child);
 		_group.Elements.Add(element);
-		DateTime original = _group.Original;
-		DateTime now = _scope.ServiceProvider.GetRequiredService<IDateTimeService>().UtcNow;
+		long? originalRevision = _group.EditRevision;
 
 		await _service.CombineGroups(_destination.Id, _group.Id);
 
@@ -144,10 +144,10 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 			Assert.That(element.Name, Is.EqualTo("Element"));
 			Assert.That(child.Order, Is.EqualTo(1));
 			Assert.That(element.Order, Is.EqualTo(1));
-			Assert.That(child.Current, Is.EqualTo(now));
-			Assert.That(element.Current, Is.EqualTo(now));
-			Assert.That(child.Original, Is.EqualTo(original));
-			Assert.That(element.Original, Is.EqualTo(original));
+			Assert.That(child.ModificationType.HasFlag(ModificationType.Order), Is.True);
+			Assert.That(element.ModificationType.HasFlag(ModificationType.Order), Is.True);
+			Assert.That(child.EditRevision, Is.EqualTo(originalRevision));
+			Assert.That(element.EditRevision, Is.EqualTo(originalRevision));
 			Assert.That(child.Description, Is.EqualTo("Keep"));
 			Assert.That(element.Description, Is.EqualTo("Keep element"));
 			Assert.That(child.IsFavorite && element.IsFavorite, Is.True);
@@ -156,8 +156,8 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 			Assert.That(_group.Children, Is.Empty);
 			Assert.That(_group.Elements, Is.Empty);
 			Assert.That(_group.IsDeleted, Is.True);
-			Assert.That(_group.Current, Is.EqualTo(now));
-			Assert.That(_group.Original, Is.EqualTo(original));
+			Assert.That(_group.DeleteRevision, Is.EqualTo(0));
+			Assert.That(_group.EditRevision, Is.EqualTo(originalRevision));
 			Assert.That(_group.ParentId, Is.EqualTo(_parent.Id));
 			Assert.That(_destination.Children, Does.Contain(child));
 			Assert.That(_destination.Elements, Does.Contain(element));
@@ -173,10 +173,10 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 	[TestCase(true)]
 	public async Task Combine_Conflicts_AppendSuffixUntilUniqueIncludingDeletedNames(bool deleted)
 	{
-		_destination.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = "Same", IsDeleted = deleted });
-		_destination.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = "Same_1", IsDeleted = deleted });
-		_destination.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = "Same", IsDeleted = deleted });
-		_destination.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = "Same_1", IsDeleted = deleted });
+		_destination.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = "Same", DeleteRevision = deleted ? 0 : null });
+		_destination.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = "Same_1", DeleteRevision = deleted ? 0 : null });
+		_destination.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = "Same", DeleteRevision = deleted ? 0 : null });
+		_destination.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = "Same_1", DeleteRevision = deleted ? 0 : null });
 		TGroup child = new() { Id = Guid.NewGuid(), Name = "Same" };
 		TElement element = new() { Id = Guid.NewGuid(), Name = "Same" };
 		_group.Children.Add(child);
@@ -221,8 +221,8 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 	[Test]
 	public async Task Combine_DeletedContents_AreMovedWithoutRestoringThem()
 	{
-		TGroup child = new() { Id = Guid.NewGuid(), Name = "Deleted child", IsDeleted = true };
-		TElement element = new() { Id = Guid.NewGuid(), Name = "Deleted element", IsDeleted = true };
+		TGroup child = new() { Id = Guid.NewGuid(), Name = "Deleted child", DeleteRevision = 0 };
+		TElement element = new() { Id = Guid.NewGuid(), Name = "Deleted element", DeleteRevision = 0 };
 		_group.Children.Add(child);
 		_group.Elements.Add(element);
 		await _service.CombineGroups(_destination.Id, _group.Id);
@@ -303,7 +303,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 	public void Combine_MissingOrDeletedGroup_Rejects(bool source, bool deleted)
 	{
 		TGroup target = source ? _group : _destination;
-		if (deleted) { target.IsDeleted = true; }
+		if (deleted) { target.DeleteRevision = 0; }
 		else { _repository.GetWithContentsByIdAsync(target.Id).Returns((TGroup?)null); }
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.CombineGroups(_destination.Id, _group.Id));
 		AssertNoWrites();
@@ -349,7 +349,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 	[TestCase(true)]
 	public void Combine_MissingOrDeletedAncestor_Rejects(bool deleted)
 	{
-		if (deleted) { _parent.IsDeleted = true; }
+		if (deleted) { _parent.DeleteRevision = 0; }
 		else { _repository.GetByIdAsync(_parent.Id, CancellationToken.None).Returns((TGroup?)null); }
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.CombineGroups(_destination.Id, _group.Id));
 		AssertNoWrites();

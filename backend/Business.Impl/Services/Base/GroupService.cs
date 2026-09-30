@@ -1,5 +1,6 @@
 using Business.Contracts.Params;
 using Business.Contracts.Services.Base;
+using Business.Contracts.Utils.Merging;
 using Business.Contracts.Utils.Ordering;
 using Business.Models.Entities.Base;
 using Business.Models.Entities.Interfaces;
@@ -54,7 +55,6 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 			throw new InvalidGroupException("The parent group has no available ordering position.");
 		}
 
-		DateTime now = _sharedContext.DateTimeService.UtcNow;
 		TGroup group = new()
 		{
 			Id = Guid.NewGuid(),
@@ -64,8 +64,6 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 			ParentId = parent.Id,
 			Parent = parent,
 			Order = maxOrder + 1,
-			Original = now,
-			Current = now
 		};
 		_repository.Add(group);
 		await _unitOfWork.SaveChangesAsync();
@@ -107,7 +105,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		group.Name = param.Name;
 		group.Description = param.Description;
 		group.IsFavorite = param.IsFavorite;
-		group.Current = _sharedContext.DateTimeService.UtcNow;
+		group.SetEditedContent();
 		_repository.Update(group);
 		await _unitOfWork.SaveChangesAsync();
 	}
@@ -130,13 +128,12 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		}
 
 		if (group.Children.Any(child => !child.IsDeleted) ||
-			group.Elements.Any(element => !element.IsDeleted))
+			group.Elements.Any(element => !element.IsDeleted()))
 		{
 			throw new InvalidGroupException("A group with active child groups or elements cannot be deleted.");
 		}
 
-		group.IsDeleted = true;
-		group.Current = _sharedContext.DateTimeService.UtcNow;
+		group.SetDeleted();
 		_repository.Update(group);
 		await _unitOfWork.SaveChangesAsync();
 	}
@@ -187,10 +184,9 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 			return;
 		}
 
-		DateTime now = _sharedContext.DateTimeService.UtcNow;
 		foreach (TGroup sibling in changed)
 		{
-			sibling.Current = now;
+			sibling.SetEditedOrder();
 			_repository.Update(sibling);
 		}
 		await _unitOfWork.SaveChangesAsync();
@@ -214,7 +210,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		}
 
 		group.IsFavorite = isFavorite;
-		group.Current = _sharedContext.DateTimeService.UtcNow;
+		group.SetEditedContent();
 		_repository.Update(group);
 		await _unitOfWork.SaveChangesAsync();
 	}
@@ -289,7 +285,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		group.ParentId = destination.Id;
 		group.Parent = destination;
 		group.Order = maxOrder + 1;
-		group.Current = _sharedContext.DateTimeService.UtcNow;
+		group.SetEditedOrder();
 		_repository.Update(group);
 		await _unitOfWork.SaveChangesAsync();
 	}
@@ -350,14 +346,13 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 
 		HashSet<string> groupNames = new(destinationChildren.Select(child => child.Name), StringComparer.Ordinal);
 		HashSet<string> elementNames = new(destination.Elements.Select(element => element.Name), StringComparer.Ordinal);
-		DateTime now = _sharedContext.DateTimeService.UtcNow;
 		foreach (TGroup child in children)
 		{
 			child.Name = GetUniqueCombinedName(child.Name, groupNames);
 			child.ParentId = destination.Id;
 			child.Parent = destination;
 			child.Order = ++groupOrder;
-			child.Current = now;
+			child.SetEditedOrder();
 			_repository.Update(child);
 			destination.Children.Add(child);
 		}
@@ -367,15 +362,14 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 			element.GroupId = destination.Id;
 			element.Group = destination;
 			element.Order = ++elementOrder;
-			element.Current = now;
+			element.SetEditedOrder();
 			_elementRepository.Update(element);
 			destination.Elements.Add(element);
 		}
 
 		source.Children.Clear();
 		source.Elements.Clear();
-		source.IsDeleted = true;
-		source.Current = now;
+		source.SetDeleted();
 		_repository.Update(source);
 		await _unitOfWork.SaveChangesAsync();
 	}

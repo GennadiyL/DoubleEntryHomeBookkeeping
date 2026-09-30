@@ -11,19 +11,19 @@ internal class Transaction : IDalEntity
 		set;
 	}
 
-	public DateTime Original
+	public long? EditRevision
 	{
 		get;
 		set;
 	}
 
-	public DateTime Current
+	public long? DeleteRevision
 	{
 		get;
 		set;
 	}
 
-	public bool IsDeleted
+	public ModificationType ModificationType
 	{
 		get;
 		set;
@@ -41,7 +41,7 @@ internal class Transaction : IDalEntity
 		set;
 	}
 
-	public string? Comment
+	public string? Description
 	{
 		get;
 		set;

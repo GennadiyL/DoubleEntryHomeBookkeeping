@@ -1,3 +1,4 @@
+using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
@@ -69,8 +70,8 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 			Name = "Old name",
 			Description = "Old description",
 			Order = 7,
-			Original = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-			Current = new DateTime(2021, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+			EditRevision = 1,
+			ModificationType = ModificationType.None
 		};
 		_parent.Children.Add(_group);
 		_repository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
@@ -87,15 +88,14 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 	public async Task Delete_EmptyGroup_SoftDeletesAndPreservesOtherFields()
 	{
 		Guid id = _group.Id;
-		DateTime original = _group.Original;
-		DateTime now = _scope.ServiceProvider.GetRequiredService<IDateTimeService>().UtcNow;
-		_group.IsFavorite = true;
+		long? originalRevision = _group.EditRevision;
+				_group.IsFavorite = true;
 
 		await _service.Delete(id);
 
 		_repository.Received(1).Update(Arg.Is<TGroup>(group =>
-			group.Id == id && group.IsDeleted && group.Current == now &&
-			group.Original == original && group.ParentId == _parent.Id &&
+			group.Id == id && group.IsDeleted && group.DeleteRevision == 0 &&
+			group.EditRevision == originalRevision && group.ParentId == _parent.Id &&
 			ReferenceEquals(group.Parent, _parent) && group.Order == 7 &&
 			group.Name == "Old name" && group.Description == "Old description" && group.IsFavorite));
 		await _repository.Received(1).GetWithContentsByIdAsync(id);
@@ -122,7 +122,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 	[Test]
 	public void Delete_AlreadyDeleted_RejectsWithoutSaving()
 	{
-		_group.IsDeleted = true;
+		_group.DeleteRevision = 0;
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Delete(_group.Id));
 		AssertNoWrites(true);
 	}
@@ -164,14 +164,14 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 	[Test]
 	public async Task Delete_OnlyDeletedContents_AllowsDeletionWithoutChangingContents()
 	{
-		TGroup child = new() { Id = Guid.NewGuid(), IsDeleted = true };
-		TElement element = new() { Id = Guid.NewGuid(), IsDeleted = true };
+		TGroup child = new() { Id = Guid.NewGuid(), DeleteRevision = 0 };
+		TElement element = new() { Id = Guid.NewGuid(), DeleteRevision = 0 };
 		_group.Children.Add(child);
 		_group.Elements.Add(element);
 		await _service.Delete(_group.Id);
 		_repository.Received(1).Update(_group);
-		Assert.That(child.Current, Is.EqualTo(default(DateTime)));
-		Assert.That(element.Current, Is.EqualTo(default(DateTime)));
+		Assert.That(child.ModificationType, Is.EqualTo(ModificationType.None));
+		Assert.That(element.ModificationType, Is.EqualTo(ModificationType.None));
 		await _unitOfWork.Received(1).SaveChangesAsync();
 	}
 
@@ -179,10 +179,10 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 	[TestCase(true)]
 	public void Delete_MixedContents_RejectsWhenAnyContentIsActive(bool activeElement)
 	{
-		_group.Children.Add(new TGroup { Id = Guid.NewGuid(), IsDeleted = true });
-		_group.Children.Add(new TGroup { Id = Guid.NewGuid(), IsDeleted = activeElement });
-		_group.Elements.Add(new TElement { Id = Guid.NewGuid(), IsDeleted = true });
-		_group.Elements.Add(new TElement { Id = Guid.NewGuid(), IsDeleted = !activeElement });
+		_group.Children.Add(new TGroup { Id = Guid.NewGuid(), DeleteRevision = 0 });
+		_group.Children.Add(new TGroup { Id = Guid.NewGuid(), DeleteRevision = activeElement ? 0 : null });
+		_group.Elements.Add(new TElement { Id = Guid.NewGuid(), DeleteRevision = 0 });
+		_group.Elements.Add(new TElement { Id = Guid.NewGuid(), DeleteRevision = activeElement ? null : 0 });
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Delete(_group.Id));
 		AssertNoWrites(false);
 	}
@@ -209,6 +209,6 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
 			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
 		Assert.That(_group.IsDeleted, Is.EqualTo(expectedDeleted));
-		Assert.That(_group.Current, Is.EqualTo(new DateTime(2021, 1, 1, 0, 0, 0, DateTimeKind.Utc)));
+		Assert.That(_group.ModificationType, Is.EqualTo(ModificationType.None));
 	}
 }

@@ -1,8 +1,10 @@
+using Business.Models.Enums;
+
 namespace Business.Models.Entities.Interfaces;
 
 public interface ITrackedEntity
 {
-	public DateTime Original { get; set; }
-	public DateTime Current { get; set; }
-	public bool IsDeleted { get; set; }
+	public long? EditRevision { get; set; }
+	public long? DeleteRevision { get; set; }
+	public ModificationType ModificationType { get; set; }
 }
