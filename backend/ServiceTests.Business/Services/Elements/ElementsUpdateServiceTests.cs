@@ -2,6 +2,7 @@ using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
+using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;
 using Business.Models.Entities.Base;
@@ -103,7 +104,7 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 			Assert.That(_element.Name, Is.EqualTo(_param.Name));
 			Assert.That(_element.Description, Is.EqualTo(_param.Description));
 			Assert.That(_element.IsFavorite, Is.True);
-			Assert.That(_element.IsDeleted, Is.False);
+			Assert.That(_element.IsDeleted(), Is.False);
 			Assert.That(_element.Order, Is.EqualTo(1));
 			Assert.That(_element.GroupId, Is.EqualTo(_group.Id));
 			Assert.That(_element.Group, Is.SameAs(_group));

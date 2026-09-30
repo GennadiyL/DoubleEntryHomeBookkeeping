@@ -2,6 +2,7 @@ using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
+using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;
 using Business.Models.Entities.Base;
@@ -152,9 +153,9 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 			}
 			_accountRepository.Received(1).Update(account);
 		}
-		Assert.That(active.IsDeleted, Is.False);
-		Assert.That(deleted.IsDeleted, Is.True);
-		Assert.That(_element.IsDeleted, Is.True);
+		Assert.That(active.IsDeleted(), Is.False);
+		Assert.That(deleted.IsDeleted(), Is.True);
+		Assert.That(_element.IsDeleted(), Is.True);
 		Assert.That(_element.DeleteRevision, Is.EqualTo(0));
 		Assert.That(_element.EditRevision, Is.EqualTo(1));
 		Assert.That(_element.Name, Is.EqualTo("Existing"));
@@ -186,8 +187,8 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 		}
 		_destination.Name = _element.Name;
 		await _service.CombineElements(_destination.Id, _element.Id);
-		Assert.That(_element.IsDeleted, Is.True);
-		Assert.That(_destination.IsDeleted, Is.False);
+		Assert.That(_element.IsDeleted(), Is.True);
+		Assert.That(_destination.IsDeleted(), Is.False);
 		_accountRepository.DidNotReceive().Update(Arg.Any<Account>());
 		_repository.Received(1).Update(_element);
 		await _unitOfWork.Received(1).SaveChangesAsync();
@@ -254,7 +255,7 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 		_repository.GetByIdAsync(destination ? _destination.Id : _element.Id, CancellationToken.None)
 			.ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.CombineElements(_destination.Id, _element.Id));
-		Assert.That(_element.IsDeleted, Is.False);
+		Assert.That(_element.IsDeleted(), Is.False);
 		AssertNoWrites();
 	}
 
@@ -274,7 +275,7 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 				break;
 		}
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.CombineElements(_destination.Id, _element.Id));
-		Assert.That(_element.IsDeleted, Is.False);
+		Assert.That(_element.IsDeleted(), Is.False);
 		AssertNoWrites();
 	}
 
@@ -285,7 +286,7 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 		_accountRepository.When(repository => repository.Update(Arg.Any<Account>()))
 			.Do(_ => throw new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.CombineElements(_destination.Id, _element.Id));
-		Assert.That(_element.IsDeleted, Is.False);
+		Assert.That(_element.IsDeleted(), Is.False);
 		_repository.DidNotReceive().Update(Arg.Any<TElement>());
 		AssertNoSave();
 	}
@@ -328,7 +329,7 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 
 	private void AssertDestinationUnchanged()
 	{
-		Assert.That(_destination.IsDeleted, Is.False);
+		Assert.That(_destination.IsDeleted(), Is.False);
 		Assert.That(_destination.Name, Is.EqualTo("Destination"));
 		Assert.That(_destination.Order, Is.EqualTo(4));
 		Assert.That(_destination.ModificationType, Is.EqualTo(ModificationType.None));

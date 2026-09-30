@@ -2,6 +2,7 @@ using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
+using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;
 using Business.Models.Entities.Base;
@@ -94,7 +95,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		await _service.Delete(id);
 
 		_repository.Received(1).Update(Arg.Is<TGroup>(group =>
-			group.Id == id && group.IsDeleted && group.DeleteRevision == 0 &&
+			group.Id == id && group.IsDeleted() && group.DeleteRevision == 0 &&
 			group.EditRevision == originalRevision && group.ParentId == _parent.Id &&
 			ReferenceEquals(group.Parent, _parent) && group.Order == 7 &&
 			group.Name == "Old name" && group.Description == "Old description" && group.IsFavorite));
@@ -147,7 +148,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		TGroup child = new() { Id = Guid.NewGuid(), ParentId = _group.Id };
 		_group.Children.Add(child);
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Delete(_group.Id));
-		Assert.That(child.IsDeleted, Is.False);
+		Assert.That(child.IsDeleted(), Is.False);
 		AssertNoWrites(false);
 	}
 
@@ -157,7 +158,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		TElement element = new() { Id = Guid.NewGuid(), GroupId = _group.Id };
 		_group.Elements.Add(element);
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Delete(_group.Id));
-		Assert.That(element.IsDeleted, Is.False);
+		Assert.That(element.IsDeleted(), Is.False);
 		AssertNoWrites(false);
 	}
 
@@ -208,7 +209,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		_repository.DidNotReceive().Update(Arg.Any<TGroup>());
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
 			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
-		Assert.That(_group.IsDeleted, Is.EqualTo(expectedDeleted));
+		Assert.That(_group.IsDeleted(), Is.EqualTo(expectedDeleted));
 		Assert.That(_group.ModificationType, Is.EqualTo(ModificationType.None));
 	}
 }

@@ -1,6 +1,7 @@
 using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
+using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;
 using Business.Models.Exceptions;
@@ -73,7 +74,7 @@ public sealed class AccountsSetOrderServiceTests
 		Account third = AddSibling(initial == 1 ? 3 : 2);
 		Account deleted = AddSibling(20);
 		deleted.DeleteRevision = 0;
-		List<Account> expected = [.. _group.Elements.Where(item => !item.IsDeleted).OrderBy(item => item.Order)];
+		List<Account> expected = [.. _group.Elements.Where(item => !item.IsDeleted()).OrderBy(item => item.Order)];
 		Dictionary<Guid, int> previous = expected.ToDictionary(item => item.Id, item => item.Order);
 		expected.Remove(_element);
 		expected.Insert(requested - 1, _element);

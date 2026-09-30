@@ -124,7 +124,7 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
 
-		List<TElement> siblings = [.. group.Elements.Where(item => !item.IsDeleted)
+		List<TElement> siblings = [.. group.Elements.Where(item => !item.IsDeleted())
 			.OrderBy(item => item.Order).ThenBy(item => item.Id)];
 		TElement? target = siblings.SingleOrDefault(item => item.Id == entityId);
 		if (target is null)
@@ -233,7 +233,7 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 		}
 
 		TElement? element = await _repository.GetByIdAsync(entityId, CancellationToken.None);
-		if (element is null || element.IsDeleted)
+		if (element is null || element.IsDeleted())
 		{
 			throw new ElementNotFoundException("The element does not exist or is deleted.");
 		}

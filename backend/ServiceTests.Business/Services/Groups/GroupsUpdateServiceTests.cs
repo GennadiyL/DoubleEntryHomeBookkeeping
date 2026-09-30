@@ -2,6 +2,7 @@ using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
+using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;
 using Business.Models.Entities.Base;
@@ -104,7 +105,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 			group.Id == id && group.ParentId == _parent.Id &&
 			ReferenceEquals(group.Parent, _parent) &&
 			group.Name == _param.Name && group.Description == _param.Description &&
-			group.IsFavorite && !group.IsDeleted && group.Order == 7 &&
+			group.IsFavorite && !group.IsDeleted() && group.Order == 7 &&
 			group.EditRevision == originalRevision && group.ModificationType.HasFlag(ModificationType.Content)));
 		_repository.DidNotReceive().Add(Arg.Any<TGroup>());
 		await _unitOfWork.Received(1).SaveChangesAsync();

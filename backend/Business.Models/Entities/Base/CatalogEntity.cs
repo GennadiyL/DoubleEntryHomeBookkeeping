@@ -20,5 +20,4 @@ public abstract class CatalogEntity : BaseEntity, ICatalogEntity
 	public string? Description { get; set; }
 	public int Order { get; set; }
 	public bool IsFavorite { get; set; }
-	public bool IsDeleted => DeleteRevision != null;
 }

@@ -38,7 +38,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		}
 
 		TGroup? parent = await _repository.GetWithChildrenByIdAsync(param.ParentId);
-		if (parent is null || parent.IsDeleted)
+		if (parent is null || parent.IsDeleted())
 		{
 			throw new GroupNotFoundException("The parent group does not exist or is deleted.");
 		}
@@ -79,7 +79,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		}
 
 		TGroup? group = await _repository.GetByIdAsync(entityId, CancellationToken.None);
-		if (group is null || group.IsDeleted)
+		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
@@ -90,7 +90,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		}
 
 		TGroup? parent = await _repository.GetWithChildrenByIdAsync(group.ParentId);
-		if (parent is null || parent.IsDeleted)
+		if (parent is null || parent.IsDeleted())
 		{
 			throw new GroupNotFoundException("The parent group does not exist or is deleted.");
 		}
@@ -117,7 +117,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		}
 
 		TGroup? group = await _repository.GetWithContentsByIdAsync(entityId);
-		if (group is null || group.IsDeleted)
+		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
@@ -127,7 +127,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 			throw new InvalidGroupException("The root group cannot be deleted.");
 		}
 
-		if (group.Children.Any(child => !child.IsDeleted) ||
+		if (group.Children.Any(child => !child.IsDeleted()) ||
 			group.Elements.Any(element => !element.IsDeleted()))
 		{
 			throw new InvalidGroupException("A group with active child groups or elements cannot be deleted.");
@@ -145,7 +145,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		}
 
 		TGroup? group = await _repository.GetByIdAsync(entityId, CancellationToken.None);
-		if (group is null || group.IsDeleted)
+		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
@@ -156,13 +156,13 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		}
 
 		TGroup? parent = await _repository.GetWithChildrenByIdAsync(group.ParentId);
-		if (parent is null || parent.IsDeleted)
+		if (parent is null || parent.IsDeleted())
 		{
 			throw new GroupNotFoundException("The parent group does not exist or is deleted.");
 		}
 
 		List<TGroup> siblings = [.. parent.Children
-			.Where(child => child.Id != parent.Id && !child.IsDeleted)
+			.Where(child => child.Id != parent.Id && !child.IsDeleted())
 			.OrderBy(child => child.Order).ThenBy(child => child.Id)];
 		TGroup? target = siblings.SingleOrDefault(child => child.Id == entityId);
 		if (target is null)
@@ -199,7 +199,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		}
 
 		TGroup? group = await _repository.GetByIdAsync(entityId, CancellationToken.None);
-		if (group is null || group.IsDeleted)
+		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
@@ -222,7 +222,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		}
 
 		TGroup? group = await _repository.GetByIdAsync(groupId, CancellationToken.None);
-		if (group is null || group.IsDeleted)
+		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
@@ -238,7 +238,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		}
 
 		TGroup? destination = await _repository.GetWithChildrenByIdAsync(toParentId);
-		if (destination is null || destination.IsDeleted)
+		if (destination is null || destination.IsDeleted())
 		{
 			throw new GroupNotFoundException("The destination parent does not exist or is deleted.");
 		}
@@ -258,7 +258,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 			}
 
 			TGroup? next = await _repository.GetByIdAsync(ancestor.ParentId, CancellationToken.None);
-			if (next is null || next.IsDeleted)
+			if (next is null || next.IsDeleted())
 			{
 				throw new GroupNotFoundException("A destination ancestor does not exist or is deleted.");
 			}
@@ -297,7 +297,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		}
 
 		TGroup? source = await _repository.GetWithContentsByIdAsync(fromGroupId);
-		if (source is null || source.IsDeleted)
+		if (source is null || source.IsDeleted())
 		{
 			throw new GroupNotFoundException("The source group does not exist or is deleted.");
 		}
@@ -308,7 +308,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		}
 
 		TGroup? destination = await _repository.GetWithContentsByIdAsync(toGroupId);
-		if (destination is null || destination.IsDeleted)
+		if (destination is null || destination.IsDeleted())
 		{
 			throw new GroupNotFoundException("The destination group does not exist or is deleted.");
 		}
@@ -326,7 +326,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 				break;
 			}
 			TGroup? next = await _repository.GetByIdAsync(ancestor.ParentId, CancellationToken.None);
-			if (next is null || next.IsDeleted)
+			if (next is null || next.IsDeleted())
 			{
 				throw new GroupNotFoundException("A destination ancestor does not exist or is deleted.");
 			}

@@ -2,6 +2,7 @@ using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
+using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;
 using Business.Models.Entities.Base;
@@ -92,7 +93,7 @@ public sealed class ElementsDeleteServiceTests<TGroup, TElement, TService, TRepo
 		await _service.Delete(_element.Id);
 		Assert.Multiple(() =>
 		{
-			Assert.That(_element.IsDeleted, Is.True);
+			Assert.That(_element.IsDeleted(), Is.True);
 			Assert.That(_element.DeleteRevision, Is.EqualTo(0));
 			Assert.That(_element.EditRevision, Is.EqualTo(1));
 			Assert.That(_element.Name, Is.EqualTo("Existing"));

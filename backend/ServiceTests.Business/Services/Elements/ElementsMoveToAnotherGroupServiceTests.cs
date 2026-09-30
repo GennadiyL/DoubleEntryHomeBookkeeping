@@ -2,6 +2,7 @@ using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
+using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;
 using Business.Models.Entities.Base;
@@ -105,7 +106,7 @@ public sealed class ElementsMoveToAnotherGroupServiceTests<TGroup, TElement, TSe
 			Assert.That(_element.Name, Is.EqualTo("Existing"));
 			Assert.That(_element.Description, Is.EqualTo("Original description"));
 			Assert.That(_element.IsFavorite, Is.False);
-			Assert.That(_element.IsDeleted, Is.False);
+			Assert.That(_element.IsDeleted(), Is.False);
 			Assert.That(_destination.Elements.First().Order, Is.EqualTo(3));
 			Assert.That(_destination.Elements.Last().Order, Is.EqualTo(7));
 		});

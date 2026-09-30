@@ -2,6 +2,7 @@ using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
+using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;
 using Business.Models.Entities.Base;
@@ -96,7 +97,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 		TElement third = AddSibling(initial == 1 ? 3 : 2);
 		TElement deleted = AddSibling(20);
 		deleted.DeleteRevision = 0;
-		List<TElement> expected = [.. _group.Elements.Where(item => !item.IsDeleted).OrderBy(item => item.Order)];
+		List<TElement> expected = [.. _group.Elements.Where(item => !item.IsDeleted()).OrderBy(item => item.Order)];
 		Dictionary<Guid, int> previous = expected.ToDictionary(item => item.Id, item => item.Order);
 		expected.Remove(_element);
 		expected.Insert(requested - 1, _element);

@@ -35,7 +35,7 @@ internal sealed class AccountService : IAccountService
 		}
 
 		AccountGroup? group = await _groupRepository.GetWithContentsByIdAsync(param.GroupId);
-		if (group is null || group.IsDeleted)
+		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
@@ -90,7 +90,7 @@ internal sealed class AccountService : IAccountService
 		}
 
 		AccountGroup? group = await _groupRepository.GetWithContentsByIdAsync(element.GroupId);
-		if (group is null || group.IsDeleted)
+		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
@@ -140,12 +140,12 @@ internal sealed class AccountService : IAccountService
 
 		Account element = await GetActiveElement(entityId);
 		AccountGroup? group = await _groupRepository.GetWithContentsByIdAsync(element.GroupId);
-		if (group is null || group.IsDeleted)
+		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
 
-		List<Account> siblings = [.. group.Elements.Where(item => !item.IsDeleted)
+		List<Account> siblings = [.. group.Elements.Where(item => !item.IsDeleted())
 			.OrderBy(item => item.Order).ThenBy(item => item.Id)];
 		Account? target = siblings.SingleOrDefault(item => item.Id == entityId);
 		if (target is null)
@@ -197,7 +197,7 @@ internal sealed class AccountService : IAccountService
 
 		Account element = await GetActiveElement(entityId);
 		AccountGroup? destination = await _groupRepository.GetWithContentsByIdAsync(toGroupId);
-		if (destination is null || destination.IsDeleted)
+		if (destination is null || destination.IsDeleted())
 		{
 			throw new GroupNotFoundException("The destination group does not exist or is deleted.");
 		}
@@ -266,7 +266,7 @@ internal sealed class AccountService : IAccountService
 		}
 
 		Account? element = await _repository.GetByIdAsync(entityId, CancellationToken.None);
-		if (element is null || element.IsDeleted)
+		if (element is null || element.IsDeleted())
 		{
 			throw new ElementNotFoundException("The element does not exist or is deleted.");
 		}

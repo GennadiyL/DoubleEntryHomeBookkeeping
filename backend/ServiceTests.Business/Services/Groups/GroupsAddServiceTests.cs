@@ -1,6 +1,7 @@
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
+using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;
 using Business.Models.Entities.Base;
@@ -87,7 +88,7 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 			group.Id == id && group.Id != Guid.Empty &&
 			group.ParentId == _parent.Id && ReferenceEquals(group.Parent, _parent) &&
 			group.Name == _param.Name && group.Description == _param.Description &&
-			group.IsFavorite && !group.IsDeleted && group.Order == 1 &&
+			group.IsFavorite && !group.IsDeleted() && group.Order == 1 &&
 			group.EditRevision == null && group.DeleteRevision == null));
 		await _unitOfWork.Received(1).SaveChangesAsync();
 		await _repository.Received(1).GetWithChildrenByIdAsync(_parent.Id);

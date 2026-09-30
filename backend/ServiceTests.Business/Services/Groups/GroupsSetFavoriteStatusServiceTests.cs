@@ -2,6 +2,7 @@ using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
+using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;
 using Business.Models.Entities.Base;
@@ -102,7 +103,7 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 			group.Id == id && group.IsFavorite == isFavorite && group.ModificationType.HasFlag(ModificationType.Content) &&
 			group.EditRevision == originalRevision && group.ParentId == _parent.Id &&
 			ReferenceEquals(group.Parent, _parent) && group.Order == 7 &&
-			group.Name == "Old name" && group.Description == "Old description" && !group.IsDeleted));
+			group.Name == "Old name" && group.Description == "Old description" && !group.IsDeleted()));
 		await _repository.Received(1).GetByIdAsync(id, CancellationToken.None);
 		await _unitOfWork.Received(1).SaveChangesAsync();
 		_repository.DidNotReceive().Add(Arg.Any<TGroup>());

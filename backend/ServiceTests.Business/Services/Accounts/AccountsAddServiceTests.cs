@@ -1,5 +1,6 @@
 using Business.Contracts.Params;
 using Business.Contracts.Services;
+using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;
 using Business.Models.Exceptions;
@@ -76,7 +77,7 @@ public sealed class AccountsAddServiceTests
 		_repository.Received(1).Add(Arg.Is<Account>(element =>
 			element.Id == id && element.GroupId == _group.Id && ReferenceEquals(element.Group, _group) &&
 			element.Name == _param.Name && element.Description == _param.Description &&
-			element.IsFavorite && !element.IsDeleted && element.Order == 1 &&
+			element.IsFavorite && !element.IsDeleted() && element.Order == 1 &&
 			element.EditRevision == null && element.DeleteRevision == null));
 		await _groupRepository.Received(1).GetWithContentsByIdAsync(_group.Id);
 		await _unitOfWork.Received(1).SaveChangesAsync();

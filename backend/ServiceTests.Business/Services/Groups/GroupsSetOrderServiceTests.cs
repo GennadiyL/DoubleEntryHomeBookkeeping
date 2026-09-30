@@ -2,6 +2,7 @@ using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
+using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;
 using Business.Models.Entities.Base;
@@ -141,7 +142,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 				Assert.That(sibling.Name, Is.EqualTo("Keep name"));
 				Assert.That(sibling.Description, Is.EqualTo("Keep description"));
 				Assert.That(sibling.IsFavorite, Is.True);
-				Assert.That(sibling.IsDeleted, Is.False);
+				Assert.That(sibling.IsDeleted(), Is.False);
 			});
 		}
 		await _unitOfWork.Received(from == to ? 0 : 1).SaveChangesAsync();

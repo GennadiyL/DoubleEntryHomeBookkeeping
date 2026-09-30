@@ -1,6 +1,7 @@
 using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
+using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;
 using Business.Models.Exceptions;
@@ -78,7 +79,7 @@ public sealed class AccountsSetFavoriteStatusServiceTests
 			Assert.That(_element.Description, Is.EqualTo("Original description"));
 			Assert.That(_element.GroupId, Is.EqualTo(_group.Id));
 			Assert.That(_element.Order, Is.EqualTo(1));
-			Assert.That(_element.IsDeleted, Is.False);
+			Assert.That(_element.IsDeleted(), Is.False);
 		});
 		_repository.Received(1).Update(_element);
 		await _unitOfWork.Received(1).SaveChangesAsync();

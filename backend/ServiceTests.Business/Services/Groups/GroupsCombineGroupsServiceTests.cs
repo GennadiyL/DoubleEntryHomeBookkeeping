@@ -2,6 +2,7 @@ using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
+using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;
 using Business.Models.Entities.Base;
@@ -155,7 +156,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 			Assert.That(grandchild.ParentId, Is.EqualTo(child.Id));
 			Assert.That(_group.Children, Is.Empty);
 			Assert.That(_group.Elements, Is.Empty);
-			Assert.That(_group.IsDeleted, Is.True);
+			Assert.That(_group.IsDeleted(), Is.True);
 			Assert.That(_group.DeleteRevision, Is.EqualTo(0));
 			Assert.That(_group.EditRevision, Is.EqualTo(originalRevision));
 			Assert.That(_group.ParentId, Is.EqualTo(_parent.Id));
@@ -228,7 +229,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		await _service.CombineGroups(_destination.Id, _group.Id);
 		Assert.That(child.ParentId, Is.EqualTo(_destination.Id));
 		Assert.That(element.GroupId, Is.EqualTo(_destination.Id));
-		Assert.That(child.IsDeleted && element.IsDeleted, Is.True);
+		Assert.That(child.IsDeleted() && element.IsDeleted(), Is.True);
 	}
 
 	[Test]
@@ -259,7 +260,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 	public async Task Combine_EmptySource_StillDeletesSource()
 	{
 		await _service.CombineGroups(_destination.Id, _group.Id);
-		Assert.That(_group.IsDeleted, Is.True);
+		Assert.That(_group.IsDeleted(), Is.True);
 		_repository.Received(1).Update(_group);
 		_elementRepository.DidNotReceive().Update(Arg.Any<TElement>());
 		await _unitOfWork.Received(1).SaveChangesAsync();
@@ -275,7 +276,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		await _service.CombineGroups(_parent.Id, _group.Id);
 		Assert.That(child.ParentId, Is.EqualTo(_parent.Id));
 		Assert.That(child.Name, Is.EqualTo(_parent.Name));
-		Assert.That(_group.IsDeleted, Is.True);
+		Assert.That(_group.IsDeleted(), Is.True);
 	}
 
 	[TestCase(true)]
@@ -368,7 +369,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.CombineGroups(_destination.Id, _group.Id));
 		Assert.That(child.ParentId, Is.EqualTo(_group.Id));
 		Assert.That(element.GroupId, Is.EqualTo(_group.Id));
-		Assert.That(_group.IsDeleted, Is.False);
+		Assert.That(_group.IsDeleted(), Is.False);
 		AssertNoWrites();
 	}
 
@@ -379,7 +380,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		_elementRepository.When(repository => repository.Update(Arg.Any<TElement>()))
 			.Do(_ => throw new InvalidOperationException("Update failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.CombineGroups(_destination.Id, _group.Id));
-		Assert.That(_group.IsDeleted, Is.False);
+		Assert.That(_group.IsDeleted(), Is.False);
 		AssertNoSave();
 	}
 

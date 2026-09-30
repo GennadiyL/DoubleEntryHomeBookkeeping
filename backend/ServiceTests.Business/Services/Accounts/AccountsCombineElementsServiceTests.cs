@@ -3,6 +3,7 @@ using Business.Models.Entities.Config;
 using Business.Contracts.Utils.Models;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
+using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;
 using Business.Models.Exceptions;
@@ -125,13 +126,13 @@ public sealed class AccountsCombineElementsServiceTests
 			Assert.That(templateEntry.Amount, Is.EqualTo(20));
 			Assert.That(templateEntry.TemplateId, Is.EqualTo(template.Id));
 			Assert.That(templateEntry.Template, Is.SameAs(template));
-			Assert.That(_element.IsDeleted, Is.True);
+			Assert.That(_element.IsDeleted(), Is.True);
 			Assert.That(_element.DeleteRevision, Is.EqualTo(0));
 			Assert.That(_element.EditRevision, Is.EqualTo(1));
 			Assert.That(_element.Name, Is.EqualTo("Existing"));
 			Assert.That(_element.GroupId, Is.EqualTo(_group.Id));
 			Assert.That(_element.CurrencyId, Is.EqualTo(_destination.CurrencyId));
-			Assert.That(_destination.IsDeleted, Is.False);
+			Assert.That(_destination.IsDeleted(), Is.False);
 			Assert.That(_destination.ModificationType, Is.EqualTo(ModificationType.None));
 			Assert.That(_destination.CategoryId, Is.EqualTo(categoryId));
 			Assert.That(_destination.ProjectId, Is.EqualTo(projectId));
@@ -157,7 +158,7 @@ public sealed class AccountsCombineElementsServiceTests
 	public async Task CombineElements_NoReferences_SoftDeletesSource()
 	{
 		await _service.CombineElements(_destination.Id, _element.Id);
-		Assert.That(_element.IsDeleted, Is.True);
+		Assert.That(_element.IsDeleted(), Is.True);
 		_transactionRepository.DidNotReceive().Update(Arg.Any<TransactionEntry>());
 		_templateRepository.DidNotReceive().Update(Arg.Any<TemplateEntry>());
 		await _unitOfWork.Received(1).SaveChangesAsync();
@@ -168,7 +169,7 @@ public sealed class AccountsCombineElementsServiceTests
 	{
 		_destination.CurrencyId = Guid.NewGuid();
 		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.CombineElements(_destination.Id, _element.Id));
-		Assert.That(_element.IsDeleted, Is.False);
+		Assert.That(_element.IsDeleted(), Is.False);
 		Assert.That(_transactionRepository.ReceivedCalls(), Is.Empty);
 		Assert.That(_templateRepository.ReceivedCalls(), Is.Empty);
 		AssertNoWrites();
@@ -238,7 +239,7 @@ public sealed class AccountsCombineElementsServiceTests
 		}
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.CombineElements(_destination.Id, _element.Id));
 		Assert.That(entry.AccountId, Is.EqualTo(_element.Id));
-		Assert.That(_element.IsDeleted, Is.False);
+		Assert.That(_element.IsDeleted(), Is.False);
 		AssertNoWrites();
 	}
 

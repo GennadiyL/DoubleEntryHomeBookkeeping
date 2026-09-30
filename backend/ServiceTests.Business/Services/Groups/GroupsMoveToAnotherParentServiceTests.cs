@@ -2,6 +2,7 @@ using Business.Models.Enums;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Base;
+using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;
 using Business.Models.Entities.Base;
@@ -108,7 +109,7 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 			group.Id == id && group.ParentId == _destination.Id &&
 			ReferenceEquals(group.Parent, _destination) && group.Order == 1 &&
 			group.ModificationType.HasFlag(ModificationType.Order) && group.EditRevision == originalRevision && group.IsFavorite &&
-			group.Name == "Old name" && group.Description == "Old description" && !group.IsDeleted));
+			group.Name == "Old name" && group.Description == "Old description" && !group.IsDeleted()));
 		Assert.That(_group.Children.Single(), Is.SameAs(child));
 		Assert.That(_group.Elements.Single(), Is.SameAs(element));
 		Assert.That(child.ParentId, Is.EqualTo(id));
