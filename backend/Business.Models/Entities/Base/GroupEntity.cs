@@ -3,11 +3,12 @@ using Business.Models.Entities.Interfaces;
 namespace Business.Models.Entities.Base;
 
 /// <summary>
-/// Defines the shared persistent state of hierarchical catalog groups.
-/// It owns parent and child relationships together with the grouped elements.
-/// Derived group models expose a writable identifier inherited from BaseEntity.
-/// Identifiers can be assigned when instances are created or materialized.
-/// The class provides relationship storage without implementing business workflows.
+/// Defines shared persistent relationships for hierarchical catalog groups.
+/// Stores parent identity and reference within the same group family.
+/// Maintains separate direct-child and element collections; the self-parent root excludes itself from children.
+/// Services enforce root protection, prevent cycles, and manage hierarchy operations.
+/// Writable inherited identity supports creation and materialization of persistent state.
+/// The model carries data; business services implement validation and lifecycle operations.
 /// </summary>
 public abstract class GroupEntity<TGroup, TElement> : CatalogEntity, IGroupEntity<TGroup, TElement>
 	where TGroup : class, IGroupEntity<TGroup, TElement>

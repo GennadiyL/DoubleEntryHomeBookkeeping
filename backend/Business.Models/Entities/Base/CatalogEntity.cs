@@ -5,11 +5,12 @@ using Business.Models.Enums;
 namespace Business.Models.Entities.Base;
 
 /// <summary>
-/// Defines the common state of named catalog entities.
-/// It extends persistent identity with tracking, ordering, and presentation data.
-/// Derived catalog models expose a writable identifier inherited from BaseEntity.
-/// Identifiers can be assigned when instances are created or materialized.
-/// The class contains persistent state only and does not implement business workflows.
+/// Defines common persistent state for named catalog groups and elements.
+/// Stores a name, optional description, favorite flag, and catalog order.
+/// Edit and delete revisions describe accepted content and deletion state.
+/// Modification flags distinguish uncaptured content changes from ordering changes.
+/// Writable inherited identity supports creation and materialization of persistent state.
+/// The model carries data; business services implement validation and lifecycle operations.
 /// </summary>
 public abstract class CatalogEntity : BaseEntity, ICatalogEntity
 {

@@ -1,5 +1,13 @@
 namespace Business.Models.Constants;
 
+/// <summary>
+/// Defines shared date values for bookkeeping models and validation services.
+/// InitialDate identifies the hidden fallback currency-rate date.
+/// MinDate and MaxDate expose calendar-date boundaries to consuming operations.
+/// MinDateTime provides the minimum transaction instant with an explicit UTC kind.
+/// These shared values are application constants rather than editable configuration.
+/// Consumers apply the values; this class does not create entities or enforce validation.
+/// </summary>
 public static class MainConstants
 {
 	public static readonly DateOnly InitialDate = new(1970, 1, 1);

@@ -1,5 +1,13 @@
 namespace Business.Models.Constants;
 
+/// <summary>
+/// Defines fixed identities for the five catalog root groups.
+/// Account, category, correspondent, project, and template roots each have a distinct identity.
+/// Master and local copies use the same values during initialization and lookup.
+/// A root refers to its own identity as parent and retains that identity throughout synchronization.
+/// These shared values are application constants rather than editable configuration.
+/// Consumers apply the values; this class does not create entities or enforce validation.
+/// </summary>
 public static class RootsIds
 {
 	public static readonly Guid AccountGroupId = new("22D0BBCC-37EC-4AF4-B5C7-9CAF34FEC1E9");

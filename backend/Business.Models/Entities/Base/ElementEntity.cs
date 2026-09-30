@@ -3,11 +3,12 @@ using Business.Models.Entities.Interfaces;
 namespace Business.Models.Entities.Base;
 
 /// <summary>
-/// Defines the shared persistent state of elements belonging to catalog groups.
-/// It extends catalog data with the owning group relationship and foreign key.
-/// Derived element models expose a writable identifier inherited from BaseEntity.
-/// Identifiers can be assigned when instances are created or materialized.
-/// The class provides relationship storage without implementing business workflows.
+/// Defines the shared relationship between an element and its catalog group.
+/// The group reference and foreign key identify the same owning group.
+/// Generic types preserve the relationship between a group family and its elements.
+/// Services move elements between compatible groups while preserving identity.
+/// Writable inherited identity supports creation and materialization of persistent state.
+/// The model carries data; business services implement validation and lifecycle operations.
 /// </summary>
 public abstract class ElementEntity<TGroup, TElement> : CatalogEntity, IElementEntity<TGroup, TElement>
 	where TGroup : class, IGroupEntity<TGroup, TElement>

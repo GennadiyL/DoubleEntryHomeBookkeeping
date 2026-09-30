@@ -2,7 +2,7 @@
 
 ## Document Control and BRD Reference
 
-- Version: **0.58**. Status: **Draft**. Date: **2026-09-30**.
+- Version: **0.61**. Status: **Draft**. Date: **2026-09-30**.
 - Business source: [BRD 0.49](BRD.md), controlled Draft revision of approved BRD 0.32, incorporating the explicitly accepted 2026-09-28 date-rule, account-currency and template-description and optional-rate-comment corrections. Prior 0.32 approval: requesting user, 2026-09-27, “I approve BRD. Lets start with TRD”; no personal name inferred. That approval does not cover 0.49; full-version approval remains outstanding.
 - Scope: core bookkeeping, synchronization and first use. Owner/intended approver: requesting user.
 - Revision basis: replaces legacy TRD 0.1 while retaining its parent-reference constraint. Discovery sources: [core](001-personal-bookkeeping/discovery.md), [synchronization](002-synchronization/discovery.md), [first use](003-first-using/discovery.md). Later BRD decisions supersede their historical statements.
@@ -16,17 +16,25 @@
 
 - Android and Windows desktop, single-user prototype, one master and multiple registered complete local copies (BR-001–BR-005, NFR-001).
 - SQLite business data locally and on Azure; first-version SQLite Admin.db. Azure Functions perform initial creation/connection. Prototype deployment address hardcoded. Version-two administration planned for Microsoft SQL Server; business datasets remain SQLite. These are explicit user technical inputs retained by BRD, not newly selected architecture.
-- Two configuration tables: System synchronizes; Local does not. Base currency and APr/RPr: selected at creation, immutable, stored in System. Display amounts/BaseAmount with APr and rates with RPr; no independent display precision. Local: default account-name order/separator, sync trigger, conflict priority (BR-005, BR-012, BR-017).
+- Two configuration tables: System synchronizes; Local does not. Base currency and AmountPrecision/RatePrecision: selected at creation, immutable, stored in System. Display amounts/BaseAmount with AmountPrecision and rates with RatePrecision; no independent display precision. Local: default account-name order/separator, sync trigger, conflict priority (BR-005, BR-012, BR-017).
 - Versioned master files such as `{Guid}.db`; prepare changes in a copy and publish a complete candidate; download a complete local replacement. Recovery selects latest published version, not original failed snapshot. SyncKey/outcome/receipt tracking is necessary to resolve lost responses without duplicate business application (BR-038–BR-040; synchronization source).
 - TransactionEntry and TemplateEntry retain BOTH parent navigation/reference and parent foreign-key identity; both identify the same parent. This explicit legacy TRD requirement survives; language mapping is deferred. Group root refers to itself as parent but is excluded from its own Children. Groups have child groups and corresponding elements; every element has a group identity/reference (core source).
-- UTC transaction time; APr/RPr decimal calculation with midpoint-to-even; on-demand balances/reports. Stored entry rate is independent of rate catalog. JSON saved-report instructions preserve identities and explicit overrides; do not rewrite except user save (BR-015–BR-028).
+- UTC transaction time; AmountPrecision/RatePrecision decimal calculation with midpoint-to-even; on-demand balances/reports. Stored entry rate is independent of rate catalog. JSON saved-report instructions preserve identities and explicit overrides; do not rewrite except user save (BR-015–BR-028).
 - Currency catalog follows the user-supplied CultureInfo/RegionInfo enumeration recorded in BRD: exclude neutral/invalid regions, map ISO code/symbol/English name, keep first entry per code. No new catalog source selected.
 
 ### Boundary and proposal status
 
 The service catalog below is a logical API/BFF contract, not a deployment diagram. Local operations must work offline; listing them does not require HTTP or a cloud round trip. Paths, verbs, transport statuses, class names, layers and projects are not selected. No C# source, implementation tasks or tests are created by this document.
 
-All schema types, nullability, DTO directions, exposed fields and assignments are **proposed** unless explicitly stated as confirmed in this document. Business requiredness comes from BRD; it does not approve a particular serialization shape. Entity revisions and snapshot versions use confirmed signed 64-bit integers (`int64`). GUID identities for persistent business entities are confirmed; registration/operation identities and authentication-session representation remain proposed. Amounts and rounded BaseAmount use APr; rates use RPr. APr/RPr ranges and fixed SQLite scaling are confirmed below; calculation magnitudes/overflow details remain TQ-01.
+All schema types, nullability, DTO directions, exposed fields and assignments are **proposed** unless explicitly stated as confirmed in this document. Business requiredness comes from BRD; it does not approve a particular serialization shape. Entity revisions and snapshot versions use confirmed signed 64-bit integers (`int64`). GUID identities for persistent business entities are confirmed; registration/operation identities and authentication-session representation remain proposed. Amounts and rounded BaseAmount use AmountPrecision; rates use RatePrecision. AmountPrecision/RatePrecision ranges and fixed SQLite scaling are confirmed below; calculation magnitudes/overflow details remain TQ-01.
+
+### Confirmed naming and Currency scope — 2026-09-30
+
+The requesting user confirmed that existing code names are the correct contract names: CurrencyRate.Date (formerly EffectiveDate), Transaction.DateTime (formerly OccurredAt), and System configuration AmountPrecision/RatePrecision (formerly APr/RPr). Use these names in persistent schemas, corresponding DTO fields and active explanations. Date remains a calendar date without timezone conversion; DateTime remains a UTC instant. The precision names still mean fractional decimal places, with the same ranges, defaults, rounding and immutability. This is a naming correction, not a change to those semantics. The unrelated DiagnosticEvent.OccurredAt field is unchanged.
+
+PM-010 is named Report, replacing SavedReport; it still stores report instructions, not calculated results. DTO-013 is correspondingly named ReportData. Stable PM/DTO/OP IDs and report behavior remain unchanged.
+
+Currency has no Description property or corresponding DTO field. CurrencyRate.Description remains optional. This explicit user correction supersedes the Currency description wording in BRD 0.49 BR-009/BR-013 for this controlled TRD revision. BRD alignment remains outstanding before full-document approval; this request updates TRD only. Earlier clarification entries retain their historical terminology and are superseded by this decision where inconsistent.
 
 ## Role and Use-Case Traceability
 
@@ -69,7 +77,7 @@ Each row is a compact manual-test scenario specification: main flow states the a
 | UC-003-06 | Create/edit/move/delete Category, Project or Correspondent. | Duplicate name in group, blank Name or deletion while account references it rejected; renaming leaves Account Name unchanged. | OP-009–OP-013 |
 | UC-004-01 | Load regional currency choices, one entry per ISO, retaining first Name/Symbol. | Skip neutral cultures/invalid regions. | OP-014 |
 | UC-004-02 | Create currency with initial rate; base unchanged. | Duplicate ISO/nonpositive rounded rate rejected. | OP-015, OP-016 |
-| UC-004-03 | Edit currency Name/Symbol/Description or restore Name/Symbol defaults. | ISO immutable; region default source is the same deduplicated catalog. | OP-014–OP-016 |
+| UC-004-03 | Edit currency Name/Symbol or restore Name/Symbol defaults. | ISO immutable; region default source is the same deduplicated catalog. | OP-014–OP-016 |
 | UC-004-04 | Delete unused non-base currency. | Base/used currency deletion rejected. | OP-018 |
 | UC-004-05 | View/add/edit/delete ordinary dated rates; edit initial rate value. | Duplicate calendar date, pre-minimum ordinary date, nonpositive rate or deleting/changing hidden initial date rejected; base rate fixed 1. | OP-017, OP-019, OP-020 |
 | UC-004-06 | Create account with currency/group, optional classifications and generated or edited name. | Missing required values rejected; duplicate Account Name allowed; missing classification slots keep separators. | OP-021, OP-022, OP-025 |
@@ -92,7 +100,7 @@ Each row is a compact manual-test scenario specification: main flow states the a
 | UC-008-02 | Reopen saved report on actual hierarchy; apply explicit choices, even redundant after moves. | Ignore missing identities; reapply if they return; never rewrite saved JSON just by reading/running. | OP-038, OP-037 |
 | UC-008-03 | Rename/edit/resave report; recalculate minimal include/exclude IDs from current choices only on user save. | Changing hierarchy alone must not trigger this recalculation. | OP-038, OP-039 |
 | UC-008-04 | Delete saved instructions only. | Accounts/transactions untouched; calculated results were not persistent business data. | OP-040 |
-| UC-009-01 | Read/edit System or Local settings; System synchronizes, Local stays per copy. | Base currency/APr/RPr immutable after creation; display follows APr/RPr; local naming order six permutations/default Correspondent-Category-Project, separator `/`, one non-whitespace character; one sync trigger only. | OP-041, OP-042 |
+| UC-009-01 | Read/edit System or Local settings; System synchronizes, Local stays per copy. | Base currency/AmountPrecision/RatePrecision immutable after creation; display follows AmountPrecision/RatePrecision; local naming order six permutations/default Correspondent-Category-Project, separator `/`, one non-whitespace character; one sync trigger only. | OP-041, OP-042 |
 | UC-009-02 | Manual sync with remembered authorization on any connection. | Queue/wait message and editing block; Cancel allowed; authentication mechanism TQ-03. | OP-043–OP-047 |
 | UC-009-03 | Automatic on-start/on-exit sync starts only on Wi-Fi. | Wi-Fi-started transfer may continue over mobile; startup failure permits ordinary offline work except recovery; exit failure permits closure. | OP-043–OP-047 |
 | UC-009-04 | Resolve whole-item conflicts by priority, validity overriding; restore dependencies, deduplicate currencies and rename conflicts. | Unresolvable valid-result failure explains/logs; no weakened accounting/currency-immutability rules. No content-field merge; catalog ordering follows its separate contract. | OP-043, OP-045, OP-052 |
@@ -109,7 +117,7 @@ Each row is a compact manual-test scenario specification: main flow states the a
 
 ### Schema decision status and shared contracts
 
-Except for explicitly confirmed contracts below, type/nullability/identity choices in this section remain **proposed**. Sources authorize the business concepts, not these exact storage fields. `Required` means non-null; `Nullable` allows null. Arrays can be empty unless a stated rule says otherwise. `enum` values and `object` fields are explicitly described below. Creation-time APr/RPr define decimal scales; SQLite scaled-integer representation is confirmed below; calculation bounds and overflow details remain TQ-01.
+Except for explicitly confirmed contracts below, type/nullability/identity choices in this section remain **proposed**. Sources authorize the business concepts, not these exact storage fields. `Required` means non-null; `Nullable` allows null. Arrays can be empty unless a stated rule says otherwise. `enum` values and `object` fields are explicitly described below. Creation-time AmountPrecision/RatePrecision define decimal scales; SQLite scaled-integer representation is confirmed below; calculation bounds and overflow details remain TQ-01.
 
 Confirmed identity for persistent business entities (PM-001–PM-010): `Id: uuid / Required` (GUID). Except for the five fixed root identities specified in PM-001, generate identity at creation, including offline Local creation, and preserve it through edits, moves, synchronization, deletion and restoration. Parent/foreign-key references use the same GUID identities. Independent creations on different Locals have distinct identities; no auto-increment identity allocation or routine synchronization-time ID renumbering is used. This also covers TransactionEntry and TemplateEntry identities. The confirmed sync contract applies to independently synchronized entities (PM-001–PM-006, PM-008, PM-010 and System configuration PM-011). PM-007 and PM-009 retain identity but have no independent tracking fields: entry changes mark the parent Transaction or Template as modified.
 
@@ -144,7 +152,7 @@ Confirmed change-detection rule (updated 2026-09-30): synchronization is pending
 
 Each concrete persistent business entity has its own table containing its applicable persistent fields, including inherited fields. Shared base models provide model reuse only; they have no tables or separate base rows. An entity is not split across base and derived tables, and no Kind discriminator combines distinct entity types into one table.
 
-PM-001 expands to five separate tables for AccountGroup, CategoryGroup, CorrespondentGroup, ProjectGroup and TemplateGroup. PM-002 expands to separate Category, Correspondent and Project tables. Account, Currency, CurrencyRate, Transaction, TransactionEntry, Template, TemplateEntry and SavedReport likewise each have their own table. Names here identify entity types; exact physical table naming is not selected. TransactionEntry and TemplateEntry remain owned by their parent for synchronization even though they have separate tables; they do not gain independent sync fields.
+PM-001 expands to five separate tables for AccountGroup, CategoryGroup, CorrespondentGroup, ProjectGroup and TemplateGroup. PM-002 expands to separate Category, Correspondent and Project tables. Account, Currency, CurrencyRate, Transaction, TransactionEntry, Template, TemplateEntry and Report likewise each have their own table. Names here identify entity types; exact physical table naming is not selected. TransactionEntry and TemplateEntry remain owned by their parent for synchronization even though they have separate tables; they do not gain independent sync fields.
 
 This decision describes one table per concrete entity with its own complete field set, not joined base/derived table inheritance. Scalar storage details and ORM configuration remain outside this decision.
 
@@ -160,7 +168,7 @@ MasterDb and LocalDb have identical business database schemas, including redunda
 | DeleteRevision | int64 | Nullable | Null = alive, settable on both Local and Master; 0 = pending soft deletion, settable only by Local; >= 1 = Revision of the snapshot accepting deletion, assigned only by Master. Local may copy Master-assigned positive values during synchronization but never generates them. No negative values, separate deletion flag or datetime. |
 | ModificationType | flags enum | Required | None = 0, Content = 1, Order = 2; Content and Order combine as 3. Replaces IsModified. Local accumulates uncaptured change bits per tracked entity. Capturing those changes in a durable outgoing batch clears the captured bits in the same local transaction; later edits set bits again. Saved batches remain pending until successful installation of their accepted result. Present but redundant as local-change metadata on Master; downloaded bits are not authoritative. |
 
-Signed 64-bit integer (`int64`) width is confirmed for EditRevision, DeleteRevision and all snapshot-version references, including AcknowledgedVersion. Scalar storage mapping remains TQ-02/TQ-04. **Revision** means the positive int64 identity of a Master database snapshot within MasterDatasetKey. Each newly accepted delta batch produces one snapshot and one Revision; merge revision and snapshot version are the same counter, not separate counters or timestamps. EditRevision and DeleteRevision both reference this counter. Existing fields named Version, PublishedVersion, InstalledVersion and AcknowledgedVersion refer to this same snapshot Revision; their names are retained here. An entity stores the Revision of its last accepted content change, not an entity-specific counter.
+Signed 64-bit integer (`int64`) width is confirmed for EditRevision, DeleteRevision and all snapshot-version references, including SnapshotRevision. Scalar storage mapping remains TQ-02/TQ-04. **Revision** means the positive int64 identity of a Master database snapshot within MasterDatasetKey. Each newly accepted delta batch produces one snapshot and one Revision; merge revision and snapshot version are the same counter, not separate counters or timestamps. EditRevision and DeleteRevision both reference this counter. Existing fields named Version, PublishedVersion, InstalledVersion and SnapshotRevision refer to this same snapshot Revision; their names are retained here. An entity stores the Revision of its last accepted content change, not an entity-specific counter.
 
 Assignment authority: Local initializes EditRevision to null for a new entity and sets it to 0 when durably preparing its first creation batch. Zero means that entity may exist on Master but its accepted Revision is unknown; it does not mean Master itself is unavailable. An ordinary edit to an entity with a known positive EditRevision preserves that value. Only Master assigns positive EditRevision values; Local copies them during installation. Accepted Master entities always have EditRevision >= 1. EditRevision must never be negative. DeleteRevision null is valid on both sides; only Local originates 0 and only Master originates a positive deletion Revision. Accepting deletion at Revision R sets both EditRevision and DeleteRevision to R. Accepting restoration at Revision S sets EditRevision to S and DeleteRevision to null.
 
@@ -196,26 +204,26 @@ The accepted batch outcome records the association between its merge revision, L
 
 #### Confirmed snapshot versions and deletion acknowledgement
 
-Published Master snapshots have positive int64 Version, starting at 1. A new snapshot gets current published Master Version + 1, never Max(AcknowledgedVersion) + 1. GUID filenames can remain; Version is the ordered snapshot identity. Serialized allocation/publication remains TQ-04.
+Published Master snapshots have positive int64 Version, starting at 1. A new snapshot gets current published Master Version + 1, never Max(SnapshotRevision) + 1. GUID filenames can remain; Version is the ordered snapshot identity. Serialized allocation/publication remains TQ-04.
 
-Each LocalDb stores AcknowledgedVersion; Master administration stores it per registered LocalDb (PM-014). It means the snapshot successfully installed, not merely sent/published. Local durably records successful installation; Master advances the registration only after receipt confirming that actual Version. Lost receipts can be retried without moving acknowledgements backwards. AcknowledgedVersion is non-null, initially 0 on Local and in its Master registration before the first successful installation/receipt respectively. Zero means no snapshot acknowledged; published snapshot versions start at 1. A failed initial download leaves the value at 0.
+SnapshotRevision (renamed from AcknowledgedVersion by the requesting user on 2026-09-30) is a required signed 64-bit integer, mapped to C# long. Each LocalDb stores SnapshotRevision; Master administration stores it per registered LocalDb (PM-014). It means the snapshot successfully installed, not merely sent/published. Local durably records successful installation; Master advances the registration only after receipt confirming that actual Version. Lost receipts can be retried without moving acknowledgements backwards. SnapshotRevision is non-null, initially 0 on Local and in its Master registration before the first successful installation/receipt respectively. Zero means no snapshot acknowledged; published snapshot versions start at 1. A failed initial download leaves the value at 0.
 
-Master accepts deletion by assigning the accepted batch revision and setting DeleteRevision to the snapshot Version publishing that deletion. Local hard-deletes the accepted deleted row during installation. Master retains its deletion marker until every remaining non-expired registration has AcknowledgedVersion >= DeleteRevision; then a subsequent snapshot may omit the marker. Download failure/missing receipt does not satisfy this condition. Winning restoration clears the marker and cancels deletion eligibility.
+Master accepts deletion by assigning the accepted batch revision and setting DeleteRevision to the snapshot Version publishing that deletion. Local hard-deletes the accepted deleted row during installation. Master retains its deletion marker until every remaining non-expired registration has SnapshotRevision >= DeleteRevision; then a subsequent snapshot may omit the marker. Download failure/missing receipt does not satisfy this condition. Winning restoration clears the marker and cancels deletion eligibility.
 
 Example: X with EditRevision 1 is deleted in snapshot Revision 10, receiving EditRevision 10 and DeleteRevision 10. Local1/Local2 acknowledge 10; Local3 acknowledges 8, so Master retains X. After Local3 acknowledges 10 or later, Master may remove the marker. If Local3's valid stale edit wins first, X instead becomes live at the Revision of the snapshot accepting restoration (for example 11), with DeleteRevision null, and is restored to other Locals with its original identity.
 
 These are tracking semantics, not a complete wire protocol or local optimistic-edit token. EditRevision does not change between local edits and cannot alone detect concurrent local edits; that mechanism remains TQ-02.
 
 
-Shared text-field semantics (confirmed 2026-09-28): Name is mandatory for named entities under their existing rules. Description is optional, visible and independently editable; absent or empty Description does not block saving. Remove Comment fields throughout. Rates and transactions use Description without acquiring a Name field. Template.Description is visible, is not overwritten from Name, and is copied to Transaction.Description when applied. Creation of a template from a transaction and duplication of a transaction copy Description. No entry-level description is introduced.
+Shared text-field semantics (confirmed 2026-09-28): Name is mandatory for named entities under their existing rules. Description is optional, visible and independently editable; absent or empty Description does not block saving. Remove Comment fields throughout. Currency has no Description; rates and transactions use Description without acquiring a Name field. Template.Description is visible, is not overwritten from Name, and is copied to Transaction.Description when applied. Creation of a template from a transaction and duplication of a transaction copy Description. No entry-level description is introduced.
 
 #### Precision and user-requested balancing — confirmed 2026-09-28
 
-Base currency, APr and RPr are selected at dataset creation and stored in SystemConfiguration. They cannot be changed later through settings or synchronization. Amounts (including template amounts) use APr; stored entry and currency-catalog rates use RPr. Derived BaseAmount rounds Amount × Rate to APr using midpoint-to-even, then transaction validation sums the rounded BaseAmounts. Display amounts and BaseAmount with APr and rates with RPr; there is no separate DisplayDecimalPlaces setting. SQLite stores persisted Amount and Rate values as signed 64-bit INTEGER scaled by 10,000, independent of the configured APr/RPr. Normalize input to its configured precision first, then multiply by 10,000 exactly and validate the integer range before storage. Read by dividing by 10,000 using decimal arithmetic. Example: Amount 12.34 with APr=2 stores 123400; Rate 1.2345 with RPr=4 stores 12345. Domain values and calculations remain decimal, not floating-point; BaseAmount remains derived and is not stored. The representable storage interval is -922337203685477.5808 through 922337203685477.5807, further restricted to the configured precision and positive-rate rule. This storage range does not guarantee products or totals fit; overflow handling remains required.
+Base currency, AmountPrecision and RatePrecision are selected at dataset creation and stored in SystemConfiguration. They cannot be changed later through settings or synchronization. Amounts (including template amounts) use AmountPrecision; stored entry and currency-catalog rates use RatePrecision. Derived BaseAmount rounds Amount × Rate to AmountPrecision using midpoint-to-even, then transaction validation sums the rounded BaseAmounts. Display amounts and BaseAmount with AmountPrecision and rates with RatePrecision; there is no separate DisplayDecimalPlaces setting. SQLite stores persisted Amount and Rate values as signed 64-bit INTEGER scaled by 10,000, independent of the configured AmountPrecision/RatePrecision. Normalize input to its configured precision first, then multiply by 10,000 exactly and validate the integer range before storage. Read by dividing by 10,000 using decimal arithmetic. Example: Amount 12.34 with AmountPrecision=2 stores 123400; Rate 1.2345 with RatePrecision=4 stores 12345. Domain values and calculations remain decimal, not floating-point; BaseAmount remains derived and is not stored. The representable storage interval is -922337203685477.5808 through 922337203685477.5807, further restricted to the configured precision and positive-rate rule. This storage range does not guarantee products or totals fit; overflow handling remains required.
 
 For any nonzero current total, the editor offers Add balancing entry. On an explicit click, append an entry using the configured account whose currency is the base currency, Amount = -total, Rate = 1 and derived BaseAmount = -total. Recalculate the whole transaction and require exactly zero for confirmation; all other save rules still apply. No tolerance or maximum-difference threshold is imposed. The user can alternatively add this entry manually. Appending edits the unsaved transaction; the normal save action persists it. Subsequent edits can create a new imbalance and must be revalidated. No entry is added silently.
 
-The balancing-account selection is stored in synchronized SystemConfiguration (PM-011), shared across Master and all Local copies. It references an Account whose currency is the dataset base currency. Initialization creates one Account initially named Rebalancing in the Account root group with the dataset base currency and sets BalancingAccountId to its Id. It is an ordinary account: transaction/template references still prevent deletion, but this settings selection alone does not. The user may change the selection in Settings to another base-currency account. If the configured account is absent or soft-deleted, Add balancing entry must leave the transaction unchanged and show: "Cannot add a balancing entry: the rebalancing account is missing. Please choose a rebalancing account in Settings." Manual balancing remains available. Do not recreate the account automatically. BalancingAccountId is a nullable GUID property of SystemConfiguration. When the selected account is deleted, clear BalancingAccountId to null. A null selection uses the same missing-account message and leaves the transaction unchanged. Base currency/APr/RPr immutability does not apply to this selection. APr and RPr each accept integers 0–4 inclusive, with defaults APr = 2 and RPr = 4. Creation rejects values outside this range. Display precision follows APr/RPr as defined above. DTO-016 creation/configuration DTOs and balancing-action contracts require alignment under TQ-05; existing DTO omissions cannot override these confirmed requirements.
+The balancing-account selection is stored in synchronized SystemConfiguration (PM-011), shared across Master and all Local copies. It references an Account whose currency is the dataset base currency. Initialization creates one Account initially named Rebalancing in the Account root group with the dataset base currency and sets BalancingAccountId to its Id. It is an ordinary account: transaction/template references still prevent deletion, but this settings selection alone does not. The user may change the selection in Settings to another base-currency account. If the configured account is absent or soft-deleted, Add balancing entry must leave the transaction unchanged and show: "Cannot add a balancing entry: the rebalancing account is missing. Please choose a rebalancing account in Settings." Manual balancing remains available. Do not recreate the account automatically. BalancingAccountId is a nullable GUID property of SystemConfiguration. When the selected account is deleted, clear BalancingAccountId to null. A null selection uses the same missing-account message and leaves the transaction unchanged. Base currency/AmountPrecision/RatePrecision immutability does not apply to this selection. AmountPrecision and RatePrecision each accept integers 0–4 inclusive, with defaults AmountPrecision = 2 and RatePrecision = 4. Creation rejects values outside this range. Display precision follows AmountPrecision/RatePrecision as defined above. DTO-016 creation/configuration DTOs and balancing-action contracts require alignment under TQ-05; existing DTO omissions cannot override these confirmed requirements.
 
 ### PM-001 — Group
 
@@ -260,7 +268,6 @@ Lifecycle: create/edit/move; delete only unused by accounts; no automatic accoun
 | Code | string | Required | ISO code unique, immutable | BR-013; proposed |
 | Name | string | Required | Catalog English default; editable | BR-013; proposed |
 | Symbol | string | Required | First catalog symbol; editable | BR-013; proposed |
-| Description | string | Nullable | Optional | BR-013; proposed |
 
 Shared Id/sync tracking. Many PM-004 rates per currency; business dataset's base currency identifies one PM-003. Delete only unused/non-base. Base selection immutable. Name/Symbol blank policy not independently specified; proposed required type does not invent nonblank validation. Concurrency/sync tracking shared.
 
@@ -269,15 +276,15 @@ Shared Id/sync tracking. Many PM-004 rates per currency; business dataset's base
 | Property | Canonical type | Nullability | Constraint / relationship | Source/status |
 | --- | --- | --- | --- | --- |
 | CurrencyId | uuid | Required | One PM-003 | BR-014; proposed |
-| EffectiveDate | date | Required | DateOnly calendar date with no timezone conversion; unique ordinary date per currency; initial date fixed at 1970-01-01 by shared constant | BR-014/021; proposed |
-| Rate | decimal | Required | Scale RPr, positive after rounding; base = 1 | BR-014/017; proposed type, confirmed calculation |
-| Description | string | Nullable | Optional notes on this rate, including initial rate; independent of Currency.Description and transaction/template descriptions | BR-009/014; confirmed 2026-09-28 |
+| Date | date | Required | DateOnly calendar date with no timezone conversion; unique ordinary date per currency; initial date fixed at 1970-01-01 by shared constant | BR-014/021; proposed |
+| Rate | decimal | Required | Scale RatePrecision, positive after rounding; base = 1 | BR-014/017; proposed type, confirmed calculation |
+| Description | string | Nullable | Optional notes on this rate, including initial rate; independent of transaction/template descriptions | BR-009/014; confirmed 2026-09-28 |
 
-Confirmed initial-rate representation (2026-09-28): one shared application constant defines the DateOnly value 1970-01-01 for the initial rate. Use the same value on Master and all Locals; do not duplicate date literals or expose it as an editable setting. IsInitial is derived from EffectiveDate equaling this constant, not persisted as a boolean. Exactly one initial fallback rate exists per currency; its date is hidden and immutable, its row cannot be deleted, and its value remains editable subject to the base-currency rate of 1. Ordinary rates remain dated 2001-01-01 or later. The constant declaration name and source location are implementation details.
+Confirmed initial-rate representation (2026-09-28): one shared application constant defines the DateOnly value 1970-01-01 for the initial rate. Use the same value on Master and all Locals; do not duplicate date literals or expose it as an editable setting. IsInitial is derived from Date equaling this constant, not persisted as a boolean. Exactly one initial fallback rate exists per currency; its date is hidden and immutable, its row cannot be deleted, and its value remains editable subject to the base-currency rate of 1. Ordinary rates remain dated 2001-01-01 or later. The constant declaration name and source location are implementation details.
 
 Shared Id/sync tracking; edit initial value but not its date; ordinary date rate lifecycle under BR-014. No stored link from transaction entry to this row. Concurrency/sync tracking shared.
 
-Confirmed date semantics (2026-09-28): store transaction/backend timestamps as UTC instants. CurrencyRate.EffectiveDate is a date-only value (DateOnly), with no timezone or UTC conversion. For default rate and Restore Rate, convert the transaction timestamp to the current UI/device timezone, take its calendar date, and choose the latest rate on or before that date, with the initial fallback. Applying templates uses the same lookup. Stored entry rates remain independently editable; date or timezone changes never automatically rewrite them.
+Confirmed date semantics (2026-09-28): store transaction/backend timestamps as UTC instants. CurrencyRate.Date is a date-only value (DateOnly), with no timezone or UTC conversion. For default rate and Restore Rate, convert the transaction timestamp to the current UI/device timezone, take its calendar date, and choose the latest rate on or before that date, with the initial fallback. Applying templates uses the same lookup. Stored entry rates remain independently editable; date or timezone changes never automatically rewrite them.
 
 Report day/week/month/year grouping and From/To calendar dates use the current UI/device timezone. Convert local period boundaries to UTC instants for filtering; use inclusive start and exclusive next-period start. Determine boundaries in that timezone rather than assuming every local day is 24 hours. DateOnly values are interpreted directly as calendar dates, not UTC instants. Existing minimum transaction instant remains 2001-01-01 00:00 UTC; minimum ordinary rate date remains DateOnly 2001-01-01.
 
@@ -303,7 +310,7 @@ Shared Id/sync tracking. Delete blocked by any transaction/template reference. C
 
 | Property | Canonical type | Nullability | Constraint / relationship | Source/status |
 | --- | --- | --- | --- | --- |
-| OccurredAt | datetime | Required | UTC, minimum 2001-01-01; display device timezone | BR-020/021; proposed type |
+| DateTime | datetime | Required | UTC, minimum 2001-01-01; display device timezone | BR-020/021; proposed type |
 | Description | string | Nullable | Optional, aggregate-level | BR-016; proposed |
 | State | enum | Required | Undefined = 0 (unset, never persisted); Draft = 1; Planned = 2 (reserved for future); Confirmed = 3. Current persisted states are Draft and Confirmed; rules below. | BR-019; representation confirmed 2026-09-27 |
 
@@ -325,13 +332,13 @@ Shared Id/sync tracking. Owns 2+ PM-007 on any persisted save; entry mutation on
 | --- | --- | --- | --- | --- |
 | TransactionId | uuid | Required | Exactly one PM-006; retained parent reference must match | Legacy TRD explicit parent relation; type proposed |
 | AccountId | uuid | Required | Exactly one PM-005 | BR-016; proposed |
-| Amount | decimal | Required | Scale APr; blank input maps to zero | BR-016/017; proposed |
+| Amount | decimal | Required | Scale AmountPrecision; blank input maps to zero | BR-016/017; proposed |
 | Rate | decimal | Required | Independent stored value; no CurrencyRate foreign key | BR-015; proposed |
 | Position | int32 | Required | Persisted order within the parent Transaction; survives save/load and whole-aggregate sync; repeated accounts remain separate entries | Confirmed 2026-09-27; shared entry-order rule below |
 
 Shared entry-order rule for PM-007 and PM-009 (confirmed 2026-09-27): Position is int32, numbered consecutively 0 through N-1 within its parent. Saving an edited entry collection assigns positions from its intended order after insertion, removal or reordering. Empty templates have no positions to assign. Synchronization preserves the accepted whole aggregate and its positions; it does not merge entry lists or renumber collections merely because synchronization occurred. This rule applies only to TransactionEntry and TemplateEntry, not catalog elements or child groups.
 
-Derived value (confirmed 2026-09-27): BaseAmount = Amount × Rate, rounded per entry to APr decimal places using midpoint-to-even. BaseAmount is calculated when needed, not stored as a persistent column or synchronized independently. Balances, reports and the exact-zero transaction check use these rounded per-entry values. It is read-only and cannot be supplied as an authoritative input.
+Derived value (confirmed 2026-09-27): BaseAmount = Amount × Rate, rounded per entry to AmountPrecision decimal places using midpoint-to-even. BaseAmount is calculated when needed, not stored as a persistent column or synchronized independently. Balances, reports and the exact-zero transaction check use these rounded per-entry values. It is read-only and cannot be supplied as an authoritative input.
 
 Shared Id; tracking belongs to parent aggregate; repeat accounts allowed. No independent entry service or sync. Lifecycle follows parent; deletion propagation managed at aggregate boundary.
 
@@ -353,17 +360,17 @@ Shared Id/sync tracking. Owns zero or more PM-009; aggregate concurrency/sync. A
 | --- | --- | --- | --- | --- |
 | TemplateId | uuid | Required | Exactly one PM-008; parent reference and identity match | Legacy TRD; type proposed |
 | AccountId | uuid | Required | Exactly one PM-005; account currency is already immutable | BR-011/022; proposed |
-| Amount | decimal | Required | Scale APr; template need not balance | BR-022; proposed |
+| Amount | decimal | Required | Scale AmountPrecision; template need not balance | BR-022; proposed |
 | Position | int32 | Required | Persisted order within the parent Template; shared entry-order rule in PM-007 applies; survives save/load and whole-aggregate sync | Confirmed 2026-09-27; shared entry-order rule below |
 
 Shared Id; tracking belongs to template aggregate. Rates are resolved on applying template, not copied as template rate fields. Parent lifecycle/concurrency.
 
-### PM-010 — SavedReport
+### PM-010 — Report
 
 | Property | Canonical type | Nullability | Constraint / relationship | Source/status |
 | --- | --- | --- | --- | --- |
 | Name | string | Required | Nonblank; default yyyy-MM-dd HH:mm:ss; duplicates allowed | BR-028; proposed |
-| DefinitionJson | string | Required | JSON shape defined by DTO-012; instructions only, no result cache | BR-025/028 and user JSON direction; shape proposed |
+| Json | string | Required | JSON shape defined by DTO-012; instructions only, no result cache | BR-025/028 and user JSON direction; shape proposed |
 
 Shared Id/sync tracking. Referenced group/element identities are soft references, do not protect deletion. Read/run never normalizes persisted instructions; save recalculates minimal override lists from edited actual state. Missing identities retained until explicit save may remove obsolete references. Rename-only handling must preserve definition unless owner saves changed selection; exact mutation shape TQ-05. Concurrency/sync tracking shared.
 
@@ -374,8 +381,8 @@ Shared Id/sync tracking. Referenced group/element identities are soft references
 | MasterDatasetKey | string | Required | Generate once during dataset initialization using Guid.ToString(); preserve unchanged in Master and all Local copies. Reject synchronization between different dataset keys. Not the SystemConfiguration primary key. | User naming/type decision and lifecycle confirmed 2026-09-29 |
 | BaseCurrencyId | uuid | Required | References the dataset base Currency (PM-003); stored in SystemConfiguration, selected during initialization and immutable afterward | BR-004; type, requiredness and System placement confirmed 2026-09-29 |
 | BalancingAccountId | uuid | Nullable | Initially references the generated rebalancing PM-005 in Account root; base-currency account selection shared through System sync; clear to null when the selected account is deleted; selection alone does not prevent deletion | BR-018; System ownership confirmed 2026-09-28; nullable GUID and clearing accepted 2026-09-29 |
-| APr | int32 | Required | Amount and rounded BaseAmount fractional places; range 0–4 inclusive, default 2; selected at creation, immutable | BR-017; confirmed |
-| RPr | int32 | Required | Rate fractional places; range 0–4 inclusive, default 4; selected at creation, immutable | BR-017; confirmed |
+| AmountPrecision | int32 | Required | Amount and rounded BaseAmount fractional places; range 0–4 inclusive, default 2; selected at creation, immutable | BR-017; confirmed |
+| RatePrecision | int32 | Required | Rate fractional places; range 0–4 inclusive, default 4; selected at creation, immutable | BR-017; confirmed |
 | EditRevision / DeleteRevision / ModificationType | Shared tracking contract | As defined above | Synchronized configuration tracking | Confirmed 2026-09-27 |
 
 Identifier naming convention (2026-09-29): use Id for entity primary keys, {Entity}Id for foreign keys/references between entities, and Key for other identifiers. MasterDatasetKey is a GUID-formatted string using Guid.ToString(), separate from the table primary key. Corresponding dataset identifiers elsewhere in this TRD use the same name and representation; their proposed contracts remain proposed. Other identifier roles and their final names require review before finalizing schemas.
@@ -387,13 +394,15 @@ Purpose: synchronized System table; base currency, precision and balancing-accou
 | Property | Canonical type | Nullability | Constraint / relationship | Source/status |
 | --- | --- | --- | --- | --- |
 | LocalDatasetKey | string | Required | Local copy identity generated with Guid.NewGuid().ToString() when registering a new Local copy; stored in LocalConfiguration and registered on Master. Preserve through synchronization database replacement; a fresh installation gets a new key. Not the configuration primary key. | BR-001/005; name, type, placement and lifecycle confirmed 2026-09-29 |
-| AcknowledgedVersion | int64 | Required; default 0 | Successfully installed snapshot Version; placement here proposed | Confirmed 2026-09-27 |
+| SnapshotRevision | int64 | Required; default 0 | Successfully installed snapshot Version; placement here proposed | Confirmed 2026-09-27 |
 | DefaultAccountNameOrder | enum | Required | Stored component order; exactly six values: CorrespondentCategoryProject (default), CorrespondentProjectCategory, CategoryCorrespondentProject, CategoryProjectCorrespondent, ProjectCorrespondentCategory, ProjectCategoryCorrespondent. Each value specifies the corresponding component sequence; numeric assignments remain unresolved. | BR-012; stored setting/name and six-value enum confirmed 2026-09-29 |
 | DefaultAccountNameSeparator | string | Required | Stored separator; exactly one non-whitespace character; default /; Unicode counting TQ-01 | BR-012; stored setting/name confirmed 2026-09-29; type proposed |
 | SyncTrigger | enum | Required | ManualOnly, OnStart, OnExit; default ManualOnly | BR-034; proposed names |
-| ConflictPriority | enum | Required | Master, Local; default Master | BR-029; proposed names |
+| ConflictPriority | enum | Required | Master, Local; default Local | User correction 2026-09-30 supersedes BR-029 default; enum names proposed |
 
 Confirmed account-name format (2026-09-29): derive the default format from stored DefaultAccountNameOrder and DefaultAccountNameSeparator; do not persist a separate DefaultAccountName format string.
+
+Default ConflictPriority is Local (user correction, 2026-09-30), matching the existing code. This changes only the initial preference; existing conflict-resolution and validity rules remain. BRD 0.49 BR-029 still states default Master and requires alignment before full approval.
 
 One per local copy; survives replacement, never synchronized. No login/password assumed here. Lifecycle initialize/update locally. Concurrency local settings TQ-02; auditing unresolved. Defaults/format constraints are confirmed business rules; physical columns are proposals.
 
@@ -416,7 +425,7 @@ Lives in Admin.db, not exported as business snapshot. No first-release change/re
 | LocalDatasetKey | string | Required | Registered Local copy identity; same value as LocalConfiguration.LocalDatasetKey; lifecycle defined in PM-012 | BR-001; confirmed 2026-09-29 |
 | MasterDatasetKey | string | Required | Exactly one owner master | BR-001; proposed |
 | LastSuccessfulSyncAt | datetime | Nullable | UTC master clock; absent before completed initial download | BR-041; proposed |
-| AcknowledgedVersion | int64 | Required; default 0 | Per-registration installed snapshot Version; advance only after receipt | BR-040; confirmed 2026-09-27 |
+| SnapshotRevision | int64 | Required; default 0 | Per-registration installed snapshot Version; advance only after receipt | BR-040; confirmed 2026-09-27 |
 
 Purpose: expiry/deletion acknowledgements. No display name in v1. Lifecycle register before download, acknowledge success, expire/remove. Incomplete registration cleanup TQ-04; concurrency/audit fields unresolved. Placement in Admin.db confirmed by F for device registration.
 
@@ -458,16 +467,16 @@ Each property cell uses `name: canonical type`; the following column lists nulla
 | DTO-003 IdentityCommand / request | Id: uuid; ExpectedRevision: int64 | Required; Nullable | Target identity; expected revision proposal TQ-02. Delete/apply behavior supplied by OP. | OP-008,013,018,020,023,024,028,029,034,035,036,040 |
 | DTO-004 GroupData / shared | Id: uuid; ParentId: uuid; Name: string; Description: string; IsRoot: bool; EditRevision: int64 | Nullable; Required; Required; Nullable; Required; Nullable | PM-001 projection; Id absent for create. Projection family for the five derived PM-001 types; exact DTO specialization remains TQ-05. IsRoot derived from the type-specific fixed root Id; IsRoot and revision read-only; group reference rules BR-006–009. | OP-005 via DTO-002, OP-006 |
 | DTO-005 ClassificationData / shared | Id: uuid; GroupId: uuid; Name: string; Description: string; EditRevision: int64 | Nullable; Required; Required; Nullable; Nullable | Projection family for Category, Project and Correspondent; exact DTO specialization remains TQ-05. Id absent for create; group/name/description BR-008–010. | OP-009 via DTO-002, OP-010–OP-012 |
-| DTO-006 CurrencyData / shared | Id: uuid; Code: string; Name: string; Symbol: string; Description: string; InitialRate: decimal; EditRevision: int64 | Nullable; Required; Required; Required; Nullable; Nullable; Nullable | PM-003 and initial PM-004. InitialRate required for create except fixed base 1; omitted for metadata edit; Code immutable. Catalog has absent Id. BR-013/014/017. | OP-014/015 via DTO-002, OP-016 |
-| DTO-007 RateData / shared | Id: uuid; CurrencyId: uuid; EffectiveDate: date; Rate: decimal; Description: string; IsInitial: bool; EditRevision: int64 | Nullable; Required; Nullable; Required; Nullable; Required; Nullable | PM-004; optional Description describes this rate only; hide initial sentinel by absent EffectiveDate on initial-rate view; ordinary date mandatory. IsInitial is a read-only projection derived from the fixed 1970-01-01 date, not a stored field or user-controlled creation of extra fallback. BR-014/017/021. | OP-017, OP-019 via DTO-002 |
+| DTO-006 CurrencyData / shared | Id: uuid; Code: string; Name: string; Symbol: string; InitialRate: decimal; EditRevision: int64 | Nullable; Required; Required; Required; Nullable; Nullable | PM-003 and initial PM-004. InitialRate required for create except fixed base 1; omitted for metadata edit; Code immutable. Catalog has absent Id. BR-013/014/017. | OP-014/015 via DTO-002, OP-016 |
+| DTO-007 RateData / shared | Id: uuid; CurrencyId: uuid; Date: date; Rate: decimal; Description: string; IsInitial: bool; EditRevision: int64 | Nullable; Required; Nullable; Required; Nullable; Required; Nullable | PM-004; optional Description describes this rate only; hide initial sentinel by absent Date on initial-rate view; ordinary date mandatory. IsInitial is a read-only projection derived from the fixed 1970-01-01 date, not a stored field or user-controlled creation of extra fallback. BR-014/017/021. | OP-017, OP-019 via DTO-002 |
 | DTO-008 AccountData / shared | Id: uuid; GroupId: uuid; CurrencyId: uuid; CategoryId: uuid; ProjectId: uuid; CorrespondentId: uuid; Name: string; Description: string; EditRevision: int64 | Nullable; Required; Required; Nullable; Nullable; Nullable; Required; Nullable; Nullable | PM-005; CurrencyId selectable on creation only, immutable on existing-account saves; account rules BR-010–012. Default-name preview uses same classification fields. | OP-021 via DTO-002, OP-022,025 |
-| DTO-009 TransactionData / shared | Id: uuid; OccurredAt: datetime; Description: string; Entries: array<object>; State: enum; EditRevision: int64 | Nullable; Required; Nullable; Required; Nullable; Nullable | PM-006/007 projection; Entries shape E below; entry order must preserve PM-007 Position. State follows PM-006: Undefined=0 is unset and never persisted; Draft=1 or Confirmed=3 derived on save; Planned=2 reserved for future, not a current selectable state. No downgrade. Save min two account-bearing entries; editor projection may have fewer before save. BR-015–021. | OP-026 via DTO-002, OP-027,029,034 |
+| DTO-009 TransactionData / shared | Id: uuid; DateTime: datetime; Description: string; Entries: array<object>; State: enum; EditRevision: int64 | Nullable; Required; Nullable; Required; Nullable; Nullable | PM-006/007 projection; Entries shape E below; entry order must preserve PM-007 Position. State follows PM-006: Undefined=0 is unset and never persisted; Draft=1 or Confirmed=3 derived on save; Planned=2 reserved for future, not a current selectable state. No downgrade. Save min two account-bearing entries; editor projection may have fewer before save. BR-015–021. | OP-026 via DTO-002, OP-027,029,034 |
 | DTO-010 MergeCommand / request | SourceId: uuid; DestinationId: uuid; ExpectedSourceRevision: int64; ExpectedDestinationRevision: int64 | Required; Required; Nullable; Nullable | Same derived group type in PM-001; type-specific operation selection remains TQ-05. Source/destination explicit; root source/descendant destination invalid. Self-merge handling proposed reject under TQ-10. BR-007/008. | OP-007 |
 | DTO-011 TemplateData / shared | Id: uuid; GroupId: uuid; Name: string; Description: string; Entries: array<object>; EditRevision: int64 | Nullable; Required; Required; Nullable; Required; Nullable | PM-008/009 projection; Description is visible optional user input; Entries shape T below, empty allowed; entry order must preserve PM-009 Position; BR-022. | OP-032 via DTO-002, OP-033,036 |
 | DTO-012 ReportDefinition / shared | Category: object; Project: object; Correspondent: object; From: date; To: date; CurrencyFirst: bool; GroupBy: enum | Required; Required; Required; Nullable; Nullable; Required; Required | Each dimension shape S below. GroupBy Category,Project,Correspondent,Day,Week,Month,Year. PM-010 JSON definition; BR-023–027. | OP-037; nested DTO-013 in OP-038/039 |
-| DTO-013 SavedReportData / shared | Id: uuid; Name: string; Definition: object; EditRevision: int64 | Nullable; Required; Required; Nullable | Definition exactly DTO-012. PM-010; name validation BR-028. Read preserves raw intent; save minimization TQ-05. | OP-038 via DTO-002, OP-039 |
+| DTO-013 ReportData / shared | Id: uuid; Name: string; Definition: object; EditRevision: int64 | Nullable; Required; Required; Nullable | Definition exactly DTO-012. PM-010; name validation BR-028. Read preserves raw intent; save minimization TQ-05. | OP-038 via DTO-002, OP-039 |
 | DTO-014 CalculationResult / response | Rows: array<object>; Warnings: array<string> | Required; Required | Each row shape R below; signed amounts; no transaction drill-through. Balances/report preview only, not stored business data; BR-019/026/027. | OP-031,037 |
-| DTO-015 ConfigurationData / shared | Scope: enum; APr: int32; RPr: int32; DefaultAccountNameOrder: enum; DefaultAccountNameSeparator: string; SyncTrigger: enum; ConflictPriority: enum | Required; Nullable; Nullable; Nullable; Nullable; Nullable; Nullable | Scope System,Local. System exposes APr/RPr read-only after creation; balancing-account selection belongs to System, with exact DTO shape pending TQ-05; Local requires its four settings. Enums per PM-012. No scope-crossing writes. PM-011/012; BR-005/012/017/034. | OP-041,042 |
+| DTO-015 ConfigurationData / shared | Scope: enum; AmountPrecision: int32; RatePrecision: int32; DefaultAccountNameOrder: enum; DefaultAccountNameSeparator: string; SyncTrigger: enum; ConflictPriority: enum | Required; Nullable; Nullable; Nullable; Nullable; Nullable; Nullable | Scope System,Local. System exposes AmountPrecision/RatePrecision read-only after creation; balancing-account selection belongs to System, with exact DTO shape pending TQ-05; Local requires its four settings. Enums per PM-012. No scope-crossing writes. PM-011/012; BR-005/012/017/034. | OP-041,042 |
 | DTO-016 SetupRequest / request | Login: string; Password: string; BaseCurrencyCode: string; LocalDatasetKey: string; RequestId: uuid | Required; Required; Nullable; Required; Required | BR-003 required credentials; base code required only Create, not Open. Registration/request IDs proposed for retry; password transport/local retention TQ-03. | OP-003,004 |
 | DTO-017 SetupResult / response | MasterDatasetKey: string; LocalDatasetKey: string; AuthorizationHandle: string; Transfer: object | Required; Required; Required; Required | Owner dataset/registration, proposed opaque authorization handle, Transfer DTO-021; do not expose hash/Admin.db. BR-003/005. | OP-003,004 |
 | DTO-018 StatusResult / response | State: enum; MasterExists: bool; SyncKey: string; PublishedVersion: int64; InstalledVersion: int64; LastSuccessAt: datetime; Message: string | Required; Nullable; Nullable; Nullable; Nullable; Nullable; Nullable | State CreatingMode,OpenMode,MasterAbsent,MasterPresent,Waiting,Running,OutcomeUnknown,Published,Installed,Complete,Expired,Failed. Per-OP allowed subset TQ-04; ownership-scoped, no global directory listing. | OP-001,002,044,045,047,051,052 |
@@ -488,10 +497,10 @@ Each property cell uses `name: canonical type`; the following column lists nulla
 | E | AccountId | uuid | Nullable | Required on save; nullable only for unfinished editor |
 | E | Amount | decimal | Nullable | Blank becomes zero on save |
 | E | Rate | decimal | Required | Positive after rounding; base fixed 1 |
-| E | BaseAmount | decimal | Nullable | Derived/read-only: Amount × Rate rounded per entry to APr places, midpoint-to-even; not persisted or trusted from input |
+| E | BaseAmount | decimal | Nullable | Derived/read-only: Amount × Rate rounded per entry to AmountPrecision places, midpoint-to-even; not persisted or trusted from input |
 | T template entry | Id | uuid | Nullable | PM-009 identity |
 | T | AccountId | uuid | Required | PM-005 |
-| T | Amount | decimal | Required | APr fractional places |
+| T | Amount | decimal | Required | AmountPrecision fractional places |
 | S selection dimension | IncludedGroupIds | array<uuid> | Required | Saved explicit group inclusions |
 | S | ExcludedGroupIds | array<uuid> | Required | Saved explicit exclusions |
 | S | IncludedElementIds | array<uuid> | Required | Explicit element inclusions |
@@ -503,7 +512,7 @@ Each property cell uses `name: canonical type`; the following column lists nulla
 | R | Amount | decimal | Nullable | Null where mixed-currency own amount invalid |
 | R | BaseAmount | decimal | Required | Signed net rounded-entry total |
 | R | Level | int32 | Required | Group hierarchy presentation; exact layout TQ-05 |
-| C sync report count | EntityType | enum | Required | Group,Classification,Currency,Rate,Account,Transaction,Template,SavedReport,SystemConfiguration |
+| C sync report count | EntityType | enum | Required | Group,Classification,Currency,Rate,Account,Transaction,Template,Report,SystemConfiguration |
 | C | Created | int32 | Required | Received local business changes; zero omitted in display |
 | C | Updated | int32 | Required | Same |
 | C | Deleted | int32 | Required | Same |
@@ -580,7 +589,7 @@ For each operation the profile is its explicit authorization, transaction and id
 | OP-035 | SVC-007.DeleteTemplate | L/W | DTO-003 → None | Proposed template maintenance interpretation TQ-10; if accepted preserve account currency immutability, propagate deletion. |
 | OP-036 | SVC-007.FromTransaction | P | DTO-003 → DTO-011 | BR-022: active/draft source; copy accounts/amounts/description; target name/group supplied before OP-033. |
 | OP-037 | SVC-008.Calculate | L/R | DTO-012 → DTO-014 | BR-023–027: current tree/classifications, read-only selection evaluation, empty-warning and currency grouping. |
-| OP-038 | SVC-008.GetDefinitions | L/R | DTO-001 → DTO-002(SavedReportData) | BR-025/028: preserve JSON intent exactly on read. |
+| OP-038 | SVC-008.GetDefinitions | L/R | DTO-001 → DTO-002(ReportData) | BR-025/028: preserve JSON intent exactly on read. |
 | OP-039 | SVC-008.SaveDefinition | L/W | DTO-013 → DTO-013 | BR-025/028: user save, name validation, recompute minimal override IDs for selection save; rename-only handling TQ-05. |
 | OP-040 | SVC-008.DeleteDefinition | L/W | DTO-003 → None | BR-028: only definition deleted; bookkeeping unchanged. |
 | OP-041 | SVC-009.GetConfiguration | D read | None → DTO-015 | BR-005: scope selection/return both scopes requires DTO finalization TQ-05; no business data access bypass. |
@@ -673,11 +682,11 @@ These questions identify concrete draft contract gaps. They do not reopen settle
 
 | ID | Item / type | Affected contracts | Approval/handoff impact |
 | --- | --- | --- | --- |
-| TQ-01 | Partly resolved: display follows APr/RPr and SQLite Amount/Rate storage is int64 scaled by 10,000. Open: calculation magnitude limits and overflow detection for products/totals; Unicode definition of one separator. Account-name format is derived from the two stored settings in PM-012. BaseAmount derivation is confirmed in PM-007; initial-rate date and derived IsInitial are confirmed in PM-004. | PM-003–009/012; DTO-006–011/014/015; OP-016–037 | Blocks exact storage/validation contract. BRD scale/rounding/overflow result remain binding. |
+| TQ-01 | Partly resolved: display follows AmountPrecision/RatePrecision and SQLite Amount/Rate storage is int64 scaled by 10,000. Open: calculation magnitude limits and overflow detection for products/totals; Unicode definition of one separator. Account-name format is derived from the two stored settings in PM-012. BaseAmount derivation is confirmed in PM-007; initial-rate date and derived IsInitial are confirmed in PM-004. | PM-003–009/012; DTO-006–011/014/015; OP-016–037 | Blocks exact storage/validation contract. BRD scale/rounding/overflow result remain binding. |
 | TQ-02 | Partly resolved: shared sync fields and entity revisions confirmed above. Open: configuration singleton-key choices, remaining identifier role/name alignment, separate local expected-revision policy; local transaction boundaries for merge/save/deletion; idempotency of local mutation retries. | PM-001–012; L/W operations | Blocks schemas and mutation safety; never substitutes timestamps for sync outcomes. |
 | TQ-03 | Open: first-owner bootstrap, login case/normalization, password-hash parameters, remembered authorization/expiry, local secret storage, per-operation ownership enforcement. | PM-013; DTO-016–020/023; OP-002–004/043–049 | Blocks secure setup/cloud contract; no new password complexity rule. |
 | TQ-04 | Open: Admin.db hosting/serialization, durable sync state machine, typed Changes DTO, no-change response, snapshot byte protocol, atomic publication/outcome and receipt persistence, writer wait/liveness, reader leases/cleanup, incomplete registration retry/expiry, null-revision identity collisions. Int64 snapshot versions and deletion acknowledgement thresholds confirmed above. | PM-014–016; DTO-018–023; OP-003/004/043–049 | Blocks complete sync contracts; combined conflicts must implement BR-029–033 or fail/report without invalid publication. |
-| TQ-05 | Proposal/open: creation/configuration DTOs for immutable APr/RPr and balancing-account setting/action contracts; device-timezone/calendar-date context for rate lookup and reporting, entry-order serialization (array order versus explicit Position), type-specific DTO/service selection for derived group/element models (no Kind enum), final DTO read/write split, list paging/filter fields, report result grouping/selection-save versus rename, one/both configuration scopes in response, settings admission during recovery, ID remapping in reports. | DTO-001–015/026; OP-005–042 | Blocks exposed shapes/editor contracts; saved JSON preservation rules unchanged. |
+| TQ-05 | Proposal/open: creation/configuration DTOs for immutable AmountPrecision/RatePrecision and balancing-account setting/action contracts; device-timezone/calendar-date context for rate lookup and reporting, entry-order serialization (array order versus explicit Position), type-specific DTO/service selection for derived group/element models (no Kind enum), final DTO read/write split, list paging/filter fields, report result grouping/selection-save versus rename, one/both configuration scopes in response, settings admission during recovery, ID remapping in reports. | DTO-001–015/026; OP-005–042 | Blocks exposed shapes/editor contracts; saved JSON preservation rules unchanged. |
 | TQ-06 | Open: schema version and upgrade/download compatibility, migration failure behavior. | All PMs; snapshot operations | Blocks safe compatible local installation; no implementation schema inferred. |
 | TQ-07 | Proposal/open: domain error DTO/code taxonomy and local/transport mappings; canceled/absent result representation. | All OPs | Observable BRD errors fixed; exact response contracts incomplete. |
 | TQ-08 | Open: log folder per platform, seven-day clock/cleanup trigger, diagnostic secret redaction and latest report counts after full replacement. | DTO-024/025; OP-050–052 | Blocks diagnostic details; no new Share/Export feature. |
@@ -775,7 +784,7 @@ Each approved BRD ROLE, BC, BR, FR, NFR and SC receives one row. `Partial` means
 
 ## Development Handoff Readiness
 
-- **Not ready**. BRD 0.49 and TRD 0.58 are Draft; BRD 0.32 approval remains prior-baseline provenance only.
+- **Not ready**. BRD 0.49 and TRD 0.61 are Draft; BRD 0.32 approval remains prior-baseline provenance only.
 - Blockers: TQ-01–TQ-10 and TQ-12. TQ-11 and TQ-13 are resolved. Proposed schemas/directions/exposed fields, concurrency, authentication, sync wire protocol and transport/error definitions remain incomplete.
 - DTO/PM boundary: persistent models are not operation inputs/outputs. DTO-019 Changes and snapshot streaming are explicitly unresolved and cannot be treated as implemented contracts.
 - Traceability: all 79 applicable BRD IDs enumerated (2 roles, 12 capabilities, 44 rules, 12 functional, 5 nonfunctional, 4 success criteria). One non-system approval role; 78 Partial; zero Covered. This is drafting coverage, not a passing contract review or development handoff.
@@ -1284,6 +1293,32 @@ Each approved BRD ROLE, BC, BR, FR, NFR and SC receives one row. `Partial` means
 - Affected IDs: shared tracking and snapshot contracts; PM-001–016; OP-043–049.
 - TRD 0.57 becomes Draft 0.58; full-version approval remains outstanding.
 
+### 2026-09-30 — Code names, Report and Currency description
+
+- User direction: remove Description from Currency; rename SavedReport to Report; use the existing code names Date, DateTime, AmountPrecision and RatePrecision; fix TRD and add an explanation.
+- Source: requesting user in the persistent-model review chat, 2026-09-30.
+- Decision: apply the requested names throughout active model and corresponding DTO contracts; preserve date/UTC and precision semantics. Remove Currency.Description from PM-003, DTO-006 and currency editing; keep CurrencyRate.Description. PM-010/DTO-013 become Report/ReportData without changing their purpose or stable IDs.
+- BRD impact: BRD 0.49 BR-009/BR-013 still mention currency descriptions and need alignment before full approval. No BRD or code change is included in this TRD-only correction.
+- Affected IDs: PM-003/004/006/010/011; DTO-006/007/009/013/015; UC-004-03; OP-016/038 and shared precision/report references.
+- TRD 0.58 becomes Draft 0.59; full-version approval remains outstanding. Historical clarification records remain unchanged.
+
+### 2026-09-30 — SnapshotRevision naming
+
+- User direction: rename AcknowledgedVersion to SnapshotRevision, following confirmation that it identifies the last successfully installed snapshot and maps to C# long.
+- Source: requesting user in the persistent-model review chat, 2026-09-30.
+- Decision: use SnapshotRevision in all active contracts, including LocalConfiguration (PM-012), LocalRegistration (PM-014), snapshot acknowledgement and deletion-marker retention rules. Type remains required int64 (C# long), initially 0. Local records successful installation; Master advances its per-Local value only after installation confirmation. This is not the latest published Master revision unless that snapshot has been installed and acknowledged.
+- Other snapshot fields (Version, PublishedVersion, InstalledVersion) retain their existing names. Historical clarification entries retain the former name.
+- TRD 0.59 becomes Draft 0.60; full-version approval remains outstanding.
+
+### 2026-09-30 — Local conflict default and Report.Json
+
+- User direction: make ConflictPriority.Local the default; rename DefinitionJson to Json.
+- Source: requesting user in the persistent-model review chat, 2026-09-30.
+- Decision: PM-012 defaults ConflictPriority to Local, matching LocalConfig. PM-010 uses Json for its required JSON instructions string, matching Report. Report behavior, field type/nullability and stable IDs remain unchanged.
+- BRD impact: BRD 0.49 BR-029 still states default Master; this user decision supersedes that default for the revised TRD. BRD alignment remains outstanding before full approval.
+- Affected IDs: PM-010/012; configuration default under DTO-015 and OP-041/042.
+- TRD 0.60 becomes Draft 0.61; full-version approval remains outstanding. Historical clarification entries remain unchanged.
+
 ## Approval
 
 - Current decision: **Not submitted**.
@@ -1291,5 +1326,5 @@ Each approved BRD ROLE, BC, BR, FR, NFR and SC receives one row. `Partial` means
 - Intended approver: requesting user.
 - Decision date: not applicable.
 - Scope: consolidated technical requirements, detailed use cases, proposed schemas and API/BFF contracts.
-- Next step: review this Draft 0.58 and settle technical choices in place. Do not reopen settled BRD questions. No TRD approval is inferred from the instruction to begin drafting.
+- Next step: review this Draft 0.61 and settle technical choices in place. Do not reopen settled BRD questions. No TRD approval is inferred from the instruction to begin drafting.
 

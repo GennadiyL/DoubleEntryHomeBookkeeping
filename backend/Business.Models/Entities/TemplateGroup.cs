@@ -3,11 +3,12 @@ using Business.Models.Entities.Base;
 namespace Business.Models.Entities;
 
 /// <summary>
-/// Represents a persistent hierarchical group of transaction templates.
-/// It participates in the template catalog and owns child groups and templates.
-/// Its writable identifier can be assigned during creation or materialization.
-/// Parameterless construction supports persistence and object initialization.
-/// The model stores template-group state and does not implement business workflows.
+/// Represents a persistent hierarchical group of templates.
+/// Parent and child relationships stay within this concrete group family.
+/// The elements collection holds the templates assigned directly to the group.
+/// Services initialize the fixed root and manage non-root moves, merges, and deletions.
+/// Writable inherited identity supports creation and materialization of persistent state.
+/// The model carries data; business services implement validation and lifecycle operations.
 /// </summary>
 public class TemplateGroup : GroupEntity<TemplateGroup, Template>
 {

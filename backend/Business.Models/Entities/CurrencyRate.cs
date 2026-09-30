@@ -5,6 +5,14 @@ using Business.Models.Enums;
 
 namespace Business.Models.Entities;
 
+/// <summary>
+/// Represents a dated exchange rate to the dataset base currency.
+/// Stores a currency reference, decimal rate, calendar date, and optional description.
+/// IsInitial derives the fallback marker from the shared initial-date constant.
+/// Services validate rates and select applicable dates; transaction entries retain independent rates.
+/// Writable inherited identity supports creation and materialization of persistent state.
+/// The model carries data; business services implement validation and lifecycle operations.
+/// </summary>
 public class CurrencyRate : BaseEntity, ITrackedEntity
 {
 	public long? EditRevision { get; set; }

@@ -4,6 +4,14 @@ using Business.Models.Enums;
 
 namespace Business.Models.Entities.Config;
 
+/// <summary>
+/// Stores synchronized settings shared by a master dataset and its local copies.
+/// MasterDatasetKey identifies the dataset independently of this configuration row.
+/// Base currency and precision choices are initialized once and preserved by services.
+/// The optional balancing-account reference selects the account for assisted balancing.
+/// Writable inherited identity supports creation and materialization of persistent state.
+/// The model carries data; business services implement validation and lifecycle operations.
+/// </summary>
 public class SystemConfig : BaseEntity, ITrackedEntity
 {
 	public long? EditRevision { get; set; }
