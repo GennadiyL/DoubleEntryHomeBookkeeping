@@ -4,7 +4,7 @@ using Business.Contracts.Base.Services;
 
 namespace Business.Contracts.Services;
 
-public interface ITransactionService : IEntityService<TransactionParam>
+public interface ITransactionService : IUpdateEntityService<TransactionParam>
 {
 	public Task DeleteTransactionList(List<Guid> transactionIds);
 	/// <summary>
