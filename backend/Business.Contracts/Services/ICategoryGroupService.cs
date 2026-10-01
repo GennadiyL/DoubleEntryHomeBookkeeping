@@ -5,6 +5,6 @@ using Business.Models.Entities;
 
 namespace Business.Contracts.Services;
 
-public interface ICategoryGroupService : IGroupService<CategoryGroup, Category, GroupParam>
+public interface ICategoryGroupService : IGroupService<CategoryGroup, Category>, IUpdateEntityService<GroupParam>
 {
 }

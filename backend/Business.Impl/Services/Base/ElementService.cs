@@ -12,7 +12,7 @@ using Shared.Contracts;
 
 namespace Business.Impl.Services.Base;
 
-public abstract class ElementService<TGroup, TElement> : IElementService<TGroup, TElement, ElementParam>
+public abstract class ElementService<TGroup, TElement> : IElementService<TGroup, TElement>, IUpdateEntityService<ElementParam>
 	where TGroup : class, IGroupEntity<TGroup, TElement>, ICatalogEntity
 	where TElement : ElementEntity<TGroup, TElement>, new()
 {

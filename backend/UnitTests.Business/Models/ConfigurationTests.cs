@@ -29,6 +29,7 @@ public sealed class ConfigurationTests
 		LocalConfig config = new();
 		Assert.That(config.AccountNameOrder, Is.EqualTo(AccountNameOrder.CorrespondentCategoryProject));
 		Assert.That(config.DefaultAccountNameSeparator, Is.EqualTo("/"));
-		Assert.That(Enum.GetValues<AccountNameOrder>(), Has.Length.EqualTo(6));
+		Assert.That((int)AccountNameOrder.Undefined, Is.Zero);
+		Assert.That(Enum.GetValues<AccountNameOrder>().Count(value => value != AccountNameOrder.Undefined), Is.EqualTo(6));
 	}
 }

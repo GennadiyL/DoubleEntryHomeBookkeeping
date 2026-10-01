@@ -4,6 +4,6 @@ using Business.Models.Entities;
 
 namespace Business.Contracts.Services;
 
-public interface ITemplateGroupService : IGroupService<TemplateGroup, Template, GroupParam>
+public interface ITemplateGroupService : IGroupService<TemplateGroup, Template>, IUpdateEntityService<GroupParam>
 {
 }

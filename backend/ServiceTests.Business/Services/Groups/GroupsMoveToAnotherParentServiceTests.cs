@@ -29,7 +29,7 @@ namespace ServiceTests.Business.Services.Groups;
 public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TService, TRepository>
 	where TGroup : GroupEntity<TGroup, TElement>, new()
 	where TElement : ElementEntity<TGroup, TElement>, new()
-	where TService : class, IGroupService<TGroup, TElement, GroupParam>
+	where TService : class, IGroupService<TGroup, TElement>
 	where TRepository : class, IGroupRepository<TGroup, TElement>
 {
 	private ServiceProvider _provider = null!;

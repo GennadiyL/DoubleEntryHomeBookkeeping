@@ -5,7 +5,9 @@ using Business.Models.Entities;
 
 namespace Business.Contracts.Services;
 
-public interface IAccountGroupService : IGroupService<AccountGroup, Account, GroupParam>
+public interface IAccountGroupService :
+	IGroupService<AccountGroup, Account>,
+	IUpdateEntityService<GroupParam>
 {
 	public Task<AccountsTreeInfo> GetAccountsTree();
 }

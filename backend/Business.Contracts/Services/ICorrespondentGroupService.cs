@@ -5,6 +5,6 @@ using Business.Models.Entities;
 
 namespace Business.Contracts.Services;
 
-public interface ICorrespondentGroupService : IGroupService<CorrespondentGroup, Correspondent, GroupParam>
+public interface ICorrespondentGroupService : IGroupService<CorrespondentGroup, Correspondent>, IUpdateEntityService<GroupParam>
 {
 }

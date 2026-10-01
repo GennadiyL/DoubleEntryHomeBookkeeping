@@ -29,7 +29,7 @@ namespace ServiceTests.Business.Services.Groups;
 public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TRepository>
 	where TGroup : GroupEntity<TGroup, TElement>, new()
 	where TElement : class, IElementEntity<TGroup, TElement>, ICatalogEntity
-	where TService : class, IGroupService<TGroup, TElement, GroupParam>
+	where TService : class, IGroupService<TGroup, TElement>, IUpdateEntityService<GroupParam>
 	where TRepository : class, IGroupRepository<TGroup, TElement>
 {
 	private ServiceProvider _provider = null!;

@@ -4,6 +4,6 @@ using Business.Models.Entities;
 
 namespace Business.Contracts.Services;
 
-public interface ICategoryService : IElementService<CategoryGroup, Category, ElementParam>
+public interface ICategoryService : IElementService<CategoryGroup, Category>, IUpdateEntityService<ElementParam>
 {
 }

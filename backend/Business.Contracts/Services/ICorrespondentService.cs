@@ -4,6 +4,6 @@ using Business.Models.Entities;
 
 namespace Business.Contracts.Services;
 
-public interface ICorrespondentService : IElementService<CorrespondentGroup, Correspondent, ElementParam>
+public interface ICorrespondentService : IElementService<CorrespondentGroup, Correspondent>, IUpdateEntityService<ElementParam>
 {
 }

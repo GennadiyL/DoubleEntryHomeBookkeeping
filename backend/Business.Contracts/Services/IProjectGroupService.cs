@@ -5,6 +5,6 @@ using Business.Models.Entities;
 
 namespace Business.Contracts.Services;
 
-public interface IProjectGroupService : IGroupService<ProjectGroup, Project, GroupParam>
+public interface IProjectGroupService : IGroupService<ProjectGroup, Project>, IUpdateEntityService<GroupParam>
 {
 }

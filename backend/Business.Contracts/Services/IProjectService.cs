@@ -4,6 +4,6 @@ using Business.Models.Entities;
 
 namespace Business.Contracts.Services;
 
-public interface IProjectService : IElementService<ProjectGroup, Project, ElementParam>
+public interface IProjectService : IElementService<ProjectGroup, Project>, IUpdateEntityService<ElementParam>
 {
 }

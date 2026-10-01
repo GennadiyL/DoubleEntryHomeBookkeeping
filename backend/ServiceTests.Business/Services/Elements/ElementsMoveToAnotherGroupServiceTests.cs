@@ -26,7 +26,7 @@ namespace ServiceTests.Business.Services.Elements;
 public sealed class ElementsMoveToAnotherGroupServiceTests<TGroup, TElement, TService, TRepository, TGroupRepository>
 	where TGroup : GroupEntity<TGroup, TElement>, new()
 	where TElement : ElementEntity<TGroup, TElement>, new()
-	where TService : class, IElementService<TGroup, TElement, ElementParam>
+	where TService : class, IElementService<TGroup, TElement>
 	where TRepository : class, IElementRepository<TGroup, TElement>
 	where TGroupRepository : class, IGroupRepository<TGroup, TElement>
 {

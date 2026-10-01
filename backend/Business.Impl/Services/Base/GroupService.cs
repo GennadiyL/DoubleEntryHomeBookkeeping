@@ -13,7 +13,7 @@ using Business.Contracts.Base.Services;
 
 namespace Business.Impl.Services.Base;
 
-public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TElement, GroupParam>
+public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TElement>, IUpdateEntityService<GroupParam>
 	where TGroup : GroupEntity<TGroup, TElement>, new()
 	where TElement : class, IElementEntity<TGroup, TElement>, ICatalogEntity
 {

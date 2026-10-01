@@ -3,10 +3,9 @@ using Business.Models.Entities.Interfaces;
 
 namespace Business.Contracts.Base.Services;
 
-public interface IGroupService<TGroup, TElement, in TParam> : ICatalogService<TGroup, TParam>
+public interface IGroupService<TGroup, TElement> : ICatalogService<TGroup>
 	where TGroup : class, IGroupEntity<TGroup, TElement>, ICatalogEntity
 	where TElement : class, IElementEntity<TGroup, TElement>, ICatalogEntity
-	where TParam : class
 {
 	/// <summary>
 	/// Returns all groups of this catalog, including the root once, for building the selection tree.

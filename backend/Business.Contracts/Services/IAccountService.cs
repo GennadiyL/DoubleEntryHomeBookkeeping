@@ -4,7 +4,7 @@ using Business.Models.Entities;
 
 namespace Business.Contracts.Services;
 
-public interface IAccountService : IElementService<AccountGroup, Account, AccountParam>
+public interface IAccountService : IElementService<AccountGroup, Account>, IUpdateEntityService<AccountParam>
 {
 	/// <summary>
 	/// Generates an account name for creation or restoring the name in the account editor.

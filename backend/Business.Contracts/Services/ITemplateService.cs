@@ -5,7 +5,7 @@ using Business.Contracts.Base.Services;
 
 namespace Business.Contracts.Services;
 
-public interface ITemplateService : IElementService<TemplateGroup, Template, TemplateParam>
+public interface ITemplateService : IElementService<TemplateGroup, Template>, IUpdateEntityService<TemplateParam>
 {
 	/// <summary>
 	/// Prepares an unsaved transaction for the editor from template accounts, amounts, description and entry order.
