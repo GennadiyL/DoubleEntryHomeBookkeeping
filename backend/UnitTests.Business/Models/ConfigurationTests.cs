@@ -27,8 +27,8 @@ public sealed class ConfigurationTests
 	public void UserConfig_Defaults_MatchNameFormatContract()
 	{
 		LocalConfig config = new();
-		Assert.That(config.DefaultAccountNameOrder, Is.EqualTo(DefaultAccountNameOrder.CorrespondentCategoryProject));
+		Assert.That(config.AccountNameOrder, Is.EqualTo(AccountNameOrder.CorrespondentCategoryProject));
 		Assert.That(config.DefaultAccountNameSeparator, Is.EqualTo("/"));
-		Assert.That(Enum.GetValues<DefaultAccountNameOrder>(), Has.Length.EqualTo(6));
+		Assert.That(Enum.GetValues<AccountNameOrder>(), Has.Length.EqualTo(6));
 	}
 }

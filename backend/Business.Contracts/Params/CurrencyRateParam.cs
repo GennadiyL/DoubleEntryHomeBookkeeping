@@ -10,5 +10,5 @@ public class CurrencyRateParam
 
 	public decimal Rate { get; set; }
 
-	public string? Comment { get; set; }
+	public string? Description { get; set; }
 }

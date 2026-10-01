@@ -747,7 +747,7 @@ internal class AppMapper : IMapper
 	{
 		Id = value.Id,
 		LocalDatasetKey = value.LocalDatasetKey,
-		DefaultAccountNameOrder = value.DefaultAccountNameOrder,
+		AccountNameOrder = value.AccountNameOrder,
 		DefaultAccountNameSeparator = value.DefaultAccountNameSeparator
 	};
 
@@ -762,7 +762,7 @@ internal class AppMapper : IMapper
 		{
 			Id = value.Id,
 			LocalDatasetKey = value.LocalDatasetKey,
-			DefaultAccountNameOrder = value.DefaultAccountNameOrder,
+			AccountNameOrder = value.AccountNameOrder,
 			DefaultAccountNameSeparator = value.DefaultAccountNameSeparator
 		};
 		cache.Add(value, mapped);

@@ -14,7 +14,7 @@ namespace Business.Models.Entities.Config;
 public class LocalConfig : BaseEntity
 {
 	public string LocalDatasetKey { get; set; } = string.Empty;
-	public DefaultAccountNameOrder DefaultAccountNameOrder { get; set; } = DefaultAccountNameOrder.CorrespondentCategoryProject;
+	public AccountNameOrder AccountNameOrder { get; set; } = AccountNameOrder.CorrespondentCategoryProject;
 	public string DefaultAccountNameSeparator { get; set; } = "/";
 	public ConflictPriority ConflictPriority { get; set; } = ConflictPriority.Local;
 	public long SnapshotRevision { get; set; }

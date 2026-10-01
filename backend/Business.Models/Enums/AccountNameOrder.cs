@@ -8,8 +8,9 @@ namespace Business.Models.Enums;
 /// Explicit numeric values preserve the meaning of stored or exchanged selections.
 /// The enum describes state or preferences without executing the corresponding operations.
 /// </summary>
-public enum DefaultAccountNameOrder
+public enum AccountNameOrder
 {
+	Undefined = 0,
 	CorrespondentCategoryProject = 1,
 	CorrespondentProjectCategory = 2,
 	CategoryCorrespondentProject = 3,

@@ -7,6 +7,6 @@ internal class LocalConfig : IDalEntity
 {
 	public Guid Id { get; set; }
 	public string LocalDatasetKey { get; set; } = string.Empty;
-	public DefaultAccountNameOrder DefaultAccountNameOrder { get; set; } = DefaultAccountNameOrder.CorrespondentCategoryProject;
+	public AccountNameOrder AccountNameOrder { get; set; } = AccountNameOrder.CorrespondentCategoryProject;
 	public string DefaultAccountNameSeparator { get; set; } = "/";
 }
