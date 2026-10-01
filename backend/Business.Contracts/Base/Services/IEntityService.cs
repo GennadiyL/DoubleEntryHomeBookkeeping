@@ -1,4 +1,4 @@
-namespace Business.Contracts.Services.Base;
+namespace Business.Contracts.Base.Services;
 
 public interface IEntityService<in TParam>
 	where TParam : class

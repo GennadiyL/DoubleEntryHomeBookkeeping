@@ -1,6 +1,6 @@
 using Business.Models.Entities.Interfaces;
 
-namespace Business.Contracts.Services.Base;
+namespace Business.Contracts.Base.Services;
 
 public interface IElementService<TGroup, TElement, in TParam> : ICatalogService<TElement, TParam>
 	where TGroup : class, IGroupEntity<TGroup, TElement>, ICatalogEntity

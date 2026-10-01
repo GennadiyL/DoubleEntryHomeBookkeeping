@@ -1,7 +1,7 @@
 using Business.Contracts.Services.Templates;
 using Business.Contracts.Params;
-using Business.Contracts.Services.Base;
 using Business.Models.Entities;
+using Business.Contracts.Base.Services;
 
 namespace Business.Contracts.Services;
 

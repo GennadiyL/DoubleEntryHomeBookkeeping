@@ -1,6 +1,6 @@
 using Business.Models.Entities.Interfaces;
 
-namespace Business.Contracts.Services.Base;
+namespace Business.Contracts.Base.Services;
 
 public interface IOrderedService<T>
 	where T : IOrderedEntity

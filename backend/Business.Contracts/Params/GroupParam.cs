@@ -1,4 +1,4 @@
-using Business.Contracts.Params.Interfaces;
+using Business.Contracts.Base.Params;
 
 namespace Business.Contracts.Params;
 

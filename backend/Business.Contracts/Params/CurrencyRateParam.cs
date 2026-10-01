@@ -1,5 +1,3 @@
-using Business.Contracts.Params.Interfaces;
-
 namespace Business.Contracts.Params;
 
 public class CurrencyRateParam

@@ -1,6 +1,6 @@
+using Business.Contracts.Base.Services;
 using Business.Contracts.Params;
 using Business.Contracts.Services;
-using Business.Contracts.Services.Base;
 using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;

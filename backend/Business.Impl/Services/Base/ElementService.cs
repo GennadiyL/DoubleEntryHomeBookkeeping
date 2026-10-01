@@ -1,5 +1,5 @@
+using Business.Contracts.Base.Services;
 using Business.Contracts.Params;
-using Business.Contracts.Services.Base;
 using Business.Contracts.Utils.Merging;
 using Business.Contracts.Utils.Ordering;
 using Business.Models.Entities;

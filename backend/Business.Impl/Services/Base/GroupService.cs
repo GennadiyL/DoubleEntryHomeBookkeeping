@@ -1,6 +1,5 @@
 using Business.Contracts.Services.Groups;
 using Business.Contracts.Params;
-using Business.Contracts.Services.Base;
 using Business.Contracts.Utils.Merging;
 using Business.Contracts.Utils.Ordering;
 using Business.Models.Entities.Base;
@@ -10,6 +9,7 @@ using DataAccess.Contracts;
 using DataAccess.Contracts.Repositories.Base;
 using DataAccess.Core.Behaviors;
 using Shared.Contracts;
+using Business.Contracts.Base.Services;
 
 namespace Business.Impl.Services.Base;
 

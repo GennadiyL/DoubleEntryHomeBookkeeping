@@ -1,4 +1,4 @@
-namespace Business.Contracts.Params.Interfaces;
+namespace Business.Contracts.Base.Params;
 
 public interface INamedParam
 {

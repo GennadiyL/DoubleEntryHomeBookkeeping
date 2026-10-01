@@ -1,6 +1,6 @@
 using Business.Contracts.Services.Transactions;
 using Business.Contracts.Params;
-using Business.Contracts.Services.Base;
+using Business.Contracts.Base.Services;
 
 namespace Business.Contracts.Services;
 
