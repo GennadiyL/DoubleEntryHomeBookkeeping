@@ -560,8 +560,6 @@ internal class AppMapper : IMapper
 			RatePrecision = value.RatePrecision
 		};
 		cache.Add(value, mapped);
-		mapped.BaseCurrency = value.BaseCurrency is null ? null! : Map(value.BaseCurrency, cache);
-		mapped.BalancingAccount = value.BalancingAccount is null ? null : Map(value.BalancingAccount, cache);
 		return mapped;
 	}
 
@@ -748,7 +746,10 @@ internal class AppMapper : IMapper
 		Id = value.Id,
 		LocalDatasetKey = value.LocalDatasetKey,
 		AccountNameOrder = value.AccountNameOrder,
-		DefaultAccountNameSeparator = value.DefaultAccountNameSeparator
+		DefaultAccountNameSeparator = value.DefaultAccountNameSeparator,
+		ConflictPriority = value.ConflictPriority,
+		SyncTrigger = value.SyncTrigger,
+		SnapshotRevision = value.SnapshotRevision
 	};
 
 	private static LocalConfigEntity Map(LocalConfig value, Dictionary<IDalEntity, IBaseEntity> cache)
@@ -763,7 +764,10 @@ internal class AppMapper : IMapper
 			Id = value.Id,
 			LocalDatasetKey = value.LocalDatasetKey,
 			AccountNameOrder = value.AccountNameOrder,
-			DefaultAccountNameSeparator = value.DefaultAccountNameSeparator
+			DefaultAccountNameSeparator = value.DefaultAccountNameSeparator,
+			ConflictPriority = value.ConflictPriority,
+			SyncTrigger = value.SyncTrigger,
+			SnapshotRevision = value.SnapshotRevision
 		};
 		cache.Add(value, mapped);
 		return mapped;

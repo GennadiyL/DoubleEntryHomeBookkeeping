@@ -1,4 +1,8 @@
 <Solution>
+  <Folder Name="/Administration/">
+    <Project Path="Administration.Contracts/Administration.Contracts.csproj" />
+    <Project Path="Administration.Impl/Administration.Impl.csproj" />
+  </Folder>
   <Folder Name="/Business/">
     <Project Path="Business.Contracts/Business.Contracts.csproj" />
     <Project Path="Business.Impl/Business.Impl.csproj" />
@@ -21,9 +25,21 @@
     <Project Path="Messaging.Contracts/Messaging.Contracts.csproj" />
     <Project Path="Messaging.InProcessBus/Messaging.InProcessBus.csproj" />
   </Folder>
+  <Folder Name="/Reporting/">
+    <Project Path="Reporting.Contracts/Reporting.Contracts.csproj" />
+    <Project Path="Reporting.Impl/Reporting.Impl.csproj" />
+  </Folder>
+  <Folder Name="/Setup/">
+    <Project Path="Setup.Contracts/Setup.Contracts.csproj" />
+    <Project Path="Setup.Impl/Setup.Impl.csproj" />
+  </Folder>
   <Folder Name="/Shared/">
     <Project Path="Shared.Contracts/Shared.Contracts.csproj" />
     <Project Path="Shared.Impl/Shared.Impl.csproj" />
+  </Folder>
+  <Folder Name="/Synchronization/">
+    <Project Path="Synchronization.Contracts/Synchronization.Contracts.csproj" />
+    <Project Path="Synchronization.Impl/Synchronization.Impl.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="Tests.Common/Tests.Common.csproj" />

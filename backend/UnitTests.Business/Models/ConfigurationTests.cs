@@ -16,7 +16,6 @@ public sealed class ConfigurationTests
 			Assert.That(config.AmountPrecision, Is.EqualTo(2));
 			Assert.That(config.RatePrecision, Is.EqualTo(4));
 			Assert.That(config.BalancingAccountId, Is.Null);
-			Assert.That(config.BalancingAccount, Is.Null);
 			Assert.That(config.EditRevision, Is.Null);
 			Assert.That(config.DeleteRevision, Is.Null);
 			Assert.That(config.ModificationType, Is.EqualTo(ModificationType.None));

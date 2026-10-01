@@ -1,6 +1,6 @@
 using Business.Models.Enums;
 
-namespace Business.Contracts.Services.LocalConfigs;
+namespace Setup.Contracts.Services.LocalConfigs;
 
 /// <summary>
 /// Contains settings from the single Local configuration.

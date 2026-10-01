@@ -3,7 +3,7 @@
 ## Document Control
 
 - Artifact: `docs/requirements/BRD.md`; consolidated BRD for core bookkeeping, synchronization and first use.
-- Status: **Draft**; version **0.49**, dated **2026-09-29**. Replaces legacy Draft 0.1 and its accumulated brainstorming updates.
+- Status: **Draft**; version **0.51**, dated **2026-10-01**. Replaces legacy Draft 0.1 and its accumulated brainstorming updates.
 - Business owner/approver: requesting user in this conversation (personal name not supplied).
 - Drafting authorization: requesting user, this conversation, 2026-09-27: **“Cool. Work with BRD”**, following the proposal to consolidate core bookkeeping, synchronization and first use with unresolved Administration details marked open.
 - Source status: discovery documents remain Draft. Individual user-confirmed decisions are evidence, not formal document approval. The current instruction authorizes this consolidated draft; no discovery approval is inferred. The requested consolidated scope/location takes precedence over the skill's default per-feature layout and preliminary approval workflow.
@@ -93,7 +93,7 @@ The measures below are proposed acceptance criteria for this personal prototype,
 - First-use creation and connecting another device; one owner and one master dataset (F/S).
 - Android and Windows desktop, ordinary offline use without sign-in (S/F).
 - Five hierarchies, accounts, classifications, currencies and rates (C).
-- Manual transactions, constrained unbalanced drafts, duplication, transaction templates, group merging (C).
+- Manual transactions, incomplete or unbalanced drafts, duplication, transaction templates, group merging (C).
 - On-demand balances and configurable saved reports (C).
 - First-release synchronization of all business data, conflict priority subordinate to validity, deletion propagation, recovery, expiry and latest-attempt reporting (S).
 
@@ -107,7 +107,7 @@ The measures below are proposed acceptance criteria for this personal prototype,
 ## Current and Target Business Process
 
 - Current process: not documented; product is defined from the owner's stated needs.
-- Target: open existing local bookkeeping offline or complete online setup; organize data; record balanced activity or save unbalanced drafts; reuse templates; calculate reports; synchronize when requested/configured; complete required recovery/replacement before accessing affected data.
+- Target: open existing local bookkeeping offline or complete online setup; organize data; record balanced activity or save incomplete or unbalanced drafts; reuse templates; calculate reports; synchronize when requested/configured; complete required recovery/replacement before accessing affected data.
 - **Open/editing mode** uses an existing local copy offline. **Creating mode** means no local copy and requires online setup. The setup **Open button** downloads from an existing cloud master; it is distinct from ordinary offline open mode.
 - Setup retries, credentials, reinstallation and connectivity are settled in Q-13–Q-16. Remaining technical mechanisms do not change these business decisions.
 
@@ -137,13 +137,13 @@ The measures below are proposed acceptance criteria for this personal prototype,
 | BR-013 | Currency ISO code unique dataset-wide and immutable; Name/Symbol editable/restorable from catalog defaults; Description optional. Delete only non-base currency unused by accounts. Populate available currency choices from system culture/region information, using ISO currency symbol as Code, currency symbol as Symbol and English currency name as Name, as in the user-provided example. Invalid region conversions are skipped. Available choices contain exactly one entry per ISO currency code. For repeated codes, retain the first returned Name and Symbol; these remain editable and restorable from source defaults. Q-04 is resolved. | C Currency; U clarifications | BC-004; FR-004 |
 | BR-014 | Currency requires positive initial rate. Base rate always 1, never overridden. Initial rate has hidden system-controlled old date; value editable subject to base rule; cannot be deleted. One ordinary rate per currency per calendar date (DateOnly, without timezone conversion); ordinary rates editable/deletable. Each rate, including the initial rate, may have its own optional Description, separate from the currency Description. | C Currency/Precision | BC-004, BC-005; FR-004, FR-005 |
 | BR-015 | Entry currency comes from account. Default rate is latest on/before the transaction calendar date in the current device/UI timezone with initial fallback. Stored entry rate independent of later rate changes. Non-base rate override allowed; Restore Rate reloads applicable current rate. Date changes do not alter stored rates automatically. | C Currency | BC-005, BC-006; FR-005, FR-006 |
-| BR-016 | Every saved transaction, including drafts, needs at least two entries, each with account. Empty amount becomes zero; zero/repeated accounts allowed. Positive increases account balance; negative decreases it. Optional Description is transaction-level only. | C Transactions | BC-005; FR-005 |
+| BR-016 | Confirmed transactions require at least two entries, each with an account. Drafts may contain zero or one entry and can be saved for later repair. Every entry present in either state must be valid: it must have an existing account, a valid positive rate under BR-015/017 (base currency rate 1), and a numeric amount, including zero. An entry without an account or valid rate cannot be saved as Draft. Empty amount becomes zero; zero amounts and repeated accounts are allowed. Positive increases account balance and negative decreases it only when the transaction is Confirmed. Optional Description is transaction-level only. | U clarification 2026-10-01; C Transactions | BC-005; FR-005 |
 | BR-017 | Base currency, Amount Precision (APr) and Rate Precision (RPr) are selected during dataset creation, stored in synchronized System configuration, and immutable afterwards. Amounts use APr fractional places; rates use RPr. Input controls enforce these precisions; excess input received outside them rounds to the applicable precision using midpoint-to-even. Rates must remain positive after rounding. Numeric overflow rejects the operation with an error and unchanged data. APr and RPr each allow integer values 0 through 4 inclusive; defaults are APr = 2 and RPr = 4. Display amounts and BaseAmount using APr and rates using RPr. No separate DisplayDecimalPlaces setting remains. SQLite storage uses fixed four-decimal scaling as specified in TRD. | U clarification 2026-09-28 | BC-001/004/005/009; FR-001/004/005/009 |
 | BR-018 | Calculate each BaseAmount = Amount × Rate rounded to APr using midpoint-to-even; sum those rounded values. Confirmed transactions require exact zero, with no tolerance. For any nonzero difference, offer Add balancing entry. Only on user click, append an entry using the configured base-currency balancing account, Amount = negative current total, Rate = 1; recalculate and require zero. User may instead add an entry manually. The button has no small-rounding threshold and does not silently add entries or bypass other save validation. The balancing-account selection belongs to synchronized System configuration and is shared across devices. Initialization creates and selects the rebalancing account in the Account root group. The user can select another base-currency account in Settings. The account is subject to ordinary account deletion rules; selection alone does not protect it. If missing/deleted, Add balancing entry adds nothing and shows: Cannot add a balancing entry: the rebalancing account is missing. Please choose a rebalancing account in Settings. Manual balancing remains available. | U clarification 2026-09-28 | BC-005; FR-005 |
-| BR-019 | Complete balanced save activates automatically. New unbalanced transaction may be draft, excluded from balances/reports. Active edit cannot save invalid or return to draft. Active transaction may be deleted. Calculate balances/reports on demand excluding drafts/deleted transactions. | C Transactions | BC-005, BC-007; FR-005, FR-007 |
+| BR-019 | A complete, valid, exactly balanced save becomes Confirmed automatically. Any new or existing transaction may be saved as Draft when it has fewer than two entries or is unbalanced, including an edit of a previously Confirmed transaction. Every present entry must satisfy BR-016 and other date/numeric validation still applies. UI shows a persistent visible Draft warning until the transaction is fixed; fewer than two entries or imbalance alone does not disable Save; invalid entries still prevent saving. Drafts are unfinished work retained for future repair and contribute to no accounting balances, totals or reports. Saving a formerly Confirmed transaction as Draft removes its previous accounting contribution. Transactions may be deleted. Calculate balances/reports on demand using only Confirmed, non-deleted transactions. Draft synchronization remains governed by BR-029. | U clarification 2026-10-01 | BC-005, BC-007; FR-005, FR-007 |
 | BR-020 | New occurrence defaults to now, editable. Duplicate copies accounts/amounts/rates/Description with time reset to now for review/save. Opening balances are ordinary balanced transactions; no opening-balance preset account created; the initialization rebalancing account is separate. | C Transactions | BC-005; FR-005 |
 | BR-021 | Transaction time represents UTC, displays in device timezone; no separate timezone setting. Minimum 2001-01-01 00:00:00 UTC inclusive after local-input conversion. Ordinary DateOnly rate dates cannot precede 2001-01-01; initial date excepted. Rate lookup uses the transaction date in the current device/UI timezone. Report boundaries and calendar grouping use that same timezone, converted to UTC instants for timestamp filtering. | C Dates | BC-004, BC-005, BC-007; FR-004, FR-005, FR-007 |
-| BR-022 | Template has group-unique Name, accounts/amounts and visible optional Description; each entry needs account. Empty, single-entry and unbalanced templates allowed. Applying opens transaction for review with applicable rates and copied Description; persists only on Save. Save stays disabled until there are at least two entries and every entry has an account; other transaction validation still applies. User adds missing entries or selects Cancel without saving the new transaction. Create from active transaction or draft by copying accounts/amounts/Description. | C Templates; U clarifications | BC-006; FR-006 |
+| BR-022 | Template has group-unique Name, accounts/amounts and visible optional Description; each template entry needs an account. Empty, single-entry and unbalanced templates allowed. Applying opens a transaction for review with applicable rates and copied Description; persists only on Save. An incomplete or unbalanced applied transaction may be saved as Draft, including an empty or single-entry transaction, with the BR-019 warning. User may fix it now, save for later repair, or Cancel without saving. Creating a template from a Draft copies its valid account/amount entries; zero-entry and single-entry Drafts produce corresponding allowed templates. | C Templates; U clarifications 2026-10-01 | BC-006; FR-006 |
 
 #### Account-name order choices (BR-012)
 
@@ -242,12 +242,12 @@ All business capabilities are first-release scope; relative priority not separat
 
 - Source: C Transactions/Precision/Currency/Dates.
 - Trigger: create/edit/duplicate/delete transaction.
-- Preconditions: local access; at least two account-bearing entries to save.
-- Main flow: (1) Set time/accounts/amounts/Description. (2) Default rates by transaction date in the current device/UI timezone, permit non-base override/restore. (3) Calculate rounded base amounts. (4) Save balanced complete transaction as active or new unbalanced transaction as draft. (5) Calculate balances on demand.
-- Alternate/error flows: reject missing accounts, fewer than two entries, invalid rate/time or invalid active edit. Empty amount becomes zero. Duplicate resets time to now; active deletion removes contribution. Numeric-limit failures reject the operation with an error and unchanged existing data; exact limits belong in the TRD. Apply the established transaction requirements; Q-09 is closed.
+- Preconditions: local access; completeness is required for Confirmed state, not for saving Draft work.
+- Main flow: (1) Set time/accounts/amounts/Description. (2) Default rates by transaction date in the current device/UI timezone, permit non-base override/restore. (3) Calculate rounded base amounts. (4) Save a valid balanced complete transaction as Confirmed; otherwise save incomplete or unbalanced work as Draft, whether new or previously saved. (5) Calculate balances on demand.
+- Alternate/error flows: fewer than two entries or imbalance permit Draft saving with a persistent warning, provided every present entry is valid. Missing accounts or invalid rates reject the save in either state. A previously Confirmed transaction may return to Draft and loses its accounting contribution. Empty amount becomes zero. Duplicate resets time to now; deletion removes contribution. Numeric-limit failures reject the operation with an error and unchanged existing data. Date and numeric validation remain mandatory in either state; Q-09 records the clarified Draft boundary.
 - Outcome: active balanced record or excluded draft; account currency remains immutable from its first save.
 - Linked requirements: BR-009, BR-011, BR-015–BR-021; FR-005; SC-002.
-- Proposed scenarios: Given complete +100/-100, when saved, then active automatically. Given new +100/-99, when saved, then draft excluded from totals. Given 55555.5555 × 0.2222, then 12344.4444; opposite -12344.4444 at 1 balances. Given active record, when saving unbalanced edit, then reject. Given an amount or calculation exceeds supported numeric limits, when the operation is attempted, then reject it, show an error and leave existing data unchanged.
+- Proposed scenarios: Given complete +100/-100, when saved, then active automatically. Given new +100/-99, when saved, then draft excluded from totals. Given 55555.5555 × 0.2222, then 12344.4444; opposite -12344.4444 at 1 balances. Given a Confirmed record, when saving an unbalanced edit, then save as Draft, show a warning and exclude the entire transaction from accounting results. Given zero entries or one valid entry, when saved, then retain a Draft for later repair. Given an entry without an account or valid rate, when saving in either state, then reject without changing stored data. Given an amount or calculation exceeds supported numeric limits, when the operation is attempted, then reject it, show an error and leave existing data unchanged.
 
 ### BC-006 — Reuse transaction templates
 
@@ -255,10 +255,10 @@ All business capabilities are first-release scope; relative priority not separat
 - Trigger: define/apply template or create from transaction.
 - Preconditions: local access; group-unique Name and account per entry.
 - Main flow: (1) Define accounts/amounts/Description or copy active/draft transaction. (2) Save template. (3) Apply into transaction for review with applicable rates/copied Description. (4) Save under transaction rules.
-- Alternate/error flows: empty/unbalanced templates allowed; applying does not save. For empty/single-entry templates, editor opens with those entries and Save remains disabled until at least two entries exist and every entry has an account. User adds missing entries or cancels without saving. Other established transaction save requirements still apply; Q-09 is closed.
+- Alternate/error flows: empty/unbalanced templates allowed; applying does not save. For empty/single-entry templates, the editor opens with those entries and allows Save as Draft with a warning. User may repair immediately, save for later repair, or cancel without saving. Each present transaction entry must be valid under BR-016 before either Draft or Confirmed saving.
 - Outcome: reusable template and optionally reviewed saved transaction.
 - Linked requirements: BR-008, BR-009, BR-011, BR-015, BR-022; FR-006; SC-003.
-- Proposed scenarios: Given unbalanced draft, when making template, then copy accounts/amounts/Description. Given applied template, then transaction persists only on Save and uses date-applicable rates. Given a single-entry template, when applied, then Save is disabled until the user adds at least a second entry and every entry has an account. Given an empty template, then the editor opens empty with Save disabled under the same rule. Given Cancel before saving, then no new transaction is saved.
+- Proposed scenarios: Given unbalanced draft, when making template, then copy accounts/amounts/Description. Given applied template, then transaction persists only on Save and uses date-applicable rates. Given a single-entry template, when applied and saved, then retain a Draft excluded from accounting results. Given an empty template, then the editor opens empty and permits saving an empty Draft with a visible warning. Given Cancel before saving, then no new transaction is saved.
 
 ### BC-007 — Calculate balances and reports
 
@@ -387,7 +387,7 @@ Resolved rows preserve decisions and must not be re-asked. Q-01 is the remaining
 | Q-06 | Resolved: partial checkbox for mixed selection; explicit choices survive moves, including redundant ones. Apply saved JSON as-is to the actual tree; ignore missing IDs, apply their saved choices if they return. Only user save recalculates stored included/excluded IDs. | Requesting user, 2026-09-27 | Closed | BR-024, BR-025; FR-007, FR-008 |
 | Q-07 | Resolved: allow report rename/edit/delete; delete only calculation instructions. Default name is `yyyy-MM-dd HH:mm:ss`; reject empty/whitespace-only names; duplicates allowed. | Requesting user, 2026-09-27 | Closed | BR-028; FR-008 |
 | Q-08 | Resolved: a non-root group may merge into its parent, another ancestor or the root. Root as source and descendant as destination remain forbidden. | Requesting user, 2026-09-27 | Closed | BR-007; FR-003 |
-| Q-09 | Closed by existing decisions: every saved transaction has occurrence time within BR-021, at least two account-bearing entries, amounts defaulting to zero, valid rates and BR-017–BR-019 validation; Description optional. Empty/single-entry templates open for editing, with Save disabled until minimum account-bearing entries exist, or Cancel without saving. No additional required business field was specified. | C Transactions/Precision/Dates; U template confirmation | Closed; apply recorded rules without inventing more required fields | BR-015–BR-022; FR-005, FR-006 |
+| Q-09 | Resolved 2026-10-01: Drafts relax only the minimum entry count and exact balance requirement. Zero or one entry is allowed, but every present entry requires an existing account, a valid rate and numeric amount (zero allowed). Date and numeric validation still apply. Previously Confirmed transactions may return to Draft. At least two valid entries and exact zero are required for automatic Confirmed state. Drafts can be copied into templates under the existing template rules. | Requesting user | Closed; invalid entries cannot be persisted by selecting Draft | BR-015–BR-022; FR-005, FR-006 |
 | Q-10 | Resolved for version one: backup/restore deferred to version two. Azure-side-only backup/restore is the user-proposed direction; detailed policy remains future work. | Requesting user, 2026-09-27 | Closed for version one; version-two design pending | BC-010, BC-011; SC-004 |
 | Q-11 | Business policy already settled: whole-version priority is subordinate to validity; restore dependencies, resolve name/currency/rate conflicts under BR-029–BR-033, and explain/log cases with no valid resolution. Combined-case algorithms and initial-rate remapping belong to TRD analysis. Return only genuinely new business-policy conflicts for decision; never silently relax rules. | S Priority/Dependencies/Uniqueness | Closed as generic business blocker; technical analysis remains required | BR-029–BR-033; FR-009 |
 | Q-12 | Resolved: write diagnostic logs to a log folder; retain for 7 days, then automatically clean up. Exact platform-specific folder paths belong to technical design. Share/Export logs was proposed but not selected. | Requesting user, 2026-09-27 | Closed at business level | BR-043; FR-012 |
@@ -508,7 +508,7 @@ Legacy IDs remain permanent aliases or explicitly superseded references; never r
 | BRD-CUR-004 | BR-014 base rate 1 |
 | BRD-TXN-001 | FR-005 transaction entry |
 | BRD-TXN-002 | BR-016/BR-020/BR-021 occurrence; optional text renamed Description |
-| BRD-TXN-003 | BR-016 minimum two entries, including drafts |
+| BRD-TXN-003 | BR-016 minimum two entries for Confirmed transactions; Drafts may have fewer, but every entry must be valid |
 | BRD-TXN-004 | BR-015–BR-017 account/currency/amount/rate |
 | BRD-TXN-005 | BR-018 rounded base amount |
 | BRD-TXN-006 | BR-018 exact zero for active transactions; drafts permitted |
@@ -666,9 +666,28 @@ Legacy IDs remain permanent aliases or explicitly superseded references; never r
 - Decision: the base-currency account created in the Account root during initialization has initial Name = Rebalancing.
 - BRD 0.48 becomes Draft 0.49. Full-version approval remains outstanding.
 
+### 2026-10-01 — Incomplete Drafts and return to Draft
+
+- User direction: "User can save any transaction (old or new) but in the Draft state. App must show warning ... until he fixes transaction. But he can save transaction anytime".
+- Exact clarification: "Drafts may contain zero or one entry, and entries without an account. They remain excluded from balances/reports. Is that what you mean?"
+- Accepted answer: "Yes. Of course. Draft states are excluded everywhere. It's only for future fix".
+- Source: requesting user, this chat, 2026-10-01.
+- Updated BR-016/019/022, BC-005/006, Q-09 and legacy mapping. Drafts represent unfinished work and have no accounting effect; confirmed-to-draft saves are allowed. Historical disabled-Save decisions no longer apply to incomplete transaction drafts.
+- Q-09 retains unresolved rate/date validity and incomplete Draft-to-template behavior. Existing draft synchronization is unchanged; no removal from synchronization was requested in this accounting-exclusion discussion.
+- BRD 0.49 becomes Draft 0.50. Prior 0.32 approval remains historical and does not cover this revision.
+- Downstream: TRD transaction/entry schemas, DTO nullability, state transitions and template-apply rules need alignment before implementation; this turn changes BRD only.
+
+### 2026-10-01 — Every Draft entry must be valid
+
+- Exact question: "may a Draft also save with a missing or nonpositive exchange rate, keeping it for later correction?"
+- Accepted correction: "I think no. We can give possibility to save transaction with 0 or 1 entries, unbalanced. Put each entry mist be valid. It must have account, rate, amount (even 0)".
+- Source: requesting user, this chat, 2026-10-01.
+- Updated BR-016/019/022, BC-005/006 and Q-09. This supersedes the earlier permission to save entries without accounts: Draft relaxes entry count and balance only, not individual entry validity. Existing date, rate and numeric safety rules remain.
+- BRD 0.50 becomes Draft 0.51; prior approval remains historical. TRD must align its minimum-entry, state-transition and Draft rules before implementation; entry AccountId and amount/rate need not become nullable for persisted Drafts.
+
 ## Approval
 
-- Current version: **Draft 0.49**, not submitted for full-version approval. The date-rule and account-currency corrections are explicitly accepted; no full-document approval is inferred.
+- Current version: **Draft 0.51**, not submitted for full-version approval. The date-rule and account-currency corrections are explicitly accepted; no full-document approval is inferred.
 
 ### Prior approved baseline — provenance
 

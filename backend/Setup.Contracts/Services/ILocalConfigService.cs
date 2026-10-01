@@ -1,6 +1,6 @@
-using Business.Contracts.Services.LocalConfigs;
+using Setup.Contracts.Services.LocalConfigs;
 
-namespace Business.Contracts.Services;
+namespace Setup.Contracts.Services;
 
 /// <summary>
 /// Provides settings-screen access to the single Local configuration.

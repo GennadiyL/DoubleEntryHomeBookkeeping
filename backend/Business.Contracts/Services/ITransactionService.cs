@@ -6,7 +6,56 @@ namespace Business.Contracts.Services;
 public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 	IReadEntityService<TransactionInfo>
 {
-	public Task DeleteTransactionList(List<Guid> transactionIds);
+	/// <summary>
+	/// Deletes matching Draft and Confirmed transactions for the transaction screen.
+	/// Matches all transactions in the inclusive device-local date range, including empty Drafts.
+	/// Includes both selected local days; a reversed range raises a validation exception.
+	/// No matches completes successfully without a commit.
+	/// All aggregate changes and sync tracking commit once or roll back together.
+	/// A database failure raises a critical exception; local writes are not automatically retried.
+	/// </summary>
+	public Task DeleteTransactions(DateOnly fromDate, DateOnly toDate);
+
+	/// <summary>
+	/// Deletes matching Draft and Confirmed transactions for the transaction screen.
+	/// Matches when at least one entry belongs to the account; deletes the complete transaction.
+	/// Includes both selected local days; a reversed range raises a validation exception.
+	/// Unknown or deleted filter identities are invalid; no matches completes successfully without a commit.
+	/// All aggregate changes and sync tracking commit once or roll back together.
+	/// A database failure raises a critical exception; local writes are not automatically retried.
+	/// </summary>
+	public Task DeleteTransactionsByAccount(Guid accountId, DateOnly fromDate, DateOnly toDate);
+
+	/// <summary>
+	/// Deletes matching Draft and Confirmed transactions for the transaction screen.
+	/// Matches when an entry account currently has the selected category; deletes the complete transaction.
+	/// Includes both selected local days; a reversed range raises a validation exception.
+	/// Unknown or deleted filter identities are invalid; no matches completes successfully without a commit.
+	/// All aggregate changes and sync tracking commit once or roll back together.
+	/// A database failure raises a critical exception; local writes are not automatically retried.
+	/// </summary>
+	public Task DeleteTransactionsByCategory(Guid categoryId, DateOnly fromDate, DateOnly toDate);
+
+	/// <summary>
+	/// Deletes matching Draft and Confirmed transactions for the transaction screen.
+	/// Matches when an entry account currently has the selected correspondent; deletes the complete transaction.
+	/// Includes both selected local days; a reversed range raises a validation exception.
+	/// Unknown or deleted filter identities are invalid; no matches completes successfully without a commit.
+	/// All aggregate changes and sync tracking commit once or roll back together.
+	/// A database failure raises a critical exception; local writes are not automatically retried.
+	/// </summary>
+	public Task DeleteTransactionsByCorrespondent(Guid correspondentId, DateOnly fromDate, DateOnly toDate);
+
+	/// <summary>
+	/// Deletes matching Draft and Confirmed transactions for the transaction screen.
+	/// Matches when an entry account currently has the selected project; deletes the complete transaction.
+	/// Includes both selected local days; a reversed range raises a validation exception.
+	/// Unknown or deleted filter identities are invalid; no matches completes successfully without a commit.
+	/// All aggregate changes and sync tracking commit once or roll back together.
+	/// A database failure raises a critical exception; local writes are not automatically retried.
+	/// </summary>
+	public Task DeleteTransactionsByProject(Guid projectId, DateOnly fromDate, DateOnly toDate);
+
 	/// <summary>
 	/// Returns transactions in the selected range for the transaction screen.
 	/// Requires both calendar dates and includes both days in full in the current device timezone.
@@ -17,6 +66,7 @@ public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 
 	/// <summary>
 	/// Returns transactions having an entry using the selected account for the filtered transaction screen.
+	/// Throws for an unknown or deleted filter identity; a valid filter with no matches returns an empty list.
 	/// Requires both calendar dates and includes both days in full in the current device timezone.
 	/// Throws for a reversed range. Filters in the database and returns whole transactions with entries in Position order.
 	/// Version 1 has no pagination; this read does not call AcceptChanges.
@@ -25,6 +75,7 @@ public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 
 	/// <summary>
 	/// Returns transactions having an entry whose account references the selected category for the filtered transaction screen.
+	/// Throws for an unknown or deleted filter identity; a valid filter with no matches returns an empty list.
 	/// Requires both calendar dates and includes both days in full in the current device timezone.
 	/// Throws for a reversed range. Filters in the database and returns whole transactions with entries in Position order.
 	/// Version 1 has no pagination; this read does not call AcceptChanges.
@@ -33,6 +84,7 @@ public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 
 	/// <summary>
 	/// Returns transactions having an entry whose account references the selected correspondent for the filtered transaction screen.
+	/// Throws for an unknown or deleted filter identity; a valid filter with no matches returns an empty list.
 	/// Requires both calendar dates and includes both days in full in the current device timezone.
 	/// Throws for a reversed range. Filters in the database and returns whole transactions with entries in Position order.
 	/// Version 1 has no pagination; this read does not call AcceptChanges.
@@ -41,6 +93,7 @@ public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 
 	/// <summary>
 	/// Returns transactions having an entry whose account references the selected project for the filtered transaction screen.
+	/// Throws for an unknown or deleted filter identity; a valid filter with no matches returns an empty list.
 	/// Requires both calendar dates and includes both days in full in the current device timezone.
 	/// Throws for a reversed range. Filters in the database and returns whole transactions with entries in Position order.
 	/// Version 1 has no pagination; this read does not call AcceptChanges.

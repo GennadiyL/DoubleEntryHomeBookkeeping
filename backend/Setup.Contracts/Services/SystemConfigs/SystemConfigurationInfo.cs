@@ -1,4 +1,4 @@
-namespace Business.Contracts.Services.SystemConfigs;
+namespace Setup.Contracts.Services.SystemConfigs;
 
 /// <summary>
 /// Contains settings from the single System configuration.

@@ -1,6 +1,6 @@
-using Business.Contracts.Services.SystemConfigs;
+using Setup.Contracts.Services.SystemConfigs;
 
-namespace Business.Contracts.Services;
+namespace Setup.Contracts.Services;
 
 /// <summary>
 /// Provides settings-screen access to the single System configuration.
