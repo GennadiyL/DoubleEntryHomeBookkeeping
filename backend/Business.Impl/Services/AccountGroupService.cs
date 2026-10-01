@@ -15,5 +15,5 @@ internal sealed class AccountGroupService : GroupService<AccountGroup, Account>,
 		
 	}
 
-	public Task<AccountTreeInfo> GetAccountsTree() => throw new NotImplementedException();
+	public Task<AccountTreeInfo> GetAccountsTree(CancellationToken cancellationToken = default) => throw new NotImplementedException();
 }

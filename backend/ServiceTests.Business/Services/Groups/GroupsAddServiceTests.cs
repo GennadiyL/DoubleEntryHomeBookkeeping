@@ -89,7 +89,7 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 			group.Id == id && group.Id != Guid.Empty &&
 			group.ParentId == _parent.Id && ReferenceEquals(group.Parent, _parent) &&
 			group.Name == _param.Name && group.Description == _param.Description &&
-			group.IsFavorite && !group.IsDeleted() && group.Order == 1 &&
+			group.IsFavorite && !group.IsDeleted() && group.Order == 0 &&
 			group.EditRevision == null && group.DeleteRevision == null &&
 			group.ModificationType == ModificationType.None));
 		await _unitOfWork.Received(1).SaveChangesAsync();
@@ -115,7 +115,7 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 		_parent.Order = 100;
 		_parent.Children.Add(_parent);
 		await _service.Add(_param);
-		_repository.Received(1).Add(Arg.Is<TGroup>(group => group.Order == 1));
+		_repository.Received(1).Add(Arg.Is<TGroup>(group => group.Order == 0));
 	}
 
 	[TestCase(false)]
@@ -209,6 +209,28 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 	{
 		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException("Save failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Add(_param));
+	}
+
+	[Test]
+	public async Task Add_CancellationToken_IsPassedToLookupAndSave()
+	{
+		using CancellationTokenSource cancellation = new();
+		CancellationToken token = cancellation.Token;
+		_repository.GetWithChildrenByIdAsync(_parent.Id, token).Returns(_parent);
+		await _service.Add(_param, token);
+		await _repository.Received(1).GetWithChildrenByIdAsync(_parent.Id, token);
+		await _unitOfWork.Received(1).SaveChangesAsync(token);
+	}
+
+	[Test]
+	public void Add_CanceledLookup_PropagatesWithoutWrites()
+	{
+		using CancellationTokenSource cancellation = new();
+		cancellation.Cancel();
+		CancellationToken token = cancellation.Token;
+		_repository.GetWithChildrenByIdAsync(_parent.Id, token).Returns(Task.FromCanceled<TGroup?>(token));
+		Assert.CatchAsync<OperationCanceledException>(async () => await _service.Add(_param, token));
+		AssertNoWrites();
 	}
 
 	private void AssertNoWrites()

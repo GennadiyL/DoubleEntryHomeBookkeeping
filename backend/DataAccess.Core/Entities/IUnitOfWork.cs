@@ -12,7 +12,7 @@ public interface IUnitOfWork
 		IUnitOfWorkTransaction transaction,
 		CancellationToken cancellationToken = default);
 
-	public Task SaveChangesAsync();
+	public Task SaveChangesAsync(CancellationToken cancellationToken = default);
 
 	public void SaveChanges();
 }

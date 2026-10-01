@@ -19,7 +19,7 @@ internal class InProcessBusMessageService : IMessageService
 
 	public InProcessBusMessageService(IServiceScopeFactory scopeFactory) => _scopeFactory = scopeFactory;
 
-	public async Task PublishAsync<T>(T message)
+	public async Task PublishAsync<T>(T message, CancellationToken cancellationToken = default)
 		where T : IMessage
 	{
 		if (message == null)
@@ -27,18 +27,24 @@ internal class InProcessBusMessageService : IMessageService
 			throw new ArgumentNullException(nameof(message));
 		}
 
-		await PublishMessage(message);
+		await PublishMessage(message, cancellationToken);
 	}
 
-	protected virtual async Task PublishCore(IEnumerable<Func<IMessage, Task>> handlers, IMessage message)
+	protected virtual async Task PublishCore(IEnumerable<Func<IMessage, CancellationToken, Task>> handlers, IMessage message, CancellationToken cancellationToken = default)
 	{
+		cancellationToken.ThrowIfCancellationRequested();
 		List<Exception> exceptions = [];
 
-		foreach (Func<IMessage, Task> handler in handlers)
+		foreach (Func<IMessage, CancellationToken, Task> handler in handlers)
 		{
+			cancellationToken.ThrowIfCancellationRequested();
 			try
 			{
-				await handler(message);
+				await handler(message, cancellationToken);
+			}
+			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+			{
+				throw;
 			}
 			catch (AggregateException ex)
 			{
@@ -56,13 +62,13 @@ internal class InProcessBusMessageService : IMessageService
 		}
 	}
 
-	private async Task PublishMessage(IMessage message)
+	private async Task PublishMessage(IMessage message, CancellationToken cancellationToken = default)
 	{
 		Type messageType = message.GetType();
 		Func<Type, IHandlerWrapper> factory = CreateHandlerWrapper;
 		IHandlerWrapper wrapper = _wrappers.GetOrAdd(messageType, factory);
 		using IServiceScope scope = _scopeFactory.CreateScope();
-		await wrapper.Handle(message, scope.ServiceProvider.GetService!, PublishCore);
+		await wrapper.Handle(message, scope.ServiceProvider.GetService!, PublishCore, cancellationToken);
 	}
 
 	private static IHandlerWrapper CreateHandlerWrapper(Type t)

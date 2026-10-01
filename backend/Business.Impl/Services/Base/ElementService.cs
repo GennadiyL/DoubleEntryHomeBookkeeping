@@ -30,14 +30,14 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 		_groupRepository = groupRepository;
 	}
 
-	public async Task<Guid> Add(ElementParam param)
+	public async Task<Guid> Add(ElementParam param, CancellationToken cancellationToken = default)
 	{
 		if (param is null || string.IsNullOrWhiteSpace(param.Name) || param.GroupId == Guid.Empty)
 		{
 			throw new InvalidElementException("An element name and group identifier are required.");
 		}
 
-		TGroup? group = await _groupRepository.GetWithContentsByIdAsync(param.GroupId);
+		TGroup? group = await _groupRepository.GetWithContentsByIdAsync(param.GroupId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
@@ -48,7 +48,7 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 			throw new InvalidElementException("An element with the same name already exists in this group.");
 		}
 
-		int maxOrder = group.Elements.Count == 0 ? 0 : group.Elements.Max(element => element.Order);
+		int maxOrder = group.Elements.Count == 0 ? -1 : group.Elements.Max(element => element.Order);
 		if (maxOrder == int.MaxValue)
 		{
 			throw new InvalidElementException("The group has no available element ordering position.");
@@ -65,11 +65,11 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 			Order = maxOrder + 1,
 		};
 		_repository.Add(element);
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChangesAsync(cancellationToken);
 		return element.Id;
 	}
 
-	public async Task Update(Guid entityId, ElementParam param)
+	public async Task Update(Guid entityId, ElementParam param, CancellationToken cancellationToken = default)
 	{
 		if (entityId == Guid.Empty || param is null ||
 			string.IsNullOrWhiteSpace(param.Name) || param.GroupId == Guid.Empty)
@@ -77,13 +77,13 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 			throw new InvalidElementException("An element identifier, name, and group identifier are required.");
 		}
 
-		TElement element = await GetActiveElement(entityId);
+		TElement element = await GetActiveElement(entityId, cancellationToken);
 		if (param.GroupId != element.GroupId)
 		{
 			throw new InvalidElementException("Use MoveToAnotherGroup to change the group.");
 		}
 
-		TGroup? group = await _groupRepository.GetWithContentsByIdAsync(element.GroupId);
+		TGroup? group = await _groupRepository.GetWithContentsByIdAsync(element.GroupId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
@@ -99,39 +99,39 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 		element.IsFavorite = param.IsFavorite;
 		element.SetEditedContent();
 		_repository.Update(element);
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChangesAsync(cancellationToken);
 	}
 
-	public async Task Delete(Guid entityId)
+	public async Task Delete(Guid entityId, CancellationToken cancellationToken = default)
 	{
-		TElement element = await GetActiveElement(entityId);
+		TElement element = await GetActiveElement(entityId, cancellationToken);
 		element.SetDeleted();
 		_repository.Update(element);
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChangesAsync(cancellationToken);
 	}
 
-	public async Task SetOrder(Guid entityId, int order)
+	public async Task SetOrder(Guid entityId, int order, CancellationToken cancellationToken = default)
 	{
-		if (order < 1)
+		if (order < 0)
 		{
-			throw new InvalidElementException("A positive order is required.");
+			throw new InvalidElementException("A non-negative order is required.");
 		}
 
-		TElement element = await GetActiveElement(entityId);
-		TGroup? group = await _groupRepository.GetWithContentsByIdAsync(element.GroupId);
+		TElement element = await GetActiveElement(entityId, cancellationToken);
+		TGroup? group = await _groupRepository.GetWithContentsByIdAsync(element.GroupId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
 
 		List<TElement> siblings = [.. group.Elements.Where(item => !item.IsDeleted())
-			.OrderBy(item => item.Order).ThenBy(item => item.Id)];
+			.OrderBy(item => item.Order).ThenBy(item => item.Id.ToString("D"), StringComparer.Ordinal)];
 		TElement? target = siblings.SingleOrDefault(item => item.Id == entityId);
 		if (target is null)
 		{
 			throw new ElementNotFoundException("The element is no longer an active member of this group.");
 		}
-		if (order > siblings.Count)
+		if (order >= siblings.Count)
 		{
 			throw new InvalidElementException("The order exceeds the number of active elements in this group.");
 		}
@@ -150,12 +150,12 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 			sibling.SetEditedOrder();
 			_repository.Update(sibling);
 		}
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChangesAsync(cancellationToken);
 	}
 
-	public async Task SetFavoriteStatus(Guid entityId, bool isFavorite)
+	public async Task SetFavoriteStatus(Guid entityId, bool isFavorite, CancellationToken cancellationToken = default)
 	{
-		TElement element = await GetActiveElement(entityId);
+		TElement element = await GetActiveElement(entityId, cancellationToken);
 		if (element.IsFavorite == isFavorite)
 		{
 			return;
@@ -164,18 +164,18 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 		element.IsFavorite = isFavorite;
 		element.SetEditedContent();
 		_repository.Update(element);
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChangesAsync(cancellationToken);
 	}
 
-	public async Task MoveToAnotherGroup(Guid entityId, Guid toGroupId)
+	public async Task MoveToAnotherGroup(Guid entityId, Guid toGroupId, CancellationToken cancellationToken = default)
 	{
 		if (entityId == Guid.Empty || toGroupId == Guid.Empty)
 		{
 			throw new InvalidElementException("An element identifier and destination group identifier are required.");
 		}
 
-		TElement element = await GetActiveElement(entityId);
-		TGroup? destination = await _groupRepository.GetWithContentsByIdAsync(toGroupId);
+		TElement element = await GetActiveElement(entityId, cancellationToken);
+		TGroup? destination = await _groupRepository.GetWithContentsByIdAsync(toGroupId, cancellationToken);
 		if (destination is null || destination.IsDeleted())
 		{
 			throw new GroupNotFoundException("The destination group does not exist or is deleted.");
@@ -189,7 +189,7 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 			throw new InvalidElementException("An element with the same name already exists in the destination group.");
 		}
 
-		int maxOrder = destination.Elements.Count == 0 ? 0 : destination.Elements.Max(item => item.Order);
+		int maxOrder = destination.Elements.Count == 0 ? -1 : destination.Elements.Max(item => item.Order);
 		if (maxOrder == int.MaxValue)
 		{
 			throw new InvalidElementException("The destination group has no available element ordering position.");
@@ -200,19 +200,19 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 		element.Order = maxOrder + 1;
 		element.SetEditedContent();
 		_repository.Update(element);
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChangesAsync(cancellationToken);
 	}
 
-	public async Task CombineElements(Guid toElementId, Guid fromElementId)
+	public async Task CombineElements(Guid toElementId, Guid fromElementId, CancellationToken cancellationToken = default)
 	{
 		if (toElementId == Guid.Empty || fromElementId == Guid.Empty || toElementId == fromElementId)
 		{
 			throw new InvalidElementException("Two different element identifiers are required.");
 		}
 
-		TElement source = await GetActiveElement(fromElementId);
-		TElement destination = await GetActiveElement(toElementId);
-		ICollection<Account> accounts = await GetReferencingAccounts(fromElementId);
+		TElement source = await GetActiveElement(fromElementId, cancellationToken);
+		TElement destination = await GetActiveElement(toElementId, cancellationToken);
+		ICollection<Account> accounts = await GetReferencingAccounts(fromElementId, cancellationToken);
 		foreach (Account account in accounts)
 		{
 			ReplaceAccountReference(account, destination);
@@ -222,17 +222,17 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 
 		source.SetDeleted();
 		_repository.Update(source);
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChangesAsync(cancellationToken);
 	}
 
-	private async Task<TElement> GetActiveElement(Guid entityId)
+	private async Task<TElement> GetActiveElement(Guid entityId, CancellationToken cancellationToken = default)
 	{
 		if (entityId == Guid.Empty)
 		{
 			throw new InvalidElementException("An element identifier is required.");
 		}
 
-		TElement? element = await _repository.GetByIdAsync(entityId, CancellationToken.None);
+		TElement? element = await _repository.GetByIdAsync(entityId, cancellationToken);
 		if (element is null || element.IsDeleted())
 		{
 			throw new ElementNotFoundException("The element does not exist or is deleted.");
@@ -240,9 +240,9 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 		return element;
 	}
 
-	protected abstract Task<ICollection<Account>> GetReferencingAccounts(Guid elementId);
+	protected abstract Task<ICollection<Account>> GetReferencingAccounts(Guid elementId, CancellationToken cancellationToken = default);
 
 	protected abstract void ReplaceAccountReference(Account account, TElement destination);
 
-	public Task<ElementInfo> GetById(Guid id) => throw new NotImplementedException();
+	public Task<ElementInfo> GetById(Guid id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 }

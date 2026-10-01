@@ -1,14 +1,14 @@
 namespace Business.Contracts.Services.Templates;
 
 /// <summary>
-/// Describes one template for catalog browsing and selection.
-/// Entries are returned in stored Position order.
-/// Created by the service for presentation and editing.
-/// Contains values rather than persistent entity references.
-/// Identifiers refer to existing bookkeeping records.
-/// Does not expose synchronization revisions or modification flags.
-/// Reading this record does not save changes.
-/// Persistence remains the responsibility of the corresponding mutation operation.
+/// Contains a saved template's complete values for the template editor.
+/// GroupId and GroupName identify and label the containing template group.
+/// Name and optional Description are independent values.
+/// Order and IsFavorite describe catalog placement and explicit favorite selection.
+/// Entries contains the complete entry list in stored zero-based Position order.
+/// Entry rows include account and currency labels but no persistent entry identities.
+/// Lightweight catalog trees omit these entry details.
+/// The detached result contains no synchronization state and saves nothing.
 /// </summary>
 public record TemplateInfo
 {

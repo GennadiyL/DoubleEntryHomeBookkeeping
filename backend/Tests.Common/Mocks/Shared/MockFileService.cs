@@ -74,8 +74,8 @@ public class MockFileService : IFileService
 	public virtual Task<string[]> ReadAllLinesAsync(string path, Encoding encoding, CancellationToken cancellationToken = default) => Task.FromResult<string[]>([]);
 	public virtual IEnumerable<string> ReadLines(string path) => [];
 	public virtual IEnumerable<string> ReadLines(string path, Encoding encoding) => [];
-	public virtual IAsyncEnumerable<string> ReadLinesAsync(string path, CancellationToken cancellationToken = default) => EmptyLinesAsync();
-	public virtual IAsyncEnumerable<string> ReadLinesAsync(string path, Encoding encoding, CancellationToken cancellationToken = default) => EmptyLinesAsync();
+	public virtual IAsyncEnumerable<string> ReadLinesAsync(string path, CancellationToken cancellationToken = default) => EmptyLinesAsync(cancellationToken);
+	public virtual IAsyncEnumerable<string> ReadLinesAsync(string path, Encoding encoding, CancellationToken cancellationToken = default) => EmptyLinesAsync(cancellationToken);
 	public virtual void WriteAllLines(string path, IEnumerable<string> contents) { }
 	public virtual void WriteAllLines(string path, IEnumerable<string> contents, Encoding encoding) { }
 	public virtual Task WriteAllLinesAsync(string path, IEnumerable<string> contents, CancellationToken cancellationToken = default) => Task.CompletedTask;
@@ -89,8 +89,9 @@ public class MockFileService : IFileService
 	public virtual Task AppendAllLinesAsync(string path, IEnumerable<string> contents, CancellationToken cancellationToken = default) => Task.CompletedTask;
 	public virtual Task AppendAllLinesAsync(string path, IEnumerable<string> contents, Encoding encoding, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-	private static async IAsyncEnumerable<string> EmptyLinesAsync()
+	private static async IAsyncEnumerable<string> EmptyLinesAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
 	{
+		cancellationToken.ThrowIfCancellationRequested();
 		yield break;
 	}
 }

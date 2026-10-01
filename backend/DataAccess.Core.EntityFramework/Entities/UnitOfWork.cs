@@ -60,7 +60,7 @@ public abstract class UnitOfWork<TContext> : IUnitOfWork
 
 	public void SaveChanges() => Context.SaveChanges();
 
-	public Task SaveChangesAsync() => Context.SaveChangesAsync();
+	public Task SaveChangesAsync(CancellationToken cancellationToken = default) => Context.SaveChangesAsync(cancellationToken);
 
 	private UnitOfWorkTransaction GetTransaction(IUnitOfWorkTransaction transaction)
 	{

@@ -6,11 +6,13 @@ namespace Business.Models.Entities.Base;
 
 /// <summary>
 /// Defines common persistent state for named catalog groups and elements.
-/// Stores a name, optional description, favorite flag, and catalog order.
-/// Edit and delete revisions describe accepted content and deletion state.
-/// Modification flags distinguish uncaptured content changes from ordering changes.
-/// Writable inherited identity supports creation and materialization of persistent state.
-/// The model carries data; business services implement validation and lifecycle operations.
+/// Stores a name, optional description, favorite flag and zero-based catalog order.
+/// Child groups and elements use separate order sequences within their parent.
+/// Creation initializes both revisions to null and modification flags to None.
+/// Subsequent content edits and reorders accumulate their applicable modification flags.
+/// Application deletion sets DeleteRevision to zero and preserves EditRevision.
+/// Identity remains stable through editing, moving and synchronization.
+/// Services validate and persist changes; this base model only carries data.
 /// </summary>
 public abstract class CatalogEntity : BaseEntity, ICatalogEntity
 {

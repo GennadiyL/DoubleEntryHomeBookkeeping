@@ -15,7 +15,7 @@ internal abstract class ElementRepository<TGroup, TElement, TD> : Repository<App
 	{
 	}
 
-	public Task<ICollection<TElement>> GetByName(string name) => throw new NotImplementedException();
+	public Task<ICollection<TElement>> GetByName(string name, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
 	public override void Update(TElement entity)
 	{
@@ -30,9 +30,9 @@ internal abstract class ElementRepository<TGroup, TElement, TD> : Repository<App
 		Context.Entry(tracked).CurrentValues.SetValues(Mapper.Map<TD, TElement>(entity));
 	}
 
-	public Task<TGroup> GetGroupWithElementsByGroupId(Guid groupId) => throw new NotImplementedException();
+	public Task<TGroup> GetGroupWithElementsByGroupId(Guid groupId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-	public Task<int> GetMaxOrderInGroup(Guid groupId) => throw new NotImplementedException();
+	public Task<int> GetMaxOrderInGroup(Guid groupId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-	public Task<int> GetCountInGroup(Guid groupId) => throw new NotImplementedException();
+	public Task<int> GetCountInGroup(Guid groupId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 }

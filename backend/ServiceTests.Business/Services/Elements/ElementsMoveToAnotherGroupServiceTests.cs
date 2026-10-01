@@ -115,7 +115,7 @@ public sealed class ElementsMoveToAnotherGroupServiceTests<TGroup, TElement, TSe
 
 	[TestCase(false)]
 	[TestCase(true)]
-	public async Task MoveToAnotherGroup_EmptyDestination_IncludingRoot_StartsAtOne(bool root)
+	public async Task MoveToAnotherGroup_EmptyDestination_IncludingRoot_StartsAtZero(bool root)
 	{
 		if (root)
 		{
@@ -123,7 +123,7 @@ public sealed class ElementsMoveToAnotherGroupServiceTests<TGroup, TElement, TSe
 			_destination.Parent = _destination;
 		}
 		await _service.MoveToAnotherGroup(_element.Id, _destination.Id);
-		Assert.That(_element.Order, Is.EqualTo(1));
+		Assert.That(_element.Order, Is.EqualTo(0));
 		Assert.That(_element.GroupId, Is.EqualTo(_destination.Id));
 		await _unitOfWork.Received(1).SaveChangesAsync();
 	}

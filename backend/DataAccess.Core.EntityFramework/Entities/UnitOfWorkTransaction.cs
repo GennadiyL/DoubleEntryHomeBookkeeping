@@ -24,9 +24,9 @@ internal sealed class UnitOfWorkTransaction : IUnitOfWorkTransaction
 
 	public bool BelongsTo(DbContext context) => ReferenceEquals(_context, context);
 
-	public Task CommitAsync(CancellationToken cancellationToken) => _transaction.CommitAsync(cancellationToken);
+	public Task CommitAsync(CancellationToken cancellationToken = default) => _transaction.CommitAsync(cancellationToken);
 
-	public Task RollbackAsync(CancellationToken cancellationToken) => _transaction.RollbackAsync(cancellationToken);
+	public Task RollbackAsync(CancellationToken cancellationToken = default) => _transaction.RollbackAsync(cancellationToken);
 
 	public ValueTask DisposeAsync() => _transaction.DisposeAsync();
 }

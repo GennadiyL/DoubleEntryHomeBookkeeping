@@ -15,13 +15,13 @@ internal class HandlerWrapper<T> : IHandlerWrapper
 	public async Task Handle(
 		IMessage message,
 		ServiceFactory serviceFactory,
-		Func<IEnumerable<Func<IMessage, Task>>, IMessage, Task> publish)
+		Func<IEnumerable<Func<IMessage, CancellationToken, Task>>, IMessage, CancellationToken, Task> publish, CancellationToken cancellationToken = default)
 	{
-		IEnumerable<Func<IMessage, Task>> handlers = serviceFactory.GetInstances<IMessageHandler<T>>().Select(CreateAsyncHandleFunc);
+		IEnumerable<Func<IMessage, CancellationToken, Task>> handlers = serviceFactory.GetInstances<IMessageHandler<T>>().Select(CreateAsyncHandleFunc);
 
-		await publish(handlers, message);
+		await publish(handlers, message, cancellationToken);
 	}
 
-	private static Func<IMessage, Task> CreateAsyncHandleFunc(IMessageHandler<T> handler) =>
-		message => handler.Handle((T)message);
+	private static Func<IMessage, CancellationToken, Task> CreateAsyncHandleFunc(IMessageHandler<T> handler) =>
+		(message, cancellationToken) => handler.Handle((T)message, cancellationToken);
 }

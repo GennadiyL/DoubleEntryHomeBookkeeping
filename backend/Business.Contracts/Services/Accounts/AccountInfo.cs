@@ -2,13 +2,13 @@ namespace Business.Contracts.Services.Accounts;
 
 /// <summary>
 /// Contains an existing account's complete editable values and reference labels.
-/// Inherits the name, group, favorite flag and currency information used by the tree.
-/// Classification identities identify selected category, correspondent and project records.
-/// Their names allow the edit dialog to display the current selections immediately.
+/// Declares its own group, name, favorite and currency fields independently of the tree record.
+/// Classification identities select the optional category, correspondent and project.
+/// Their current names allow the edit dialog to display selections immediately.
 /// An absent optional classification has a null identity and name.
 /// Reference labels are display values, not commands to rename referenced entities.
-/// Reading this record does not persist changes or expose synchronization fields.
-/// Account Update accepts the editable input separately and preserves the saved currency.
+/// Reading this detached record does not persist changes or expose synchronization fields.
+/// Account Update accepts separate input and preserves the currency fixed by the first save.
 /// </summary>
 public record AccountInfo //: AccountElementInfo
 {

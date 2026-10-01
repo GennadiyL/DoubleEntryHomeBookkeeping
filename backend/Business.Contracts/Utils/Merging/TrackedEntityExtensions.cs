@@ -4,6 +4,16 @@ using Business.Models.Enums;
 
 namespace Business.Contracts.Utils.Merging;
 
+/// <summary>
+/// Provides predicates and field setters for tracked entity state.
+/// Live entities with null EditRevision are recognized as new.
+/// Submitted or accepted live entities are classified using modification flags.
+/// A non-null DeleteRevision identifies a deleted entity.
+/// Content and Order setters add their bit without clearing existing flags.
+/// Individual setters do not initialize all three tracking properties.
+/// These helpers do not determine all pending synchronization work or manage outgoing batches.
+/// Services remain responsible for atomic persistence, soft deletion and eligible delta cleanup.
+/// </summary>
 public static class TrackedEntityExtensions
 {
 	public static bool IsNew(this ITrackedEntity entity) => entity.EditRevision == null && entity.DeleteRevision == null;

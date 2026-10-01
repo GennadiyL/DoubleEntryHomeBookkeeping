@@ -93,7 +93,7 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 		_repository.Received(1).Add(Arg.Is<TElement>(element =>
 			element.Id == id && element.GroupId == _group.Id && ReferenceEquals(element.Group, _group) &&
 			element.Name == _param.Name && element.Description == _param.Description &&
-			element.IsFavorite && !element.IsDeleted() && element.Order == 1 &&
+			element.IsFavorite && !element.IsDeleted() && element.Order == 0 &&
 			element.EditRevision == null && element.DeleteRevision == null));
 		await _groupRepository.Received(1).GetWithContentsByIdAsync(_group.Id);
 		await _unitOfWork.Received(1).SaveChangesAsync();
@@ -138,7 +138,7 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 		_group.Name = _param.Name;
 		_group.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = _param.Name, Order = 100 });
 		await _service.Add(_param);
-		_repository.Received(1).Add(Arg.Is<TElement>(element => element.Name == _param.Name && element.Order == 1));
+		_repository.Received(1).Add(Arg.Is<TElement>(element => element.Name == _param.Name && element.Order == 0));
 	}
 
 	[Test]

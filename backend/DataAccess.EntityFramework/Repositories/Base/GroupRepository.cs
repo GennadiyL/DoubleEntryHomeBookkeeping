@@ -16,7 +16,7 @@ internal abstract class GroupRepository<TGroup, TElement, TD> : Repository<AppDb
 	{
 	}
 
-	public Task<ICollection<TGroup>> GetByName(string name) => throw new NotImplementedException();
+	public Task<ICollection<TGroup>> GetByName(string name, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
 	public override void Update(TGroup entity)
 	{
@@ -31,21 +31,21 @@ internal abstract class GroupRepository<TGroup, TElement, TD> : Repository<AppDb
 		Context.Entry(tracked).CurrentValues.SetValues(Mapper.Map<TD, TGroup>(entity));
 	}
 
-	public async Task<TGroup?> GetWithChildrenByIdAsync(Guid id)
+	public async Task<TGroup?> GetWithChildrenByIdAsync(Guid id, CancellationToken cancellationToken = default)
 	{
 		TD? group = await Entities.AsNoTracking().Include("Children")
-			.SingleOrDefaultAsync(entity => entity.Id == id);
+			.SingleOrDefaultAsync(entity => entity.Id == id, cancellationToken);
 		return group is null ? null : Mapper.Map<TD, TGroup>(group);
 	}
 
-	public Task<int> GetMaxOrderInParent(Guid? parentId) => throw new NotImplementedException();
+	public Task<int> GetMaxOrderInParent(Guid? parentId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-	public async Task<TGroup?> GetWithContentsByIdAsync(Guid id)
+	public async Task<TGroup?> GetWithContentsByIdAsync(Guid id, CancellationToken cancellationToken = default)
 	{
 		TD? group = await Entities.AsNoTracking().Include("Children").Include("Elements")
-			.SingleOrDefaultAsync(entity => entity.Id == id);
+			.SingleOrDefaultAsync(entity => entity.Id == id, cancellationToken);
 		return group is null ? null : Mapper.Map<TD, TGroup>(group);
 	}
 
-	public Task<int> GetCountInParent(Guid? parentId) => throw new NotImplementedException();
+	public Task<int> GetCountInParent(Guid? parentId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 }

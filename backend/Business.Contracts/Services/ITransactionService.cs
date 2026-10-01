@@ -3,6 +3,16 @@ using Business.Contracts.Base.Services;
 
 namespace Business.Contracts.Services;
 
+/// <summary>
+/// Provides transaction editing, filtered reads, duplication and account balance calculations.
+/// Editor mutations validate the aggregate and derive Draft or Confirmed state.
+/// Updates preserve parent identity and replace all entries in submitted order.
+/// Calendar filters include both endpoints in the current device timezone.
+/// Reads return complete matching transactions rather than only their matching entries.
+/// Bulk deletion applies the shared soft-delete lifecycle in one atomic action.
+/// Only Confirmed transactions contribute to balances using stored entry rates.
+/// Duplicate preparation and all reads are detached operations without persistence.
+/// </summary>
 public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 	IReadEntityService<TransactionInfo>
 {
@@ -14,7 +24,7 @@ public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 	/// All aggregate changes and sync tracking commit once or roll back together.
 	/// A database failure raises a critical exception; local writes are not automatically retried.
 	/// </summary>
-	public Task DeleteTransactions(DateOnly fromDate, DateOnly toDate);
+	public Task DeleteTransactions(DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Deletes matching Draft and Confirmed transactions for the transaction screen.
@@ -24,7 +34,7 @@ public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 	/// All aggregate changes and sync tracking commit once or roll back together.
 	/// A database failure raises a critical exception; local writes are not automatically retried.
 	/// </summary>
-	public Task DeleteTransactionsByAccount(Guid accountId, DateOnly fromDate, DateOnly toDate);
+	public Task DeleteTransactionsByAccount(Guid accountId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Deletes matching Draft and Confirmed transactions for the transaction screen.
@@ -34,7 +44,7 @@ public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 	/// All aggregate changes and sync tracking commit once or roll back together.
 	/// A database failure raises a critical exception; local writes are not automatically retried.
 	/// </summary>
-	public Task DeleteTransactionsByCategory(Guid categoryId, DateOnly fromDate, DateOnly toDate);
+	public Task DeleteTransactionsByCategory(Guid categoryId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Deletes matching Draft and Confirmed transactions for the transaction screen.
@@ -44,7 +54,7 @@ public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 	/// All aggregate changes and sync tracking commit once or roll back together.
 	/// A database failure raises a critical exception; local writes are not automatically retried.
 	/// </summary>
-	public Task DeleteTransactionsByCorrespondent(Guid correspondentId, DateOnly fromDate, DateOnly toDate);
+	public Task DeleteTransactionsByCorrespondent(Guid correspondentId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Deletes matching Draft and Confirmed transactions for the transaction screen.
@@ -54,7 +64,7 @@ public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 	/// All aggregate changes and sync tracking commit once or roll back together.
 	/// A database failure raises a critical exception; local writes are not automatically retried.
 	/// </summary>
-	public Task DeleteTransactionsByProject(Guid projectId, DateOnly fromDate, DateOnly toDate);
+	public Task DeleteTransactionsByProject(Guid projectId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Returns transactions in the selected range for the transaction screen.
@@ -62,7 +72,7 @@ public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 	/// Throws for a reversed range. Filters in the database and returns whole transactions with entries in Position order.
 	/// Version 1 has no pagination; this read does not call AcceptChanges.
 	/// </summary>
-	public Task<List<TransactionInfo>> GetTransactions(DateOnly fromDate, DateOnly toDate);
+	public Task<List<TransactionInfo>> GetTransactions(DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Returns transactions having an entry using the selected account for the filtered transaction screen.
@@ -71,7 +81,7 @@ public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 	/// Throws for a reversed range. Filters in the database and returns whole transactions with entries in Position order.
 	/// Version 1 has no pagination; this read does not call AcceptChanges.
 	/// </summary>
-	public Task<List<TransactionInfo>> GetTransactionsByAccount(Guid accountId, DateOnly fromDate, DateOnly toDate);
+	public Task<List<TransactionInfo>> GetTransactionsByAccount(Guid accountId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Returns transactions having an entry whose account references the selected category for the filtered transaction screen.
@@ -80,7 +90,7 @@ public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 	/// Throws for a reversed range. Filters in the database and returns whole transactions with entries in Position order.
 	/// Version 1 has no pagination; this read does not call AcceptChanges.
 	/// </summary>
-	public Task<List<TransactionInfo>> GetTransactionsByCategory(Guid categoryId, DateOnly fromDate, DateOnly toDate);
+	public Task<List<TransactionInfo>> GetTransactionsByCategory(Guid categoryId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Returns transactions having an entry whose account references the selected correspondent for the filtered transaction screen.
@@ -89,7 +99,7 @@ public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 	/// Throws for a reversed range. Filters in the database and returns whole transactions with entries in Position order.
 	/// Version 1 has no pagination; this read does not call AcceptChanges.
 	/// </summary>
-	public Task<List<TransactionInfo>> GetTransactionsByCorrespondent(Guid correspondentId, DateOnly fromDate, DateOnly toDate);
+	public Task<List<TransactionInfo>> GetTransactionsByCorrespondent(Guid correspondentId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Returns transactions having an entry whose account references the selected project for the filtered transaction screen.
@@ -98,13 +108,13 @@ public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 	/// Throws for a reversed range. Filters in the database and returns whole transactions with entries in Position order.
 	/// Version 1 has no pagination; this read does not call AcceptChanges.
 	/// </summary>
-	public Task<List<TransactionInfo>> GetTransactionsByProject(Guid projectId, DateOnly fromDate, DateOnly toDate);
+	public Task<List<TransactionInfo>> GetTransactionsByProject(Guid projectId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Prepares an unsaved copy for the transaction editor, preserving accounts, amounts, rates, description and entry order.
 	/// Sets DateTime to now; only the normal Add operation persists the edited copy.
 	/// </summary>
-	public Task<DuplicateTransactionInfo> DuplicateTransaction(Guid transactionId);
+	public Task<DuplicateTransactionInfo> DuplicateTransaction(Guid transactionId, CancellationToken cancellationToken = default);
 
 
 	/// <summary>
@@ -112,12 +122,12 @@ public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 	/// Includes only Confirmed transactions and returns account-currency and base-currency totals.
 	/// Base totals sum per-entry rounded amounts at stored rates; this read does not save changes.
 	/// </summary>
-	public Task<List<AccountBalanceInfo>> GetBalancesForAllAccounts(DateOnly date);
+	public Task<List<AccountBalanceInfo>> GetBalancesForAllAccounts(DateOnly date, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Calculates one account balance through the complete selected device-local day for account display.
 	/// Uses only Confirmed transactions and returns account-currency and base-currency totals at stored entry rates.
 	/// Throws when the account does not exist; an existing account without qualifying entries has zero totals.
 	/// </summary>
-	public Task<AccountBalanceInfo> GetBalanceForAccount(Guid accountId, DateOnly date);
+	public Task<AccountBalanceInfo> GetBalanceForAccount(Guid accountId, DateOnly date, CancellationToken cancellationToken = default);
 }

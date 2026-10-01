@@ -231,6 +231,20 @@ public sealed class GroupsGetTreeServiceTests<TGroup, TElement, TService, TRepos
 		AssertReadOnly();
 	}
 
+	[Test]
+	public async Task GetTree_CancellationToken_IsPassedToBothRepositories()
+	{
+		using CancellationTokenSource cancellation = new();
+		CancellationToken token = cancellation.Token;
+		_repository.GetAllAsync(token).Returns(new List<TGroup> { _parent });
+		_elementRepository.GetAllAsync(token).Returns(new List<TElement>());
+		TreeInfo result = await _service.GetTree(token);
+		Assert.That(result.Groups.Count, Is.EqualTo(1));
+		await _repository.Received(1).GetAllAsync(token);
+		await _elementRepository.Received(1).GetAllAsync(token);
+		AssertReadOnly();
+	}
+
 	private void AssertReadOnly()
 	{
 		Assert.That(_repository.ReceivedCalls().Count(), Is.EqualTo(1));

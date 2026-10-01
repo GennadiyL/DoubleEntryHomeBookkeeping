@@ -17,20 +17,20 @@ public interface IReportsService
 	/// <summary>
 	/// Calculates selected totals for the report result screen without modifying the saved definition.
 	/// </summary>
-	public Task<ReportCalculationInfo> Calculate(CalculateReport command);
+	public Task<ReportCalculationInfo> Calculate(CalculateReport command, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Reads saved definitions for the report chooser while preserving missing identities and saved selection intent.
 	/// </summary>
-	public Task<List<ReportInfo>> GetDefinitions();
+	public Task<List<ReportInfo>> GetDefinitions(CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Creates or updates a definition from an explicit editor save and returns the saved projection.
 	/// </summary>
-	public Task<ReportInfo> SaveDefinition(SaveReportDefinition command);
+	public Task<ReportInfo> SaveDefinition(SaveReportDefinition command, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Deletes a saved definition from the report chooser without changing bookkeeping records.
 	/// </summary>
-	public Task DeleteDefinition(Guid reportId);
+	public Task DeleteDefinition(Guid reportId, CancellationToken cancellationToken = default);
 }

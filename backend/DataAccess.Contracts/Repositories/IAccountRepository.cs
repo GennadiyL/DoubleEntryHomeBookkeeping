@@ -6,8 +6,8 @@ namespace DataAccess.Contracts.Repositories;
 
 public interface IAccountRepository : IElementRepository<AccountGroup, Account>
 {
-	public Task<ICollection<Account>> GetByCategoryIdAsync(Guid categoryId);
-	public Task<ICollection<Account>> GetByCorrespondentIdAsync(Guid correspondentId);
-	public Task<ICollection<Account>> GetByProjectIdAsync(Guid projectId);
+	public Task<ICollection<Account>> GetByCategoryIdAsync(Guid categoryId, CancellationToken cancellationToken = default);
+	public Task<ICollection<Account>> GetByCorrespondentIdAsync(Guid correspondentId, CancellationToken cancellationToken = default);
+	public Task<ICollection<Account>> GetByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default);
 }
 

@@ -1,14 +1,14 @@
 namespace Business.Contracts.Services.Trees;
 
 /// <summary>
-/// Contains all category groups and elements for one catalog.
-/// Groups includes the root exactly once.
-/// Elements connect to groups through GroupId.
-/// Collections are separate flat sequences with stable instances.
-/// Order is available for constructing the catalog display.
-/// No persistent entity or synchronization state is exposed.
-/// The service populates this read-only operation result.
-/// Changing this record does not persist catalog edits.
+/// Contains the live groups and lightweight elements of one of the five catalogs.
+/// Groups includes the fixed root exactly once, with its self-parent relationship.
+/// ParentId connects groups; GroupId connects elements, including direct root elements.
+/// Groups and elements remain separate flat collections with stable list instances.
+/// Each sibling collection uses Order for placement, with canonical GUID ties.
+/// Common visible columns are Name, Description and IsFavorite.
+/// Account currency display uses AccountTreeInfo; full editing uses separate read records.
+/// Reading or changing this detached result does not persist catalog edits.
 /// </summary>
 public record TreeInfo
 {

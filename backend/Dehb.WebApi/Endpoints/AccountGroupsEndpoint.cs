@@ -6,51 +6,51 @@ namespace Dehb.WebApi.Endpoints;
 
 internal static class AccountGroupsEndpoint
 {
-	public static async Task<IResult> GetTreeHandler(IAccountGroupService service) =>
-		Results.Ok(await service.GetTree());
+	public static async Task<IResult> GetTreeHandler(IAccountGroupService service, CancellationToken cancellationToken = default) =>
+		Results.Ok(await service.GetTree(cancellationToken));
 
-	public static async Task<IResult> GetAllGroupsHandler(IAccountGroupService service) =>
-		Results.Ok(await service.GetAllGroups());
+	public static async Task<IResult> GetAllGroupsHandler(IAccountGroupService service, CancellationToken cancellationToken = default) =>
+		Results.Ok(await service.GetAllGroups(cancellationToken));
 
-	public static async Task<IResult> GetByIdHandler(Guid id, IAccountGroupService service) =>
-		Results.Ok(await service.GetById(id));
+	public static async Task<IResult> GetByIdHandler(Guid id, IAccountGroupService service, CancellationToken cancellationToken = default) =>
+		Results.Ok(await service.GetById(id, cancellationToken));
 
-	public static async Task<IResult> AddHandler(GroupParam param, IAccountGroupService service) =>
-		Results.Ok(await service.Add(param));
+	public static async Task<IResult> AddHandler(GroupParam param, IAccountGroupService service, CancellationToken cancellationToken = default) =>
+		Results.Ok(await service.Add(param, cancellationToken));
 
-	public static async Task<IResult> SetOrderHandler(SetOrderParam param, IAccountGroupService service)
+	public static async Task<IResult> SetOrderHandler(SetOrderParam param, IAccountGroupService service, CancellationToken cancellationToken = default)
 	{
-		await service.SetOrder(param.EntityId, param.Order);
+		await service.SetOrder(param.EntityId, param.Order, cancellationToken);
 		return Results.Ok();
 	}
 
-	public static async Task<IResult> SetFavoriteStatusHandler(SetFavoriteStatusParam param, IAccountGroupService service)
+	public static async Task<IResult> SetFavoriteStatusHandler(SetFavoriteStatusParam param, IAccountGroupService service, CancellationToken cancellationToken = default)
 	{
-		await service.SetFavoriteStatus(param.EntityId, param.IsFavorite);
+		await service.SetFavoriteStatus(param.EntityId, param.IsFavorite, cancellationToken);
 		return Results.Ok();
 	}
 
-	public static async Task<IResult> MoveToAnotherParentHandler(MoveToAnotherParentParam param, IAccountGroupService service)
+	public static async Task<IResult> MoveToAnotherParentHandler(MoveToAnotherParentParam param, IAccountGroupService service, CancellationToken cancellationToken = default)
 	{
-		await service.MoveToAnotherParent(param.GroupId, param.ToParentId);
+		await service.MoveToAnotherParent(param.GroupId, param.ToParentId, cancellationToken);
 		return Results.Ok();
 	}
 
-	public static async Task<IResult> CombineGroupsHandler(CombineGroupsParam param, IAccountGroupService service)
+	public static async Task<IResult> CombineGroupsHandler(CombineGroupsParam param, IAccountGroupService service, CancellationToken cancellationToken = default)
 	{
-		await service.CombineGroups(param.ToGroupId, param.FromGroupId);
+		await service.CombineGroups(param.ToGroupId, param.FromGroupId, cancellationToken);
 		return Results.Ok();
 	}
 
-	public static async Task<IResult> DeleteHandler(DeleteParam param, IAccountGroupService service)
+	public static async Task<IResult> DeleteHandler(DeleteParam param, IAccountGroupService service, CancellationToken cancellationToken = default)
 	{
-		await service.Delete(param.EntityId);
+		await service.Delete(param.EntityId, cancellationToken);
 		return Results.Ok();
 	}
 
-	public static async Task<IResult> UpdateHandler(UpdateGroupParam param, IAccountGroupService service)
+	public static async Task<IResult> UpdateHandler(UpdateGroupParam param, IAccountGroupService service, CancellationToken cancellationToken = default)
 	{
-		await service.Update(param.EntityId, param);
+		await service.Update(param.EntityId, param, cancellationToken);
 		return Results.Ok();
 	}
 }

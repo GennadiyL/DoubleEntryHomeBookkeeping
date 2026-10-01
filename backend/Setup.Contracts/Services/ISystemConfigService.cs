@@ -12,12 +12,12 @@ public interface ISystemConfigService
 	/// Returns the single System configuration for the settings screen without an identity parameter.
 	/// This read does not call AcceptChanges.
 	/// </summary>
-	public Task<SystemConfigurationInfo> GetConfiguration();
+	public Task<SystemConfigurationInfo> GetConfiguration(CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Validates and saves editable settings to the single System configuration.
 	/// Commits a successful state-changing action once through AcceptChanges; invalid inputs do not save.
 	/// System changes include sync tracking; base currency and precisions remain immutable.
 	/// </summary>
-	public Task SaveConfiguration(SaveSystemConfiguration settings);
+	public Task SaveConfiguration(SaveSystemConfiguration settings, CancellationToken cancellationToken = default);
 }

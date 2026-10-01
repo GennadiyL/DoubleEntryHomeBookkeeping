@@ -17,35 +17,35 @@ public interface ISynchronizationService
 	/// <summary>
 	/// Captures pending local changes and starts synchronization for the progress UI using stored priority and authorization.
 	/// </summary>
-	public Task<SynchronizeInfo> Synchronize(Synchronize command);
+	public Task<SynchronizeInfo> Synchronize(Synchronize command, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Resolves a durable attempt outcome for recovery; timestamps alone cannot establish success.
 	/// </summary>
-	public Task<OperationStatusInfo> GetOutcome(SyncIdentity identity);
+	public Task<OperationStatusInfo> GetOutcome(SyncIdentity identity, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Cancels work where possible for the progress UI; published changes remain published.
 	/// </summary>
-	public Task<OperationStatusInfo> Cancel(SyncIdentity identity);
+	public Task<OperationStatusInfo> Cancel(SyncIdentity identity, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Downloads the selected immutable business snapshot for local installation; the caller disposes its stream.
 	/// </summary>
-	public Task<DownloadSnapshotInfo> Download(DownloadSnapshot command);
+	public Task<DownloadSnapshotInfo> Download(DownloadSnapshot command, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Records actual successful installation for completion and deletion acknowledgement; retries must be idempotent.
 	/// </summary>
-	public Task<OperationStatusInfo> Acknowledge(AcknowledgeSnapshot command);
+	public Task<OperationStatusInfo> Acknowledge(AcknowledgeSnapshot command, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Resolves an earlier attempt and selects the latest snapshot for recovery installation.
 	/// </summary>
-	public Task<TransferInfo> Recover(SyncIdentity identity);
+	public Task<TransferInfo> Recover(SyncIdentity identity, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Registers a replacement copy and selects its snapshot after the user chooses Download on expiry.
 	/// </summary>
-	public Task<ReplaceExpiredCopyInfo> ReplaceExpired(ReplaceExpiredCopy command);
+	public Task<ReplaceExpiredCopyInfo> ReplaceExpired(ReplaceExpiredCopy command, CancellationToken cancellationToken = default);
 }

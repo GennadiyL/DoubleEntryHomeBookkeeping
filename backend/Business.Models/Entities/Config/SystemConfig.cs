@@ -5,12 +5,15 @@ using Business.Models.Enums;
 namespace Business.Models.Entities.Config;
 
 /// <summary>
-/// Stores synchronized settings shared by a master dataset and its local copies.
-/// MasterDatasetKey identifies the dataset independently of this configuration row.
-/// Base currency and precision choices are initialized once and preserved by services.
-/// The optional balancing-account ID selects the account for assisted balancing.
-/// Writable inherited identity supports creation and materialization of persistent state.
-/// The model carries data; business services implement validation and lifecycle operations.
+/// Stores the single synchronized configuration row for a Master dataset and its Local copies.
+/// Master generates the row identity once; every Local retains it through synchronization.
+/// MasterDatasetKey identifies the dataset independently of the row identity.
+/// BaseCurrencyId and both precision settings are immutable after initialization.
+/// AmountPrecision and RatePrecision range from zero to four, defaulting to two and four.
+/// BalancingAccountId optionally selects a base-currency account for assisted balancing.
+/// Deletion of that account clears the selection; the setting alone does not protect deletion.
+/// Entity references are ID-only and are resolved and validated by services.
+/// Mutable setting changes use the shared content-tracking and atomic persistence rules.
 /// </summary>
 public class SystemConfig : BaseEntity, ITrackedEntity
 {

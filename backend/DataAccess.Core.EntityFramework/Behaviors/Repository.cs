@@ -51,13 +51,13 @@ public abstract class Repository<TContext, TB, TD> : IRepository<TB>
 		Entities.Update(Mapper.Map<TD, TB>(entity));
 	}
 
-	public virtual async Task<ICollection<TB>> GetAllAsync(CancellationToken cancellationToken)
+	public virtual async Task<ICollection<TB>> GetAllAsync(CancellationToken cancellationToken = default)
 	{
 		List<TD> entities = await Entities.ToListAsync(cancellationToken);
 		return Mapper.Map<TD, TB>(entities);
 	}
 
-	public virtual async Task<TB?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+	public virtual async Task<TB?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
 	{
 		TD? entity = await Entities.FindAsync([id], cancellationToken);
 

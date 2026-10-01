@@ -17,8 +17,8 @@ internal sealed class CorrespondentService : ElementService<CorrespondentGroup, 
 		_accountRepository = unitOfWork.AccountRepo;
 	}
 
-	protected override Task<ICollection<Account>> GetReferencingAccounts(Guid elementId) =>
-		_accountRepository.GetByCorrespondentIdAsync(elementId);
+	protected override Task<ICollection<Account>> GetReferencingAccounts(Guid elementId, CancellationToken cancellationToken = default) =>
+		_accountRepository.GetByCorrespondentIdAsync(elementId, cancellationToken);
 
 	protected override void ReplaceAccountReference(Account account, Correspondent destination)
 	{

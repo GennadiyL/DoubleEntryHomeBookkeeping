@@ -4,12 +4,14 @@ using Business.Models.Enums;
 namespace Business.Models.Entities.Config;
 
 /// <summary>
-/// Stores settings and installation state belonging to one local database copy.
-/// LocalDatasetKey identifies the registered copy; SnapshotRevision records the installed snapshot.
-/// Name order, separator, sync trigger, and conflict priority hold local preferences.
-/// Settings survive database replacement and do not synchronize as shared business content.
-/// Writable inherited identity supports creation and materialization of persistent state.
-/// The model carries data; business services implement validation and lifecycle operations.
+/// Stores the single configuration row belonging to one local database copy.
+/// Local generates its row identity once and preserves it through database replacement.
+/// LocalDatasetKey identifies the registered copy separately from the row identity.
+/// SnapshotRevision identifies the installed Master snapshot and starts at zero.
+/// Account name order and the separator determine generated account names.
+/// Conflict priority defaults to Local; synchronization trigger defaults to ManualOnly.
+/// Local settings and identity survive database replacement and are never merged with Master.
+/// Services validate and persist local settings; this model carries configuration data.
 /// </summary>
 public class LocalConfig : BaseEntity
 {

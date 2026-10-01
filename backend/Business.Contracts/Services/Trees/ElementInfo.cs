@@ -1,14 +1,14 @@
 namespace Business.Contracts.Services.Trees;
 
 /// <summary>
-/// Describes one category for catalog browsing and selection.
-/// GroupId connects the element to its catalog group.
-/// Created by the service for presentation and editing.
-/// Contains values rather than persistent entity references.
-/// Identifiers refer to existing bookkeeping records.
-/// Does not expose synchronization revisions or modification flags.
-/// Reading this record does not save changes.
-/// Persistence remains the responsibility of the corresponding mutation operation.
+/// Describes a lightweight element in any of the five catalog trees.
+/// GroupId and GroupName identify and label its containing group.
+/// Name, Description and IsFavorite supply the common visible tree columns.
+/// Order controls position in the separate element sequence, not a numeric display column.
+/// Also supplies full edit values for Category, Correspondent and Project.
+/// Account classifications and template entries require their separate full edit records.
+/// Contains detached values without persistent navigation or synchronization metadata.
+/// Changing this record does not persist changes.
 /// </summary>
 public record ElementInfo
 {

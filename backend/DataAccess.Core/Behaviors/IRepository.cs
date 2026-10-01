@@ -9,9 +9,9 @@ public interface IRepository<T>
 
 	public void Update(T entity);
 
-	public Task<ICollection<T>> GetAllAsync(CancellationToken cancellationToken);
+	public Task<ICollection<T>> GetAllAsync(CancellationToken cancellationToken = default);
 
-	public Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+	public Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
 	public ICollection<T> GetAll();
 

@@ -17,8 +17,8 @@ internal sealed class ProjectService : ElementService<ProjectGroup, Project>, IP
 		_accountRepository = unitOfWork.AccountRepo;
 	}
 
-	protected override Task<ICollection<Account>> GetReferencingAccounts(Guid elementId) =>
-		_accountRepository.GetByProjectIdAsync(elementId);
+	protected override Task<ICollection<Account>> GetReferencingAccounts(Guid elementId, CancellationToken cancellationToken = default) =>
+		_accountRepository.GetByProjectIdAsync(elementId, cancellationToken);
 
 	protected override void ReplaceAccountReference(Account account, Project destination)
 	{

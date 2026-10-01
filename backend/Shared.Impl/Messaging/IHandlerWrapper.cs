@@ -7,5 +7,5 @@ internal interface IHandlerWrapper
 	public Task Handle(
 		IMessage message,
 		ServiceFactory serviceFactory,
-		Func<IEnumerable<Func<IMessage, Task>>, IMessage, Task> publish);
+		Func<IEnumerable<Func<IMessage, CancellationToken, Task>>, IMessage, CancellationToken, Task> publish, CancellationToken cancellationToken = default);
 }

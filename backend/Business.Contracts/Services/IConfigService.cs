@@ -19,5 +19,5 @@ public interface IConfigService
 	/// Reads the current configuration singletons without an ID parameter or persistence changes.
 	/// Missing either singleton raises a critical exception; no partial or default settings are returned.
 	/// </summary>
-	public Task<ConfigurationInfo> GetConfiguration();
+	public Task<ConfigurationInfo> GetConfiguration(CancellationToken cancellationToken = default);
 }

@@ -6,11 +6,13 @@ namespace Business.Models.Entities;
 
 /// <summary>
 /// Represents a currency available within a bookkeeping dataset.
-/// Stores its ISO code, display name, symbol, favorite flag, and catalog order.
-/// Its rates collection holds exchange rates; accounts and System configuration reference its identity.
-/// Services enforce currency uniqueness, base-currency protection, and deletion rules.
-/// Writable inherited identity supports creation and materialization of persistent state.
-/// The model carries data; business services implement validation and lifecycle operations.
+/// Stores its unique immutable ISO code, editable name and editable symbol.
+/// Accounts and System configuration reference its identity.
+/// Each currency has exactly one protected initial fallback rate plus ordinary dated rates.
+/// The dataset base currency and currencies used by accounts cannot be deleted.
+/// Favorite changes are content changes; currency ordering is a separate zero-based sequence.
+/// New rows have null revisions and None modification flags.
+/// Services enforce lifecycle and persistence; the model carries data.
 /// </summary>
 public class Currency : BaseEntity, ITrackedEntity, IFavoriteEntity, IOrderedEntity
 {

@@ -13,15 +13,15 @@ internal sealed class TransactionEntryRepository : Repository<AppDbContext, Tran
 	{
 	}
 
-	public async Task<ICollection<TransactionEntryEntity>> GetByAccountIdAsync(Guid accountId)
+	public async Task<ICollection<TransactionEntryEntity>> GetByAccountIdAsync(Guid accountId, CancellationToken cancellationToken = default)
 	{
 		List<DalEntity> entries = await Entities.AsNoTracking()
-			.Where(entry => entry.AccountId == accountId).ToListAsync();
+			.Where(entry => entry.AccountId == accountId).ToListAsync(cancellationToken);
 		return Mapper.Map<DalEntity, TransactionEntryEntity>(entries);
 	}
 
-	public Task<bool> HasByAccountIdAsync(Guid accountId) =>
-		Entities.AnyAsync(entry => entry.AccountId == accountId);
+	public Task<bool> HasByAccountIdAsync(Guid accountId, CancellationToken cancellationToken = default) =>
+		Entities.AnyAsync(entry => entry.AccountId == accountId, cancellationToken);
 
 	public override void Update(TransactionEntryEntity entity)
 	{

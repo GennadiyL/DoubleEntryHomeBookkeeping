@@ -7,11 +7,13 @@ namespace Business.Models.Entities;
 
 /// <summary>
 /// Represents a dated exchange rate to the dataset base currency.
-/// Stores a currency reference, decimal rate, calendar date, and optional description.
-/// IsInitial derives the fallback marker from the shared initial-date constant.
-/// Services validate rates and select applicable dates; transaction entries retain independent rates.
-/// Writable inherited identity supports creation and materialization of persistent state.
-/// The model carries data; business services implement validation and lifecycle operations.
+/// CurrencyId and Date identify the pair used by rate upserts.
+/// Date is a calendar date without timezone conversion; Description is optional.
+/// Rate is positive after configured rounding and is one for the base currency.
+/// IsInitial derives from the shared 1970-01-01 fallback-date constant.
+/// The initial row cannot be deleted or moved to another date; its permitted value remains editable.
+/// Ordinary rates use dates from 2001-01-01 and follow the shared soft-delete lifecycle.
+/// Rate lookup selects the latest applicable date without changing stored transaction-entry rates.
 /// </summary>
 public class CurrencyRate : BaseEntity, ITrackedEntity
 {

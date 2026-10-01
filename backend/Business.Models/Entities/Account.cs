@@ -4,11 +4,14 @@ namespace Business.Models.Entities;
 
 /// <summary>
 /// Represents an account used by transaction and template entries.
-/// Belongs to an account group and references one currency.
-/// Optional category, correspondent, and project references classify account activity.
-/// Services preserve the first saved currency and enforce reference-based deletion rules.
-/// Writable inherited identity supports creation and materialization of persistent state.
-/// The model carries data; business services implement validation and lifecycle operations.
+/// Belongs to one account group and references one currency.
+/// Optional category, correspondent and project references classify account activity.
+/// The first successful save fixes currency permanently, even before entry use.
+/// Account names may be duplicated and do not change automatically with classifications.
+/// Any transaction or template reference prevents ordinary deletion.
+/// Replacement requires the same currency and preserves entry amounts, rates and order.
+/// Deleting the selected balancing account clears the System selection.
+/// Services validate and persist the lifecycle; the model carries persistent data.
 /// </summary>
 public class Account : ElementEntity<AccountGroup, Account>
 {

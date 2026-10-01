@@ -4,11 +4,14 @@ namespace Business.Models.Entities;
 
 /// <summary>
 /// Represents an account-bearing entry owned by a transaction.
-/// Stores parent and account references with their matching foreign keys.
-/// Amount, Rate, and Position preserve entry content and order, including repeated accounts.
-/// Entry creation, editing, deletion, and synchronization follow the parent transaction lifecycle.
-/// Writable inherited identity supports creation and materialization of persistent state.
-/// The model carries data; business services implement validation and lifecycle operations.
+/// Parent and account references match their corresponding foreign keys.
+/// Amount is in account currency; Rate independently stores conversion to base currency.
+/// Base amount is derived by midpoint-to-even rounding of Amount times Rate.
+/// Position is the zero-based entry index within the complete transaction.
+/// Repeated accounts remain separate entries with their own amounts and rates.
+/// Aggregate updates replace all entry rows with new identities in submitted list order.
+/// Entries have no independent synchronization flags; changes mark the parent content.
+/// Creation, replacement and deletion are managed at the transaction aggregate boundary.
 /// </summary>
 public class TransactionEntry : BaseEntity
 {

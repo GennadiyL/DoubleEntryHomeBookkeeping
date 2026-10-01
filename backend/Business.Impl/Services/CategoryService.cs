@@ -17,8 +17,8 @@ internal sealed class CategoryService : ElementService<CategoryGroup, Category>,
 		_accountRepository = unitOfWork.AccountRepo;
 	}
 
-	protected override Task<ICollection<Account>> GetReferencingAccounts(Guid elementId) =>
-		_accountRepository.GetByCategoryIdAsync(elementId);
+	protected override Task<ICollection<Account>> GetReferencingAccounts(Guid elementId, CancellationToken cancellationToken = default) =>
+		_accountRepository.GetByCategoryIdAsync(elementId, cancellationToken);
 
 	protected override void ReplaceAccountReference(Account account, Category destination)
 	{

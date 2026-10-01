@@ -38,9 +38,9 @@ public abstract class GroupService<TGroup, TElement> :
 		_elementRepository = elementRepository;
 	}
 
-	public async Task<GroupInfo> GetById(Guid id)
+	public async Task<GroupInfo> GetById(Guid id, CancellationToken cancellationToken = default)
 	{
-		TGroup? group = await _repository.GetByIdAsync(id, CancellationToken.None);
+		TGroup? group = await _repository.GetByIdAsync(id, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
@@ -48,7 +48,7 @@ public abstract class GroupService<TGroup, TElement> :
 
 		TGroup? parent = group.ParentId == group.Id
 			? group
-			: await _repository.GetByIdAsync(group.ParentId, CancellationToken.None);
+			: await _repository.GetByIdAsync(group.ParentId, cancellationToken);
 		if (parent is null || parent.IsDeleted())
 		{
 			throw new GroupNotFoundException("The parent group does not exist or is deleted.");
@@ -67,14 +67,14 @@ public abstract class GroupService<TGroup, TElement> :
 		};
 	}
 
-	public async Task<Guid> Add(GroupParam param)
+	public async Task<Guid> Add(GroupParam param, CancellationToken cancellationToken = default)
 	{
 		if (param is null || string.IsNullOrWhiteSpace(param.Name) || param.ParentId == Guid.Empty)
 		{
 			throw new InvalidGroupException("A group name and parent identifier are required.");
 		}
 
-		TGroup? parent = await _repository.GetWithChildrenByIdAsync(param.ParentId);
+		TGroup? parent = await _repository.GetWithChildrenByIdAsync(param.ParentId, cancellationToken);
 		if (parent is null || parent.IsDeleted())
 		{
 			throw new InvalidGroupException("The parent group does not exist or is deleted.");
@@ -87,7 +87,7 @@ public abstract class GroupService<TGroup, TElement> :
 			throw new InvalidGroupException("A group with the same name already exists in this parent.");
 		}
 
-		int maxOrder = siblings.Count == 0 ? 0 : siblings.Max(child => child.Order);
+		int maxOrder = siblings.Count == 0 ? -1 : siblings.Max(child => child.Order);
 		if (maxOrder == int.MaxValue)
 		{
 			throw new InvalidGroupException("The parent group has no available ordering position.");
@@ -107,11 +107,11 @@ public abstract class GroupService<TGroup, TElement> :
 			ModificationType = ModificationType.None,
 		};
 		_repository.Add(group);
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChangesAsync(cancellationToken);
 		return group.Id;
 	}
 
-	public async Task Update(Guid entityId, GroupParam param)
+	public async Task Update(Guid entityId, GroupParam param, CancellationToken cancellationToken = default)
 	{
 		if (entityId == Guid.Empty || param is null ||
 			string.IsNullOrWhiteSpace(param.Name) || param.ParentId == Guid.Empty)
@@ -119,7 +119,7 @@ public abstract class GroupService<TGroup, TElement> :
 			throw new InvalidGroupException("A group identifier, name, and parent identifier are required.");
 		}
 
-		TGroup? group = await _repository.GetByIdAsync(entityId, CancellationToken.None);
+		TGroup? group = await _repository.GetByIdAsync(entityId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
@@ -135,7 +135,7 @@ public abstract class GroupService<TGroup, TElement> :
 			throw new InvalidGroupException("Use MoveToAnotherParent to change the parent group.");
 		}
 
-		TGroup? parent = await _repository.GetWithChildrenByIdAsync(group.ParentId);
+		TGroup? parent = await _repository.GetWithChildrenByIdAsync(group.ParentId, cancellationToken);
 		if (parent is null || parent.IsDeleted())
 		{
 			throw new InvalidGroupException("The parent group does not exist or is deleted.");
@@ -154,17 +154,17 @@ public abstract class GroupService<TGroup, TElement> :
 		group.IsFavorite = param.IsFavorite;
 		group.SetEditedContent();
 		_repository.Update(group);
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChangesAsync(cancellationToken);
 	}
 
-	public async Task Delete(Guid entityId)
+	public async Task Delete(Guid entityId, CancellationToken cancellationToken = default)
 	{
 		if (entityId == Guid.Empty)
 		{
 			throw new InvalidGroupException("A group identifier is required.");
 		}
 
-		TGroup? group = await _repository.GetWithContentsByIdAsync(entityId);
+		TGroup? group = await _repository.GetWithContentsByIdAsync(entityId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
@@ -181,7 +181,7 @@ public abstract class GroupService<TGroup, TElement> :
 			throw new InvalidGroupException("A group with active child groups or elements cannot be deleted.");
 		}
 
-		TGroup? parent = await _repository.GetWithChildrenByIdAsync(group.ParentId);
+		TGroup? parent = await _repository.GetWithChildrenByIdAsync(group.ParentId, cancellationToken);
 		if (parent is null || parent.IsDeleted())
 		{
 			throw new InvalidGroupException("The parent group does not exist or is deleted.");
@@ -207,17 +207,17 @@ public abstract class GroupService<TGroup, TElement> :
 			sibling.SetEditedOrder();
 			_repository.Update(sibling);
 		}
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChangesAsync(cancellationToken);
 	}
 
-	public async Task SetOrder(Guid entityId, int order)
+	public async Task SetOrder(Guid entityId, int order, CancellationToken cancellationToken = default)
 	{
 		if (entityId == Guid.Empty || order < 0)
 		{
 			throw new InvalidGroupException("A group identifier and a nonnegative order are required.");
 		}
 
-		TGroup? group = await _repository.GetByIdAsync(entityId, CancellationToken.None);
+		TGroup? group = await _repository.GetByIdAsync(entityId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
@@ -228,7 +228,7 @@ public abstract class GroupService<TGroup, TElement> :
 			throw new InvalidGroupException("The root group cannot be reordered.");
 		}
 
-		TGroup? parent = await _repository.GetWithChildrenByIdAsync(group.ParentId);
+		TGroup? parent = await _repository.GetWithChildrenByIdAsync(group.ParentId, cancellationToken);
 		if (parent is null || parent.IsDeleted())
 		{
 			throw new GroupNotFoundException("The parent group does not exist or is deleted.");
@@ -266,17 +266,17 @@ public abstract class GroupService<TGroup, TElement> :
 			sibling.SetEditedOrder();
 			_repository.Update(sibling);
 		}
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChangesAsync(cancellationToken);
 	}
 
-	public async Task SetFavoriteStatus(Guid entityId, bool isFavorite)
+	public async Task SetFavoriteStatus(Guid entityId, bool isFavorite, CancellationToken cancellationToken = default)
 	{
 		if (entityId == Guid.Empty)
 		{
 			throw new InvalidGroupException("A group identifier is required.");
 		}
 
-		TGroup? group = await _repository.GetByIdAsync(entityId, CancellationToken.None);
+		TGroup? group = await _repository.GetByIdAsync(entityId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
@@ -295,17 +295,17 @@ public abstract class GroupService<TGroup, TElement> :
 		group.IsFavorite = isFavorite;
 		group.SetEditedContent();
 		_repository.Update(group);
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChangesAsync(cancellationToken);
 	}
 
-	public async Task MoveToAnotherParent(Guid groupId, Guid toParentId)
+	public async Task MoveToAnotherParent(Guid groupId, Guid toParentId, CancellationToken cancellationToken = default)
 	{
 		if (groupId == Guid.Empty || toParentId == Guid.Empty)
 		{
 			throw new InvalidGroupException("A group identifier and destination parent identifier are required.");
 		}
 
-		TGroup? group = await _repository.GetByIdAsync(groupId, CancellationToken.None);
+		TGroup? group = await _repository.GetByIdAsync(groupId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
@@ -321,7 +321,7 @@ public abstract class GroupService<TGroup, TElement> :
 			throw new InvalidGroupException("A group cannot be moved into itself.");
 		}
 
-		TGroup? destination = await _repository.GetWithChildrenByIdAsync(toParentId);
+		TGroup? destination = await _repository.GetWithChildrenByIdAsync(toParentId, cancellationToken);
 		if (destination is null || destination.IsDeleted())
 		{
 			throw new GroupNotFoundException("The destination parent does not exist or is deleted.");
@@ -341,7 +341,7 @@ public abstract class GroupService<TGroup, TElement> :
 				break;
 			}
 
-			TGroup? next = await _repository.GetByIdAsync(ancestor.ParentId, CancellationToken.None);
+			TGroup? next = await _repository.GetByIdAsync(ancestor.ParentId, cancellationToken);
 			if (next is null || next.IsDeleted())
 			{
 				throw new GroupNotFoundException("A destination ancestor does not exist or is deleted.");
@@ -360,7 +360,7 @@ public abstract class GroupService<TGroup, TElement> :
 			throw new InvalidGroupException("A group with the same name already exists in the destination parent.");
 		}
 
-		TGroup? source = await _repository.GetWithChildrenByIdAsync(group.ParentId);
+		TGroup? source = await _repository.GetWithChildrenByIdAsync(group.ParentId, cancellationToken);
 		if (source is null || source.IsDeleted())
 		{
 			throw new GroupNotFoundException("The source parent does not exist or is deleted.");
@@ -393,10 +393,10 @@ public abstract class GroupService<TGroup, TElement> :
 				_repository.Update(sibling);
 			}
 		}
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChangesAsync(cancellationToken);
 	}
 
-	public async Task CombineGroups(Guid toGroupId, Guid fromGroupId)
+	public async Task CombineGroups(Guid toGroupId, Guid fromGroupId, CancellationToken cancellationToken = default)
 	{
 		if (toGroupId == fromGroupId)
 		{
@@ -408,7 +408,7 @@ public abstract class GroupService<TGroup, TElement> :
 			throw new InvalidGroupException("Two different group identifiers are required.");
 		}
 
-		TGroup? source = await _repository.GetWithContentsByIdAsync(fromGroupId);
+		TGroup? source = await _repository.GetWithContentsByIdAsync(fromGroupId, cancellationToken);
 		if (source is null || source.IsDeleted())
 		{
 			throw new GroupNotFoundException("The source group does not exist or is deleted.");
@@ -419,7 +419,7 @@ public abstract class GroupService<TGroup, TElement> :
 			throw new InvalidGroupException("The root group cannot be combined into another group.");
 		}
 
-		TGroup? destination = await _repository.GetWithContentsByIdAsync(toGroupId);
+		TGroup? destination = await _repository.GetWithContentsByIdAsync(toGroupId, cancellationToken);
 		if (destination is null || destination.IsDeleted())
 		{
 			throw new GroupNotFoundException("The destination group does not exist or is deleted.");
@@ -437,7 +437,7 @@ public abstract class GroupService<TGroup, TElement> :
 			{
 				break;
 			}
-			TGroup? next = await _repository.GetByIdAsync(ancestor.ParentId, CancellationToken.None);
+			TGroup? next = await _repository.GetByIdAsync(ancestor.ParentId, cancellationToken);
 			if (next is null || next.IsDeleted())
 			{
 				throw new GroupNotFoundException("A destination ancestor does not exist or is deleted.");
@@ -447,7 +447,7 @@ public abstract class GroupService<TGroup, TElement> :
 
 		TGroup? parent = source.ParentId == destination.Id
 			? destination
-			: await _repository.GetWithChildrenByIdAsync(source.ParentId);
+			: await _repository.GetWithChildrenByIdAsync(source.ParentId, cancellationToken);
 		if (parent is null || parent.IsDeleted())
 		{
 			throw new GroupNotFoundException("The source parent does not exist or is deleted.");
@@ -528,7 +528,7 @@ public abstract class GroupService<TGroup, TElement> :
 		source.SetDeleted();
 		source.SetEditedContent();
 		_repository.Update(source);
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChangesAsync(cancellationToken);
 	}
 
 	private static string GetUniqueCombinedName(string name, HashSet<string> names)
@@ -540,9 +540,9 @@ public abstract class GroupService<TGroup, TElement> :
 		return name;
 	}
 
-	public async Task<List<GroupInfo>> GetAllGroups()
+	public async Task<List<GroupInfo>> GetAllGroups(CancellationToken cancellationToken = default)
 	{
-		ICollection<TGroup> groups = await _repository.GetAllAsync(CancellationToken.None);
+		ICollection<TGroup> groups = await _repository.GetAllAsync(cancellationToken);
 		Dictionary<Guid, TGroup> activeGroups = groups.Where(group => !group.IsDeleted())
 			.ToDictionary(group => group.Id);
 		List<GroupInfo> result = new(activeGroups.Count);
@@ -570,12 +570,12 @@ public abstract class GroupService<TGroup, TElement> :
 		return result;
 	}
 
-	public async Task<TreeInfo> GetTree()
+	public async Task<TreeInfo> GetTree(CancellationToken cancellationToken = default)
 	{
 		TreeInfo result = new();
-		result.Groups.AddRange(await GetAllGroups());
+		result.Groups.AddRange(await GetAllGroups(cancellationToken));
 		Dictionary<Guid, GroupInfo> groups = result.Groups.ToDictionary(group => group.Id);
-		ICollection<TElement> elements = await _elementRepository.GetAllAsync(CancellationToken.None);
+		ICollection<TElement> elements = await _elementRepository.GetAllAsync(cancellationToken);
 		foreach (TElement element in elements.Where(element => !element.IsDeleted())
 			.OrderBy(element => element.Order)
 			.ThenBy(element => element.Id))

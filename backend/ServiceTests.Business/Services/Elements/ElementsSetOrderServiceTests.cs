@@ -71,7 +71,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 		_element = new TElement
 		{
 			Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
-			Name = "Existing", Description = "Original description", Order = 1,
+			Name = "Existing", Description = "Original description", Order = 0,
 			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(_element);
@@ -85,27 +85,27 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 		_provider?.Dispose();
 	}
 
-	[TestCase(1, 3)]
-	[TestCase(3, 1)]
-	[TestCase(1, 2)]
+	[TestCase(0, 2)]
+	[TestCase(2, 0)]
+	[TestCase(0, 1)]
 	public async Task SetOrder_MovesElement_ShiftsOnlyAffectedActiveElements(int initial, int requested)
 	{
 		_element.Order = initial;
-		TElement second = AddSibling(initial == 1 ? 2 : 1);
-		TElement third = AddSibling(initial == 1 ? 3 : 2);
+		TElement second = AddSibling(initial == 0 ? 1 : 0);
+		TElement third = AddSibling(initial == 0 ? 2 : 1);
 		TElement deleted = AddSibling(20);
 		deleted.DeleteRevision = 0;
 		List<TElement> expected = [.. _group.Elements.Where(item => !item.IsDeleted()).OrderBy(item => item.Order)];
 		Dictionary<Guid, int> previous = expected.ToDictionary(item => item.Id, item => item.Order);
 		expected.Remove(_element);
-		expected.Insert(requested - 1, _element);
+		expected.Insert(requested, _element);
 
 		await _service.SetOrder(_element.Id, requested);
 
 		for (int index = 0; index < expected.Count; index++)
 		{
 			TElement item = expected[index];
-			Assert.That(item.Order, Is.EqualTo(index + 1));
+			Assert.That(item.Order, Is.EqualTo(index));
 			if (previous[item.Id] != item.Order)
 			{
 				Assert.That(item.ModificationType.HasFlag(ModificationType.Order), Is.True);
@@ -131,10 +131,10 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 		_element.Order = 20;
 		TElement other = AddSibling(20);
 		TElement first = AddSibling(-1);
-		await _service.SetOrder(_element.Id, 3);
-		Assert.That(first.Order, Is.EqualTo(1));
-		Assert.That(other.Order, Is.EqualTo(2));
-		Assert.That(_element.Order, Is.EqualTo(3));
+		await _service.SetOrder(_element.Id, 2);
+		Assert.That(first.Order, Is.EqualTo(0));
+		Assert.That(other.Order, Is.EqualTo(1));
+		Assert.That(_element.Order, Is.EqualTo(2));
 		await _unitOfWork.Received(1).SaveChangesAsync();
 	}
 
@@ -143,42 +143,41 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 	{
 		TElement loaded = new()
 		{
-			Id = _element.Id, GroupId = _group.Id, Name = _element.Name, Order = 1
+			Id = _element.Id, GroupId = _group.Id, Name = _element.Name, Order = 0
 		};
 		_group.Elements = [loaded];
-		AddSibling(2);
-		await _service.SetOrder(_element.Id, 2);
-		Assert.That(loaded.Order, Is.EqualTo(2));
-		Assert.That(_element.Order, Is.EqualTo(1));
+		AddSibling(1);
+		await _service.SetOrder(_element.Id, 1);
+		Assert.That(loaded.Order, Is.EqualTo(1));
+		Assert.That(_element.Order, Is.EqualTo(0));
 		_repository.Received(1).Update(Arg.Is<TElement>(item => ReferenceEquals(item, loaded)));
 	}
 
 	[Test]
 	public async Task SetOrder_Unchanged_DoesNotWrite()
 	{
-		AddSibling(2);
-		await _service.SetOrder(_element.Id, 1);
+		AddSibling(1);
+		await _service.SetOrder(_element.Id, 0);
 		Assert.That(_element.ModificationType, Is.EqualTo(ModificationType.None));
 		AssertNoWrites();
 	}
 
-	[TestCase(0)]
 	[TestCase(-1)]
 	[TestCase(int.MinValue)]
-	public void SetOrder_Nonpositive_RejectsBeforeReading(int order)
+	public void SetOrder_Negative_RejectsBeforeReading(int order)
 	{
 		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.SetOrder(_element.Id, order));
 		Assert.That(_repository.ReceivedCalls(), Is.Empty);
 		AssertNoWrites();
 	}
 
-	[TestCase(2)]
+	[TestCase(1)]
 	[TestCase(int.MaxValue)]
 	public void SetOrder_BeyondActiveCount_Rejects(int order)
 	{
-		AddSibling(2).DeleteRevision = 0;
+		AddSibling(1).DeleteRevision = 0;
 		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.SetOrder(_element.Id, order));
-		Assert.That(_element.Order, Is.EqualTo(1));
+		Assert.That(_element.Order, Is.EqualTo(0));
 		AssertNoWrites();
 	}
 
@@ -189,7 +188,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 		_group.Elements = deleted
 			? [new TElement { Id = _element.Id, Name = _element.Name, DeleteRevision = 0 }]
 			: [];
-		Assert.ThrowsAsync<ElementNotFoundException>(async () => await _service.SetOrder(_element.Id, 1));
+		Assert.ThrowsAsync<ElementNotFoundException>(async () => await _service.SetOrder(_element.Id, 0));
 		AssertNoWrites();
 	}
 
@@ -197,7 +196,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 	public void SetOrder_MissingGroup_Rejects()
 	{
 		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns((TGroup?)null);
-		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.SetOrder(_element.Id, 1));
+		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.SetOrder(_element.Id, 0));
 		AssertNoWrites();
 	}
 
@@ -205,14 +204,14 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 	public void SetOrder_DeletedGroup_Rejects()
 	{
 		_group.DeleteRevision = 0;
-		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.SetOrder(_element.Id, 1));
+		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.SetOrder(_element.Id, 0));
 		AssertNoWrites();
 	}
 
 	[Test]
 	public void SetOrder_EmptyId_RejectsBeforeReading()
 	{
-		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.SetOrder(Guid.Empty, 1));
+		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.SetOrder(Guid.Empty, 0));
 		Assert.That(_repository.ReceivedCalls(), Is.Empty);
 		AssertNoWrites();
 	}
@@ -229,7 +228,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 		{
 			_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns((TElement?)null);
 		}
-		Assert.ThrowsAsync<ElementNotFoundException>(async () => await _service.SetOrder(_element.Id, 1));
+		Assert.ThrowsAsync<ElementNotFoundException>(async () => await _service.SetOrder(_element.Id, 0));
 		AssertNoWrites();
 	}
 
@@ -237,7 +236,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 	public void SetOrder_ReadFailure_PropagatesWithoutWrites()
 	{
 		_repository.GetByIdAsync(_element.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
-		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetOrder(_element.Id, 1));
+		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetOrder(_element.Id, 0));
 		AssertNoWrites();
 	}
 
@@ -245,7 +244,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 	public void SetOrder_GroupReadFailure_PropagatesWithoutWrites()
 	{
 		_groupRepository.GetWithContentsByIdAsync(_group.Id).ThrowsAsync(new InvalidOperationException());
-		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetOrder(_element.Id, 1));
+		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetOrder(_element.Id, 0));
 		AssertNoWrites();
 	}
 
@@ -255,7 +254,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 		_element.Order = 5;
 		_repository.When(repository => repository.Update(Arg.Any<TElement>()))
 			.Do(_ => throw new InvalidOperationException());
-		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetOrder(_element.Id, 1));
+		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetOrder(_element.Id, 0));
 		AssertNoSave();
 	}
 
@@ -264,7 +263,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 	{
 		_element.Order = 5;
 		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException());
-		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetOrder(_element.Id, 1));
+		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetOrder(_element.Id, 0));
 	}
 
 
