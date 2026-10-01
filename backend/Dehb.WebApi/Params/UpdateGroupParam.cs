@@ -1,8 +1,8 @@
-using Business.Contracts.Params;
+using Business.Contracts.Services.Trees;
 
 namespace Dehb.WebApi.Params;
 
-public class UpdateGroupParam : GroupParam
+public record UpdateGroupParam : GroupParam
 {
 	public Guid EntityId { get; set; }
 }

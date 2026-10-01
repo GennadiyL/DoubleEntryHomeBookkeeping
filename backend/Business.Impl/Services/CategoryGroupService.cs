@@ -3,7 +3,6 @@ using Business.Impl.Services.Base;
 using Business.Models.Entities;
 using DataAccess.Contracts;
 using Shared.Contracts;
-using Business.Contracts.Services.Groups;
 
 namespace Business.Impl.Services;
 

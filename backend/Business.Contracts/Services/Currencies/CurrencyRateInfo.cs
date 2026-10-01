@@ -1,4 +1,4 @@
-namespace Business.Contracts.Services.CurrencyRates;
+namespace Business.Contracts.Services.Currencies;
 
 /// <summary>
 /// Describes one currency rate returned for the rate editor.

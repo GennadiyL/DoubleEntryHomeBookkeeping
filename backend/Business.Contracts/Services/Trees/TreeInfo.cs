@@ -1,4 +1,4 @@
-namespace Business.Contracts.Services.Groups;
+namespace Business.Contracts.Services.Trees;
 
 /// <summary>
 /// Contains all category groups and elements for one catalog.

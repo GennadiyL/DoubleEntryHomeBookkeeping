@@ -1,4 +1,4 @@
-using Business.Contracts.Services.Groups;
+using Business.Contracts.Services.Trees;
 using Business.Models.Entities.Interfaces;
 
 namespace Business.Contracts.Base.Services;

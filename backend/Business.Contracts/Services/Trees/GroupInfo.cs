@@ -1,4 +1,4 @@
-namespace Business.Contracts.Services.Groups;
+namespace Business.Contracts.Services.Trees;
 
 /// <summary>
 /// Describes one group in a flat catalog hierarchy.

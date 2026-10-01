@@ -2,6 +2,7 @@ using DataAccess.Contracts.Repositories;
 using DataAccess.Contracts.Repositories.Base;
 using DataAccess.Core.Behaviors;
 using DataAccess.EntityFramework.Models;
+using DataAccess.EntityFramework.Repositories.Base;
 using TemplateGroupEntity = Business.Models.Entities.TemplateGroup;
 using TemplateEntity = Business.Models.Entities.Template;
 

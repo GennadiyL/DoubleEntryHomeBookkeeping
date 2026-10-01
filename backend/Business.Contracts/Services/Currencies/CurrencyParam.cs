@@ -1,6 +1,6 @@
-namespace Business.Contracts.Params;
+namespace Business.Contracts.Services.Currencies;
 
-public class CurrencyParam
+public record CurrencyParam
 {
 	public required string Code { get; set; }
 

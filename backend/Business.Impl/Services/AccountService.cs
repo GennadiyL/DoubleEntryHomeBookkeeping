@@ -1,4 +1,4 @@
-using Business.Contracts.Params;
+using Business.Contracts.Services.Accounts;
 using Business.Contracts.Services;
 using Business.Contracts.Utils.Merging;
 using Business.Contracts.Utils.Ordering;
@@ -308,4 +308,6 @@ internal sealed class AccountService : IAccountService
 	}
 
 	public Task<string> GetDefaultName(Guid? correspondentId, Guid? categoryId, Guid? projectId) => throw new NotImplementedException();
+
+	public Task<AccountInfo> GetById(Guid id) => throw new NotImplementedException();
 }

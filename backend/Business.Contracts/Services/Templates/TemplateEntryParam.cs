@@ -1,4 +1,4 @@
-namespace Business.Contracts.Params;
+namespace Business.Contracts.Services.Templates;
 
 /// <summary>
 /// Supplies one entry when creating or replacing an aggregate.

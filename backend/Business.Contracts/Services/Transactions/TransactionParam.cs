@@ -1,8 +1,8 @@
 using Business.Models.Enums;
 
-namespace Business.Contracts.Params;
+namespace Business.Contracts.Services.Transactions;
 
-public class TransactionParam
+public record TransactionParam
 {
 	public DateTime DateTime { get; set; }
 	public TransactionState State { get; set; }

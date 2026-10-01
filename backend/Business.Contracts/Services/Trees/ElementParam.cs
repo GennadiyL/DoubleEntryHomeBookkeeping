@@ -1,8 +1,8 @@
 using Business.Contracts.Base.Params;
 
-namespace Business.Contracts.Params;
+namespace Business.Contracts.Services.Trees;
 
-public class ElementParam : INamedParam, IFavoriteParam, IElementParam
+public record ElementParam : INamedParam, IFavoriteParam, IElementParam
 {
 	public Guid GroupId { get; set; }
 	public bool IsFavorite { get; set; }

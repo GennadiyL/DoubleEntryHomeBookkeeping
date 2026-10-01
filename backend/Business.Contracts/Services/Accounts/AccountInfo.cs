@@ -1,19 +1,30 @@
-using Business.Contracts.Services.Groups;
-
 namespace Business.Contracts.Services.Accounts;
 
 /// <summary>
-/// Describes one account for catalog browsing and selection.
-/// GroupId connects the element to its catalog group.
-/// Created by the service for presentation and editing.
-/// Contains values rather than persistent entity references.
-/// Identifiers refer to existing bookkeeping records.
-/// Does not expose synchronization revisions or modification flags.
-/// Reading this record does not save changes.
-/// Persistence remains the responsibility of the corresponding mutation operation.
+/// Contains an existing account's complete editable values and reference labels.
+/// Inherits the name, group, favorite flag and currency information used by the tree.
+/// Classification identities identify selected category, correspondent and project records.
+/// Their names allow the edit dialog to display the current selections immediately.
+/// An absent optional classification has a null identity and name.
+/// Reference labels are display values, not commands to rename referenced entities.
+/// Reading this record does not persist changes or expose synchronization fields.
+/// Account Update accepts the editable input separately and preserves the saved currency.
 /// </summary>
-public record AccountInfo : ElementInfo
+public record AccountInfo //: AccountElementInfo
 {
+	public Guid Id { get; set; }
+	public Guid GroupId { get; set; }
+	public string GroupName { get; set; } = string.Empty;
+	public string Name { get; set; } = string.Empty;
+	public string? Description { get; set; }
+	public int Order { get; set; }
+	public bool IsFavorite { get; set; }
 	public Guid CurrencyId { get; set; }
 	public string CurrencyName { get; set; } = string.Empty;
+	public Guid? CategoryId { get; set; }
+	public string? CategoryName { get; set; }
+	public Guid? CorrespondentId { get; set; }
+	public string? CorrespondentName { get; set; }
+	public Guid? ProjectId { get; set; }
+	public string? ProjectName { get; set; }
 }

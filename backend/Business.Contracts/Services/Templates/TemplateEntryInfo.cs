@@ -13,5 +13,8 @@ namespace Business.Contracts.Services.Templates;
 public record TemplateEntryInfo
 {
 	public Guid AccountId { get; set; }
+	public string AccountName { get; set; } = string.Empty;
+	public Guid CurrencyId { get; set; }
+	public string CurrencyName { get; set; } = string.Empty;
 	public decimal Amount { get; set; }
 }

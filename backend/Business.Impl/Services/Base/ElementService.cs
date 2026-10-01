@@ -1,5 +1,5 @@
 using Business.Contracts.Base.Services;
-using Business.Contracts.Params;
+using Business.Contracts.Services.Trees;
 using Business.Contracts.Utils.Merging;
 using Business.Contracts.Utils.Ordering;
 using Business.Models.Entities;
@@ -12,7 +12,7 @@ using Shared.Contracts;
 
 namespace Business.Impl.Services.Base;
 
-public abstract class ElementService<TGroup, TElement> : IElementService<TGroup, TElement>, IUpdateEntityService<ElementParam>
+public abstract class ElementService<TGroup, TElement> : IElementService<TGroup, TElement>, IUpdateEntityService<ElementParam>, IReadEntityService<ElementInfo>
 	where TGroup : class, IGroupEntity<TGroup, TElement>, ICatalogEntity
 	where TElement : ElementEntity<TGroup, TElement>, new()
 {
@@ -243,4 +243,6 @@ public abstract class ElementService<TGroup, TElement> : IElementService<TGroup,
 	protected abstract Task<ICollection<Account>> GetReferencingAccounts(Guid elementId);
 
 	protected abstract void ReplaceAccountReference(Account account, TElement destination);
+
+	public Task<ElementInfo> GetById(Guid id) => throw new NotImplementedException();
 }

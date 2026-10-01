@@ -1,8 +1,8 @@
-using Business.Contracts.Params;
+using Business.Contracts.Services.Accounts;
 
 namespace Dehb.WebApi.Params;
 
-public class UpdateAccountParam : AccountParam
+public record UpdateAccountParam : AccountParam
 {
 	public Guid EntityId { get; set; }
 }

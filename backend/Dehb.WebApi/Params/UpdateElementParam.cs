@@ -1,8 +1,8 @@
-using Business.Contracts.Params;
+using Business.Contracts.Services.Trees;
 
 namespace Dehb.WebApi.Params;
 
-public class UpdateElementParam : ElementParam
+public record UpdateElementParam : ElementParam
 {
 	public Guid EntityId { get; set; }
 }

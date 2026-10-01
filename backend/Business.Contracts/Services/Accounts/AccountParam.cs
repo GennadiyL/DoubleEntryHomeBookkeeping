@@ -1,8 +1,8 @@
 using Business.Contracts.Base.Params;
 
-namespace Business.Contracts.Params;
+namespace Business.Contracts.Services.Accounts;
 
-public class AccountParam : INamedParam, IFavoriteParam, IElementParam
+public record AccountParam : INamedParam, IFavoriteParam, IElementParam
 {
 	public Guid CurrencyId { get; set; }
 	public Guid? CategoryId { get; set; }

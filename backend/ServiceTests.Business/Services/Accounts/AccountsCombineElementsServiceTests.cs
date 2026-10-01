@@ -1,7 +1,6 @@
 using Business.Models.Enums;
 using Business.Models.Entities.Config;
 using Business.Contracts.Utils.Models;
-using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Utils.Merging;
 using Business.Impl;

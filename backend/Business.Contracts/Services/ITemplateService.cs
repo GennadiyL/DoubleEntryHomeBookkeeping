@@ -1,11 +1,13 @@
 using Business.Contracts.Services.Templates;
-using Business.Contracts.Params;
 using Business.Models.Entities;
 using Business.Contracts.Base.Services;
 
 namespace Business.Contracts.Services;
 
-public interface ITemplateService : IElementService<TemplateGroup, Template>, IUpdateEntityService<TemplateParam>
+public interface ITemplateService :
+	IElementService<TemplateGroup, Template>,
+	IUpdateEntityService<TemplateParam>,
+	IReadEntityService<TemplateInfo>
 {
 	/// <summary>
 	/// Prepares an unsaved transaction for the editor from template accounts, amounts, description and entry order.

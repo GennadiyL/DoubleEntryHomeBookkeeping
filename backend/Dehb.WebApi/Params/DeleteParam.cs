@@ -1,6 +1,6 @@
 namespace Dehb.WebApi.Params;
 
-public class DeleteParam
+public record DeleteParam
 {
 	public Guid EntityId { get; set; }
 }

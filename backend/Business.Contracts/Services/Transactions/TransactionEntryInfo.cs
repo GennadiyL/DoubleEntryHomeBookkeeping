@@ -13,6 +13,9 @@ namespace Business.Contracts.Services.Transactions;
 public record TransactionEntryInfo
 {
 	public Guid AccountId { get; set; }
+	public string AccountName { get; set; } = string.Empty;
+	public Guid CurrencyId { get; set; }
+	public string CurrencyName { get; set; } = string.Empty;
 	public decimal Amount { get; set; }
 	public decimal Rate { get; set; }
 }

@@ -1,11 +1,11 @@
 using Business.Models.Entities.Interfaces;
+using DataAccess.Contracts.Repositories.Base;
 using DataAccess.Core.Behaviors;
 using DataAccess.Core.Entities;
 using DataAccess.Core.EntityFramework.Behaviors;
-using DataAccess.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 
-namespace DataAccess.Contracts.Repositories.Base;
+namespace DataAccess.EntityFramework.Repositories.Base;
 
 internal abstract class GroupRepository<TGroup, TElement, TD> : Repository<AppDbContext, TGroup, TD>, IGroupRepository<TGroup, TElement>
 	where TGroup : class, IGroupEntity<TGroup, TElement>, new()

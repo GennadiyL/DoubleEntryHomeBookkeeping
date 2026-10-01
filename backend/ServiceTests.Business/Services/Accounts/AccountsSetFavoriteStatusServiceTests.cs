@@ -1,5 +1,4 @@
 using Business.Models.Enums;
-using Business.Contracts.Params;
 using Business.Contracts.Services;
 using Business.Contracts.Utils.Merging;
 using Business.Impl;
@@ -11,7 +10,6 @@ using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using NUnit.Framework;
-using Shared.Contracts;
 using Shared.Impl;
 using Tests.Common.DiConfigurations;
 

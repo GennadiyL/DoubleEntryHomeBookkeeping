@@ -1,5 +1,3 @@
-using Business.Contracts.Services.Groups;
-using Business.Contracts.Params;
 using Business.Contracts.Utils.Merging;
 using Business.Contracts.Utils.Ordering;
 using Business.Models.Entities.Base;
@@ -10,10 +8,11 @@ using DataAccess.Contracts.Repositories.Base;
 using DataAccess.Core.Behaviors;
 using Shared.Contracts;
 using Business.Contracts.Base.Services;
+using Business.Contracts.Services.Trees;
 
 namespace Business.Impl.Services.Base;
 
-public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TElement>, IUpdateEntityService<GroupParam>
+public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TElement>, IUpdateEntityService<GroupParam>, IReadEntityService<GroupInfo>
 	where TGroup : GroupEntity<TGroup, TElement>, new()
 	where TElement : class, IElementEntity<TGroup, TElement>, ICatalogEntity
 {
@@ -386,4 +385,6 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 
 	public Task<List<GroupInfo>> GetAllGroups() => throw new NotImplementedException();
 	public Task<TreeInfo> GetTree() => throw new NotImplementedException();
+
+	public Task<GroupInfo> GetById(Guid id) => throw new NotImplementedException();
 }

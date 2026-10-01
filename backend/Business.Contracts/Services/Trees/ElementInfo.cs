@@ -1,4 +1,4 @@
-namespace Business.Contracts.Services.Groups;
+namespace Business.Contracts.Services.Trees;
 
 /// <summary>
 /// Describes one category for catalog browsing and selection.
