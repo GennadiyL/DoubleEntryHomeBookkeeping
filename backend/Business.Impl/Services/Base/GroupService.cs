@@ -1,8 +1,10 @@
 using Business.Contracts.Utils.Merging;
+using Business.Contracts.Utils.Models;
 using Business.Contracts.Utils.Ordering;
 using Business.Models.Entities.Base;
 using Business.Models.Entities.Interfaces;
 using Business.Models.Exceptions;
+using Business.Models.Enums;
 using DataAccess.Contracts;
 using DataAccess.Contracts.Repositories.Base;
 using DataAccess.Core.Behaviors;
@@ -40,11 +42,12 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		TGroup? parent = await _repository.GetWithChildrenByIdAsync(param.ParentId);
 		if (parent is null || parent.IsDeleted())
 		{
-			throw new GroupNotFoundException("The parent group does not exist or is deleted.");
+			throw new InvalidGroupException("The parent group does not exist or is deleted.");
 		}
 
+		string name = param.Name.Trim();
 		List<TGroup> siblings = [.. parent.Children.Where(child => child.Id != parent.Id)];
-		if (siblings.Any(child => string.Equals(child.Name, param.Name, StringComparison.Ordinal)))
+		if (siblings.Any(child => string.Equals(child.Name.Trim(), name, StringComparison.OrdinalIgnoreCase)))
 		{
 			throw new InvalidGroupException("A group with the same name already exists in this parent.");
 		}
@@ -58,12 +61,15 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		TGroup group = new()
 		{
 			Id = Guid.NewGuid(),
-			Name = param.Name,
+			Name = name,
 			Description = param.Description,
 			IsFavorite = param.IsFavorite,
 			ParentId = parent.Id,
 			Parent = parent,
 			Order = maxOrder + 1,
+			EditRevision = null,
+			DeleteRevision = null,
+			ModificationType = ModificationType.None,
 		};
 		_repository.Add(group);
 		await _unitOfWork.SaveChangesAsync();
@@ -84,6 +90,11 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
 
+		if (Roots.IsRoot(group.Id))
+		{
+			throw new InvalidGroupException("The root group cannot be edited.");
+		}
+
 		if (param.ParentId != group.ParentId)
 		{
 			throw new InvalidGroupException("Use MoveToAnotherParent to change the parent group.");
@@ -92,23 +103,25 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		TGroup? parent = await _repository.GetWithChildrenByIdAsync(group.ParentId);
 		if (parent is null || parent.IsDeleted())
 		{
-			throw new GroupNotFoundException("The parent group does not exist or is deleted.");
+			throw new InvalidGroupException("The parent group does not exist or is deleted.");
 		}
 
-		if (group.Id != parent.Id && parent.Children.Any(child =>
+		string name = param.Name.Trim();
+		if (parent.Children.Any(child =>
 			child.Id != group.Id && child.Id != parent.Id &&
-			string.Equals(child.Name, param.Name, StringComparison.Ordinal)))
+			string.Equals(child.Name.Trim(), name, StringComparison.OrdinalIgnoreCase)))
 		{
 			throw new InvalidGroupException("A group with the same name already exists in this parent.");
 		}
 
-		group.Name = param.Name;
+		group.Name = name;
 		group.Description = param.Description;
 		group.IsFavorite = param.IsFavorite;
 		group.SetEditedContent();
 		_repository.Update(group);
 		await _unitOfWork.SaveChangesAsync();
 	}
+
 	public async Task Delete(Guid entityId)
 	{
 		if (entityId == Guid.Empty)
@@ -122,7 +135,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
 
-		if (group.ParentId == group.Id)
+		if (Roots.IsRoot(group.Id) || group.ParentId == group.Id)
 		{
 			throw new InvalidGroupException("The root group cannot be deleted.");
 		}
@@ -133,15 +146,40 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 			throw new InvalidGroupException("A group with active child groups or elements cannot be deleted.");
 		}
 
+		TGroup? parent = await _repository.GetWithChildrenByIdAsync(group.ParentId);
+		if (parent is null || parent.IsDeleted())
+		{
+			throw new InvalidGroupException("The parent group does not exist or is deleted.");
+		}
+
+		List<TGroup> survivors = [.. parent.Children
+			.Where(child => child.Id != parent.Id && child.Id != group.Id && !child.IsDeleted())
+			.OrderBy(child => child.Order)
+			.ThenBy(child => child.Id.ToString("D"), StringComparer.Ordinal)];
+
 		group.SetDeleted();
+		group.SetEditedContent();
 		_repository.Update(group);
+
+		for (int order = 0; order < survivors.Count; order++)
+		{
+			TGroup sibling = survivors[order];
+			if (sibling.Order == order)
+			{
+				continue;
+			}
+			sibling.Order = order;
+			sibling.SetEditedOrder();
+			_repository.Update(sibling);
+		}
 		await _unitOfWork.SaveChangesAsync();
 	}
+
 	public async Task SetOrder(Guid entityId, int order)
 	{
-		if (entityId == Guid.Empty || order < 1)
+		if (entityId == Guid.Empty || order < 0)
 		{
-			throw new InvalidGroupException("A group identifier and a positive order are required.");
+			throw new InvalidGroupException("A group identifier and a nonnegative order are required.");
 		}
 
 		TGroup? group = await _repository.GetByIdAsync(entityId, CancellationToken.None);
@@ -150,7 +188,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
 
-		if (group.ParentId == group.Id)
+		if (Roots.IsRoot(group.Id) || group.ParentId == group.Id)
 		{
 			throw new InvalidGroupException("The root group cannot be reordered.");
 		}
@@ -163,21 +201,25 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 
 		List<TGroup> siblings = [.. parent.Children
 			.Where(child => child.Id != parent.Id && !child.IsDeleted())
-			.OrderBy(child => child.Order).ThenBy(child => child.Id)];
+			.OrderBy(child => child.Order).ThenBy(child => child.Id.ToString("D"), StringComparer.Ordinal)];
 		TGroup? target = siblings.SingleOrDefault(child => child.Id == entityId);
 		if (target is null)
 		{
 			throw new GroupNotFoundException("The group is no longer an active child of this parent.");
 		}
 
-		if (order > siblings.Count)
+		if (order >= siblings.Count)
 		{
 			throw new InvalidGroupException("The order exceeds the number of active sibling groups.");
 		}
 
 		Dictionary<Guid, int> originalOrders = siblings.ToDictionary(child => child.Id, child => child.Order);
-		siblings.Reorder();
-		siblings.SetOrder(target, order);
+		siblings.Remove(target);
+		siblings.Insert(order, target);
+		for (int position = 0; position < siblings.Count; position++)
+		{
+			siblings[position].Order = position;
+		}
 		List<TGroup> changed = [.. siblings.Where(child => child.Order != originalOrders[child.Id])];
 		if (changed.Count == 0)
 		{
@@ -191,6 +233,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		}
 		await _unitOfWork.SaveChangesAsync();
 	}
+
 	public async Task SetFavoriteStatus(Guid entityId, bool isFavorite)
 	{
 		if (entityId == Guid.Empty)
@@ -204,6 +247,11 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
 
+		if (Roots.IsRoot(group.Id) || group.ParentId == group.Id)
+		{
+			throw new InvalidGroupException("The root group cannot be marked or unmarked as a favorite.");
+		}
+
 		if (group.IsFavorite == isFavorite)
 		{
 			return;
@@ -214,6 +262,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		_repository.Update(group);
 		await _unitOfWork.SaveChangesAsync();
 	}
+
 	public async Task MoveToAnotherParent(Guid groupId, Guid toParentId)
 	{
 		if (groupId == Guid.Empty || toParentId == Guid.Empty)
@@ -227,7 +276,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
 
-		if (group.ParentId == group.Id)
+		if (Roots.IsRoot(group.Id) || group.ParentId == group.Id)
 		{
 			throw new InvalidGroupException("The root group cannot be moved.");
 		}
@@ -271,27 +320,55 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		}
 
 		List<TGroup> siblings = [.. destination.Children.Where(child => child.Id != destination.Id)];
-		if (siblings.Any(child => string.Equals(child.Name, group.Name, StringComparison.Ordinal)))
+		if (siblings.Any(child => string.Equals(child.Name.Trim(), group.Name.Trim(), StringComparison.OrdinalIgnoreCase)))
 		{
 			throw new InvalidGroupException("A group with the same name already exists in the destination parent.");
 		}
 
-		int maxOrder = siblings.Count == 0 ? 0 : siblings.Max(child => child.Order);
-		if (maxOrder == int.MaxValue)
+		TGroup? source = await _repository.GetWithChildrenByIdAsync(group.ParentId);
+		if (source is null || source.IsDeleted())
 		{
-			throw new InvalidGroupException("The destination parent has no available ordering position.");
+			throw new GroupNotFoundException("The source parent does not exist or is deleted.");
 		}
+
+		List<TGroup> sourceSiblings = [.. source.Children
+			.Where(child => child.Id != source.Id && child.Id != group.Id && !child.IsDeleted())
+			.OrderBy(child => child.Order).ThenBy(child => child.Id.ToString("D"), StringComparer.Ordinal)];
+		List<TGroup> destinationSiblings = [.. siblings.Where(child => !child.IsDeleted())
+			.OrderBy(child => child.Order).ThenBy(child => child.Id.ToString("D"), StringComparer.Ordinal)];
 
 		group.ParentId = destination.Id;
 		group.Parent = destination;
-		group.Order = maxOrder + 1;
+		group.Order = destinationSiblings.Count;
+		group.SetEditedContent();
 		group.SetEditedOrder();
 		_repository.Update(group);
+
+		foreach (List<TGroup> collection in new[] { sourceSiblings, destinationSiblings })
+		{
+			for (int order = 0; order < collection.Count; order++)
+			{
+				TGroup sibling = collection[order];
+				if (sibling.Order == order)
+				{
+					continue;
+				}
+				sibling.Order = order;
+				sibling.SetEditedOrder();
+				_repository.Update(sibling);
+			}
+		}
 		await _unitOfWork.SaveChangesAsync();
 	}
+
 	public async Task CombineGroups(Guid toGroupId, Guid fromGroupId)
 	{
-		if (toGroupId == Guid.Empty || fromGroupId == Guid.Empty || toGroupId == fromGroupId)
+		if (toGroupId == fromGroupId)
+		{
+			return;
+		}
+
+		if (toGroupId == Guid.Empty || fromGroupId == Guid.Empty)
 		{
 			throw new InvalidGroupException("Two different group identifiers are required.");
 		}
@@ -302,7 +379,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 			throw new GroupNotFoundException("The source group does not exist or is deleted.");
 		}
 
-		if (source.ParentId == source.Id)
+		if (Roots.IsRoot(source.Id) || source.ParentId == source.Id)
 		{
 			throw new InvalidGroupException("The root group cannot be combined into another group.");
 		}
@@ -333,43 +410,88 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 			ancestor = next;
 		}
 
-		List<TGroup> children = [.. source.Children.OrderBy(child => child.Order).ThenBy(child => child.Id)];
-		List<TElement> elements = [.. source.Elements.OrderBy(element => element.Order).ThenBy(element => element.Id)];
-		List<TGroup> destinationChildren = [.. destination.Children.Where(child => child.Id != destination.Id)];
-		int groupOrder = Math.Max(0, destinationChildren.GetMaxOrder());
-		int elementOrder = Math.Max(0, destination.Elements.GetMaxOrder());
-		if ((long)groupOrder + children.Count > int.MaxValue ||
-			(long)elementOrder + elements.Count > int.MaxValue)
+		TGroup? parent = source.ParentId == destination.Id
+			? destination
+			: await _repository.GetWithChildrenByIdAsync(source.ParentId);
+		if (parent is null || parent.IsDeleted())
 		{
-			throw new InvalidGroupException("The destination has no available ordering positions.");
+			throw new GroupNotFoundException("The source parent does not exist or is deleted.");
 		}
 
-		HashSet<string> groupNames = new(destinationChildren.Select(child => child.Name), StringComparer.Ordinal);
-		HashSet<string> elementNames = new(destination.Elements.Select(element => element.Name), StringComparer.Ordinal);
+		List<TGroup> children = [.. source.Children.OrderBy(child => child.Order)
+			.ThenBy(child => child.Id.ToString("D"), StringComparer.Ordinal)];
+		List<TElement> elements = [.. source.Elements.OrderBy(element => element.Order)
+			.ThenBy(element => element.Id.ToString("D"), StringComparer.Ordinal)];
+		List<TGroup> destinationChildren = [.. destination.Children.Where(child => child.Id != destination.Id)];
+		List<TGroup> liveDestinationChildren = [.. destinationChildren
+			.Where(child => child.Id != source.Id && !child.IsDeleted())
+			.OrderBy(child => child.Order).ThenBy(child => child.Id.ToString("D"), StringComparer.Ordinal)];
+		List<TElement> liveDestinationElements = [.. destination.Elements.Where(element => !element.IsDeleted())
+			.OrderBy(element => element.Order).ThenBy(element => element.Id.ToString("D"), StringComparer.Ordinal)];
+		List<TGroup> sourceSiblings = parent.Id == destination.Id ? [] : [.. parent.Children
+			.Where(child => child.Id != parent.Id && child.Id != source.Id && !child.IsDeleted())
+			.OrderBy(child => child.Order).ThenBy(child => child.Id.ToString("D"), StringComparer.Ordinal)];
+
+		HashSet<string> groupNames = new(destinationChildren.Select(child => child.Name.Trim()), StringComparer.OrdinalIgnoreCase);
+		HashSet<string> elementNames = new(destination.Elements.Select(element => element.Name.Trim()), StringComparer.OrdinalIgnoreCase);
+		int groupOrder = liveDestinationChildren.Count;
+		int elementOrder = liveDestinationElements.Count;
 		foreach (TGroup child in children)
 		{
-			child.Name = GetUniqueCombinedName(child.Name, groupNames);
+			child.Name = GetUniqueCombinedName(child.Name.Trim(), groupNames);
 			child.ParentId = destination.Id;
 			child.Parent = destination;
-			child.Order = ++groupOrder;
+			if (!child.IsDeleted())
+			{
+				child.Order = groupOrder++;
+			}
+			child.SetEditedContent();
 			child.SetEditedOrder();
 			_repository.Update(child);
 			destination.Children.Add(child);
 		}
 		foreach (TElement element in elements)
 		{
-			element.Name = GetUniqueCombinedName(element.Name, elementNames);
+			if (typeof(TElement) != typeof(Business.Models.Entities.Account))
+			{
+				element.Name = GetUniqueCombinedName(element.Name.Trim(), elementNames);
+			}
 			element.GroupId = destination.Id;
 			element.Group = destination;
-			element.Order = ++elementOrder;
+			if (!element.IsDeleted())
+			{
+				element.Order = elementOrder++;
+			}
+			element.SetEditedContent();
 			element.SetEditedOrder();
 			_elementRepository.Update(element);
 			destination.Elements.Add(element);
 		}
 
+		foreach (List<TGroup> collection in new[] { sourceSiblings, liveDestinationChildren })
+		{
+			for (int order = 0; order < collection.Count; order++)
+			{
+				TGroup sibling = collection[order];
+				if (sibling.Order == order) { continue; }
+				sibling.Order = order;
+				sibling.SetEditedOrder();
+				_repository.Update(sibling);
+			}
+		}
+		for (int order = 0; order < liveDestinationElements.Count; order++)
+		{
+			TElement element = liveDestinationElements[order];
+			if (element.Order == order) { continue; }
+			element.Order = order;
+			element.SetEditedOrder();
+			_elementRepository.Update(element);
+		}
+
 		source.Children.Clear();
 		source.Elements.Clear();
 		source.SetDeleted();
+		source.SetEditedContent();
 		_repository.Update(source);
 		await _unitOfWork.SaveChangesAsync();
 	}
@@ -384,6 +506,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 	}
 
 	public Task<List<GroupInfo>> GetAllGroups() => throw new NotImplementedException();
+
 	public Task<TreeInfo> GetTree() => throw new NotImplementedException();
 
 	public Task<GroupInfo> GetById(Guid id) => throw new NotImplementedException();

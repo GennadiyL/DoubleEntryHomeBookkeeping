@@ -1,4 +1,5 @@
 using Business.Models.Enums;
+using Business.Models.Constants;
 using Business.Contracts.Services;
 using Business.Contracts.Utils.Merging;
 using Business.Impl;
@@ -76,6 +77,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		};
 		_parent.Children.Add(_group);
 		_repository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
+		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns(_parent);
 	}
 
 	[TearDown]
@@ -90,7 +92,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 	{
 		Guid id = _group.Id;
 		long? originalRevision = _group.EditRevision;
-				_group.IsFavorite = true;
+		_group.IsFavorite = true;
 
 		await _service.Delete(id);
 
@@ -98,7 +100,8 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 			group.Id == id && group.IsDeleted() && group.DeleteRevision == 0 &&
 			group.EditRevision == originalRevision && group.ParentId == _parent.Id &&
 			ReferenceEquals(group.Parent, _parent) && group.Order == 7 &&
-			group.Name == "Old name" && group.Description == "Old description" && group.IsFavorite));
+			group.Name == "Old name" && group.Description == "Old description" && group.IsFavorite &&
+			group.ModificationType == ModificationType.Content));
 		await _repository.Received(1).GetWithContentsByIdAsync(id);
 		await _unitOfWork.Received(1).SaveChangesAsync();
 		_repository.DidNotReceive().Add(Arg.Any<TGroup>());
@@ -120,10 +123,11 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		AssertNoWrites(false);
 	}
 
-	[Test]
-	public void Delete_AlreadyDeleted_RejectsWithoutSaving()
+	[TestCase(0L)]
+	[TestCase(9L)]
+	public void Delete_AlreadyDeleted_RejectsWithoutSaving(long revision)
 	{
-		_group.DeleteRevision = 0;
+		_group.DeleteRevision = revision;
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Delete(_group.Id));
 		AssertNoWrites(true);
 	}
@@ -184,6 +188,136 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		_group.Children.Add(new TGroup { Id = Guid.NewGuid(), DeleteRevision = activeElement ? 0 : null });
 		_group.Elements.Add(new TElement { Id = Guid.NewGuid(), DeleteRevision = 0 });
 		_group.Elements.Add(new TElement { Id = Guid.NewGuid(), DeleteRevision = activeElement ? null : 0 });
+		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Delete(_group.Id));
+		AssertNoWrites(false);
+	}
+
+	[Test]
+	public async Task Delete_NeverSubmittedGroup_SoftDeletesAndRetainsIdentity()
+	{
+		_group.EditRevision = null;
+		await _service.Delete(_group.Id);
+		_repository.Received(1).Update(_group);
+		Assert.That(_group.DeleteRevision, Is.EqualTo(0));
+		Assert.That(_group.EditRevision, Is.Null);
+		Assert.That(_group.ModificationType, Is.EqualTo(ModificationType.Content));
+		await _unitOfWork.Received(1).SaveChangesAsync();
+	}
+
+	[Test]
+	public async Task Delete_AddsContentAndPreservesRevisionAndFlags(
+		[Values(null, 0L, 7L)] long? revision,
+		[Values(ModificationType.None, ModificationType.Content, ModificationType.Order,
+			ModificationType.Content | ModificationType.Order)] ModificationType flags)
+	{
+		_group.EditRevision = revision;
+		_group.ModificationType = flags;
+		await _service.Delete(_group.Id);
+		_repository.Received(1).Update(Arg.Is<TGroup>(group =>
+			group.Id == _group.Id && group.EditRevision == revision && group.DeleteRevision == 0 &&
+			group.ModificationType == (flags | ModificationType.Content)));
+		await _unitOfWork.Received(1).SaveChangesAsync();
+	}
+
+	[TestCase(null)]
+	[TestCase(0L)]
+	[TestCase(7L)]
+	public async Task Delete_NormalizesOnlyLiveSiblingsAndPreservesContentFlags(long? revision)
+	{
+		_group.EditRevision = revision;
+		TGroup unchanged = new() { Id = Guid.NewGuid(), Order = 0, EditRevision = 3 };
+		TGroup shifted = new()
+		{
+			Id = Guid.NewGuid(), Order = 8, EditRevision = 4,
+			ModificationType = ModificationType.Content
+		};
+		TGroup deleted = new() { Id = Guid.NewGuid(), Order = 20, DeleteRevision = 0 };
+		_parent.Order = 50;
+		_parent.Children = [_parent, shifted, _group, deleted, unchanged];
+		await _service.Delete(_group.Id);
+		Assert.Multiple(() =>
+		{
+			Assert.That(shifted.Order, Is.EqualTo(1));
+			Assert.That(shifted.EditRevision, Is.EqualTo(4));
+			Assert.That(shifted.DeleteRevision, Is.Null);
+			Assert.That(shifted.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
+			Assert.That(unchanged.Order, Is.Zero);
+			Assert.That(unchanged.ModificationType, Is.EqualTo(ModificationType.None));
+			Assert.That(deleted.Order, Is.EqualTo(20));
+			Assert.That(deleted.ModificationType, Is.EqualTo(ModificationType.None));
+			Assert.That(_parent.Order, Is.EqualTo(50));
+		});
+		_repository.Received(1).Update(shifted);
+		_repository.DidNotReceive().Update(unchanged);
+		_repository.DidNotReceive().Update(deleted);
+		_repository.DidNotReceive().Update(_parent);
+		await _unitOfWork.Received(1).SaveChangesAsync();
+	}
+
+	[Test]
+	public async Task Delete_EqualSiblingOrders_UsesCanonicalGuidOrder()
+	{
+		TGroup first = new() { Id = Guid.Parse("00000001-0000-0000-0000-000000000000"), Order = 5 };
+		TGroup second = new() { Id = Guid.Parse("80000000-0000-0000-0000-000000000000"), Order = 5 };
+		_parent.Children = [second, _group, first];
+		await _service.Delete(_group.Id);
+		Assert.That(first.Order, Is.Zero);
+		Assert.That(second.Order, Is.EqualTo(1));
+		Assert.That(first.ModificationType, Is.EqualTo(ModificationType.Order));
+		Assert.That(second.ModificationType, Is.EqualTo(ModificationType.Order));
+	}
+
+	[TestCase(false)]
+	[TestCase(true)]
+	public void Delete_InvalidParent_RejectsBeforeChanges(bool isDeleted)
+	{
+		if (isDeleted)
+		{
+			_parent.DeleteRevision = 0;
+		}
+		else
+		{
+			_repository.GetWithChildrenByIdAsync(_parent.Id).Returns((TGroup?)null);
+		}
+		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Delete(_group.Id));
+		AssertNoWrites(false);
+	}
+
+	[TestCase(false)]
+	[TestCase(true)]
+	public async Task Delete_NewGroupWithDeletedContents_SoftDeletesWithoutCascading(bool elementReference)
+	{
+		_group.EditRevision = null;
+		if (elementReference)
+		{
+			_group.Elements.Add(new TElement { Id = Guid.NewGuid(), DeleteRevision = 0 });
+		}
+		else
+		{
+			_group.Children.Add(new TGroup { Id = Guid.NewGuid(), DeleteRevision = 0 });
+		}
+		await _service.Delete(_group.Id);
+		_repository.Received(1).Update(_group);
+		Assert.That(_group.DeleteRevision, Is.EqualTo(0));
+		Assert.That(_group.EditRevision, Is.Null);
+		Assert.That(_group.Children.All(child => child.DeleteRevision == 0 && child.ModificationType == ModificationType.None), Is.True);
+		Assert.That(_group.Elements.All(element => element.DeleteRevision == 0 && element.ModificationType == ModificationType.None), Is.True);
+		await _unitOfWork.Received(1).SaveChangesAsync();
+	}
+
+	[Test]
+	public void Delete_FixedRootId_RejectsEvenWithInvalidParent()
+	{
+		_group.Id = _group switch
+		{
+			AccountGroup => RootsIds.AccountGroupId,
+			CategoryGroup => RootsIds.CategoryGroupId,
+			CorrespondentGroup => RootsIds.CorrespondentGroupId,
+			ProjectGroup => RootsIds.ProjectGroupId,
+			TemplateGroup => RootsIds.TemplateGroupId,
+			_ => throw new InvalidOperationException()
+		};
+		_repository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Delete(_group.Id));
 		AssertNoWrites(false);
 	}

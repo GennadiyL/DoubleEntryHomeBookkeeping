@@ -1,4 +1,5 @@
 using Business.Models.Enums;
+using Business.Models.Constants;
 using Business.Contracts.Services;
 using Business.Contracts.Utils.Merging;
 using Business.Impl;
@@ -108,6 +109,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		_repository.GetWithContentsByIdAsync(_destination.Id).Returns(_destination);
 		_repository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
 		_repository.GetWithContentsByIdAsync(_parent.Id).Returns(_parent);
+		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns(_parent);
 	}
 
 	[TearDown]
@@ -140,10 +142,10 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 			Assert.That(element.Group, Is.SameAs(_destination));
 			Assert.That(child.Name, Is.EqualTo("Child"));
 			Assert.That(element.Name, Is.EqualTo("Element"));
-			Assert.That(child.Order, Is.EqualTo(1));
-			Assert.That(element.Order, Is.EqualTo(1));
-			Assert.That(child.ModificationType.HasFlag(ModificationType.Order), Is.True);
-			Assert.That(element.ModificationType.HasFlag(ModificationType.Order), Is.True);
+			Assert.That(child.Order, Is.Zero);
+			Assert.That(element.Order, Is.Zero);
+			Assert.That(child.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
+			Assert.That(element.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
 			Assert.That(child.EditRevision, Is.EqualTo(originalRevision));
 			Assert.That(element.EditRevision, Is.EqualTo(originalRevision));
 			Assert.That(child.Description, Is.EqualTo("Keep"));
@@ -181,7 +183,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		_group.Elements.Add(element);
 		await _service.CombineGroups(_destination.Id, _group.Id);
 		Assert.That(child.Name, Is.EqualTo("Same_1_1"));
-		Assert.That(element.Name, Is.EqualTo("Same_1_1"));
+		Assert.That(element.Name, Is.EqualTo(typeof(TElement) == typeof(Account) ? "Same" : "Same_1_1"));
 	}
 
 	[Test]
@@ -198,12 +200,12 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		await _service.CombineGroups(_destination.Id, _group.Id);
 		Assert.That(first.Name, Is.EqualTo("Name_1"));
 		Assert.That(second.Name, Is.EqualTo("Name_1_1"));
-		Assert.That(firstElement.Name, Is.EqualTo("Name_1"));
-		Assert.That(secondElement.Name, Is.EqualTo("Name_1_1"));
+		Assert.That(firstElement.Name, Is.EqualTo(typeof(TElement) == typeof(Account) ? "Name" : "Name_1"));
+		Assert.That(secondElement.Name, Is.EqualTo(typeof(TElement) == typeof(Account) ? "Name_1" : "Name_1_1"));
 	}
 
 	[Test]
-	public async Task Combine_NamesAreCaseSensitiveAndSeparateByType()
+	public async Task Combine_NamesAreCaseInsensitiveWithAccountDuplicatesAllowed()
 	{
 		_destination.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = "ITEM" });
 		_destination.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = "Item" });
@@ -212,8 +214,8 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		_group.Children.Add(child);
 		_group.Elements.Add(element);
 		await _service.CombineGroups(_destination.Id, _group.Id);
-		Assert.That(child.Name, Is.EqualTo("Item"));
-		Assert.That(element.Name, Is.EqualTo("ITEM"));
+		Assert.That(child.Name, Is.EqualTo("Item_1"));
+		Assert.That(element.Name, Is.EqualTo(typeof(TElement) == typeof(Account) ? "ITEM" : "ITEM_1"));
 	}
 
 	[Test]
@@ -230,7 +232,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 	}
 
 	[Test]
-	public async Task Combine_AppendsContentsInExistingOrderWithoutChangingDestinationItems()
+	public async Task Combine_AppendsContentsAndNormalizesDestinationItems()
 	{
 		TGroup existing = new() { Id = Guid.NewGuid(), Name = "Existing", Order = 8 };
 		TElement existingElement = new() { Id = Guid.NewGuid(), Name = "Existing", Order = 12 };
@@ -243,14 +245,14 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		_group.Children = [last, first];
 		_group.Elements = [lastElement, firstElement];
 		await _service.CombineGroups(_destination.Id, _group.Id);
-		Assert.That(first.Order, Is.EqualTo(9));
-		Assert.That(last.Order, Is.EqualTo(10));
-		Assert.That(firstElement.Order, Is.EqualTo(13));
-		Assert.That(lastElement.Order, Is.EqualTo(14));
-		Assert.That(existing.Order, Is.EqualTo(8));
-		Assert.That(existingElement.Order, Is.EqualTo(12));
-		_repository.DidNotReceive().Update(existing);
-		_elementRepository.DidNotReceive().Update(existingElement);
+		Assert.That(first.Order, Is.EqualTo(1));
+		Assert.That(last.Order, Is.EqualTo(2));
+		Assert.That(firstElement.Order, Is.EqualTo(1));
+		Assert.That(lastElement.Order, Is.EqualTo(2));
+		Assert.That(existing.Order, Is.Zero);
+		Assert.That(existingElement.Order, Is.Zero);
+		_repository.Received(1).Update(existing);
+		_elementRepository.Received(1).Update(existingElement);
 	}
 
 	[Test]
@@ -287,9 +289,9 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 	}
 
 	[Test]
-	public void Combine_SameGroup_RejectsBeforeLookup()
+	public async Task Combine_SameGroup_ReturnsBeforeLookup()
 	{
-		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.CombineGroups(_group.Id, _group.Id));
+		await _service.CombineGroups(_group.Id, _group.Id);
 		Assert.That(_repository.ReceivedCalls(), Is.Empty);
 		AssertNoWrites();
 	}
@@ -355,7 +357,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 
 	[TestCase(false)]
 	[TestCase(true)]
-	public void Combine_OrderOverflow_RejectsBeforeChangingContents(bool elements)
+	public async Task Combine_ExtremeOrder_NormalizesWithoutOverflow(bool elements)
 	{
 		TGroup child = new() { Id = Guid.NewGuid(), Name = "Child", ParentId = _group.Id };
 		TElement element = new() { Id = Guid.NewGuid(), Name = "Element", GroupId = _group.Id };
@@ -363,11 +365,11 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		_group.Elements.Add(element);
 		if (elements) { _destination.Elements.Add(new TElement { Id = Guid.NewGuid(), Order = int.MaxValue }); }
 		else { _destination.Children.Add(new TGroup { Id = Guid.NewGuid(), Order = int.MaxValue }); }
-		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.CombineGroups(_destination.Id, _group.Id));
-		Assert.That(child.ParentId, Is.EqualTo(_group.Id));
-		Assert.That(element.GroupId, Is.EqualTo(_group.Id));
-		Assert.That(_group.IsDeleted(), Is.False);
-		AssertNoWrites();
+		await _service.CombineGroups(_destination.Id, _group.Id);
+		Assert.That(child.Order, Is.EqualTo(elements ? 0 : 1));
+		Assert.That(element.Order, Is.EqualTo(elements ? 1 : 0));
+		Assert.That(_group.IsDeleted(), Is.True);
+		await _unitOfWork.Received(1).SaveChangesAsync();
 	}
 
 	[Test]
@@ -386,6 +388,82 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 	{
 		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException("Save failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.CombineGroups(_destination.Id, _group.Id));
+	}
+
+	[Test]
+	public async Task Combine_PreservesRevisionsAndNormalizesSourceSiblings(
+		[Values(null, 0L, 7L)] long? revision,
+		[Values(ModificationType.None, ModificationType.Order)] ModificationType flags)
+	{
+		_group.EditRevision = revision;
+		_group.ModificationType = flags;
+		TGroup sibling = new() { Id = Guid.NewGuid(), Name = "Sibling", Order = 8,
+			EditRevision = 9, ModificationType = ModificationType.Content };
+		TGroup deleted = new() { Id = Guid.NewGuid(), Order = 20, DeleteRevision = 0 };
+		_parent.Children.Add(sibling);
+		_parent.Children.Add(deleted);
+		TGroup child = new() { Id = Guid.NewGuid(), Name = "Child", EditRevision = revision, ModificationType = flags };
+		TElement element = new() { Id = Guid.NewGuid(), Name = "Element", EditRevision = revision, ModificationType = flags };
+		_group.Children.Add(child);
+		_group.Elements.Add(element);
+		await _service.CombineGroups(_destination.Id, _group.Id);
+		Assert.Multiple(() =>
+		{
+			Assert.That(_group.EditRevision, Is.EqualTo(revision));
+			Assert.That(_group.DeleteRevision, Is.EqualTo(0));
+			Assert.That(_group.ModificationType, Is.EqualTo(flags | ModificationType.Content));
+			Assert.That(child.EditRevision, Is.EqualTo(revision));
+			Assert.That(element.EditRevision, Is.EqualTo(revision));
+			Assert.That(child.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
+			Assert.That(element.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
+			Assert.That(sibling.Order, Is.Zero);
+			Assert.That(sibling.EditRevision, Is.EqualTo(9));
+			Assert.That(sibling.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
+			Assert.That(deleted.Order, Is.EqualTo(20));
+		});
+		_repository.Received(1).Update(sibling);
+		_repository.DidNotReceive().Update(deleted);
+		await _unitOfWork.Received(1).SaveChangesAsync();
+	}
+
+	[Test]
+	public async Task Combine_IntoParent_ExcludesDeletedSourceFromOrder()
+	{
+		TGroup existing = new() { Id = Guid.NewGuid(), Name = "Existing", Order = 10 };
+		TGroup child = new() { Id = Guid.NewGuid(), Name = "Child", Order = 3 };
+		_parent.Children.Add(existing);
+		_group.Children.Add(child);
+		await _service.CombineGroups(_parent.Id, _group.Id);
+		Assert.That(existing.Order, Is.Zero);
+		Assert.That(child.Order, Is.EqualTo(1));
+		_repository.Received(1).Update(existing);
+		_repository.Received(1).Update(child);
+		_repository.Received(1).Update(_group);
+	}
+
+	[Test]
+	public void Combine_FixedRootId_RejectsEvenWithInvalidParent()
+	{
+		_group.Id = _group switch
+		{
+			AccountGroup => RootsIds.AccountGroupId,
+			CategoryGroup => RootsIds.CategoryGroupId,
+			CorrespondentGroup => RootsIds.CorrespondentGroupId,
+			ProjectGroup => RootsIds.ProjectGroupId,
+			TemplateGroup => RootsIds.TemplateGroupId,
+			_ => throw new InvalidOperationException()
+		};
+		_repository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
+		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.CombineGroups(_destination.Id, _group.Id));
+		AssertNoWrites();
+	}
+
+	[Test]
+	public async Task Combine_EqualEmptyIds_ReturnsWithoutLookup()
+	{
+		await _service.CombineGroups(Guid.Empty, Guid.Empty);
+		Assert.That(_repository.ReceivedCalls(), Is.Empty);
+		AssertNoWrites();
 	}
 
 	private void AssertNoWrites()

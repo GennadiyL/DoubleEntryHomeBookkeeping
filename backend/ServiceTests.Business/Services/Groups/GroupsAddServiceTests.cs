@@ -7,6 +7,7 @@ using Business.Models.Entities;
 using Business.Models.Entities.Base;
 using Business.Models.Entities.Interfaces;
 using Business.Models.Exceptions;
+using Business.Models.Enums;
 using DataAccess.Contracts;
 using DataAccess.Contracts.Repositories;
 using DataAccess.Contracts.Repositories.Base;
@@ -89,7 +90,8 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 			group.ParentId == _parent.Id && ReferenceEquals(group.Parent, _parent) &&
 			group.Name == _param.Name && group.Description == _param.Description &&
 			group.IsFavorite && !group.IsDeleted() && group.Order == 1 &&
-			group.EditRevision == null && group.DeleteRevision == null));
+			group.EditRevision == null && group.DeleteRevision == null &&
+			group.ModificationType == ModificationType.None));
 		await _unitOfWork.Received(1).SaveChangesAsync();
 		await _repository.Received(1).GetWithChildrenByIdAsync(_parent.Id);
 	}
@@ -157,7 +159,7 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 	public void Add_MissingParent_RejectsWithoutSaving()
 	{
 		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns((TGroup?)null);
-		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Add(_param));
+		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}
 
@@ -165,7 +167,7 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 	public void Add_DeletedParent_RejectsWithoutSaving()
 	{
 		_parent.DeleteRevision = 0;
-		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Add(_param));
+		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}
 
@@ -177,12 +179,29 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 		AssertNoWrites();
 	}
 
-	[Test]
-	public async Task Add_DifferentCase_PreservesExactNameComparison()
+	[TestCase("SAVINGS", "Savings")]
+	[TestCase("Savings", "  Savings  ")]
+	[TestCase(" savings ", "SAVINGS")]
+	public void Add_NormalizedDuplicateSibling_RejectsWithoutSaving(string existingName, string name)
 	{
-		_parent.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = "SAVINGS" });
+		_parent.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = existingName });
+		_param.Name = name;
+		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Add(_param));
+		AssertNoWrites();
+	}
+
+	[TestCase(null)]
+	[TestCase("")]
+	[TestCase("  Keep description spacing  ")]
+	public async Task Add_PaddedName_TrimsNameAndPreservesOptionalDescription(string? description)
+	{
+		_param.Name = "  Savings  ";
+		_param.Description = description;
+		_param.IsFavorite = false;
 		await _service.Add(_param);
-		_repository.Received(1).Add(Arg.Is<TGroup>(group => group.Name == "Savings"));
+		_repository.Received(1).Add(Arg.Is<TGroup>(group =>
+			group.Name == "Savings" && group.Description == description && !group.IsFavorite));
+		Assert.That(_param.Name, Is.EqualTo("  Savings  "));
 	}
 
 	[Test]

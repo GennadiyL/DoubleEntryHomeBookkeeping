@@ -1,4 +1,5 @@
 using Business.Models.Enums;
+using Business.Models.Constants;
 using Business.Contracts.Services;
 using Business.Contracts.Utils.Merging;
 using Business.Impl;
@@ -84,12 +85,12 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 
 	[TestCase(true)]
 	[TestCase(false)]
-	public async Task SetFavoriteStatus_ChangedValue_PersistsFlagAndTimestampOnly(bool isFavorite)
+	public async Task SetFavoriteStatus_ChangedValue_PersistsFavoriteAndContentFlagOnly(bool isFavorite)
 	{
 		_group.IsFavorite = !isFavorite;
 		Guid id = _group.Id;
 		long? originalRevision = _group.EditRevision;
-				TGroup child = new() { Id = Guid.NewGuid(), IsFavorite = !isFavorite };
+		TGroup child = new() { Id = Guid.NewGuid(), IsFavorite = !isFavorite };
 		TElement element = new() { Id = Guid.NewGuid(), IsFavorite = !isFavorite };
 		_group.Children.Add(child);
 		_group.Elements.Add(element);
@@ -97,7 +98,7 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 		await _service.SetFavoriteStatus(id, isFavorite);
 
 		_repository.Received(1).Update(Arg.Is<TGroup>(group =>
-			group.Id == id && group.IsFavorite == isFavorite && group.ModificationType.HasFlag(ModificationType.Content) &&
+			group.Id == id && group.IsFavorite == isFavorite && group.ModificationType == ModificationType.Content &&
 			group.EditRevision == originalRevision && group.ParentId == _parent.Id &&
 			ReferenceEquals(group.Parent, _parent) && group.Order == 7 &&
 			group.Name == "Old name" && group.Description == "Old description" && !group.IsDeleted()));
@@ -113,7 +114,7 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 
 	[TestCase(true)]
 	[TestCase(false)]
-	public async Task SetFavoriteStatus_UnchangedValue_DoesNotSaveOrChangeTimestamp(bool isFavorite)
+	public async Task SetFavoriteStatus_UnchangedValue_DoesNotSaveOrChangeTracking(bool isFavorite)
 	{
 		_group.IsFavorite = isFavorite;
 		ModificationType previousModification = _group.ModificationType;
@@ -141,11 +142,10 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 		AssertNoWrites();
 	}
 
-	[TestCase(true)]
-	[TestCase(false)]
-	public void SetFavoriteStatus_DeletedGroup_RejectsEvenWhenValueMatches(bool isFavorite)
+	[Test]
+	public void SetFavoriteStatus_DeletedGroup_RejectsEvenWhenValueMatches([Values(false, true)] bool isFavorite, [Values(0L, 9L)] long revision)
 	{
-		_group.DeleteRevision = 0;
+		_group.DeleteRevision = revision;
 		_group.IsFavorite = isFavorite;
 		ModificationType previousModification = _group.ModificationType;
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.SetFavoriteStatus(_group.Id, isFavorite));
@@ -154,19 +154,62 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 		AssertNoWrites();
 	}
 
-	[TestCase(true)]
-	[TestCase(false)]
-	public async Task SetFavoriteStatus_Root_PreservesSelfParent(bool isFavorite)
+	[Test]
+	public void SetFavoriteStatus_Root_RejectsWithoutChanges(
+		[Values(false, true)] bool isFavorite, [Values(false, true)] bool selfParent)
 	{
-		_group.ParentId = _group.Id;
-		_group.Parent = _group;
-		_group.IsFavorite = !isFavorite;
-		await _service.SetFavoriteStatus(_group.Id, isFavorite);
-		Assert.That(_group.ParentId, Is.EqualTo(_group.Id));
-		Assert.That(_group.Parent, Is.SameAs(_group));
-		Assert.That(_group.IsFavorite, Is.EqualTo(isFavorite));
+		_group.Id = _group switch
+		{
+			AccountGroup => RootsIds.AccountGroupId,
+			CategoryGroup => RootsIds.CategoryGroupId,
+			CorrespondentGroup => RootsIds.CorrespondentGroupId,
+			ProjectGroup => RootsIds.ProjectGroupId,
+			TemplateGroup => RootsIds.TemplateGroupId,
+			_ => throw new InvalidOperationException()
+		};
+		if (selfParent)
+		{
+			_group.ParentId = _group.Id;
+			_group.Parent = _group;
+		}
+		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
+		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.SetFavoriteStatus(_group.Id, isFavorite));
+		Assert.That(_group.IsFavorite, Is.False);
+		Assert.That(_group.EditRevision, Is.EqualTo(1));
+		Assert.That(_group.DeleteRevision, Is.Null);
+		Assert.That(_group.ModificationType, Is.EqualTo(ModificationType.None));
+		AssertNoWrites();
+	}
+
+	[Test]
+	public async Task SetFavoriteStatus_ChangedValue_PreservesRevisionAndExistingFlags(
+		[Values(null, 0L, 7L)] long? revision,
+		[Values(ModificationType.None, ModificationType.Content, ModificationType.Order,
+			ModificationType.Content | ModificationType.Order)] ModificationType flags)
+	{
+		_group.EditRevision = revision;
+		_group.ModificationType = flags;
+		await _service.SetFavoriteStatus(_group.Id, true);
+		Assert.That(_group.EditRevision, Is.EqualTo(revision));
+		Assert.That(_group.DeleteRevision, Is.Null);
+		Assert.That(_group.ModificationType, Is.EqualTo(flags | ModificationType.Content));
 		_repository.Received(1).Update(_group);
 		await _unitOfWork.Received(1).SaveChangesAsync();
+	}
+
+	[Test]
+	public async Task SetFavoriteStatus_UnchangedValue_PreservesExistingFlagsAndRevision(
+		[Values(null, 0L, 7L)] long? revision,
+		[Values(ModificationType.None, ModificationType.Content, ModificationType.Order,
+			ModificationType.Content | ModificationType.Order)] ModificationType flags)
+	{
+		_group.EditRevision = revision;
+		_group.ModificationType = flags;
+		await _service.SetFavoriteStatus(_group.Id, false);
+		Assert.That(_group.EditRevision, Is.EqualTo(revision));
+		Assert.That(_group.DeleteRevision, Is.Null);
+		Assert.That(_group.ModificationType, Is.EqualTo(flags));
+		AssertNoWrites();
 	}
 
 	[Test]

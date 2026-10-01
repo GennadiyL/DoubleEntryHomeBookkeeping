@@ -1,4 +1,5 @@
 using Business.Models.Enums;
+using Business.Models.Constants;
 using Business.Contracts.Services;
 using Business.Contracts.Utils.Merging;
 using Business.Impl;
@@ -99,14 +100,14 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 	{
 		Guid id = _group.Id;
 		long? originalRevision = _group.EditRevision;
-				await _service.Update(id, _param);
+		await _service.Update(id, _param);
 
 		_repository.Received(1).Update(Arg.Is<TGroup>(group =>
 			group.Id == id && group.ParentId == _parent.Id &&
 			ReferenceEquals(group.Parent, _parent) &&
 			group.Name == _param.Name && group.Description == _param.Description &&
 			group.IsFavorite && !group.IsDeleted() && group.Order == 7 &&
-			group.EditRevision == originalRevision && group.ModificationType.HasFlag(ModificationType.Content)));
+			group.EditRevision == originalRevision && group.ModificationType == ModificationType.Content));
 		_repository.DidNotReceive().Add(Arg.Any<TGroup>());
 		await _unitOfWork.Received(1).SaveChangesAsync();
 		await _repository.Received(1).GetByIdAsync(id, CancellationToken.None);
@@ -192,28 +193,57 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 		AssertNoChangesOrWrites();
 	}
 
-	[Test]
-	public void Update_MissingParent_RejectsWithoutSaving()
+	[TestCase(false)]
+	[TestCase(true)]
+	public void Update_InvalidParent_RejectsWithoutSaving(bool isDeleted)
 	{
-		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns((TGroup?)null);
-		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Update(_group.Id, _param));
+		if (isDeleted)
+		{
+			_parent.DeleteRevision = 0;
+		}
+		else
+		{
+			_repository.GetWithChildrenByIdAsync(_parent.Id).Returns((TGroup?)null);
+		}
+		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Update(_group.Id, _param));
+		AssertNoChangesOrWrites();
+	}
+
+	[TestCase("SAVINGS", "Savings")]
+	[TestCase("Savings", "  Savings  ")]
+	[TestCase(" savings ", "SAVINGS")]
+	public void Update_NormalizedDuplicateSibling_RejectsWithoutChangingGroup(string existingName, string name)
+	{
+		_parent.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = existingName });
+		_param.Name = name;
+		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Update(_group.Id, _param));
 		AssertNoChangesOrWrites();
 	}
 
 	[Test]
-	public void Update_DeletedParent_RejectsWithoutSaving()
+	public async Task Update_PaddedName_TrimsNameAndPreservesDescription()
 	{
-		_parent.DeleteRevision = 0;
-		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Update(_group.Id, _param));
-		AssertNoChangesOrWrites();
-	}
-
-	[Test]
-	public async Task Update_DifferentCase_PreservesExactNameComparison()
-	{
-		_parent.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = "SAVINGS" });
+		_param.Name = "  Savings  ";
+		_param.Description = "  Keep spacing  ";
 		await _service.Update(_group.Id, _param);
-		_repository.Received(1).Update(Arg.Is<TGroup>(group => group.Name == "Savings"));
+		_repository.Received(1).Update(Arg.Is<TGroup>(group =>
+			group.Name == "Savings" && group.Description == "  Keep spacing  "));
+		Assert.That(_param.Name, Is.EqualTo("  Savings  "));
+	}
+
+	[Test]
+	public async Task Update_ContentEdit_PreservesRevisionAndExistingFlags(
+		[Values(null, 0L, 7L)] long? revision,
+		[Values(ModificationType.None, ModificationType.Content, ModificationType.Order,
+			ModificationType.Content | ModificationType.Order)] ModificationType flags)
+	{
+		_group.EditRevision = revision;
+		_group.ModificationType = flags;
+		await _service.Update(_group.Id, _param);
+		_repository.Received(1).Update(Arg.Is<TGroup>(group =>
+			group.EditRevision == revision && group.DeleteRevision == null &&
+			group.ModificationType == (flags | ModificationType.Content) && group.Order == 7));
+		await _unitOfWork.Received(1).SaveChangesAsync();
 	}
 
 	[Test]
@@ -225,18 +255,30 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 		_repository.Received(1).Update(_group);
 	}
 
-	[Test]
-	public async Task Update_RootWithSameNamedChild_PreservesSelfParent()
+	[TestCase(false)]
+	[TestCase(true)]
+	public void Update_Root_RejectsWithoutChangingGroup(bool selfParent)
 	{
-		_group.ParentId = _group.Id;
-		_group.Parent = _group;
-		_group.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = _param.Name });
-		_param.ParentId = _group.Id;
-		_repository.GetWithChildrenByIdAsync(_group.Id).Returns(_group);
-		await _service.Update(_group.Id, _param);
-		Assert.That(_group.ParentId, Is.EqualTo(_group.Id));
-		Assert.That(_group.Parent, Is.SameAs(_group));
-		_repository.Received(1).Update(_group);
+		_group.Id = _group switch
+		{
+			AccountGroup => RootsIds.AccountGroupId,
+			CategoryGroup => RootsIds.CategoryGroupId,
+			CorrespondentGroup => RootsIds.CorrespondentGroupId,
+			ProjectGroup => RootsIds.ProjectGroupId,
+			TemplateGroup => RootsIds.TemplateGroupId,
+			_ => throw new InvalidOperationException()
+		};
+		if (selfParent)
+		{
+			_group.ParentId = _group.Id;
+			_group.Parent = _group;
+		}
+		_param.ParentId = _group.ParentId;
+		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
+		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Update(_group.Id, _param));
+		AssertNoChangesOrWrites();
+		Assert.That(_repository.ReceivedCalls().Any(call =>
+			call.GetMethodInfo().Name == nameof(IGroupRepository<TGroup, TElement>.GetWithChildrenByIdAsync)), Is.False);
 	}
 
 	[Test]
@@ -268,6 +310,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 			Assert.That(_group.Description, Is.EqualTo("Old description"));
 			Assert.That(_group.IsFavorite, Is.False);
 			Assert.That(_group.Order, Is.EqualTo(7));
+			Assert.That(_group.EditRevision, Is.EqualTo(1));
 			Assert.That(_group.ModificationType, Is.EqualTo(ModificationType.None));
 		});
 	}
