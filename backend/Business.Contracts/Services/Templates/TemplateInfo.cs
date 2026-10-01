@@ -1,0 +1,22 @@
+namespace Business.Contracts.Services.Templates;
+
+/// <summary>
+/// Describes one template for catalog browsing and selection.
+/// Entries are returned in stored Position order.
+/// Created by the service for presentation and editing.
+/// Contains values rather than persistent entity references.
+/// Identifiers refer to existing bookkeeping records.
+/// Does not expose synchronization revisions or modification flags.
+/// Reading this record does not save changes.
+/// Persistence remains the responsibility of the corresponding mutation operation.
+/// </summary>
+public record TemplateInfo
+{
+	public Guid Id { get; set; }
+	public Guid GroupId { get; set; }
+	public string Name { get; set; } = string.Empty;
+	public string? Description { get; set; }
+	public int Order { get; set; }
+	public bool IsFavorite { get; set; }
+	public List<TemplateEntryInfo> Entries { get; } = new();
+}

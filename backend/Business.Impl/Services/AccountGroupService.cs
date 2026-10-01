@@ -1,4 +1,5 @@
 using Business.Contracts.Services;
+using Business.Contracts.Services.AccountGroups;
 using Business.Impl.Services.Base;
 using Business.Models.Entities;
 using DataAccess.Contracts;
@@ -11,5 +12,8 @@ internal sealed class AccountGroupService : GroupService<AccountGroup, Account>,
 	public AccountGroupService(ISharedContext sharedContext, IAppUnitOfWork unitOfWork)
 		: base(sharedContext, unitOfWork, unitOfWork.AccountGroupRepo, unitOfWork.AccountRepo)
 	{
+		
 	}
+
+	public Task<AccountsTreeInfo> GetAccountsTree() => throw new NotImplementedException();
 }

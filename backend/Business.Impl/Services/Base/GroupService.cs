@@ -1,3 +1,4 @@
+using Business.Contracts.Services.Groups;
 using Business.Contracts.Params;
 using Business.Contracts.Services.Base;
 using Business.Contracts.Utils.Merging;
@@ -382,4 +383,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		}
 		return name;
 	}
+
+	public Task<List<GroupInfo>> GetAllGroups() => throw new NotImplementedException();
+	public Task<TreeInfo> GetTree() => throw new NotImplementedException();
 }

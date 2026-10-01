@@ -1,4 +1,5 @@
 using Business.Contracts.Services;
+using Business.Contracts.Services.Groups;
 using Business.Impl.Services.Base;
 using Business.Models.Entities;
 using DataAccess.Contracts;

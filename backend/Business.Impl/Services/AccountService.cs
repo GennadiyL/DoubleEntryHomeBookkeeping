@@ -306,4 +306,6 @@ internal sealed class AccountService : IAccountService
 		}
 		return entity;
 	}
+
+	public Task<string> GetDefaultName(Guid? correspondentId, Guid? categoryId, Guid? projectId) => throw new NotImplementedException();
 }
