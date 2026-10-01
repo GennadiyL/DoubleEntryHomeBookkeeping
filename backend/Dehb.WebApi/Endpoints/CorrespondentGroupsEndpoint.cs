@@ -6,6 +6,15 @@ namespace Dehb.WebApi.Endpoints;
 
 internal static class CorrespondentGroupsEndpoint
 {
+	public static async Task<IResult> GetTreeHandler(ICorrespondentGroupService service) =>
+		Results.Ok(await service.GetTree());
+
+	public static async Task<IResult> GetAllGroupsHandler(ICorrespondentGroupService service) =>
+		Results.Ok(await service.GetAllGroups());
+
+	public static async Task<IResult> GetByIdHandler(Guid id, ICorrespondentGroupService service) =>
+		Results.Ok(await service.GetById(id));
+
 	public static async Task<IResult> AddHandler(GroupParam param, ICorrespondentGroupService service) =>
 		Results.Ok(await service.Add(param));
 

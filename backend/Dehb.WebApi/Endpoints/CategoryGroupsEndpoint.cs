@@ -6,6 +6,15 @@ namespace Dehb.WebApi.Endpoints;
 
 internal static class CategoryGroupsEndpoint
 {
+	public static async Task<IResult> GetTreeHandler(ICategoryGroupService service) =>
+		Results.Ok(await service.GetTree());
+
+	public static async Task<IResult> GetAllGroupsHandler(ICategoryGroupService service) =>
+		Results.Ok(await service.GetAllGroups());
+
+	public static async Task<IResult> GetByIdHandler(Guid id, ICategoryGroupService service) =>
+		Results.Ok(await service.GetById(id));
+
 	public static async Task<IResult> AddHandler(GroupParam param, ICategoryGroupService service) =>
 		Results.Ok(await service.Add(param));
 

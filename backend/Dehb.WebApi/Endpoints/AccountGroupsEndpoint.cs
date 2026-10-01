@@ -6,6 +6,15 @@ namespace Dehb.WebApi.Endpoints;
 
 internal static class AccountGroupsEndpoint
 {
+	public static async Task<IResult> GetTreeHandler(IAccountGroupService service) =>
+		Results.Ok(await service.GetTree());
+
+	public static async Task<IResult> GetAllGroupsHandler(IAccountGroupService service) =>
+		Results.Ok(await service.GetAllGroups());
+
+	public static async Task<IResult> GetByIdHandler(Guid id, IAccountGroupService service) =>
+		Results.Ok(await service.GetById(id));
+
 	public static async Task<IResult> AddHandler(GroupParam param, IAccountGroupService service) =>
 		Results.Ok(await service.Add(param));
 

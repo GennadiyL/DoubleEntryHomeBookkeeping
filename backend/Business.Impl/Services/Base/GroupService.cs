@@ -1,6 +1,5 @@
 using Business.Contracts.Utils.Merging;
 using Business.Contracts.Utils.Models;
-using Business.Contracts.Utils.Ordering;
 using Business.Models.Entities.Base;
 using Business.Models.Entities.Interfaces;
 using Business.Models.Exceptions;
@@ -11,10 +10,14 @@ using DataAccess.Core.Behaviors;
 using Shared.Contracts;
 using Business.Contracts.Base.Services;
 using Business.Contracts.Services.Trees;
+using Business.Models.Entities;
 
 namespace Business.Impl.Services.Base;
 
-public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TElement>, IUpdateEntityService<GroupParam>, IReadEntityService<GroupInfo>
+public abstract class GroupService<TGroup, TElement> :
+	IGroupService<TGroup, TElement>,
+	IUpdateEntityService<GroupParam>,
+	IReadEntityService<GroupInfo>
 	where TGroup : GroupEntity<TGroup, TElement>, new()
 	where TElement : class, IElementEntity<TGroup, TElement>, ICatalogEntity
 {
@@ -23,13 +26,45 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 	private readonly IGroupRepository<TGroup, TElement> _repository;
 	private readonly IRepository<TElement> _elementRepository;
 
-	protected GroupService(ISharedContext sharedContext, IAppUnitOfWork unitOfWork,
-		IGroupRepository<TGroup, TElement> repository, IRepository<TElement> elementRepository)
+	protected GroupService(
+		ISharedContext sharedContext,
+		IAppUnitOfWork unitOfWork,
+		IGroupRepository<TGroup, TElement> repository,
+		IRepository<TElement> elementRepository)
 	{
 		_sharedContext = sharedContext;
 		_unitOfWork = unitOfWork;
 		_repository = repository;
 		_elementRepository = elementRepository;
+	}
+
+	public async Task<GroupInfo> GetById(Guid id)
+	{
+		TGroup? group = await _repository.GetByIdAsync(id, CancellationToken.None);
+		if (group is null || group.IsDeleted())
+		{
+			throw new GroupNotFoundException("The group does not exist or is deleted.");
+		}
+
+		TGroup? parent = group.ParentId == group.Id
+			? group
+			: await _repository.GetByIdAsync(group.ParentId, CancellationToken.None);
+		if (parent is null || parent.IsDeleted())
+		{
+			throw new GroupNotFoundException("The parent group does not exist or is deleted.");
+		}
+
+		return new GroupInfo
+		{
+			Id = group.Id,
+			ParentId = group.ParentId,
+			ParentName = parent.Name,
+			Name = group.Name,
+			Description = group.Description,
+			Order = group.Order,
+			IsFavorite = group.IsFavorite,
+			IsRoot = Roots.IsRoot(group.Id)
+		};
 	}
 
 	public async Task<Guid> Add(GroupParam param)
@@ -452,7 +487,7 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		}
 		foreach (TElement element in elements)
 		{
-			if (typeof(TElement) != typeof(Business.Models.Entities.Account))
+			if (typeof(TElement) != typeof(Account))
 			{
 				element.Name = GetUniqueCombinedName(element.Name.Trim(), elementNames);
 			}
@@ -505,9 +540,61 @@ public abstract class GroupService<TGroup, TElement> : IGroupService<TGroup, TEl
 		return name;
 	}
 
-	public Task<List<GroupInfo>> GetAllGroups() => throw new NotImplementedException();
+	public async Task<List<GroupInfo>> GetAllGroups()
+	{
+		ICollection<TGroup> groups = await _repository.GetAllAsync(CancellationToken.None);
+		Dictionary<Guid, TGroup> activeGroups = groups.Where(group => !group.IsDeleted())
+			.ToDictionary(group => group.Id);
+		List<GroupInfo> result = new(activeGroups.Count);
+		foreach (TGroup group in activeGroups.Values
+			.OrderByDescending(group => Roots.IsRoot(group.Id))
+			.ThenBy(group => group.Order)
+			.ThenBy(group => group.Id.ToString("D"), StringComparer.Ordinal))
+		{
+			if (!activeGroups.TryGetValue(group.ParentId, out TGroup? parent))
+			{
+				throw new GroupNotFoundException("The parent group does not exist or is deleted.");
+			}
+			result.Add(new GroupInfo
+			{
+				Id = group.Id,
+				ParentId = group.ParentId,
+				ParentName = parent.Name,
+				Name = group.Name,
+				Description = group.Description,
+				Order = group.Order,
+				IsFavorite = group.IsFavorite,
+				IsRoot = Roots.IsRoot(group.Id)
+			});
+		}
+		return result;
+	}
 
-	public Task<TreeInfo> GetTree() => throw new NotImplementedException();
-
-	public Task<GroupInfo> GetById(Guid id) => throw new NotImplementedException();
+	public async Task<TreeInfo> GetTree()
+	{
+		TreeInfo result = new();
+		result.Groups.AddRange(await GetAllGroups());
+		Dictionary<Guid, GroupInfo> groups = result.Groups.ToDictionary(group => group.Id);
+		ICollection<TElement> elements = await _elementRepository.GetAllAsync(CancellationToken.None);
+		foreach (TElement element in elements.Where(element => !element.IsDeleted())
+			.OrderBy(element => element.Order)
+			.ThenBy(element => element.Id))
+		{
+			if (!groups.TryGetValue(element.GroupId, out GroupInfo? group))
+			{
+				throw new GroupNotFoundException("The element group does not exist or is deleted.");
+			}
+			result.Elements.Add(new ElementInfo
+			{
+				Id = element.Id,
+				GroupId = element.GroupId,
+				GroupName = group.Name,
+				Name = element.Name,
+				Description = element.Description,
+				Order = element.Order,
+				IsFavorite = element.IsFavorite
+			});
+		}
+		return result;
+	}
 }

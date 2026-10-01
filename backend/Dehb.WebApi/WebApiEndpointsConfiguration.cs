@@ -21,6 +21,24 @@ public static class WebApiEndpointsConfiguration
 		app.MapPost("/accounts/move-to-another-group", AccountsEndpoint.MoveToAnotherGroupHandler);
 		app.MapPost("/accounts/combine-elements", AccountsEndpoint.CombineElementsHandler);
 
+		app.MapGet("/account-groups/get-tree", AccountGroupsEndpoint.GetTreeHandler);
+		app.MapGet("/category-groups/get-tree", CategoryGroupsEndpoint.GetTreeHandler);
+		app.MapGet("/correspondent-groups/get-tree", CorrespondentGroupsEndpoint.GetTreeHandler);
+		app.MapGet("/project-groups/get-tree", ProjectGroupsEndpoint.GetTreeHandler);
+		app.MapGet("/template-groups/get-tree", TemplateGroupsEndpoint.GetTreeHandler);
+
+		app.MapGet("/account-groups/get-all-groups", AccountGroupsEndpoint.GetAllGroupsHandler);
+		app.MapGet("/category-groups/get-all-groups", CategoryGroupsEndpoint.GetAllGroupsHandler);
+		app.MapGet("/correspondent-groups/get-all-groups", CorrespondentGroupsEndpoint.GetAllGroupsHandler);
+		app.MapGet("/project-groups/get-all-groups", ProjectGroupsEndpoint.GetAllGroupsHandler);
+		app.MapGet("/template-groups/get-all-groups", TemplateGroupsEndpoint.GetAllGroupsHandler);
+
+		app.MapGet("/account-groups/get-by-id", AccountGroupsEndpoint.GetByIdHandler);
+		app.MapGet("/category-groups/get-by-id", CategoryGroupsEndpoint.GetByIdHandler);
+		app.MapGet("/correspondent-groups/get-by-id", CorrespondentGroupsEndpoint.GetByIdHandler);
+		app.MapGet("/project-groups/get-by-id", ProjectGroupsEndpoint.GetByIdHandler);
+		app.MapGet("/template-groups/get-by-id", TemplateGroupsEndpoint.GetByIdHandler);
+
 		app.MapPost("/account-groups/add", AccountGroupsEndpoint.AddHandler);
 		app.MapPost("/category-groups/add", CategoryGroupsEndpoint.AddHandler);
 		app.MapPost("/correspondent-groups/add", CorrespondentGroupsEndpoint.AddHandler);
