@@ -95,13 +95,13 @@ public sealed class AccountsAddServiceTests
 	}
 
 	[Test]
-	public async Task Add_ExistingElements_AppendsAfterMaximumIncludingDeleted()
+	public async Task Add_ExistingElements_AppendsAfterLiveMaximum()
 	{
 		Account first = new() { Id = Guid.NewGuid(), Name = "First", Order = 2 };
 		Account deleted = new() { Id = Guid.NewGuid(), Name = "Deleted", Order = 9, DeleteRevision = 0 };
 		_group.Elements = [first, deleted];
 		await _service.Add(_param);
-		_repository.Received(1).Add(Arg.Is<Account>(element => element.Order == 10));
+		_repository.Received(1).Add(Arg.Is<Account>(element => element.Order == 3));
 		Assert.That(first.Order, Is.EqualTo(2));
 		Assert.That(deleted.Order, Is.EqualTo(9));
 		_repository.DidNotReceive().Update(Arg.Any<Account>());
@@ -109,11 +109,11 @@ public sealed class AccountsAddServiceTests
 
 	[TestCase(false)]
 	[TestCase(true)]
-	public void Add_DuplicateElementName_RejectsIncludingDeleted(bool deleted)
+	public async Task Add_DuplicateElementName_AllowsIncludingDeleted(bool deleted)
 	{
 		_group.Elements.Add(new Account { Id = Guid.NewGuid(), Name = _param.Name, DeleteRevision = deleted ? 0 : null });
-		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Add(_param));
-		AssertNoWrites();
+		await _service.Add(_param);
+		await _unitOfWork.Received(1).SaveChangesAsync();
 	}
 
 	[Test]
@@ -175,7 +175,7 @@ public sealed class AccountsAddServiceTests
 	public void Add_MissingGroup_RejectsWithoutSaving()
 	{
 		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns((AccountGroup?)null);
-		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Add(_param));
+		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}
 
@@ -183,7 +183,7 @@ public sealed class AccountsAddServiceTests
 	public void Add_DeletedGroup_RejectsWithoutSaving()
 	{
 		_group.DeleteRevision = 0;
-		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Add(_param));
+		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}
 

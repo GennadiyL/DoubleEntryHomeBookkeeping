@@ -34,6 +34,29 @@ public abstract class ElementService<TGroup, TElement> :
 		_groupRepository = groupRepository;
 	}
 
+	public async Task<ElementInfo> GetById(Guid id, CancellationToken cancellationToken = default)
+	{
+		TElement? element = await _repository.GetByIdAsync(id, cancellationToken);
+		if (element is null || element.IsDeleted())
+		{
+			throw new ElementNotFoundException("The element does not exist or is deleted.");
+		}
+		TGroup? group = await _groupRepository.GetByIdAsync(element.GroupId, cancellationToken);
+		if (group is null || group.IsDeleted())
+		{
+			throw new GroupNotFoundException("The group does not exist or is deleted.");
+		}
+		return new ElementInfo
+		{
+			Id = element.Id,
+			GroupId = element.GroupId,
+			GroupName = group.Name,
+			Name = element.Name,
+			Description = element.Description,
+			Order = element.Order,
+			IsFavorite = element.IsFavorite
+		};
+	}
 	public async Task<Guid> Add(ElementParam param, CancellationToken cancellationToken = default)
 	{
 		if (param is null || string.IsNullOrWhiteSpace(param.Name) || param.GroupId == Guid.Empty)
@@ -292,28 +315,4 @@ public abstract class ElementService<TGroup, TElement> :
 	protected abstract Task<ICollection<Account>> GetReferencingAccounts(Guid elementId, CancellationToken cancellationToken = default);
 
 	protected abstract void ReplaceAccountReference(Account account, TElement destination);
-
-	public async Task<ElementInfo> GetById(Guid id, CancellationToken cancellationToken = default)
-	{
-		TElement? element = await _repository.GetByIdAsync(id, cancellationToken);
-		if (element is null || element.IsDeleted())
-		{
-			throw new ElementNotFoundException("The element does not exist or is deleted.");
-		}
-		TGroup? group = await _groupRepository.GetByIdAsync(element.GroupId, cancellationToken);
-		if (group is null || group.IsDeleted())
-		{
-			throw new GroupNotFoundException("The group does not exist or is deleted.");
-		}
-		return new ElementInfo
-		{
-			Id = element.Id,
-			GroupId = element.GroupId,
-			GroupName = group.Name,
-			Name = element.Name,
-			Description = element.Description,
-			Order = element.Order,
-			IsFavorite = element.IsFavorite
-		};
-	}
 }

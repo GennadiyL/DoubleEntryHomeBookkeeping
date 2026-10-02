@@ -114,12 +114,12 @@ public sealed class AccountsUpdateServiceTests
 
 	[TestCase(false)]
 	[TestCase(true)]
-	public void Update_DuplicateName_RejectsIncludingDeleted(bool deleted)
+	public async Task Update_DuplicateName_AllowsIncludingDeleted(bool deleted)
 	{
 		_group.Elements.Add(new Account { Id = Guid.NewGuid(), Name = _param.Name, DeleteRevision = deleted ? 0 : null });
-		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, _param));
-		Assert.That(_element.Name, Is.EqualTo("Existing"));
-		AssertNoWrites();
+		await _service.Update(_element.Id, _param);
+		Assert.That(_element.Name, Is.EqualTo(_param.Name));
+		await _unitOfWork.Received(1).SaveChangesAsync();
 	}
 
 	[Test]
@@ -172,7 +172,7 @@ public sealed class AccountsUpdateServiceTests
 	public void Update_MissingGroup_Rejects()
 	{
 		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns((AccountGroup?)null);
-		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Update(_element.Id, _param));
+		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, _param));
 		AssertNoWrites();
 	}
 
@@ -180,7 +180,7 @@ public sealed class AccountsUpdateServiceTests
 	public void Update_DeletedGroup_Rejects()
 	{
 		_group.DeleteRevision = 0;
-		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Update(_element.Id, _param));
+		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, _param));
 		AssertNoWrites();
 	}
 
@@ -358,20 +358,13 @@ public sealed class AccountsUpdateServiceTests
 	}
 
 	[Test]
-	public async Task Update_UnusedAccount_CanChangeCurrencyDespiteTemplateUse()
+	public void Update_UnusedAccount_CannotChangeCurrency()
 	{
-		Currency currency = NewCurrency();
-		_unitOfWork.TransactionEntryRepo.HasByAccountIdAsync(_element.Id).Returns(false);
-		_unitOfWork.TemplateEntryRepo.GetByAccountIdAsync(_element.Id).Returns(new List<TemplateEntry>
-		{
-			new() { Id = Guid.NewGuid(), Template = new Template(), Account = _element, AccountId = _element.Id, Amount = 10 }
-		});
-		await _service.Update(_element.Id, _param);
-		Assert.That(_element.CurrencyId, Is.EqualTo(currency.Id));
-		Assert.That(_element.Currency, Is.SameAs(currency));
-		await _unitOfWork.TransactionEntryRepo.Received(1).HasByAccountIdAsync(_element.Id);
-		Assert.That(_unitOfWork.TemplateEntryRepo.ReceivedCalls(), Is.Empty);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		NewCurrency();
+		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, _param));
+		Assert.That(_element.CurrencyId, Is.EqualTo(_currency.Id));
+		Assert.That(_unitOfWork.TransactionEntryRepo.ReceivedCalls(), Is.Empty);
+		AssertNoWrites();
 	}
 
 	[Test]
@@ -398,11 +391,11 @@ public sealed class AccountsUpdateServiceTests
 	}
 
 	[Test]
-	public void Update_UsageLookupFailure_DoesNotMutateOrSave()
+	public void Update_CurrencyChange_RejectsWithoutUsageLookup()
 	{
 		NewCurrency();
 		_unitOfWork.TransactionEntryRepo.HasByAccountIdAsync(_element.Id).ThrowsAsync(new InvalidOperationException());
-		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Update(_element.Id, _param));
+		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, _param));
 		Assert.That(_element.CurrencyId, Is.EqualTo(_currency.Id));
 		AssertNoWrites();
 	}

@@ -4,6 +4,8 @@ using Business.Contracts.Utils.Merging;
 using Business.Contracts.Utils.Ordering;
 using Business.Models.Entities;
 using Business.Models.Entities.Interfaces;
+using Business.Models.Entities.Config;
+using Business.Models.Enums;
 using Business.Models.Exceptions;
 using DataAccess.Contracts;
 using DataAccess.Contracts.Repositories;
@@ -27,6 +29,46 @@ internal sealed class AccountService : IAccountService
 		_groupRepository = unitOfWork.AccountGroupRepo;
 	}
 
+	public async Task<AccountInfo> GetById(Guid id, CancellationToken cancellationToken = default)
+	{
+		Account? account = await _repository.GetByIdAsync(id, cancellationToken);
+		if (account is null || account.IsDeleted())
+		{
+			throw new ElementNotFoundException("The account does not exist or is deleted.");
+		}
+		AccountGroup? group = await _groupRepository.GetByIdAsync(account.GroupId, cancellationToken);
+		if (group is null || group.IsDeleted())
+		{
+			throw new GroupNotFoundException("The group does not exist or is deleted.");
+		}
+		Currency? currency = await _unitOfWork.CurrencyRepo.GetByIdAsync(account.CurrencyId, cancellationToken);
+		if (currency is null || currency.IsDeleted())
+		{
+			throw new CurrencyNotFoundException("The currency does not exist or is deleted.");
+		}
+		Category? category = await GetOptionalReference(account.CategoryId, _unitOfWork.CategoryRepo, cancellationToken);
+		Correspondent? correspondent = await GetOptionalReference(account.CorrespondentId, _unitOfWork.CorrespondentRepo, cancellationToken);
+		Project? project = await GetOptionalReference(account.ProjectId, _unitOfWork.ProjectRepo, cancellationToken);
+		return new AccountInfo
+		{
+			Id = account.Id,
+			GroupId = account.GroupId,
+			GroupName = group.Name,
+			Name = account.Name,
+			Description = account.Description,
+			Order = account.Order,
+			IsFavorite = account.IsFavorite,
+			CurrencyId = account.CurrencyId,
+			CurrencyName = currency.Name,
+			CategoryId = account.CategoryId,
+			CategoryName = category?.Name,
+			CorrespondentId = account.CorrespondentId,
+			CorrespondentName = correspondent?.Name,
+			ProjectId = account.ProjectId,
+			ProjectName = project?.Name
+		};
+	}
+
 	public async Task<Guid> Add(AccountParam param, CancellationToken cancellationToken = default)
 	{
 		if (param is null || string.IsNullOrWhiteSpace(param.Name) || param.GroupId == Guid.Empty || param.CurrencyId == Guid.Empty)
@@ -37,15 +79,11 @@ internal sealed class AccountService : IAccountService
 		AccountGroup? group = await _groupRepository.GetWithContentsByIdAsync(param.GroupId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
-			throw new GroupNotFoundException("The group does not exist or is deleted.");
+			throw new InvalidElementException("The group does not exist or is deleted.");
 		}
 
-		if (group.Elements.Any(element => string.Equals(element.Name, param.Name, StringComparison.Ordinal)))
-		{
-			throw new InvalidElementException("An element with the same name already exists in this group.");
-		}
 
-		int maxOrder = group.Elements.Count == 0 ? -1 : group.Elements.Max(element => element.Order);
+		int maxOrder = group.Elements.Where(element => !element.IsDeleted()).Select(element => element.Order).DefaultIfEmpty(-1).Max();
 		if (maxOrder == int.MaxValue)
 		{
 			throw new InvalidElementException("The group has no available element ordering position.");
@@ -63,12 +101,15 @@ internal sealed class AccountService : IAccountService
 			Correspondent = correspondent,
 			ProjectId = project?.Id,
 			Project = project,
-			Name = param.Name,
+			Name = param.Name.Trim(),
 			Description = param.Description,
 			IsFavorite = param.IsFavorite,
 			GroupId = group.Id,
 			Group = group,
 			Order = maxOrder + 1,
+			EditRevision = null,
+			DeleteRevision = null,
+			ModificationType = ModificationType.None,
 		};
 		_repository.Add(element);
 		await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -92,18 +133,12 @@ internal sealed class AccountService : IAccountService
 		AccountGroup? group = await _groupRepository.GetWithContentsByIdAsync(element.GroupId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
-			throw new GroupNotFoundException("The group does not exist or is deleted.");
-		}
-		if (group.Elements.Any(item => item.Id != element.Id &&
-			string.Equals(item.Name, param.Name, StringComparison.Ordinal)))
-		{
-			throw new InvalidElementException("An element with the same name already exists in this group.");
+			throw new InvalidElementException("The group does not exist or is deleted.");
 		}
 
-		if (element.CurrencyId != param.CurrencyId &&
-			await _unitOfWork.TransactionEntryRepo.HasByAccountIdAsync(entityId, cancellationToken))
+		if (element.CurrencyId != param.CurrencyId)
 		{
-			throw new InvalidElementException("The currency of an account used in a transaction cannot be changed.");
+			throw new InvalidElementException("The currency of a saved account cannot be changed.");
 		}
 
 		(Currency currency, Category? category, Correspondent? correspondent, Project? project) = await ResolveReferences(param, cancellationToken);
@@ -115,7 +150,7 @@ internal sealed class AccountService : IAccountService
 		element.Correspondent = correspondent;
 		element.ProjectId = project?.Id;
 		element.Project = project;
-		element.Name = param.Name;
+		element.Name = param.Name.Trim();
 		element.Description = param.Description;
 		element.IsFavorite = param.IsFavorite;
 		element.SetEditedContent();
@@ -126,8 +161,18 @@ internal sealed class AccountService : IAccountService
 	public async Task Delete(Guid entityId, CancellationToken cancellationToken = default)
 	{
 		Account element = await GetActiveElement(entityId, cancellationToken);
+		if (await _unitOfWork.TransactionEntryRepo.HasByAccountIdAsync(entityId, cancellationToken) ||
+			(await _unitOfWork.TemplateEntryRepo.GetByAccountIdAsync(entityId, cancellationToken)).Count != 0)
+		{
+			throw new InvalidElementException("The account is referenced by a transaction or template.");
+		}
+
+		AccountGroup group = await GetActiveGroup(element.GroupId, cancellationToken);
+		SystemConfig config = await GetSystemConfig(cancellationToken);
 		element.SetDeleted();
 		_repository.Update(element);
+		NormalizeAccounts(group.Elements.Where(item => item.Id != element.Id && !item.IsDeleted()));
+		ClearBalancingAccount(config, element.Id);
 		await _unitOfWork.SaveChangesAsync(cancellationToken);
 	}
 
@@ -192,43 +237,42 @@ internal sealed class AccountService : IAccountService
 	{
 		if (entityId == Guid.Empty || toGroupId == Guid.Empty)
 		{
-			throw new InvalidElementException("An element identifier and destination group identifier are required.");
+			throw new InvalidElementException("An account identifier and destination group identifier are required.");
 		}
 
 		Account element = await GetActiveElement(entityId, cancellationToken);
 		AccountGroup? destination = await _groupRepository.GetWithContentsByIdAsync(toGroupId, cancellationToken);
 		if (destination is null || destination.IsDeleted())
 		{
-			throw new GroupNotFoundException("The destination group does not exist or is deleted.");
+			throw new InvalidElementException("The destination group does not exist or is deleted.");
 		}
 		if (element.GroupId == toGroupId)
 		{
 			return;
 		}
-		if (destination.Elements.Any(item => string.Equals(item.Name, element.Name, StringComparison.Ordinal)))
-		{
-			throw new InvalidElementException("An element with the same name already exists in the destination group.");
-		}
 
-		int maxOrder = destination.Elements.Count == 0 ? -1 : destination.Elements.Max(item => item.Order);
-		if (maxOrder == int.MaxValue)
-		{
-			throw new InvalidElementException("The destination group has no available element ordering position.");
-		}
-
+		AccountGroup source = await GetActiveGroup(element.GroupId, cancellationToken);
+		List<Account> destinationAccounts = [.. destination.Elements.Where(item => !item.IsDeleted())];
+		NormalizeAccounts(source.Elements.Where(item => item.Id != element.Id && !item.IsDeleted()));
+		NormalizeAccounts(destinationAccounts);
 		element.GroupId = destination.Id;
 		element.Group = destination;
-		element.Order = maxOrder + 1;
+		element.Order = destinationAccounts.Count;
 		element.SetEditedContent();
+		element.SetEditedOrder();
 		_repository.Update(element);
 		await _unitOfWork.SaveChangesAsync(cancellationToken);
 	}
 
 	public async Task CombineElements(Guid toElementId, Guid fromElementId, CancellationToken cancellationToken = default)
 	{
-		if (toElementId == Guid.Empty || fromElementId == Guid.Empty || toElementId == fromElementId)
+		if (toElementId == fromElementId)
 		{
-			throw new InvalidElementException("Two different element identifiers are required.");
+			return;
+		}
+		if (toElementId == Guid.Empty || fromElementId == Guid.Empty)
+		{
+			throw new InvalidElementException("Two account identifiers are required.");
 		}
 
 		Account source = await GetActiveElement(fromElementId, cancellationToken);
@@ -238,8 +282,31 @@ internal sealed class AccountService : IAccountService
 			throw new InvalidElementException("Only accounts with the same currency can be combined.");
 		}
 
+		AccountGroup group = await GetActiveGroup(source.GroupId, cancellationToken);
+		SystemConfig config = await GetSystemConfig(cancellationToken);
 		ICollection<TransactionEntry> transactionEntries = await _unitOfWork.TransactionEntryRepo.GetByAccountIdAsync(fromElementId, cancellationToken);
 		ICollection<TemplateEntry> templateEntries = await _unitOfWork.TemplateEntryRepo.GetByAccountIdAsync(fromElementId, cancellationToken);
+		List<Transaction> transactions = [];
+		foreach (Guid id in transactionEntries.Select(entry => entry.TransactionId).Distinct())
+		{
+			Transaction? transaction = await _unitOfWork.TransactionRepo.GetByIdAsync(id, cancellationToken);
+			if (transaction is null)
+			{
+				throw new InvalidOperationException("A referenced transaction is missing.");
+			}
+			transactions.Add(transaction);
+		}
+		List<Template> templates = [];
+		foreach (Guid id in templateEntries.Select(entry => entry.TemplateId).Distinct())
+		{
+			Template? template = await _unitOfWork.TemplateRepo.GetByIdAsync(id, cancellationToken);
+			if (template is null)
+			{
+				throw new InvalidOperationException("A referenced template is missing.");
+			}
+			templates.Add(template);
+		}
+
 		foreach (TransactionEntry entry in transactionEntries)
 		{
 			entry.AccountId = destination.Id;
@@ -252,10 +319,70 @@ internal sealed class AccountService : IAccountService
 			entry.Account = destination;
 			_unitOfWork.TemplateEntryRepo.Update(entry);
 		}
+		foreach (Transaction transaction in transactions)
+		{
+			transaction.SetEditedContent();
+			_unitOfWork.TransactionRepo.Update(transaction);
+		}
+		foreach (Template template in templates)
+		{
+			template.SetEditedContent();
+			_unitOfWork.TemplateRepo.Update(template);
+		}
 
 		source.SetDeleted();
 		_repository.Update(source);
+		NormalizeAccounts(group.Elements.Where(item => item.Id != source.Id && !item.IsDeleted()));
+		ClearBalancingAccount(config, source.Id);
 		await _unitOfWork.SaveChangesAsync(cancellationToken);
+	}
+
+	private async Task<AccountGroup> GetActiveGroup(Guid groupId, CancellationToken cancellationToken = default)
+	{
+		AccountGroup? group = await _groupRepository.GetWithContentsByIdAsync(groupId, cancellationToken);
+		if (group is null || group.IsDeleted())
+		{
+			throw new GroupNotFoundException("The group does not exist or is deleted.");
+		}
+		return group;
+	}
+
+	private async Task<SystemConfig> GetSystemConfig(CancellationToken cancellationToken = default)
+	{
+		ICollection<SystemConfig> configurations = await _unitOfWork.SystemConfigRepo.GetAllAsync(cancellationToken);
+		if (configurations.Count != 1 || configurations.Single().IsDeleted())
+		{
+			throw new InvalidOperationException("The System configuration singleton is missing or invalid.");
+		}
+		return configurations.Single();
+	}
+
+	private void ClearBalancingAccount(SystemConfig config, Guid accountId)
+	{
+		if (config.BalancingAccountId != accountId)
+		{
+			return;
+		}
+		config.BalancingAccountId = null;
+		config.SetEditedContent();
+		_unitOfWork.SystemConfigRepo.Update(config);
+	}
+
+	private void NormalizeAccounts(IEnumerable<Account> accounts)
+	{
+		List<Account> ordered = [.. accounts.OrderBy(item => item.Order)
+			.ThenBy(item => item.Id.ToString("D"), StringComparer.Ordinal)];
+		for (int index = 0; index < ordered.Count; index++)
+		{
+			Account item = ordered[index];
+			if (item.Order == index)
+			{
+				continue;
+			}
+			item.Order = index;
+			item.SetEditedOrder();
+			_repository.Update(item);
+		}
 	}
 
 	private async Task<Account> GetActiveElement(Guid entityId, CancellationToken cancellationToken = default)
@@ -307,7 +434,32 @@ internal sealed class AccountService : IAccountService
 		return entity;
 	}
 
-	public Task<string> GetDefaultName(Guid? correspondentId, Guid? categoryId, Guid? projectId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+	public async Task<string> GetDefaultName(Guid? correspondentId, Guid? categoryId, Guid? projectId, CancellationToken cancellationToken = default)
+	{
+		ICollection<LocalConfig> configurations = await _unitOfWork.LocalConfigRepo.GetAllAsync(cancellationToken);
+		if (configurations.Count != 1)
+		{
+			throw new InvalidOperationException("The Local configuration singleton is missing or invalid.");
+		}
+		LocalConfig config = configurations.Single();
+		if (string.IsNullOrWhiteSpace(config.DefaultAccountNameSeparator))
+		{
+			throw new InvalidOperationException("The account name separator is invalid.");
+		}
 
-	public Task<AccountInfo> GetById(Guid id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+		Correspondent? correspondent = await GetOptionalReference(correspondentId, _unitOfWork.CorrespondentRepo, cancellationToken);
+		Category? category = await GetOptionalReference(categoryId, _unitOfWork.CategoryRepo, cancellationToken);
+		Project? project = await GetOptionalReference(projectId, _unitOfWork.ProjectRepo, cancellationToken);
+		string[] names = config.AccountNameOrder switch
+		{
+			AccountNameOrder.CorrespondentCategoryProject => [correspondent?.Name ?? "", category?.Name ?? "", project?.Name ?? ""],
+			AccountNameOrder.CorrespondentProjectCategory => [correspondent?.Name ?? "", project?.Name ?? "", category?.Name ?? ""],
+			AccountNameOrder.CategoryCorrespondentProject => [category?.Name ?? "", correspondent?.Name ?? "", project?.Name ?? ""],
+			AccountNameOrder.CategoryProjectCorrespondent => [category?.Name ?? "", project?.Name ?? "", correspondent?.Name ?? ""],
+			AccountNameOrder.ProjectCorrespondentCategory => [project?.Name ?? "", correspondent?.Name ?? "", category?.Name ?? ""],
+			AccountNameOrder.ProjectCategoryCorrespondent => [project?.Name ?? "", category?.Name ?? "", correspondent?.Name ?? ""],
+			_ => throw new InvalidOperationException("The account name order is invalid.")
+		};
+		return string.Join(config.DefaultAccountNameSeparator, names);
+	}
 }

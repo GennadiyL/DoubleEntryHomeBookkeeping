@@ -53,13 +53,13 @@ public abstract class Repository<TContext, TB, TD> : IRepository<TB>
 
 	public virtual async Task<ICollection<TB>> GetAllAsync(CancellationToken cancellationToken = default)
 	{
-		List<TD> entities = await Entities.ToListAsync(cancellationToken);
+		List<TD> entities = await Entities.AsNoTracking().ToListAsync(cancellationToken);
 		return Mapper.Map<TD, TB>(entities);
 	}
 
 	public virtual async Task<TB?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
 	{
-		TD? entity = await Entities.FindAsync([id], cancellationToken);
+		TD? entity = await Entities.AsNoTracking().SingleOrDefaultAsync(entity => entity.Id == id, cancellationToken);
 
 		if (entity != null)
 		{
@@ -71,13 +71,13 @@ public abstract class Repository<TContext, TB, TD> : IRepository<TB>
 
 	public virtual ICollection<TB> GetAll()
 	{
-		List<TD> entities = [.. Entities];
+		List<TD> entities = [.. Entities.AsNoTracking()];
 		return Mapper.Map<TD, TB>(entities);
 	}
 
 	public virtual TB? GetById(Guid id)
 	{
-		TD? entity = Entities.Find(id);
+		TD? entity = Entities.AsNoTracking().SingleOrDefault(entity => entity.Id == id);
 
 		if (entity != null)
 		{

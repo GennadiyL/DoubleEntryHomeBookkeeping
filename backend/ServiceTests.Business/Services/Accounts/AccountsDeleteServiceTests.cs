@@ -1,3 +1,4 @@
+using Business.Models.Entities.Config;
 using Business.Models.Enums;
 using Business.Contracts.Services;
 using Business.Contracts.Utils.Merging;
@@ -33,6 +34,7 @@ public sealed class AccountsDeleteServiceTests
 		_repository = Substitute.For<IAccountRepository>();
 		_groupRepository = Substitute.For<IAccountGroupRepository>();
 		_unitOfWork = Substitute.For<IAppUnitOfWork>();
+		_unitOfWork.SystemConfigRepo.GetAllAsync().Returns(new List<SystemConfig> { new() { Id = Guid.NewGuid() } });
 		_unitOfWork.AccountRepo.Returns(_repository);
 		_unitOfWork.AccountGroupRepo.Returns(_groupRepository);
 		IServiceCollection services = new ServiceCollection();
@@ -79,7 +81,7 @@ public sealed class AccountsDeleteServiceTests
 		});
 		_repository.Received(1).Update(_element);
 		await _unitOfWork.Received(1).SaveChangesAsync();
-		Assert.That(_groupRepository.ReceivedCalls(), Is.Empty);
+		_groupRepository.DidNotReceive().Update(Arg.Any<AccountGroup>());
 	}
 
 	[Test]

@@ -19,17 +19,4 @@ internal sealed class TemplateEntryRepository : Repository<AppDbContext, Templat
 			.Where(entry => entry.AccountId == accountId).ToListAsync(cancellationToken);
 		return Mapper.Map<DalEntity, TemplateEntryEntity>(entries);
 	}
-
-	public override void Update(TemplateEntryEntity entity)
-	{
-		ArgumentNullException.ThrowIfNull(entity);
-		DalEntity? tracked = Entities.Local.FirstOrDefault(item => item.Id == entity.Id);
-		if (tracked is null)
-		{
-			base.Update(entity);
-			return;
-		}
-
-		Context.Entry(tracked).CurrentValues.SetValues(Mapper.Map<DalEntity, TemplateEntryEntity>(entity));
-	}
 }

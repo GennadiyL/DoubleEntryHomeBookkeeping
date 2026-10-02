@@ -21,18 +21,5 @@ internal sealed class TransactionEntryRepository : Repository<AppDbContext, Tran
 	}
 
 	public Task<bool> HasByAccountIdAsync(Guid accountId, CancellationToken cancellationToken = default) =>
-		Entities.AnyAsync(entry => entry.AccountId == accountId, cancellationToken);
-
-	public override void Update(TransactionEntryEntity entity)
-	{
-		ArgumentNullException.ThrowIfNull(entity);
-		DalEntity? tracked = Entities.Local.FirstOrDefault(item => item.Id == entity.Id);
-		if (tracked is null)
-		{
-			base.Update(entity);
-			return;
-		}
-
-		Context.Entry(tracked).CurrentValues.SetValues(Mapper.Map<DalEntity, TransactionEntryEntity>(entity));
-	}
+		Entities.AsNoTracking().AnyAsync(entry => entry.AccountId == accountId, cancellationToken);
 }

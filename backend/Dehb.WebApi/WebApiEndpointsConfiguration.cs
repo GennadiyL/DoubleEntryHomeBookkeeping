@@ -13,6 +13,8 @@ public static class WebApiEndpointsConfiguration
 {
 	public static void AddEndpointsConfiguration(this WebApplication app)
 	{
+		app.MapGet("/accounts/get-by-id", AccountsEndpoint.GetByIdHandler);
+		app.MapGet("/accounts/get-default-name", AccountsEndpoint.GetDefaultNameHandler);
 		app.MapPost("/accounts/add", AccountsEndpoint.AddHandler);
 		app.MapPost("/accounts/update", AccountsEndpoint.UpdateHandler);
 		app.MapPost("/accounts/delete", AccountsEndpoint.DeleteHandler);

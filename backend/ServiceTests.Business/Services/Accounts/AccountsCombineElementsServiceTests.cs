@@ -41,6 +41,7 @@ public sealed class AccountsCombineElementsServiceTests
 		_repository = Substitute.For<IAccountRepository>();
 		_groupRepository = Substitute.For<IAccountGroupRepository>();
 		_unitOfWork = Substitute.For<IAppUnitOfWork>();
+		_unitOfWork.SystemConfigRepo.GetAllAsync().Returns(new List<SystemConfig> { new() { Id = Guid.NewGuid() } });
 		_transactionRepository = Substitute.For<ITransactionEntryRepository>();
 		_templateRepository = Substitute.For<ITemplateEntryRepository>();
 		_unitOfWork.TransactionEntryRepo.Returns(_transactionRepository);
@@ -78,6 +79,10 @@ public sealed class AccountsCombineElementsServiceTests
 		_templates = [];
 		_transactionRepository.GetByAccountIdAsync(_element.Id).Returns(_transactions);
 		_templateRepository.GetByAccountIdAsync(_element.Id).Returns(_templates);
+		_unitOfWork.TransactionRepo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+			.Returns(call => _transactions.FirstOrDefault(entry => entry.TransactionId == call.Arg<Guid>())?.Transaction);
+		_unitOfWork.TemplateRepo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+			.Returns(call => _templates.FirstOrDefault(entry => entry.TemplateId == call.Arg<Guid>())?.Template);
 	}
 
 	[TearDown]
@@ -185,9 +190,9 @@ public sealed class AccountsCombineElementsServiceTests
 	}
 
 	[Test]
-	public void CombineElements_SameAccount_Rejects()
+	public async Task CombineElements_SameAccount_ReturnsWithoutChanges()
 	{
-		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.CombineElements(_element.Id, _element.Id));
+		await _service.CombineElements(_element.Id, _element.Id);
 		Assert.That(_repository.ReceivedCalls(), Is.Empty);
 		AssertNoWrites();
 	}

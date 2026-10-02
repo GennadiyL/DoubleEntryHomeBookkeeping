@@ -6,6 +6,13 @@ namespace Dehb.WebApi.Endpoints;
 
 internal static class AccountsEndpoint
 {
+	public static async Task<IResult> GetByIdHandler(Guid id, IAccountService service, CancellationToken cancellationToken = default) =>
+		Results.Ok(await service.GetById(id, cancellationToken));
+
+	public static async Task<IResult> GetDefaultNameHandler(Guid? correspondentId, Guid? categoryId, Guid? projectId,
+		IAccountService service, CancellationToken cancellationToken = default) =>
+		Results.Ok(await service.GetDefaultName(correspondentId, categoryId, projectId, cancellationToken));
+
 	public static async Task<IResult> AddHandler(AccountParam param, IAccountService service, CancellationToken cancellationToken = default) =>
 		Results.Ok(await service.Add(param, cancellationToken));
 

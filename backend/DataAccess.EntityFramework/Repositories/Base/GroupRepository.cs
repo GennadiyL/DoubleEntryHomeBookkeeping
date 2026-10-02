@@ -18,19 +18,6 @@ internal abstract class GroupRepository<TGroup, TElement, TD> : Repository<AppDb
 
 	public Task<ICollection<TGroup>> GetByName(string name, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-	public override void Update(TGroup entity)
-	{
-		ArgumentNullException.ThrowIfNull(entity);
-		TD? tracked = Entities.Local.FirstOrDefault(item => item.Id == entity.Id);
-		if (tracked is null)
-		{
-			base.Update(entity);
-			return;
-		}
-
-		Context.Entry(tracked).CurrentValues.SetValues(Mapper.Map<TD, TGroup>(entity));
-	}
-
 	public async Task<TGroup?> GetWithChildrenByIdAsync(Guid id, CancellationToken cancellationToken = default)
 	{
 		TD? group = await Entities.AsNoTracking().Include("Children")
