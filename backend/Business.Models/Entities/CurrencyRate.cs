@@ -25,5 +25,5 @@ public class CurrencyRate : BaseEntity, ITrackedEntity
 	public DateOnly Date { get; set; }
 	public decimal Rate { get; set; }
 	public string? Description { get; set; }
-	public bool IsInitial => Date == MainConstants.InitialDate;
+	public bool IsInitial => Date == AppValues.InitialDate;
 }

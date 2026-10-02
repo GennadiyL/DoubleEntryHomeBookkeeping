@@ -13,6 +13,7 @@ namespace Business.Contracts.Services.Templates;
 public record ApplyTemplateEntryInfo
 {
 	public Guid AccountId { get; set; }
+	public string AccountName { get; set; } = string.Empty;
 	public decimal Amount { get; set; }
 	public decimal Rate { get; set; }
 }

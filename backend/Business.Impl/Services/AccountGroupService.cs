@@ -12,7 +12,6 @@ internal sealed class AccountGroupService : GroupService<AccountGroup, Account>,
 	public AccountGroupService(ISharedContext sharedContext, IAppUnitOfWork unitOfWork)
 		: base(sharedContext, unitOfWork, unitOfWork.AccountGroupRepo, unitOfWork.AccountRepo)
 	{
-		
 	}
 
 	public Task<AccountTreeInfo> GetAccountsTree(CancellationToken cancellationToken = default) => throw new NotImplementedException();

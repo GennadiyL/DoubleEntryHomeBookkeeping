@@ -22,4 +22,11 @@ internal sealed class TransactionEntryRepository : Repository<AppDbContext, Tran
 
 	public Task<bool> HasByAccountIdAsync(Guid accountId, CancellationToken cancellationToken = default) =>
 		Entities.AsNoTracking().AnyAsync(entry => entry.AccountId == accountId, cancellationToken);
+
+	public async Task<ICollection<TransactionEntryEntity>> GetByTransactionIdAsync(Guid transactionId, CancellationToken cancellationToken = default)
+	{
+		List<DalEntity> entries = await Entities.AsNoTracking()
+			.Where(entry => entry.TransactionId == transactionId).ToListAsync(cancellationToken);
+		return Mapper.Map<DalEntity, TransactionEntryEntity>(entries);
+	}
 }

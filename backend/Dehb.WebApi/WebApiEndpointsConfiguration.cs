@@ -13,6 +13,17 @@ public static class WebApiEndpointsConfiguration
 {
 	public static void AddEndpointsConfiguration(this WebApplication app)
 	{
+		app.MapGet("/templates/get-by-id", TemplatesEndpoint.GetByIdHandler);
+		app.MapGet("/templates/apply-template", TemplatesEndpoint.ApplyTemplateHandler);
+		app.MapGet("/templates/from-transaction", TemplatesEndpoint.FromTransactionHandler);
+		app.MapPost("/templates/add", TemplatesEndpoint.AddHandler);
+		app.MapPost("/templates/update", TemplatesEndpoint.UpdateHandler);
+		app.MapPost("/templates/delete", TemplatesEndpoint.DeleteHandler);
+		app.MapPost("/templates/set-order", TemplatesEndpoint.SetOrderHandler);
+		app.MapPost("/templates/set-favorite-status", TemplatesEndpoint.SetFavoriteStatusHandler);
+		app.MapPost("/templates/move-to-another-group", TemplatesEndpoint.MoveToAnotherGroupHandler);
+		app.MapPost("/templates/combine-elements", TemplatesEndpoint.CombineElementsHandler);
+
 		app.MapGet("/accounts/get-by-id", AccountsEndpoint.GetByIdHandler);
 		app.MapGet("/accounts/get-default-name", AccountsEndpoint.GetDefaultNameHandler);
 		app.MapPost("/accounts/add", AccountsEndpoint.AddHandler);

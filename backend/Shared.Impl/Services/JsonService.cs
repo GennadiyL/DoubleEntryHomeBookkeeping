@@ -15,28 +15,8 @@ namespace Shared.Impl.Services;
 /// </summary>
 internal class JsonService : IJsonService
 {
-	private const string JsonFormattingSection = "JsonFormatting";
-	private const string DecimalPlacesKey = "DecimalPlaces";
-	private const int DecimalPlacesDefaultValue = 3;
-	private const string RoundingModeKey = "RoundingMode";
-	private const MidpointRounding RoundingModeDefaultValue = MidpointRounding.AwayFromZero;
-	private const string RoundingModeDefaultValueString = nameof(MidpointRounding.AwayFromZero);
-
-	private readonly int _decimalPlaces;
-	private readonly MidpointRounding _roundingMode;
-
-	public JsonService(IConfiguration configuration)
-	{
-		IConfigurationSection configSection = configuration.GetSection(JsonFormattingSection);
-
-		_decimalPlaces = configSection.GetValue(DecimalPlacesKey, DecimalPlacesDefaultValue);
-
-		string roundingModeStr = configSection.GetValue<string>(RoundingModeKey, RoundingModeDefaultValueString);
-		if (!Enum.TryParse(roundingModeStr, true, out _roundingMode))
-		{
-			_roundingMode = RoundingModeDefaultValue;
-		}
-	}
+	private readonly int _decimalPlaces = 4;
+	private readonly MidpointRounding _roundingMode = MidpointRounding.ToEven;
 
 	public string Serialize<T>(T obj, JsonSerializerOptions? options = null) where T : class
 	{
@@ -60,7 +40,8 @@ internal class JsonService : IJsonService
 			PropertyNameCaseInsensitive = true,
 			ReferenceHandler = ReferenceHandler.IgnoreCycles,
 			PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-			DefaultIgnoreCondition = JsonIgnoreCondition.Never
+			DefaultIgnoreCondition = JsonIgnoreCondition.Never,
+			PreferredObjectCreationHandling = JsonObjectCreationHandling.Populate
 		};
 
 		options.Converters.Add(new JsonStringEnumConverter());

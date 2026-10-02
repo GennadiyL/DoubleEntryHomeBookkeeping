@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Business.Impl;
 using DataAccess.EntityFramework.SqLite;
 using Messaging.InProcessBus;
@@ -16,9 +18,22 @@ public static class WebApiDiConfiguration
 {
 	public static void AddWebApiDiConfiguration(this IServiceCollection services, IConfiguration configuration)
 	{
+		ConfigureJsonSerializerOptions(services);
 		services.AddSharedModule();
 		services.AddBusinessModule();
 		services.AddDataAccessSqLiteModule(configuration);
 		services.AddMessagingInProcessBusModule();
+	}
+
+	private static void ConfigureJsonSerializerOptions(IServiceCollection services)
+	{
+		services.ConfigureHttpJsonOptions(options =>
+		{
+			options.SerializerOptions.PropertyNameCaseInsensitive = true;
+			options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+			options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+			options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
+			options.SerializerOptions.PreferredObjectCreationHandling = JsonObjectCreationHandling.Populate;
+		});
 	}
 }

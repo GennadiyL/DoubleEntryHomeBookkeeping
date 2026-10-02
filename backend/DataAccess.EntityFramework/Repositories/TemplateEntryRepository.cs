@@ -19,4 +19,16 @@ internal sealed class TemplateEntryRepository : Repository<AppDbContext, Templat
 			.Where(entry => entry.AccountId == accountId).ToListAsync(cancellationToken);
 		return Mapper.Map<DalEntity, TemplateEntryEntity>(entries);
 	}
+
+	public async Task<ICollection<TemplateEntryEntity>> GetByTemplateIdAsync(Guid templateId, CancellationToken cancellationToken = default)
+	{
+		List<DalEntity> entries = await Entities.AsNoTracking()
+			.Where(entry => entry.TemplateId == templateId).ToListAsync(cancellationToken);
+		return Mapper.Map<DalEntity, TemplateEntryEntity>(entries);
+	}
+
+	public void RemoveRange(IEnumerable<TemplateEntryEntity> entries)
+	{
+		Entities.RemoveRange(entries.Select(entry => Mapper.Map<DalEntity, TemplateEntryEntity>(entry)));
+	}
 }
