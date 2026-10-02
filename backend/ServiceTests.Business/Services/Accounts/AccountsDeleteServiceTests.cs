@@ -34,7 +34,7 @@ public sealed class AccountsDeleteServiceTests
 		_repository = Substitute.For<IAccountRepository>();
 		_groupRepository = Substitute.For<IAccountGroupRepository>();
 		_unitOfWork = Substitute.For<IAppUnitOfWork>();
-		_unitOfWork.SystemConfigRepo.GetAllAsync().Returns(new List<SystemConfig> { new() { Id = Guid.NewGuid() } });
+		_unitOfWork.SystemConfigRepo.GetAllAsync().Returns(new List<SystemConfig> { new() { Id = Guid.NewGuid(), BaseCurrencyId = Guid.NewGuid() } });
 		_unitOfWork.AccountRepo.Returns(_repository);
 		_unitOfWork.AccountGroupRepo.Returns(_groupRepository);
 		IServiceCollection services = new ServiceCollection();

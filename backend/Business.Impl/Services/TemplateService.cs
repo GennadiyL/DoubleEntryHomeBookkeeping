@@ -1,3 +1,4 @@
+using Business.Impl.Operations.Config;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Templates;
 using Business.Contracts.Utils.Merging;
@@ -25,13 +26,15 @@ namespace Business.Impl.Services;
 /// </summary>
 internal sealed class TemplateService : ITemplateService
 {
+	private readonly IConfigOperation _configOperation;
 	private readonly ISharedContext _sharedContext;
 	private readonly IAppUnitOfWork _unitOfWork;
 	private readonly ITemplateRepository _repository;
 	private readonly ITemplateGroupRepository _groupRepository;
 
-	public TemplateService(ISharedContext sharedContext, IAppUnitOfWork unitOfWork)
+	public TemplateService(ISharedContext sharedContext, IAppUnitOfWork unitOfWork, IConfigOperation configOperation)
 	{
+		_configOperation = configOperation;
 		_sharedContext = sharedContext;
 		_unitOfWork = unitOfWork;
 		_repository = unitOfWork.TemplateRepo;
@@ -278,7 +281,7 @@ internal sealed class TemplateService : ITemplateService
 
 	private async Task<List<TemplateEntry>> PrepareEntries(TemplateParam param, CancellationToken cancellationToken = default)
 	{
-		SystemConfig config = await GetSystemConfig(cancellationToken);
+		SystemConfig config = await _configOperation.GetSystemConfig(cancellationToken);
 		List<TemplateEntry> entries = [];
 		foreach (TemplateEntryParam input in param.Entries)
 		{
@@ -313,22 +316,6 @@ internal sealed class TemplateService : ITemplateService
 			entry.TemplateId = template.Id;
 			entry.Template = template;
 		}
-	}
-
-	private async Task<SystemConfig> GetSystemConfig(CancellationToken cancellationToken = default)
-	{
-		ICollection<SystemConfig> configurations = await _unitOfWork.SystemConfigRepo.GetAllAsync(cancellationToken);
-		if (configurations.Count != 1)
-		{
-			throw new InvalidOperationException("The System configuration singleton is missing or invalid.");
-		}
-		SystemConfig config = configurations.Single();
-		if (config.IsDeleted() || config.AmountPrecision is < 0 or > 4 || config.RatePrecision is < 0 or > 4 ||
-			config.BaseCurrencyId == Guid.Empty)
-		{
-			throw new InvalidOperationException("The System configuration singleton is missing or invalid.");
-		}
-		return config;
 	}
 
 	private async Task<Account> GetAccount(Guid accountId, CancellationToken cancellationToken = default)
@@ -392,7 +379,7 @@ internal sealed class TemplateService : ITemplateService
 	public async Task<ApplyTemplateInfo> ApplyTemplate(Guid templateId, CancellationToken cancellationToken = default)
 	{
 		Template template = await GetActiveElement(templateId, cancellationToken);
-		SystemConfig config = await GetSystemConfig(cancellationToken);
+		SystemConfig config = await _configOperation.GetSystemConfig(cancellationToken);
 		DateTime now = _sharedContext.DateTimeService.UtcNow;
 		DateOnly date = DateOnly.FromDateTime(now.ToLocalTime());
 		ICollection<TemplateEntry> entries = await _unitOfWork.TemplateEntryRepo.GetByTemplateIdAsync(templateId, cancellationToken);

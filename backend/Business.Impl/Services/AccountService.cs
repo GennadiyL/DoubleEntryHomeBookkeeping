@@ -1,3 +1,4 @@
+using Business.Impl.Operations.Config;
 using Business.Contracts.Services.Accounts;
 using Business.Contracts.Services;
 using Business.Contracts.Utils.Merging;
@@ -16,13 +17,15 @@ namespace Business.Impl.Services;
 
 internal sealed class AccountService : IAccountService
 {
+	private readonly IConfigOperation _configOperation;
 	private readonly ISharedContext _sharedContext;
 	private readonly IAppUnitOfWork _unitOfWork;
 	private readonly IAccountRepository _repository;
 	private readonly IAccountGroupRepository _groupRepository;
 
-	public AccountService(ISharedContext sharedContext, IAppUnitOfWork unitOfWork)
+	public AccountService(ISharedContext sharedContext, IAppUnitOfWork unitOfWork, IConfigOperation configOperation)
 	{
+		_configOperation = configOperation;
 		_sharedContext = sharedContext;
 		_unitOfWork = unitOfWork;
 		_repository = unitOfWork.AccountRepo;
@@ -168,7 +171,7 @@ internal sealed class AccountService : IAccountService
 		}
 
 		AccountGroup group = await GetActiveGroup(element.GroupId, cancellationToken);
-		SystemConfig config = await GetSystemConfig(cancellationToken);
+		SystemConfig config = await _configOperation.GetSystemConfig(cancellationToken);
 		element.SetDeleted();
 		_repository.Update(element);
 		NormalizeAccounts(group.Elements.Where(item => item.Id != element.Id && !item.IsDeleted()));
@@ -283,7 +286,7 @@ internal sealed class AccountService : IAccountService
 		}
 
 		AccountGroup group = await GetActiveGroup(source.GroupId, cancellationToken);
-		SystemConfig config = await GetSystemConfig(cancellationToken);
+		SystemConfig config = await _configOperation.GetSystemConfig(cancellationToken);
 		ICollection<TransactionEntry> transactionEntries = await _unitOfWork.TransactionEntryRepo.GetByAccountIdAsync(fromElementId, cancellationToken);
 		ICollection<TemplateEntry> templateEntries = await _unitOfWork.TemplateEntryRepo.GetByAccountIdAsync(fromElementId, cancellationToken);
 		List<Transaction> transactions = [];
@@ -345,27 +348,6 @@ internal sealed class AccountService : IAccountService
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
 		return group;
-	}
-
-	private async Task<SystemConfig> GetSystemConfig(CancellationToken cancellationToken = default)
-	{
-		ICollection<SystemConfig> configurations = await _unitOfWork.SystemConfigRepo.GetAllAsync(cancellationToken);
-		if (configurations.Count != 1 || configurations.Single().IsDeleted())
-		{
-			throw new InvalidOperationException("The System configuration singleton is missing or invalid.");
-		}
-		return configurations.Single();
-	}
-
-	private void ClearBalancingAccount(SystemConfig config, Guid accountId)
-	{
-		if (config.BalancingAccountId != accountId)
-		{
-			return;
-		}
-		config.BalancingAccountId = null;
-		config.SetEditedContent();
-		_unitOfWork.SystemConfigRepo.Update(config);
 	}
 
 	private void NormalizeAccounts(IEnumerable<Account> accounts)
@@ -436,16 +418,7 @@ internal sealed class AccountService : IAccountService
 
 	public async Task<string> GetDefaultName(Guid? correspondentId, Guid? categoryId, Guid? projectId, CancellationToken cancellationToken = default)
 	{
-		ICollection<LocalConfig> configurations = await _unitOfWork.LocalConfigRepo.GetAllAsync(cancellationToken);
-		if (configurations.Count != 1)
-		{
-			throw new InvalidOperationException("The Local configuration singleton is missing or invalid.");
-		}
-		LocalConfig config = configurations.Single();
-		if (string.IsNullOrWhiteSpace(config.DefaultAccountNameSeparator))
-		{
-			throw new InvalidOperationException("The account name separator is invalid.");
-		}
+		LocalConfig config = await _configOperation.GetLocalConfig(cancellationToken);
 
 		Correspondent? correspondent = await GetOptionalReference(correspondentId, _unitOfWork.CorrespondentRepo, cancellationToken);
 		Category? category = await GetOptionalReference(categoryId, _unitOfWork.CategoryRepo, cancellationToken);
@@ -461,5 +434,16 @@ internal sealed class AccountService : IAccountService
 			_ => throw new InvalidOperationException("The account name order is invalid.")
 		};
 		return string.Join(config.DefaultAccountNameSeparator, names);
+	}
+
+	public void ClearBalancingAccount(SystemConfig config, Guid accountId)
+	{
+		if (config.BalancingAccountId != accountId)
+		{
+			return;
+		}
+		config.BalancingAccountId = null;
+		config.SetEditedContent();
+		_unitOfWork.SystemConfigRepo.Update(config);
 	}
 }

@@ -30,7 +30,6 @@ public static class WebApiDiConfiguration
 		services.ConfigureHttpJsonOptions(options =>
 		{
 			options.SerializerOptions.PropertyNameCaseInsensitive = true;
-			options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
 			options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 			options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
 			options.SerializerOptions.PreferredObjectCreationHandling = JsonObjectCreationHandling.Populate;

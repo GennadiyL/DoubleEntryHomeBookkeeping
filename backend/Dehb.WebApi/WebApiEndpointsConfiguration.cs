@@ -109,7 +109,7 @@ public static class WebApiEndpointsConfiguration
 		app.MapPost("/categories/move-to-another-group", CategoriesEndpoint.MoveToAnotherGroupHandler);
 		app.MapPost("/correspondents/move-to-another-group", CorrespondentsEndpoint.MoveToAnotherGroupHandler);
 		app.MapPost("/projects/move-to-another-group", ProjectsEndpoint.MoveToAnotherGroupHandler);
-		
+
 		app.MapPost("/account-groups/combine-groups", AccountGroupsEndpoint.CombineGroupsHandler);
 		app.MapPost("/category-groups/combine-groups", CategoryGroupsEndpoint.CombineGroupsHandler);
 		app.MapPost("/correspondent-groups/combine-groups", CorrespondentGroupsEndpoint.CombineGroupsHandler);

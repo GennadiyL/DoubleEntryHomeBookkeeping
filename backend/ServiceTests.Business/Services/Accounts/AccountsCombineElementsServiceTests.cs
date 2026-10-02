@@ -41,7 +41,7 @@ public sealed class AccountsCombineElementsServiceTests
 		_repository = Substitute.For<IAccountRepository>();
 		_groupRepository = Substitute.For<IAccountGroupRepository>();
 		_unitOfWork = Substitute.For<IAppUnitOfWork>();
-		_unitOfWork.SystemConfigRepo.GetAllAsync().Returns(new List<SystemConfig> { new() { Id = Guid.NewGuid() } });
+		_unitOfWork.SystemConfigRepo.GetAllAsync().Returns(new List<SystemConfig> { new() { Id = Guid.NewGuid(), BaseCurrencyId = Guid.NewGuid() } });
 		_transactionRepository = Substitute.For<ITransactionEntryRepository>();
 		_templateRepository = Substitute.For<ITemplateEntryRepository>();
 		_unitOfWork.TransactionEntryRepo.Returns(_transactionRepository);
