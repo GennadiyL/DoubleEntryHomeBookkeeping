@@ -138,13 +138,13 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 	}
 
 	[Test]
-	public async Task Update_NameComparison_IsOrdinalAndIgnoresGroupNames()
+	public void Update_NameComparison_RejectsCaseInsensitiveDuplicates()
 	{
 		_group.Name = _param.Name;
 		_group.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = _param.Name });
 		_group.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = _param.Name.ToUpperInvariant() });
-		await _service.Update(_element.Id, _param);
-		Assert.That(_element.Name, Is.EqualTo(_param.Name));
+		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, _param));
+		AssertNoWrites();
 	}
 
 	[TestCase(null)]
@@ -187,7 +187,7 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 	public void Update_MissingGroup_Rejects()
 	{
 		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns((TGroup?)null);
-		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Update(_element.Id, _param));
+		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, _param));
 		AssertNoWrites();
 	}
 
@@ -195,7 +195,7 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 	public void Update_DeletedGroup_Rejects()
 	{
 		_group.DeleteRevision = 0;
-		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Update(_element.Id, _param));
+		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, _param));
 		AssertNoWrites();
 	}
 

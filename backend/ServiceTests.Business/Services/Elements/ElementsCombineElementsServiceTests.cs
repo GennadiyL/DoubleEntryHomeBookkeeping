@@ -113,6 +113,7 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 	public async Task CombineElements_MatchingAccounts_ReplacesOnlyRelevantReferenceAndSoftDeletesSource()
 	{
 		Account active = AddAccount(false);
+		active.ModificationType = ModificationType.Order;
 		Account deleted = AddAccount(true);
 		await _service.CombineElements(_destination.Id, _element.Id);
 		foreach (Account account in _accounts)
@@ -152,6 +153,7 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 			_accountRepository.Received(1).Update(account);
 		}
 		Assert.That(active.IsDeleted(), Is.False);
+		Assert.That(active.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
 		Assert.That(deleted.IsDeleted(), Is.True);
 		Assert.That(_element.IsDeleted(), Is.True);
 		Assert.That(_element.DeleteRevision, Is.EqualTo(0));
@@ -219,9 +221,9 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 	}
 
 	[Test]
-	public void CombineElements_SameIdentifier_RejectsBeforeReading()
+	public async Task CombineElements_SameIdentifier_ReturnsBeforeReading()
 	{
-		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.CombineElements(_element.Id, _element.Id));
+		await _service.CombineElements(_element.Id, _element.Id);
 		Assert.That(_repository.ReceivedCalls(), Is.Empty);
 		AssertNoWrites();
 	}

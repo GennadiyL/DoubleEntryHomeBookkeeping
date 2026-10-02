@@ -98,14 +98,14 @@ public sealed class ElementsMoveToAnotherGroupServiceTests<TGroup, TElement, TSe
 		{
 			Assert.That(_element.GroupId, Is.EqualTo(_destination.Id));
 			Assert.That(_element.Group, Is.SameAs(_destination));
-			Assert.That(_element.Order, Is.EqualTo(8));
+			Assert.That(_element.Order, Is.EqualTo(1));
 			Assert.That(_element.ModificationType.HasFlag(ModificationType.Content), Is.True);
 			Assert.That(_element.EditRevision, Is.EqualTo(1));
 			Assert.That(_element.Name, Is.EqualTo("Existing"));
 			Assert.That(_element.Description, Is.EqualTo("Original description"));
 			Assert.That(_element.IsFavorite, Is.False);
 			Assert.That(_element.IsDeleted(), Is.False);
-			Assert.That(_destination.Elements.First().Order, Is.EqualTo(3));
+			Assert.That(_destination.Elements.First().Order, Is.Zero);
 			Assert.That(_destination.Elements.Last().Order, Is.EqualTo(7));
 		});
 		_repository.Received(1).Update(_element);
@@ -147,13 +147,13 @@ public sealed class ElementsMoveToAnotherGroupServiceTests<TGroup, TElement, TSe
 	}
 
 	[Test]
-	public async Task MoveToAnotherGroup_DifferentCaseAndGroupNames_DoNotConflict()
+	public void MoveToAnotherGroup_DifferentCase_RejectsDuplicate()
 	{
 		_destination.Name = _element.Name;
 		_destination.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = _element.Name });
 		_destination.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = _element.Name.ToUpperInvariant() });
-		await _service.MoveToAnotherGroup(_element.Id, _destination.Id);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.MoveToAnotherGroup(_element.Id, _destination.Id));
+		AssertUnchanged();
 	}
 
 	[TestCase(true)]
@@ -195,16 +195,17 @@ public sealed class ElementsMoveToAnotherGroupServiceTests<TGroup, TElement, TSe
 		{
 			_groupRepository.GetWithContentsByIdAsync(_destination.Id).Returns((TGroup?)null);
 		}
-		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.MoveToAnotherGroup(_element.Id, _destination.Id));
+		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.MoveToAnotherGroup(_element.Id, _destination.Id));
 		AssertUnchanged();
 	}
 
 	[Test]
-	public void MoveToAnotherGroup_OrderOverflow_Rejects()
+	public async Task MoveToAnotherGroup_LargeDestinationOrder_NormalizesBeforeAppend()
 	{
 		_destination.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = "Last", Order = int.MaxValue });
-		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.MoveToAnotherGroup(_element.Id, _destination.Id));
-		AssertUnchanged();
+		await _service.MoveToAnotherGroup(_element.Id, _destination.Id);
+		Assert.That(_destination.Elements.Single().Order, Is.Zero);
+		Assert.That(_element.Order, Is.EqualTo(1));
 	}
 
 	[TestCase(false)]

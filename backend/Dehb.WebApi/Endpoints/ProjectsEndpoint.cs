@@ -6,6 +6,9 @@ namespace Dehb.WebApi.Endpoints;
 
 internal static class ProjectsEndpoint
 {
+	public static async Task<IResult> GetByIdHandler(Guid id, IProjectService service, CancellationToken cancellationToken = default) =>
+		Results.Ok(await service.GetById(id, cancellationToken));
+
 	public static async Task<IResult> MoveToAnotherGroupHandler(MoveToAnotherGroupParam param, IProjectService service, CancellationToken cancellationToken = default)
 	{
 		await service.MoveToAnotherGroup(param.EntityId, param.ToGroupId, cancellationToken);

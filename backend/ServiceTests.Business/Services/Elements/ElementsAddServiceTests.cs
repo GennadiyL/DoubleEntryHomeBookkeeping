@@ -4,6 +4,7 @@ using Business.Contracts.Services.Trees;
 using Business.Contracts.Utils.Merging;
 using Business.Impl;
 using Business.Models.Entities;
+using Business.Models.Enums;
 using Business.Models.Entities.Base;
 using Business.Models.Exceptions;
 using DataAccess.Contracts;
@@ -94,7 +95,7 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 			element.Id == id && element.GroupId == _group.Id && ReferenceEquals(element.Group, _group) &&
 			element.Name == _param.Name && element.Description == _param.Description &&
 			element.IsFavorite && !element.IsDeleted() && element.Order == 0 &&
-			element.EditRevision == null && element.DeleteRevision == null));
+			element.EditRevision == null && element.DeleteRevision == null && element.ModificationType == ModificationType.None));
 		await _groupRepository.Received(1).GetWithContentsByIdAsync(_group.Id);
 		await _unitOfWork.Received(1).SaveChangesAsync();
 		_groupRepository.DidNotReceive().Update(Arg.Any<TGroup>());
@@ -111,13 +112,13 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 	}
 
 	[Test]
-	public async Task Add_ExistingElements_AppendsAfterMaximumIncludingDeleted()
+	public async Task Add_ExistingElements_AppendsAfterLiveMaximum()
 	{
 		TElement first = new() { Id = Guid.NewGuid(), Name = "First", Order = 2 };
 		TElement deleted = new() { Id = Guid.NewGuid(), Name = "Deleted", Order = 9, DeleteRevision = 0 };
 		_group.Elements = [first, deleted];
 		await _service.Add(_param);
-		_repository.Received(1).Add(Arg.Is<TElement>(element => element.Order == 10));
+		_repository.Received(1).Add(Arg.Is<TElement>(element => element.Order == 3));
 		Assert.That(first.Order, Is.EqualTo(2));
 		Assert.That(deleted.Order, Is.EqualTo(9));
 		_repository.DidNotReceive().Update(Arg.Any<TElement>());
@@ -142,11 +143,11 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 	}
 
 	[Test]
-	public async Task Add_DifferentCase_UsesExactNameComparison()
+	public void Add_DifferentCase_RejectsDuplicate()
 	{
 		_group.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = _param.Name.ToUpperInvariant() });
-		await _service.Add(_param);
-		_repository.Received(1).Add(Arg.Is<TElement>(element => element.Name == _param.Name));
+		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Add(_param));
+		AssertNoWrites();
 	}
 
 	[Test]
@@ -191,7 +192,7 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 	public void Add_MissingGroup_RejectsWithoutSaving()
 	{
 		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns((TGroup?)null);
-		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Add(_param));
+		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}
 
@@ -199,7 +200,7 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 	public void Add_DeletedGroup_RejectsWithoutSaving()
 	{
 		_group.DeleteRevision = 0;
-		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Add(_param));
+		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}
 

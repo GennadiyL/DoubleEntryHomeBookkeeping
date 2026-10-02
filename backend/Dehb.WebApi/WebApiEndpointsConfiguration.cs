@@ -44,6 +44,10 @@ public static class WebApiEndpointsConfiguration
 		app.MapPost("/correspondent-groups/add", CorrespondentGroupsEndpoint.AddHandler);
 		app.MapPost("/project-groups/add", ProjectGroupsEndpoint.AddHandler);
 		app.MapPost("/template-groups/add", TemplateGroupsEndpoint.AddHandler);
+		app.MapGet("/categories/get-by-id", CategoriesEndpoint.GetByIdHandler);
+		app.MapGet("/correspondents/get-by-id", CorrespondentsEndpoint.GetByIdHandler);
+		app.MapGet("/projects/get-by-id", ProjectsEndpoint.GetByIdHandler);
+
 		app.MapPost("/categories/add", CategoriesEndpoint.AddHandler);
 		app.MapPost("/correspondents/add", CorrespondentsEndpoint.AddHandler);
 		app.MapPost("/projects/add", ProjectsEndpoint.AddHandler);

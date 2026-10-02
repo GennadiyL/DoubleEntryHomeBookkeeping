@@ -6,6 +6,9 @@ namespace Dehb.WebApi.Endpoints;
 
 internal static class CorrespondentsEndpoint
 {
+	public static async Task<IResult> GetByIdHandler(Guid id, ICorrespondentService service, CancellationToken cancellationToken = default) =>
+		Results.Ok(await service.GetById(id, cancellationToken));
+
 	public static async Task<IResult> MoveToAnotherGroupHandler(MoveToAnotherGroupParam param, ICorrespondentService service, CancellationToken cancellationToken = default)
 	{
 		await service.MoveToAnotherGroup(param.EntityId, param.ToGroupId, cancellationToken);

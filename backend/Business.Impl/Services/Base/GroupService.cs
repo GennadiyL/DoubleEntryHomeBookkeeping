@@ -193,7 +193,6 @@ public abstract class GroupService<TGroup, TElement> :
 			.ThenBy(child => child.Id.ToString("D"), StringComparer.Ordinal)];
 
 		group.SetDeleted();
-		group.SetEditedContent();
 		_repository.Update(group);
 
 		for (int order = 0; order < survivors.Count; order++)

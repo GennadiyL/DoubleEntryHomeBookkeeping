@@ -101,7 +101,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 			group.EditRevision == originalRevision && group.ParentId == _parent.Id &&
 			ReferenceEquals(group.Parent, _parent) && group.Order == 7 &&
 			group.Name == "Old name" && group.Description == "Old description" && group.IsFavorite &&
-			group.ModificationType == ModificationType.Content));
+			group.ModificationType == ModificationType.None));
 		await _repository.Received(1).GetWithContentsByIdAsync(id);
 		await _unitOfWork.Received(1).SaveChangesAsync();
 		_repository.DidNotReceive().Add(Arg.Any<TGroup>());
@@ -200,12 +200,12 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		_repository.Received(1).Update(_group);
 		Assert.That(_group.DeleteRevision, Is.EqualTo(0));
 		Assert.That(_group.EditRevision, Is.Null);
-		Assert.That(_group.ModificationType, Is.EqualTo(ModificationType.Content));
+		Assert.That(_group.ModificationType, Is.EqualTo(ModificationType.None));
 		await _unitOfWork.Received(1).SaveChangesAsync();
 	}
 
 	[Test]
-	public async Task Delete_AddsContentAndPreservesRevisionAndFlags(
+	public async Task Delete_PreservesRevisionAndFlags(
 		[Values(null, 0L, 7L)] long? revision,
 		[Values(ModificationType.None, ModificationType.Content, ModificationType.Order,
 			ModificationType.Content | ModificationType.Order)] ModificationType flags)
@@ -215,7 +215,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		await _service.Delete(_group.Id);
 		_repository.Received(1).Update(Arg.Is<TGroup>(group =>
 			group.Id == _group.Id && group.EditRevision == revision && group.DeleteRevision == 0 &&
-			group.ModificationType == (flags | ModificationType.Content)));
+			group.ModificationType == flags));
 		await _unitOfWork.Received(1).SaveChangesAsync();
 	}
 

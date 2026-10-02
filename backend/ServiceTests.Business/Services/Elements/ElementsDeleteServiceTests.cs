@@ -87,14 +87,19 @@ public sealed class ElementsDeleteServiceTests<TGroup, TElement, TService, TRepo
 		_provider?.Dispose();
 	}
 
-	[Test]
-	public async Task Delete_ActiveElement_SoftDeletesAndPreservesFields()
+	[TestCase(ModificationType.None)]
+	[TestCase(ModificationType.Content)]
+	[TestCase(ModificationType.Order)]
+	[TestCase(ModificationType.Content | ModificationType.Order)]
+	public async Task Delete_ActiveElement_SoftDeletesAndPreservesFields(ModificationType flags)
 	{
+		_element.ModificationType = flags;
 		await _service.Delete(_element.Id);
 		Assert.Multiple(() =>
 		{
 			Assert.That(_element.IsDeleted(), Is.True);
 			Assert.That(_element.DeleteRevision, Is.EqualTo(0));
+			Assert.That(_element.ModificationType, Is.EqualTo(flags));
 			Assert.That(_element.EditRevision, Is.EqualTo(1));
 			Assert.That(_element.Name, Is.EqualTo("Existing"));
 			Assert.That(_element.Description, Is.EqualTo("Original description"));
@@ -104,7 +109,7 @@ public sealed class ElementsDeleteServiceTests<TGroup, TElement, TService, TRepo
 		});
 		_repository.Received(1).Update(_element);
 		await _unitOfWork.Received(1).SaveChangesAsync();
-		Assert.That(_groupRepository.ReceivedCalls(), Is.Empty);
+		_groupRepository.DidNotReceive().Update(Arg.Any<TGroup>());
 	}
 
 	[Test]
