@@ -9,5 +9,5 @@ public interface IAccountRepository : IElementRepository<AccountGroup, Account>
 	public Task<ICollection<Account>> GetByCategoryIdAsync(Guid categoryId, CancellationToken cancellationToken = default);
 	public Task<ICollection<Account>> GetByCorrespondentIdAsync(Guid correspondentId, CancellationToken cancellationToken = default);
 	public Task<ICollection<Account>> GetByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default);
+	public Task<bool> HasByCurrencyIdAsync(Guid currencyId, CancellationToken cancellationToken = default);
 }
-

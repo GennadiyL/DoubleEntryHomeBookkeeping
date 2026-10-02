@@ -7,6 +7,15 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <Compile Remove="Operations\**" />
+	  <Compile Remove="Services\**" />
+	  <EmbeddedResource Remove="Operations\**" />
+	  <EmbeddedResource Remove="Services\**" />
+	  <None Remove="Operations\**" />
+	  <None Remove="Services\**" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
 	</ItemGroup>
 
@@ -14,11 +23,6 @@
 		<ProjectReference Include="..\Reporting.Contracts\Reporting.Contracts.csproj" />
 		<ProjectReference Include="..\DataAccess.Contracts\DataAccess.Contracts.csproj" />
 		<ProjectReference Include="..\Shared.Contracts\Shared.Contracts.csproj" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="Operations\" />
-	  <Folder Include="Services\" />
 	</ItemGroup>
 
 </Project>

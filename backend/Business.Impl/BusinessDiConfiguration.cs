@@ -1,5 +1,6 @@
-using Business.Impl.Operations.Config;
 using Business.Contracts.Services;
+using Business.Impl.Operations.Config;
+using Business.Impl.Operations.Currency;
 using Business.Impl.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,7 +18,9 @@ public static class BusinessDiConfiguration
 	public static void AddBusinessModule(this IServiceCollection services)
 	{
 		services.AddScoped<IConfigOperation, ConfigOperation>();
+		services.AddScoped<ICurrencyOperation, CurrencyOperation>();
 
+		services.AddScoped<ICurrencyService, CurrencyService>();
 		services.AddScoped<IAccountService, AccountService>();
 		services.AddScoped<ITemplateService, TemplateService>();
 		services.AddScoped<IAccountGroupService, AccountGroupService>();

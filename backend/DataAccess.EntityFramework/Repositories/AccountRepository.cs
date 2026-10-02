@@ -34,4 +34,7 @@ internal sealed class AccountRepository : ElementRepository<AccountGroupEntity, 
 			.Where(account => account.ProjectId == projectId).ToListAsync(cancellationToken);
 		return Mapper.Map<Account, AccountEntity>(accounts);
 	}
+
+	public Task<bool> HasByCurrencyIdAsync(Guid currencyId, CancellationToken cancellationToken = default) =>
+		Entities.AsNoTracking().AnyAsync(account => account.CurrencyId == currencyId, cancellationToken);
 }

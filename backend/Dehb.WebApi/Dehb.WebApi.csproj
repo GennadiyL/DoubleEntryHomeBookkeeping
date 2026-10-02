@@ -11,11 +11,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Endpoints\" />
-    <Folder Include="Params\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Business.Impl\Business.Impl.csproj" />
     <ProjectReference Include="..\DataAccess.EntityFramework.SqLite\DataAccess.EntityFramework.SqLite.csproj" />
     <ProjectReference Include="..\Messaging.InProcessBus\Messaging.InProcessBus.csproj" />

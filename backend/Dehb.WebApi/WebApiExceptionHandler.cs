@@ -30,6 +30,8 @@ internal class WebApiExceptionHandler : IExceptionHandler
 			GroupNotFoundException => StatusCodes.Status404NotFound,
 			ElementNotFoundException => StatusCodes.Status404NotFound,
 			CurrencyNotFoundException => StatusCodes.Status404NotFound,
+			InvalidCurrencyException => StatusCodes.Status400BadRequest,
+			InvalidCurrencyCodeException => StatusCodes.Status400BadRequest,
 			InvalidGroupException => StatusCodes.Status400BadRequest,
 			InvalidElementException => StatusCodes.Status400BadRequest,
 

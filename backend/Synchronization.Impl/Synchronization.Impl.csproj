@@ -16,9 +16,4 @@
 		<ProjectReference Include="..\Shared.Contracts\Shared.Contracts.csproj" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <Folder Include="Operations\" />
-	  <Folder Include="Services\" />
-	</ItemGroup>
-
 </Project>

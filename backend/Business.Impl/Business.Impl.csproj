@@ -6,7 +6,11 @@
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
 
-	<ItemGroup>
+    <ItemGroup>
+        <InternalsVisibleTo Include="UnitTests.Business" />
+    </ItemGroup>
+
+    <ItemGroup>
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
 	</ItemGroup>
 
@@ -16,12 +20,4 @@
 		<ProjectReference Include="..\Shared.Contracts\Shared.Contracts.csproj" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <Folder Include="Operations\" />
-	  <Folder Include="Services\" />
-	</ItemGroup>
-
-    <ItemGroup>
-        <InternalsVisibleTo Include="UnitTests.Business" />
-    </ItemGroup>
 </Project>

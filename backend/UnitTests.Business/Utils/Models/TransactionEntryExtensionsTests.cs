@@ -1,6 +1,5 @@
 using Business.Contracts.Utils.Models;
 using Business.Models.Entities;
-using Business.Models.Entities.Config;
 using NUnit.Framework;
 
 namespace UnitTests.Business.Utils.Models;
@@ -16,7 +15,7 @@ public sealed class TransactionEntryExtensionsTests
 	public void GetBaseAmount_UsesConfiguredPrecision(int precision, decimal expected)
 	{
 		TransactionEntry entry = CreateEntry(1.1111m, 2);
-		Assert.That(entry.GetBaseAmount(new SystemConfig { AmountPrecision = precision }), Is.EqualTo(expected));
+		Assert.That(entry.GetBaseAmount(precision), Is.EqualTo(expected));
 		Assert.That(entry.Amount, Is.EqualTo(1.1111m));
 		Assert.That(entry.Rate, Is.EqualTo(2));
 	}
@@ -27,15 +26,15 @@ public sealed class TransactionEntryExtensionsTests
 	[TestCase(-1.015, -1.02)]
 	public void GetBaseAmount_Midpoint_RoundsToEven(decimal amount, decimal expected)
 	{
-		Assert.That(CreateEntry(amount, 1).GetBaseAmount(new SystemConfig()), Is.EqualTo(expected));
+		Assert.That(CreateEntry(amount, 1).GetBaseAmount(2), Is.EqualTo(expected));
 	}
 
 	[Test]
 	public void GetBaseAmount_RoundsEachEntryBeforeSumming()
 	{
-		SystemConfig config = new();
-		decimal total = CreateEntry(1.005m, 1).GetBaseAmount(config) +
-			CreateEntry(1.005m, 1).GetBaseAmount(config);
+		int? amountPrecision = 2;
+		decimal total = CreateEntry(1.005m, 1).GetBaseAmount(amountPrecision) +
+			CreateEntry(1.005m, 1).GetBaseAmount(amountPrecision);
 		Assert.That(total, Is.EqualTo(2m));
 	}
 
@@ -44,14 +43,14 @@ public sealed class TransactionEntryExtensionsTests
 	public void GetBaseAmount_InvalidPrecision_Rejects(int precision)
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() =>
-			CreateEntry(1, 1).GetBaseAmount(new SystemConfig { AmountPrecision = precision }));
+			CreateEntry(1, 1).GetBaseAmount(precision));
 	}
 
 	[Test]
 	public void GetBaseAmount_Overflow_ThrowsWithoutMutatingEntry()
 	{
 		TransactionEntry entry = CreateEntry(decimal.MaxValue, 2);
-		Assert.Throws<OverflowException>(() => entry.GetBaseAmount(new SystemConfig()));
+		Assert.Throws<OverflowException>(() => entry.GetBaseAmount(2));
 		Assert.That(entry.Amount, Is.EqualTo(decimal.MaxValue));
 		Assert.That(entry.Rate, Is.EqualTo(2));
 	}
@@ -60,13 +59,13 @@ public sealed class TransactionEntryExtensionsTests
 	public void GetBaseAmount_NullEntry_Rejects()
 	{
 		Assert.Throws<ArgumentNullException>(() =>
-			TransactionEntryExtensions.GetBaseAmount(null!, new SystemConfig()));
+			TransactionEntryExtensions.GetBaseAmount(null!, 2));
 	}
 
 	[Test]
-	public void GetBaseAmount_NullConfiguration_Rejects()
+	public void GetBaseAmount_NullPrecision_Rejects()
 	{
-		Assert.Throws<ArgumentNullException>(() => CreateEntry(1, 1).GetBaseAmount(null!));
+		Assert.Throws<ArgumentNullException>(() => CreateEntry(1, 1).GetBaseAmount(null));
 	}
 
 	private static TransactionEntry CreateEntry(decimal amount, decimal rate) =>

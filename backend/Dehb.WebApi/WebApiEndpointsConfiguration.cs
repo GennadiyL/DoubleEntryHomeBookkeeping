@@ -13,6 +13,15 @@ public static class WebApiEndpointsConfiguration
 {
 	public static void AddEndpointsConfiguration(this WebApplication app)
 	{
+		app.MapGet("/currencies/get-by-id", CurrenciesEndpoint.GetByIdHandler);
+		app.MapGet("/currencies/get-all-currencies", CurrenciesEndpoint.GetAllCurrenciesHandler);
+		app.MapGet("/currencies/get-available-currencies", CurrenciesEndpoint.GetAvailableCurrenciesHandler);
+		app.MapPost("/currencies/add", CurrenciesEndpoint.AddHandler);
+		app.MapPost("/currencies/update", CurrenciesEndpoint.UpdateHandler);
+		app.MapPost("/currencies/delete", CurrenciesEndpoint.DeleteHandler);
+		app.MapPost("/currencies/set-order", CurrenciesEndpoint.SetOrderHandler);
+		app.MapPost("/currencies/set-favorite-status", CurrenciesEndpoint.SetFavoriteStatusHandler);
+
 		app.MapGet("/templates/get-by-id", TemplatesEndpoint.GetByIdHandler);
 		app.MapGet("/templates/apply-template", TemplatesEndpoint.ApplyTemplateHandler);
 		app.MapGet("/templates/from-transaction", TemplatesEndpoint.FromTransactionHandler);

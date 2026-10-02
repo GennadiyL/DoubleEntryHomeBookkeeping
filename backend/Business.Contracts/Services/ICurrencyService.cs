@@ -34,7 +34,7 @@ public interface ICurrencyService :
 	/// <summary>
 	/// Soft-deletes an unused non-base currency for currency maintenance.
 	/// Unknown or deleted targets throw not-found; base or referenced currencies cannot be deleted.
-	/// Preserves EditRevision, sets DeleteRevision to zero and adds Content.
+	/// Preserves EditRevision and modification flags and sets DeleteRevision to zero.
 	/// Normalizes surviving currency positions and adds Order to shifted currencies.
 	/// The complete action commits atomically; physical cleanup follows delta preparation rules.
 	/// </summary>

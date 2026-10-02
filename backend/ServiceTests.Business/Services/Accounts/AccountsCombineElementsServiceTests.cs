@@ -122,7 +122,7 @@ public sealed class AccountsCombineElementsServiceTests
 			Assert.That(entry.Account, Is.SameAs(_destination));
 			Assert.That(entry.Amount, Is.EqualTo(-12.5m));
 			Assert.That(entry.Rate, Is.EqualTo(1.2m));
-			Assert.That(entry.GetBaseAmount(new SystemConfig()), Is.EqualTo(-15m));
+			Assert.That(entry.GetBaseAmount(2), Is.EqualTo(-15m));
 			Assert.That(entry.TransactionId, Is.EqualTo(transaction.Id));
 			Assert.That(entry.Transaction, Is.SameAs(transaction));
 			Assert.That(templateEntry.AccountId, Is.EqualTo(_destination.Id));
