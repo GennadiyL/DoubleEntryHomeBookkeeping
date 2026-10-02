@@ -11,7 +11,7 @@ namespace Business.Models.Entities.Config;
 /// BaseCurrencyId and both precision settings are immutable after initialization.
 /// AmountPrecision and RatePrecision range from zero to four, defaulting to two and four.
 /// BalancingAccountId optionally selects a base-currency account for assisted balancing.
-/// Deletion of that account clears the selection; the setting alone does not protect deletion.
+/// Account deletion preserves the stored selection; reads expose null when the account is unavailable.
 /// Entity references are ID-only and are resolved and validated by services.
 /// Mutable setting changes use the shared content-tracking and atomic persistence rules.
 /// </summary>

@@ -171,11 +171,9 @@ internal sealed class AccountService : IAccountService
 		}
 
 		AccountGroup group = await GetActiveGroup(element.GroupId, cancellationToken);
-		SystemConfig config = await _configOperation.GetSystemConfig(cancellationToken);
 		element.SetDeleted();
 		_repository.Update(element);
 		NormalizeAccounts(group.Elements.Where(item => item.Id != element.Id && !item.IsDeleted()));
-		ClearBalancingAccount(config, element.Id);
 		await _unitOfWork.SaveChangesAsync(cancellationToken);
 	}
 
@@ -286,7 +284,6 @@ internal sealed class AccountService : IAccountService
 		}
 
 		AccountGroup group = await GetActiveGroup(source.GroupId, cancellationToken);
-		SystemConfig config = await _configOperation.GetSystemConfig(cancellationToken);
 		ICollection<TransactionEntry> transactionEntries = await _unitOfWork.TransactionEntryRepo.GetByAccountIdAsync(fromElementId, cancellationToken);
 		ICollection<TemplateEntry> templateEntries = await _unitOfWork.TemplateEntryRepo.GetByAccountIdAsync(fromElementId, cancellationToken);
 		List<Transaction> transactions = [];
@@ -336,7 +333,6 @@ internal sealed class AccountService : IAccountService
 		source.SetDeleted();
 		_repository.Update(source);
 		NormalizeAccounts(group.Elements.Where(item => item.Id != source.Id && !item.IsDeleted()));
-		ClearBalancingAccount(config, source.Id);
 		await _unitOfWork.SaveChangesAsync(cancellationToken);
 	}
 
@@ -436,14 +432,4 @@ internal sealed class AccountService : IAccountService
 		return string.Join(config.DefaultAccountNameSeparator, names);
 	}
 
-	public void ClearBalancingAccount(SystemConfig config, Guid accountId)
-	{
-		if (config.BalancingAccountId != accountId)
-		{
-			return;
-		}
-		config.BalancingAccountId = null;
-		config.SetEditedContent();
-		_unitOfWork.SystemConfigRepo.Update(config);
-	}
 }

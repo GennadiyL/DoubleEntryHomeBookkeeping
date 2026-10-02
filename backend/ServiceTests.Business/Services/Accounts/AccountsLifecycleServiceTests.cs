@@ -22,7 +22,7 @@ namespace ServiceTests.Business.Services.Accounts;
 /// Verifies account lifecycle and editor reads through the service interface.
 /// Uses production dependency injection and substituted repositories.
 /// Covers creation tracking and permanently selected currencies.
-/// Checks reference-protected deletion and balancing-account cleanup.
+/// Checks reference-protected deletion and preservation of balancing-account settings.
 /// Verifies zero-based movement and aggregate merge synchronization flags.
 /// Exercises every supported default-name component order and missing slots.
 /// Checks detached read projections, failures and cancellation forwarding.
@@ -168,7 +168,7 @@ public sealed class AccountsLifecycleServiceTests
 	}
 
 	[Test]
-	public async Task Delete_PreservesFlags_NormalizesSurvivorsAndClearsBalancingSelection(
+	public async Task Delete_PreservesFlags_NormalizesSurvivorsAndPreservesBalancingSelection(
 		[Values(null, 0L, 7L)] long? revision,
 		[Values(ModificationType.None, ModificationType.Content, ModificationType.Order,
 			ModificationType.Content | ModificationType.Order)] ModificationType flags)
@@ -191,10 +191,10 @@ public sealed class AccountsLifecycleServiceTests
 		Assert.That(sibling.EditRevision, Is.EqualTo(4));
 		Assert.That(sibling.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
 		Assert.That(deleted.Order, Is.EqualTo(9));
-		Assert.That(_system.BalancingAccountId, Is.Null);
+		Assert.That(_system.BalancingAccountId, Is.EqualTo(_account.Id));
+		_unitOfWork.SystemConfigRepo.DidNotReceiveWithAnyArgs().Update(default!);
 		Assert.That(_system.EditRevision, Is.EqualTo(7));
-		Assert.That(_system.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
-		_unitOfWork.SystemConfigRepo.Received(1).Update(_system);
+		Assert.That(_system.ModificationType, Is.EqualTo(ModificationType.Order));
 		_repository.DidNotReceive().Update(deleted);
 		await _unitOfWork.Received(1).SaveChangesAsync();
 	}
@@ -213,14 +213,16 @@ public sealed class AccountsLifecycleServiceTests
 	}
 
 	[Test]
-	public void Delete_MissingConfiguration_FailsBeforeMutating()
+	public async Task Delete_DoesNotRequireOrReadConfiguration()
 	{
 		_unitOfWork.SystemConfigRepo.GetAllAsync().Returns(new List<SystemConfig>());
 
-		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Delete(_account.Id));
+		await _service.Delete(_account.Id);
 
-		Assert.That(_account.DeleteRevision, Is.Null);
-		AssertNoWrites();
+		Assert.That(_account.DeleteRevision, Is.Zero);
+		await _unitOfWork.SystemConfigRepo.DidNotReceiveWithAnyArgs().GetAllAsync(default);
+		_unitOfWork.SystemConfigRepo.DidNotReceiveWithAnyArgs().Update(default!);
+		await _unitOfWork.Received(1).SaveChangesAsync();
 	}
 
 	[Test]
@@ -261,7 +263,7 @@ public sealed class AccountsLifecycleServiceTests
 	}
 
 	[Test]
-	public async Task Combine_ReplacesRepeatedEntries_TracksEachParentOnceAndClearsSelection()
+	public async Task Combine_ReplacesRepeatedEntries_TracksEachParentOnceAndPreservesSelection()
 	{
 		Account destination = new() { Id = Guid.NewGuid(), CurrencyId = _currency.Id, GroupId = _group.Id,
 			Order = 4, EditRevision = 6, ModificationType = ModificationType.Content };
@@ -304,7 +306,8 @@ public sealed class AccountsLifecycleServiceTests
 		Assert.That(_account.DeleteRevision, Is.Zero);
 		Assert.That(destination.Order, Is.Zero);
 		Assert.That(destination.EditRevision, Is.EqualTo(6));
-		Assert.That(_system.BalancingAccountId, Is.Null);
+		Assert.That(_system.BalancingAccountId, Is.EqualTo(_account.Id));
+		_unitOfWork.SystemConfigRepo.DidNotReceiveWithAnyArgs().Update(default!);
 		_unitOfWork.TransactionRepo.Received(1).Update(parent);
 		_unitOfWork.TemplateRepo.Received(1).Update(template);
 		_unitOfWork.TransactionEntryRepo.DidNotReceive().Update(alreadyDestination);

@@ -27,7 +27,7 @@ public interface IElementService<TGroup, TElement> : ICatalogService<TElement>
 	/// Classification merges replace only the matching account classification and preserve account names.
 	/// Account replacement requires the same currency and preserves entry amounts, rates and positions.
 	/// Changed accounts or parent aggregates receive Content; the source is soft-deleted.
-	/// Deleting the selected balancing account clears its System setting rather than selecting the destination.
+	/// Deleting the selected balancing account preserves its System setting; configuration reads report no available selection.
 	/// All changes commit once or roll back together.
 	/// Template merging is unsupported and throws NotSupportedException without changing data.
 	/// </summary>

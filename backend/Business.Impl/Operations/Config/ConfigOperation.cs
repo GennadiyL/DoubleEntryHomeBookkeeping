@@ -1,5 +1,6 @@
 using Business.Contracts.Services.Configs;
 using Business.Contracts.Utils.Merging;
+using Business.Models.Entities;
 using Business.Models.Entities.Config;
 using Business.Models.Enums;
 using DataAccess.Contracts;
@@ -12,8 +13,8 @@ namespace Business.Impl.Operations.Config;
 /// Provides System or Local configuration for internal business consumers.
 /// Rejects missing, duplicate or invalid singleton data without creating defaults.
 /// Each read obtains current values without retaining a cached snapshot.
-/// Balancing-account cleanup preserves synchronization flags and row identity.
-/// Cleanup joins the caller's unit of work and never commits independently.
+/// Missing or deleted balancing accounts are exposed as an absent selection.
+/// Returned System values are copied without changing the stored configuration.
 /// User-facing configuration editing remains owned by Setup.
 /// </summary>
 internal sealed class ConfigOperation : IConfigOperation
@@ -55,7 +56,27 @@ internal sealed class ConfigOperation : IConfigOperation
 		{
 			throw new InvalidOperationException("The System configuration singleton is missing or invalid.");
 		}
-		return config;
+		Guid? balancingAccountId = config.BalancingAccountId;
+		if (balancingAccountId.HasValue)
+		{
+			Account? account = await _unitOfWork.AccountRepo.GetByIdAsync(balancingAccountId.Value, cancellationToken);
+			if (account is null || account.IsDeleted())
+			{
+				balancingAccountId = null;
+			}
+		}
+		return new SystemConfig
+		{
+			Id = config.Id,
+			MasterDatasetKey = config.MasterDatasetKey,
+			BaseCurrencyId = config.BaseCurrencyId,
+			BalancingAccountId = balancingAccountId,
+			AmountPrecision = config.AmountPrecision,
+			RatePrecision = config.RatePrecision,
+			EditRevision = config.EditRevision,
+			DeleteRevision = config.DeleteRevision,
+			ModificationType = config.ModificationType
+		};
 	}
 
 	public async Task<LocalConfig> GetLocalConfig(CancellationToken cancellationToken = default)

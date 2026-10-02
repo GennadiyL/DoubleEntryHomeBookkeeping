@@ -9,8 +9,8 @@ namespace Business.Impl.Operations.Config;
 /// Loads individual singletons for operations requiring only one settings scope.
 /// Missing or invalid configuration raises a critical failure.
 /// Services share this operation instead of calling another service.
-/// Supports balancing-account cleanup as part of an existing business mutation.
-/// Configuration writes remain pending until the owning service commits.
+/// Missing or deleted balancing accounts are returned as an absent selection.
+/// Reads never modify configuration rows or synchronization metadata.
 /// User-facing settings editing belongs to the Setup subdomain.
 /// </summary>
 internal interface IConfigOperation
