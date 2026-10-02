@@ -21,6 +21,7 @@ public static class BusinessDiConfiguration
 		services.AddScoped<ICurrencyOperation, CurrencyOperation>();
 
 		services.AddScoped<ICurrencyService, CurrencyService>();
+		services.AddScoped<ICurrencyRateService, CurrencyRateService>();
 		services.AddScoped<IAccountService, AccountService>();
 		services.AddScoped<ITemplateService, TemplateService>();
 		services.AddScoped<IAccountGroupService, AccountGroupService>();
