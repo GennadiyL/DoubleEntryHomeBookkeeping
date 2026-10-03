@@ -2,7 +2,7 @@
 
 ## Document Control and BRD Reference
 
-- Version: **0.151**. Status: **Draft**. Date: **2026-10-03**.
+- Version: **0.153**. Status: **Draft**. Date: **2026-10-03**.
 - Business source: [BRD 0.51](BRD.md), controlled Draft revision of approved BRD 0.32, incorporating the accepted corrections and the 2026-10-01 Draft entry-validity and Confirmed-to-Draft decisions. Prior 0.32 approval: requesting user, 2026-09-27, “I approve BRD. Lets start with TRD”; no personal name inferred. That approval does not cover 0.51; full-version approval remains outstanding.
 - Scope: core bookkeeping, synchronization and first use. Owner/intended approver: requesting user.
 - Revision basis: replaces legacy TRD 0.1 while retaining its parent-reference constraint. Discovery sources: [core](001-personal-bookkeeping/discovery.md), [synchronization](002-synchronization/discovery.md), [first use](003-first-using/discovery.md). Later BRD decisions supersede their historical statements.
@@ -2272,5 +2272,32 @@ Each approved BRD ROLE, BC, BR, FR, NFR and SC receives one row. `Partial` means
 
 ### 2026-10-03 — Consistent method naming without Async suffix
 
-- User requested removing Async suffixes across application-owned methods. Contracts, implementations, mocks and callers now use unsuffixed asynchronous names. Existing synchronous counterparts use Sync where necessary to prevent overload ambiguity; return types and asynchronous behavior are unchanged.
+- Application-owned asynchronous methods omit the Async suffix, except Shared library wrappers described below. Existing synchronous counterparts use Sync where necessary to prevent overload ambiguity outside those wrappers; return types and asynchronous behavior are unchanged.
 - Framework/library calls and required interface members retain their defined names, including IAsyncDisposable.DisposeAsync and IExceptionHandler.TryHandleAsync. The solution editor configuration no longer requires the Async suffix. HTTP route names are unchanged.
+
+
+### 2026-10-03 — Shared file and directory wrapper naming exception
+
+- User confirmed that IFileService and IDirectoryService wrap library functions and therefore retain Async suffixes on asynchronous methods, matching the wrapped library naming convention. Their synchronous methods keep the corresponding unsuffixed names.
+- Apply this exception consistently to the contracts, implementations, mocks and callers. It overrides the general application-method naming rule for these two Shared wrappers. The user has already reverted their names; this change records the convention only and makes no code changes.
+
+### 2026-10-03 — Consolidated API/BFF declaration notes
+
+The former docs/reviews/api-service-contract-additions.md note, based on TRD 0.104, is consolidated here. The following records existing declaration choices, not completed implementations, dependency-injection registrations, an approved wire protocol or resolution of open requirements. Current TRD decisions take precedence over the historical note.
+
+| Interface | TRD operations |
+| --- | --- |
+| IStartupService | OP-001–004 |
+| ISynchronizationService | OP-043–049 |
+| IDiagnosticsService | OP-050–052 |
+| IReportsService | OP-037–040 |
+
+- Setup: CreateBooks and OpenBooks use separate input records. Creation includes immutable AmountPrecision/RatePrecision, defaults 2/4 and accepted range 0–4. RequestId represents the proposed setup-attempt identity; retry semantics remain unresolved.
+- Synchronization: Synchronize is the local application-facing BFF action. Its input supplies the trigger; implementation obtains owner/registration, known revision and priority from current context and durably captures pending changes. This contract does not define DTO-019 as a cloud upload payload or authorize exposing arbitrary objects/persistent models. TQ-04 still requires a typed change and ordering protocol before cloud synchronization implementation.
+- SynchronizeInfo declares status and an optional transfer for the unresolved no-change case. Completion must follow the outcome state; null Transfer alone is not evidence of success.
+- DownloadSnapshotInfo declares transfer metadata and a caller-owned Content stream. The transport adapter streams bytes outside JSON; activation and acknowledgement remain separate steps. ReplaceExpiredCopyInfo declares the replacement LocalDatasetKey alongside its transfer so the caller can retain the new registration.
+- Diagnostics: GetLatestSyncReport currently returns a nullable result, with null representing no in-session report. WriteDiagnostic uses OperationKey for its string correlation key, rather than OperationId. These are current declaration choices; remaining diagnostic contracts and error details retain their open-question status.
+- Reporting: declarations use typed selection, definition and row records. SaveReportDefinition.Id is nullable for create/update. The report JSON persistence format and rename-only selection preservation remain unresolved.
+- Superseded timezone proposal: the historical note and current CalculateReport declaration contain TimeZoneKey. The later confirmed device-timezone decision already makes this parameter unnecessary. Remove it when Reporting contracts are aligned; do not restore the obsolete timezone proposal as a requirement.
+
+Security, durable synchronization protocol, report serialization and other unresolved questions are not settled by this consolidation. The redundant review file is removed; no application code changes are included.

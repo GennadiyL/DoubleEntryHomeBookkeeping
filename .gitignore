@@ -56,3 +56,9 @@ Anza/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Disposable validation output, test logs, and one-off tooling
+/docs/validation/
+
+# Temporary review notes; durable decisions belong in requirements documents
+/docs/reviews/
