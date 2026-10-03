@@ -278,6 +278,60 @@ public sealed class CumulativeTransactionTests
 		Assert.That(restored.Entries[0].AccountId, Is.EqualTo(_account.Id));
 		Assert.That(restored.Entries[0].CumulativeAmount, Is.EqualTo(AppValues.MaxDecimal));
 	}
+	[Test]
+	public async Task AccountTree_ReturnsLiveAccountsWithCurrencyNamesAndRootOnce()
+	{
+		Account removed = new() { Id = Guid.NewGuid(), Name = "Removed", GroupId = _account.GroupId, Group = _account.Group,
+			CurrencyId = _account.CurrencyId, Currency = _account.Currency, DeleteRevision = 0 };
+		_unitOfWork.AccountRepo.Add(removed);
+		await _unitOfWork.SaveChangesAsync();
+		_context.ChangeTracker.Clear();
+		Business.Contracts.Services.Accounts.AccountTreeInfo tree = await _scope.ServiceProvider
+			.GetRequiredService<IAccountGroupService>().GetAccountsTree();
+		Assert.That(tree.Groups, Has.Count.EqualTo(1));
+		Assert.That(tree.Groups[0].ParentId, Is.EqualTo(tree.Groups[0].Id));
+		Assert.That(tree.Elements.Select(entry => entry.Id), Is.EqualTo(new[] { _account.Id, _other.Id, _destination.Id }));
+		Assert.That(tree.Elements.All(entry => entry.CurrencyName == "Euro" && entry.CurrencyId == _account.CurrencyId), Is.True);
+		Assert.That(_context.ChangeTracker.Entries(), Is.Empty);
+	}
+
+	[Test]
+	public async Task NumericStorage_PersistsRatesAndTemplateAmountsAsExactScaledIntegers()
+	{
+		Guid transactionId = Guid.NewGuid();
+		Seed(transactionId, _date, TransactionState.Draft, null, (_account, 12.3456m));
+		_unitOfWork.CurrencyRateRepo.Add(new CurrencyRate { Id = Guid.NewGuid(), CurrencyId = _account.CurrencyId,
+			Currency = _account.Currency, Date = new DateOnly(2025, 1, 1), Rate = 1.2345m });
+		TemplateGroup group = new() { Id = Guid.NewGuid(), Name = "Templates" };
+		group.ParentId = group.Id;
+		group.Parent = group;
+		Template template = new() { Id = Guid.NewGuid(), Name = "Test", GroupId = group.Id, Group = group };
+		_unitOfWork.TemplateGroupRepo.Add(group);
+		_unitOfWork.TemplateRepo.Add(template);
+		Guid entryId = Guid.NewGuid();
+		_unitOfWork.TemplateEntryRepo.Add(new TemplateEntry { Id = entryId, TemplateId = template.Id, Template = template,
+			AccountId = _account.Id, Account = _account, Amount = -12.3456m });
+		await _unitOfWork.SaveChangesAsync();
+		_context.ChangeTracker.Clear();
+		TransactionEntry entry = (await _unitOfWork.TransactionEntryRepo.GetByTransactionIdAsync(transactionId)).Single();
+		entry.Rate = 1.2345m;
+		_unitOfWork.TransactionEntryRepo.Update(entry);
+		await _unitOfWork.SaveChangesAsync();
+		_context.ChangeTracker.Clear();
+		using System.Data.Common.DbCommand command = _context.Database.GetDbConnection().CreateCommand();
+		command.CommandText = "SELECT Rate, typeof(Rate) FROM TransactionEntries UNION ALL SELECT Rate, typeof(Rate) FROM CurrencyRates UNION ALL SELECT Amount, typeof(Amount) FROM TemplateEntries";
+		using System.Data.Common.DbDataReader reader = await command.ExecuteReaderAsync();
+		List<long> stored = new();
+		while (await reader.ReadAsync())
+		{
+			stored.Add(reader.GetInt64(0));
+			Assert.That(reader.GetString(1), Is.EqualTo("integer"));
+		}
+		Assert.That(stored, Is.EqualTo(new long[] { 12345, 12345, -123456 }));
+		Assert.That((await _unitOfWork.TransactionEntryRepo.GetByTransactionIdAsync(transactionId)).Single().Rate, Is.EqualTo(1.2345m));
+		Assert.That((await _unitOfWork.CurrencyRateRepo.GetAllAsync()).Single().Rate, Is.EqualTo(1.2345m));
+		Assert.That((await _unitOfWork.TemplateEntryRepo.GetByIdAsync(entryId))!.Amount, Is.EqualTo(-12.3456m));
+	}
 	private void StartNewScopeAfterRollback()
 	{
 		Assert.ThrowsAsync<ObjectDisposedException>(async () => await _context.SaveChangesAsync());

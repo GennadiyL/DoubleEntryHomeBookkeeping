@@ -13,6 +13,26 @@ public static class WebApiEndpointsConfiguration
 {
 	public static void AddEndpointsConfiguration(this WebApplication app)
 	{
+		app.MapGet("/transactions/get-by-id", TransactionsEndpoint.GetByIdHandler);
+		app.MapGet("/transactions/get-transactions", TransactionsEndpoint.GetTransactionsHandler);
+		app.MapGet("/transactions/duplicate-transaction", TransactionsEndpoint.DuplicateTransactionHandler);
+		app.MapGet("/transactions/get-balances-for-all-accounts", TransactionsEndpoint.GetBalancesForAllAccountsHandler);
+		app.MapGet("/transactions/get-balance-for-account", TransactionsEndpoint.GetBalanceForAccountHandler);
+		app.MapPost("/transactions/add", TransactionsEndpoint.AddHandler);
+		app.MapPost("/transactions/update", TransactionsEndpoint.UpdateHandler);
+		app.MapPost("/transactions/delete", TransactionsEndpoint.DeleteHandler);
+		app.MapPost("/transactions/delete-transactions", TransactionsEndpoint.DeleteTransactionsHandler);
+		app.MapPost("/transactions/refresh-transactions", TransactionsEndpoint.RefreshTransactionsHandler);
+		app.MapGet("/transactions/get-transactions-by-account", TransactionsEndpoint.GetTransactionsByAccountHandler);
+		app.MapGet("/transactions/get-transactions-by-category", TransactionsEndpoint.GetTransactionsByCategoryHandler);
+		app.MapGet("/transactions/get-transactions-by-correspondent", TransactionsEndpoint.GetTransactionsByCorrespondentHandler);
+		app.MapGet("/transactions/get-transactions-by-project", TransactionsEndpoint.GetTransactionsByProjectHandler);
+		app.MapPost("/transactions/delete-transactions-by-account", TransactionsEndpoint.DeleteTransactionsByAccountHandler);
+		app.MapPost("/transactions/delete-transactions-by-category", TransactionsEndpoint.DeleteTransactionsByCategoryHandler);
+		app.MapPost("/transactions/delete-transactions-by-correspondent", TransactionsEndpoint.DeleteTransactionsByCorrespondentHandler);
+		app.MapPost("/transactions/delete-transactions-by-project", TransactionsEndpoint.DeleteTransactionsByProjectHandler);
+		app.MapGet("/account-groups/get-accounts-tree", AccountGroupsEndpoint.GetAccountsTreeHandler);
+
 		app.MapPost("/currency-rates/add-or-update", CurrencyRatesEndpoint.AddOrUpdateHandler);
 		app.MapPost("/currency-rates/delete", CurrencyRatesEndpoint.DeleteHandler);
 		app.MapGet("/currency-rates/get-rates", CurrencyRatesEndpoint.GetRatesHandler);

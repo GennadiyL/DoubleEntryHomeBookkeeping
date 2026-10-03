@@ -31,6 +31,12 @@ public sealed class SqLiteAppDbContext : AppDbContext
 			.HasConversion(value => ScaledAmount.ToStorage(value), value => ScaledAmount.FromStorage(value)).HasColumnType("INTEGER");
 		modelBuilder.Entity<TransactionEntry>().Property(entity => entity.CumulativeAmount)
 			.HasConversion(value => ScaledAmount.ToStorage(value), value => ScaledAmount.FromStorage(value)).HasColumnType("INTEGER");
+		modelBuilder.Entity<TransactionEntry>().Property(entity => entity.Rate)
+			.HasConversion(value => ScaledAmount.ToStorage(value), value => ScaledAmount.FromStorage(value)).HasColumnType("INTEGER");
+		modelBuilder.Entity<CurrencyRate>().Property(entity => entity.Rate)
+			.HasConversion(value => ScaledAmount.ToStorage(value), value => ScaledAmount.FromStorage(value)).HasColumnType("INTEGER");
+		modelBuilder.Entity<TemplateEntry>().Property(entity => entity.Amount)
+			.HasConversion(value => ScaledAmount.ToStorage(value), value => ScaledAmount.FromStorage(value)).HasColumnType("INTEGER");
 		modelBuilder.Entity<Transaction>().HasIndex(entity => new { entity.DateTime, entity.Id });
 		modelBuilder.Entity<TransactionEntry>().HasIndex(entity => new { entity.AccountId, entity.TransactionId, entity.Position });
 	}

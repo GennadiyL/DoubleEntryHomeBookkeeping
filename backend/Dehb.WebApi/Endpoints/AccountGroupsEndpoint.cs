@@ -6,6 +6,9 @@ namespace Dehb.WebApi.Endpoints;
 
 internal static class AccountGroupsEndpoint
 {
+	public static async Task<IResult> GetAccountsTreeHandler(IAccountGroupService service, CancellationToken cancellationToken = default) =>
+		Results.Ok(await service.GetAccountsTree(cancellationToken));
+
 	public static async Task<IResult> GetTreeHandler(IAccountGroupService service, CancellationToken cancellationToken = default) =>
 		Results.Ok(await service.GetTree(cancellationToken));
 
