@@ -1,3 +1,5 @@
+using Business.Impl.Operations.Cumulative;
+using DataAccess.Core.Entities;
 using Business.Impl.Operations.Config;
 using Business.Contracts.Services.Accounts;
 using Business.Contracts.Services;
@@ -18,14 +20,16 @@ namespace Business.Impl.Services;
 internal sealed class AccountService : IAccountService
 {
 	private readonly IConfigOperation _configOperation;
+	private readonly ICumulativeOperation _cumulativeOperation;
 	private readonly ISharedContext _sharedContext;
 	private readonly IAppUnitOfWork _unitOfWork;
 	private readonly IAccountRepository _repository;
 	private readonly IAccountGroupRepository _groupRepository;
 
-	public AccountService(ISharedContext sharedContext, IAppUnitOfWork unitOfWork, IConfigOperation configOperation)
+	public AccountService(ISharedContext sharedContext, IAppUnitOfWork unitOfWork, IConfigOperation configOperation, ICumulativeOperation cumulativeOperation)
 	{
 		_configOperation = configOperation;
+		_cumulativeOperation = cumulativeOperation;
 		_sharedContext = sharedContext;
 		_unitOfWork = unitOfWork;
 		_repository = unitOfWork.AccountRepo;
@@ -276,64 +280,75 @@ internal sealed class AccountService : IAccountService
 			throw new InvalidElementException("Two account identifiers are required.");
 		}
 
-		Account source = await GetActiveElement(fromElementId, cancellationToken);
-		Account destination = await GetActiveElement(toElementId, cancellationToken);
-		if (source.CurrencyId != destination.CurrencyId)
+		IUnitOfWorkTransaction transactionScope = await _unitOfWork.BeginTransactionAsync(cancellationToken);
+		try
 		{
-			throw new InvalidElementException("Only accounts with the same currency can be combined.");
-		}
-
-		AccountGroup group = await GetActiveGroup(source.GroupId, cancellationToken);
-		ICollection<TransactionEntry> transactionEntries = await _unitOfWork.TransactionEntryRepo.GetByAccountIdAsync(fromElementId, cancellationToken);
-		ICollection<TemplateEntry> templateEntries = await _unitOfWork.TemplateEntryRepo.GetByAccountIdAsync(fromElementId, cancellationToken);
-		List<Transaction> transactions = [];
-		foreach (Guid id in transactionEntries.Select(entry => entry.TransactionId).Distinct())
-		{
-			Transaction? transaction = await _unitOfWork.TransactionRepo.GetByIdAsync(id, cancellationToken);
-			if (transaction is null)
+			Account source = await GetActiveElement(fromElementId, cancellationToken);
+			Account destination = await GetActiveElement(toElementId, cancellationToken);
+			if (source.CurrencyId != destination.CurrencyId)
 			{
-				throw new InvalidOperationException("A referenced transaction is missing.");
+				throw new InvalidElementException("Only accounts with the same currency can be combined.");
 			}
-			transactions.Add(transaction);
-		}
-		List<Template> templates = [];
-		foreach (Guid id in templateEntries.Select(entry => entry.TemplateId).Distinct())
-		{
-			Template? template = await _unitOfWork.TemplateRepo.GetByIdAsync(id, cancellationToken);
-			if (template is null)
+	
+			AccountGroup group = await GetActiveGroup(source.GroupId, cancellationToken);
+			ICollection<TransactionEntry> transactionEntries = await _unitOfWork.TransactionEntryRepo.GetByAccountIdAsync(fromElementId, cancellationToken);
+			ICollection<TemplateEntry> templateEntries = await _unitOfWork.TemplateEntryRepo.GetByAccountIdAsync(fromElementId, cancellationToken);
+			List<Transaction> transactions = [];
+			foreach (Guid id in transactionEntries.Select(entry => entry.TransactionId).Distinct())
 			{
-				throw new InvalidOperationException("A referenced template is missing.");
+				Transaction? transaction = await _unitOfWork.TransactionRepo.GetByIdAsync(id, cancellationToken);
+				if (transaction is null)
+				{
+					throw new InvalidOperationException("A referenced transaction is missing.");
+				}
+				transactions.Add(transaction);
 			}
-			templates.Add(template);
+			List<Template> templates = [];
+			foreach (Guid id in templateEntries.Select(entry => entry.TemplateId).Distinct())
+			{
+				Template? template = await _unitOfWork.TemplateRepo.GetByIdAsync(id, cancellationToken);
+				if (template is null)
+				{
+					throw new InvalidOperationException("A referenced template is missing.");
+				}
+				templates.Add(template);
+			}
+	
+			foreach (TransactionEntry entry in transactionEntries)
+			{
+				entry.AccountId = destination.Id;
+				entry.Account = destination;
+				_unitOfWork.TransactionEntryRepo.Update(entry);
+			}
+			foreach (TemplateEntry entry in templateEntries)
+			{
+				entry.AccountId = destination.Id;
+				entry.Account = destination;
+				_unitOfWork.TemplateEntryRepo.Update(entry);
+			}
+			foreach (Transaction transaction in transactions)
+			{
+				transaction.SetEditedContent();
+				_unitOfWork.TransactionRepo.Update(transaction);
+			}
+			foreach (Template template in templates)
+			{
+				template.SetEditedContent();
+				_unitOfWork.TemplateRepo.Update(template);
+			}
+	
+			source.SetDeleted();
+			_repository.Update(source);
+			NormalizeAccounts(group.Elements.Where(item => item.Id != source.Id && !item.IsDeleted()));
+			await _unitOfWork.SaveChangesAsync(cancellationToken);
+			await _cumulativeOperation.RecalculateAsync(destination.Id, cancellationToken);
+			await _unitOfWork.CommitTransactionAsync(transactionScope, cancellationToken);
 		}
-
-		foreach (TransactionEntry entry in transactionEntries)
+		catch
 		{
-			entry.AccountId = destination.Id;
-			entry.Account = destination;
-			_unitOfWork.TransactionEntryRepo.Update(entry);
+			await _unitOfWork.RollbackTransactionAsync(transactionScope, CancellationToken.None);
+			throw;
 		}
-		foreach (TemplateEntry entry in templateEntries)
-		{
-			entry.AccountId = destination.Id;
-			entry.Account = destination;
-			_unitOfWork.TemplateEntryRepo.Update(entry);
-		}
-		foreach (Transaction transaction in transactions)
-		{
-			transaction.SetEditedContent();
-			_unitOfWork.TransactionRepo.Update(transaction);
-		}
-		foreach (Template template in templates)
-		{
-			template.SetEditedContent();
-			_unitOfWork.TemplateRepo.Update(template);
-		}
-
-		source.SetDeleted();
-		_repository.Update(source);
-		NormalizeAccounts(group.Elements.Where(item => item.Id != source.Id && !item.IsDeleted()));
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
 	}
 
 	private async Task<AccountGroup> GetActiveGroup(Guid groupId, CancellationToken cancellationToken = default)

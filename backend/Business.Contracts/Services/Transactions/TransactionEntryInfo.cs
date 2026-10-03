@@ -3,6 +3,7 @@ namespace Business.Contracts.Services.Transactions;
 /// <summary>
 /// Describes one entry within a transaction result.
 /// Amount is expressed in the referenced account currency.
+/// CumulativeAmount is the calculated account-currency balance through this entry.
 /// Rate is the stored conversion rate to base currency.
 /// The containing list preserves stored Position order.
 /// An entry has no independently editable identity in this contract.
@@ -17,5 +18,6 @@ public record TransactionEntryInfo
 	public Guid CurrencyId { get; set; }
 	public string CurrencyName { get; set; } = string.Empty;
 	public decimal Amount { get; set; }
+	public decimal CumulativeAmount { get; set; }
 	public decimal Rate { get; set; }
 }

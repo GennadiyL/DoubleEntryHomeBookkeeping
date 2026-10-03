@@ -1,3 +1,4 @@
+using Business.Models.Enums;
 using DataAccess.Contracts.Repositories;
 using DataAccess.Core.Behaviors;
 using DataAccess.Core.EntityFramework.Behaviors;
@@ -29,4 +30,23 @@ internal sealed class TransactionEntryRepository : Repository<AppDbContext, Tran
 			.Where(entry => entry.TransactionId == transactionId).ToListAsync(cancellationToken);
 		return Mapper.Map<DalEntity, TransactionEntryEntity>(entries);
 	}
+	public Task RemoveRangeAsync(IEnumerable<TransactionEntryEntity> entries, CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		Dictionary<Guid, DalEntity> tracked = Entities.Local.ToDictionary(entry => entry.Id);
+		foreach (TransactionEntryEntity entry in entries)
+		{
+			Entities.Remove(tracked.TryGetValue(entry.Id, out DalEntity? existing)
+				? existing : Mapper.Map<DalEntity, TransactionEntryEntity>(entry));
+		}
+		return Task.CompletedTask;
+	}
+
+	public Task<decimal?> GetPreviousAsync(Guid accountId, DateTime beforeDateTime, CancellationToken cancellationToken = default) =>
+		Entities.AsNoTracking()
+			.Where(entry => entry.AccountId == accountId && entry.Transaction!.DeleteRevision == null &&
+				entry.Transaction.State == TransactionState.Confirmed && entry.Transaction.DateTime < beforeDateTime)
+			.OrderByDescending(entry => entry.Transaction!.DateTime)
+			.ThenByDescending(entry => entry.TransactionId).ThenByDescending(entry => entry.Position)
+			.Select(entry => (decimal?)entry.CumulativeAmount).FirstOrDefaultAsync(cancellationToken);
 }

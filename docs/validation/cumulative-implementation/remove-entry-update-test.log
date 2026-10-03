@@ -1,0 +1,12 @@
+Test run for \\MYLEGION\Shared\DoubleEntryHomeBookkeeping\docs\validation\cumulative-implementation\bin\UnitTests.Business\debug\UnitTests.Business.dll (.NETCoreApp,Version=v10.0)
+Test run for \\MYLEGION\Shared\DoubleEntryHomeBookkeeping\docs\validation\cumulative-implementation\bin\ServiceTests.Business\debug\ServiceTests.Business.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:  2253, Skipped:     0, Total:  2253, Duration: 1 s - ServiceTests.Business.dll (net10.0)
+Test run for \\MYLEGION\Shared\DoubleEntryHomeBookkeeping\docs\validation\cumulative-implementation\bin\UnitTests.EntityFramework.SqLite\debug\UnitTests.EntityFramework.SqLite.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    45, Skipped:     0, Total:    45, Duration: 285 ms - UnitTests.Business.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    10, Skipped:     0, Total:    10, Duration: 3 s - UnitTests.EntityFramework.SqLite.dll (net10.0)

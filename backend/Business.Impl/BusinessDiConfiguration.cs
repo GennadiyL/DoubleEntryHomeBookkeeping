@@ -1,3 +1,4 @@
+using Business.Impl.Operations.Cumulative;
 using Business.Contracts.Services;
 using Business.Impl.Operations.Config;
 using Business.Impl.Operations.Currency;
@@ -18,6 +19,9 @@ public static class BusinessDiConfiguration
 	public static void AddBusinessModule(this IServiceCollection services)
 	{
 		services.AddScoped<IConfigOperation, ConfigOperation>();
+		services.AddScoped<ICumulativeOperation, CumulativeOperation>();
+		services.AddScoped<ICumulativeService, CumulativeService>();
+		services.AddScoped<ITransactionService, TransactionService>();
 		services.AddScoped<ICurrencyOperation, CurrencyOperation>();
 
 		services.AddScoped<ICurrencyService, CurrencyService>();

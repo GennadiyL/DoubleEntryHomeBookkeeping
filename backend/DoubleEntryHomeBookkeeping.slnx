@@ -52,5 +52,6 @@
   </Folder>
   <Folder Name="/Tests/UnitTests/">
     <Project Path="UnitTests.Business/UnitTests.Business.csproj" />
+    <Project Path="UnitTests.EntityFramework.SqLite/UnitTests.EntityFramework.SqLite.csproj" />
   </Folder>
 </Solution>

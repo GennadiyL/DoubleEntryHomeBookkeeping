@@ -36,6 +36,8 @@ internal class TransactionEntry : IDalEntity
 
 	public int Position { get; set; }
 
+	public decimal CumulativeAmount { get; set; }
+
 	public decimal Amount
 	{
 		get;

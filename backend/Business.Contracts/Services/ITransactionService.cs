@@ -7,7 +7,7 @@ namespace Business.Contracts.Services;
 /// Provides transaction editing, filtered reads, duplication and account balance calculations.
 /// Editor mutations validate the aggregate and derive Draft or Confirmed state.
 /// Updates preserve parent identity and replace all entries in submitted order.
-/// Calendar filters include both endpoints in the current device timezone.
+/// List reads use an inclusive end date; bulk deletion keeps inclusive date ranges.
 /// Reads return complete matching transactions rather than only their matching entries.
 /// Bulk deletion applies the shared soft-delete lifecycle in one atomic action.
 /// Only Confirmed transactions contribute to balances using stored entry rates.
@@ -67,48 +67,40 @@ public interface ITransactionService : IUpdateEntityService<TransactionParam>,
 	public Task DeleteTransactionsByProject(Guid projectId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// Returns transactions in the selected range for the transaction screen.
-	/// Requires both calendar dates and includes both days in full in the current device timezone.
-	/// Throws for a reversed range. Filters in the database and returns whole transactions with entries in Position order.
-	/// Version 1 has no pagination; this read does not call AcceptChanges.
+	/// Returns the latest up to 300 transactions through the selected device-local day.
+	/// Includes complete entries and reports whether additional matches exist.
 	/// </summary>
-	public Task<List<TransactionInfo>> GetTransactions(DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default);
+	public Task<TransactionListInfo> GetTransactions(DateOnly date, CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// Returns transactions having an entry using the selected account for the filtered transaction screen.
-	/// Throws for an unknown or deleted filter identity; a valid filter with no matches returns an empty list.
-	/// Requires both calendar dates and includes both days in full in the current device timezone.
-	/// Throws for a reversed range. Filters in the database and returns whole transactions with entries in Position order.
-	/// Version 1 has no pagination; this read does not call AcceptChanges.
+	/// Returns the latest capped account transactions through the selected local day.
+	/// Rejects missing filter identities and returns complete matching aggregates.
 	/// </summary>
-	public Task<List<TransactionInfo>> GetTransactionsByAccount(Guid accountId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default);
+	public Task<TransactionListInfo> GetTransactionsByAccount(Guid accountId, DateOnly date, CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// Returns transactions having an entry whose account references the selected category for the filtered transaction screen.
-	/// Throws for an unknown or deleted filter identity; a valid filter with no matches returns an empty list.
-	/// Requires both calendar dates and includes both days in full in the current device timezone.
-	/// Throws for a reversed range. Filters in the database and returns whole transactions with entries in Position order.
-	/// Version 1 has no pagination; this read does not call AcceptChanges.
+	/// Returns the latest capped transactions matching the selected account category.
+	/// Includes the whole selected local day and rejects missing filter identities.
 	/// </summary>
-	public Task<List<TransactionInfo>> GetTransactionsByCategory(Guid categoryId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default);
+	public Task<TransactionListInfo> GetTransactionsByCategory(Guid categoryId, DateOnly date, CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// Returns transactions having an entry whose account references the selected correspondent for the filtered transaction screen.
-	/// Throws for an unknown or deleted filter identity; a valid filter with no matches returns an empty list.
-	/// Requires both calendar dates and includes both days in full in the current device timezone.
-	/// Throws for a reversed range. Filters in the database and returns whole transactions with entries in Position order.
-	/// Version 1 has no pagination; this read does not call AcceptChanges.
+	/// Returns the latest capped transactions matching the selected correspondent.
+	/// Includes the whole selected local day and rejects missing filter identities.
 	/// </summary>
-	public Task<List<TransactionInfo>> GetTransactionsByCorrespondent(Guid correspondentId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default);
+	public Task<TransactionListInfo> GetTransactionsByCorrespondent(Guid correspondentId, DateOnly date, CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// Returns transactions having an entry whose account references the selected project for the filtered transaction screen.
-	/// Throws for an unknown or deleted filter identity; a valid filter with no matches returns an empty list.
-	/// Requires both calendar dates and includes both days in full in the current device timezone.
-	/// Throws for a reversed range. Filters in the database and returns whole transactions with entries in Position order.
-	/// Version 1 has no pagination; this read does not call AcceptChanges.
+	/// Returns the latest capped transactions matching the selected project.
+	/// Includes the whole selected local day and rejects missing filter identities.
 	/// </summary>
-	public Task<List<TransactionInfo>> GetTransactionsByProject(Guid projectId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default);
+	public Task<TransactionListInfo> GetTransactionsByProject(Guid projectId, DateOnly date, CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// Reloads complete data for displayed transaction identities after editing.
+	/// Removes nonmatching rows without filling vacant places and reports removed identities.
+	/// </summary>
+	public Task<TransactionRefreshInfo> RefreshTransactions(TransactionRefreshParam param, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Prepares an unsaved copy for the transaction editor, preserving accounts, amounts, rates, description and entry order.

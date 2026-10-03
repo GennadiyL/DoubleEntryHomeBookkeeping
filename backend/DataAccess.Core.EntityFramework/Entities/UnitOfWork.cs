@@ -54,7 +54,14 @@ public abstract class UnitOfWork<TContext> : IUnitOfWork
 		}
 		finally
 		{
-			await unitOfWorkTransaction.DisposeAsync();
+			try
+			{
+				await unitOfWorkTransaction.DisposeAsync();
+			}
+			finally
+			{
+				await Context.DisposeAsync();
+			}
 		}
 	}
 

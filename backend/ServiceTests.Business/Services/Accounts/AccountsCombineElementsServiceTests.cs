@@ -7,6 +7,7 @@ using Business.Impl;
 using Business.Models.Entities;
 using Business.Models.Exceptions;
 using DataAccess.Contracts;
+using DataAccess.Contracts.Commands;
 using DataAccess.Contracts.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -51,6 +52,7 @@ public sealed class AccountsCombineElementsServiceTests
 		IServiceCollection services = new ServiceCollection();
 		services.AddSharedModule();
 		services.AddBusinessModule();
+		services.AddScoped<ICumulativeAmountCommand>(_ => Substitute.For<ICumulativeAmountCommand>());
 		services.AddSharedMockModule();
 		services.AddScoped<IAppUnitOfWork>(_ => _unitOfWork);
 		_provider = services.BuildServiceProvider(validateScopes: true);

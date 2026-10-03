@@ -1,3 +1,5 @@
+using DataAccess.Contracts.Commands;
+using DataAccess.EntityFramework.SqLite.Commands;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,6 +23,7 @@ public static class SqLiteDiConfiguration
 			?? throw new InvalidOperationException("Connection string 'AppDb' is not configured.");
 
 		services.AddDataAccessEntityFrameworkModule();
-		services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
+		services.AddDbContext<AppDbContext, SqLiteAppDbContext>(options => options.UseSqlite(connectionString));
+		services.AddScoped<ICumulativeAmountCommand, CumulativeAmountCommand>();
 	}
 }

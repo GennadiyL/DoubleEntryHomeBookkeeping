@@ -14,6 +14,7 @@ public static class AppValues
 	public static readonly DateOnly MinDate = new(2001, 1, 1);
 	public static readonly DateOnly MaxDate = new(2100, 1, 1);
 	public static readonly DateTime MinDateTime = new(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+	public const int MaxTransactionListCount = 300;
 	public const decimal MinDecimal = long.MinValue / 10000m;
 	public const decimal MaxDecimal = long.MaxValue / 10000m;
 

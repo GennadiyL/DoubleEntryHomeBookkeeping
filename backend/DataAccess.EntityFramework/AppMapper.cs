@@ -714,6 +714,7 @@ internal class AppMapper : IMapper
 		TransactionId = value.TransactionId,
 		AccountId = value.AccountId,
 		Amount = value.Amount,
+		CumulativeAmount = value.CumulativeAmount,
 		Rate = value.Rate
 	};
 
@@ -731,6 +732,7 @@ internal class AppMapper : IMapper
 			TransactionId = value.TransactionId,
 			AccountId = value.AccountId,
 			Amount = value.Amount,
+			CumulativeAmount = value.CumulativeAmount,
 			Rate = value.Rate,
 			Transaction = null!,
 			Account = null!
