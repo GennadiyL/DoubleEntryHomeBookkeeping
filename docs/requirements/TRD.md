@@ -2,7 +2,7 @@
 
 ## Document Control and BRD Reference
 
-- Version: **0.153**. Status: **Draft**. Date: **2026-10-03**.
+- Version: **0.155**. Status: **Draft**. Date: **2026-10-03**.
 - Business source: [BRD 0.51](BRD.md), controlled Draft revision of approved BRD 0.32, incorporating the accepted corrections and the 2026-10-01 Draft entry-validity and Confirmed-to-Draft decisions. Prior 0.32 approval: requesting user, 2026-09-27, “I approve BRD. Lets start with TRD”; no personal name inferred. That approval does not cover 0.51; full-version approval remains outstanding.
 - Scope: core bookkeeping, synchronization and first use. Owner/intended approver: requesting user.
 - Revision basis: replaces legacy TRD 0.1 while retaining its parent-reference constraint. Discovery sources: [core](001-personal-bookkeeping/discovery.md), [synchronization](002-synchronization/discovery.md), [first use](003-first-using/discovery.md). Later BRD decisions supersede their historical statements.
@@ -2301,3 +2301,18 @@ The former docs/reviews/api-service-contract-additions.md note, based on TRD 0.1
 - Superseded timezone proposal: the historical note and current CalculateReport declaration contain TimeZoneKey. The later confirmed device-timezone decision already makes this parameter unnecessary. Remove it when Reporting contracts are aligned; do not restore the obsolete timezone proposal as a requirement.
 
 Security, durable synchronization protocol, report serialization and other unresolved questions are not settled by this consolidation. The redundant review file is removed; no application code changes are included.
+
+### 2026-10-03 — Temporary documentation artifacts and Git tracking
+
+- /docs/reviews/ and /docs/validation/ are ignored by Git. They hold temporary review notes, validation output, test logs and one-off tooling, not authoritative project documentation.
+- Preserve lasting technical decisions in docs/requirements/TRD.md and applicable business requirements in docs/requirements/BRD.md before removing useful temporary notes. Do not rely on ignored files as the only record of a requirement or decision.
+- Temporary content may be removed when no longer needed. Source code and maintained test projects remain in the backend solution and are not covered by these ignore rules.
+
+
+### 2026-10-03 — SQLite initialization and manual Web API testing
+
+- All explicit EF model configuration now resides in SqLiteAppDbContext. AppDbContext retains entity sets and constructors; AppUnitOfWork had no model configuration. SQLite DI configures the provider, connection and foreign-key enforcement.
+- Committed 001-schema.sql, 002-initial-data.sql and 003-test-data.sql under backend/DataAccess.EntityFramework.SqLite/Assets. The schema is generated from the EF model. Initial DML creates five canonical roots, UAH plus rate 1, Rebalancing and singleton System/Local configuration with AmountPrecision=2 and RatePrecision=4. Optional sample data adds USD/rate, child groups, classifications, accounts, a template and confirmed balanced transactions with rebuilt cumulative values. Fixed dataset identities are for the local demo only.
+- Web API SqLiteConnectionString defaults to Assets/dehb.db, resolved against its content root. Explicit InitializeDatabase=true creates a new database; SeedTestData=true optionally adds sample data. Initialization is atomic and refuses an existing file. This local testing helper does not replace remote Setup or migrate existing databases.
+- SQL assets copy to build/publish output. Local database files and sidecars are ignored by Git. The startup guide and 124 route-specific request files are maintained in [docs/postman](../postman/README.md); these are durable examples, not ignored validation output.
+- Fixed console startup validation by resolving the scoped logging service from the HTTP request in the singleton exception handler. Verified real localhost API startup, all 38 GET examples, selected POST mutations, 400/404 error mapping and existing-file protection. All 2,312 tests passed, including schema/seed integration validation.

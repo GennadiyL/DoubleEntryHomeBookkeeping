@@ -6,7 +6,7 @@ namespace Shared.Impl.Services;
 /// Defines the date and time service.
 /// Provides injectable access to current and boundary date-time values.
 /// Business code consumes the shared contract instead of static DateTime members.
-/// SharedDiConfiguration registers the implementation as a scoped service.
+/// SharedDiConfiguration registers the implementation as a singleton service.
 /// It does not apply business calendars or time-zone conversion rules.
 /// </summary>
 internal class DateTimeService : IDateTimeService

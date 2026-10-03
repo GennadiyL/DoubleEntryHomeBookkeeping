@@ -1,6 +1,7 @@
 using DataAccess.Contracts.Commands;
 using DataAccess.EntityFramework.SqLite.Commands;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,13 +18,13 @@ public static class SqLiteDiConfiguration
 {
 	public static void AddDataAccessSqLiteModule(this IServiceCollection services, IConfiguration configuration)
 	{
-		ArgumentNullException.ThrowIfNull(configuration);
-
-		string connectionString = configuration.GetConnectionString("AppDb")
-			?? throw new InvalidOperationException("Connection string 'AppDb' is not configured.");
-
 		services.AddDataAccessEntityFrameworkModule();
+
+		ArgumentNullException.ThrowIfNull(configuration);
+		string connectionString = configuration.GetConnectionString("DehbSqLite")
+		                          ?? throw new InvalidOperationException("Connection string 'DehbSqLite' is not configured.");
 		services.AddDbContext<AppDbContext, SqLiteAppDbContext>(options => options.UseSqlite(connectionString));
+
 		services.AddScoped<ICumulativeAmountCommand, CumulativeAmountCommand>();
 	}
 }

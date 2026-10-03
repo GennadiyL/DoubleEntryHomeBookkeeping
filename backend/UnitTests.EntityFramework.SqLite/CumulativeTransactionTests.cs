@@ -56,7 +56,7 @@ public sealed class CumulativeTransactionTests
 		_databaseLifetime = new SqliteConnection(connectionString);
 		await _databaseLifetime.OpenAsync();
 		IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
-			new Dictionary<string, string?> { ["ConnectionStrings:AppDb"] = connectionString }).Build();
+			new Dictionary<string, string?> { ["ConnectionStrings:DehbSqLite"] = connectionString }).Build();
 		services.AddDataAccessSqLiteModule(configuration);
 		_provider = services.BuildServiceProvider(true);
 		_scope = _provider.CreateScope();
@@ -319,7 +319,7 @@ public sealed class CumulativeTransactionTests
 		await _unitOfWork.SaveChanges();
 		_context.ChangeTracker.Clear();
 		using System.Data.Common.DbCommand command = _context.Database.GetDbConnection().CreateCommand();
-		command.CommandText = "SELECT Rate, typeof(Rate) FROM TransactionEntries UNION ALL SELECT Rate, typeof(Rate) FROM CurrencyRates UNION ALL SELECT Amount, typeof(Amount) FROM TemplateEntries";
+		command.CommandText = "SELECT Rate, typeof(Rate) FROM TransactionEntry UNION ALL SELECT Rate, typeof(Rate) FROM CurrencyRate UNION ALL SELECT Amount, typeof(Amount) FROM TemplateEntry";
 		using System.Data.Common.DbDataReader reader = await command.ExecuteReaderAsync();
 		List<long> stored = new();
 		while (await reader.ReadAsync())

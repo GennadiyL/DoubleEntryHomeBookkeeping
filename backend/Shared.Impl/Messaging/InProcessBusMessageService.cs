@@ -8,7 +8,7 @@ namespace Shared.Impl.Messaging;
 /// <summary>
 /// Defines the in-process message publisher.
 /// Publishes messages to all matching handlers resolved from a fresh dependency injection scope.
-/// SharedDiConfiguration registers one scoped publisher by default for local execution.
+/// SharedDiConfiguration registers one singleton publisher by default for local execution.
 /// It depends only on shared messaging contracts and discovers business handlers through DI.
 /// It has no compile-time reference to business-specific handler projects or a remote bus.
 /// </summary>

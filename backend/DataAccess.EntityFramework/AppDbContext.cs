@@ -13,13 +13,6 @@ public class AppDbContext : DbContext
 	{
 	}
 
-	protected override void OnModelCreating(ModelBuilder modelBuilder)
-	{
-		base.OnModelCreating(modelBuilder);
-		modelBuilder.Entity<SystemConfig>().HasOne<Currency>().WithMany().HasForeignKey(config => config.BaseCurrencyId);
-		modelBuilder.Entity<SystemConfig>().HasOne<Account>().WithMany().HasForeignKey(config => config.BalancingAccountId);
-	}
-
 	internal DbSet<Account> Accounts { get; set; } = null!;
 	internal DbSet<AccountGroup> AccountGroups { get; set; } = null!;
 	internal DbSet<Category> Categories { get; set; } = null!;

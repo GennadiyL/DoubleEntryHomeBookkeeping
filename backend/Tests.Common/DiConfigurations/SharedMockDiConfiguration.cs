@@ -12,6 +12,6 @@ public static class SharedMockDiConfiguration
 		services.AddScoped<IDirectoryService, MockDirectoryService>();
 		services.AddScoped<IFileService, MockFileService>();
 		services.AddScoped<IJsonService, MockJsonService>();
-		services.AddScoped<ILogService, MockLogService>();
+		services.AddSingleton<ILogService, MockLogService>();
 	}
 }

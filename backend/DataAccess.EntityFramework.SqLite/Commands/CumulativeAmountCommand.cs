@@ -42,8 +42,8 @@ internal sealed class CumulativeAmountCommand : ICumulativeAmountCommand
 				SELECT e.Id, t.DateTime, t.Id, e.Position, 0,
 					CASE WHEN t.State = {confirmed} THEN 1 ELSE 0 END,
 					CASE WHEN t.State = {confirmed} THEN e.Amount ELSE 0 END
-				FROM TransactionEntries AS e
-				JOIN Transactions AS t ON t.Id = e.TransactionId
+				FROM "TransactionEntry" AS e
+				JOIN "Transaction" AS t ON t.Id = e.TransactionId
 				WHERE e.AccountId = {accountId} AND t.DeleteRevision IS NULL
 					AND ({fromDateTime} IS NULL OR t.DateTime >= {fromDateTime})
 			),
@@ -56,7 +56,7 @@ internal sealed class CumulativeAmountCommand : ICumulativeAmountCommand
 						ELSE 0 END AS NewAmount
 				FROM InputRows
 			)
-			UPDATE TransactionEntries AS target
+			UPDATE "TransactionEntry" AS target
 			SET CumulativeAmount = calculated.NewAmount
 			FROM Calculated AS calculated
 			WHERE target.Id = calculated.EntryId

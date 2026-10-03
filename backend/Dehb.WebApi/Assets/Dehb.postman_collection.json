@@ -1,0 +1,3786 @@
+{
+  "info": {
+    "name": "Dehb",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Dehb Web API requests grouped by service. Set host-name to the API root URL including http:// or https://, without a trailing slash. Default matches the http launch profile. Examples use SQLite sample data; run requests individually, as mutations can invalidate other examples. See docs/postman/README.md for setup."
+  },
+  "item": [
+    {
+      "name": "Transaction",
+      "item": [
+        {
+          "name": "get-by-id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/transactions/get-by-id?id=00000000-0000-0000-0000-000000000050",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "get-by-id"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "00000000-0000-0000-0000-000000000050"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-transactions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/transactions/get-transactions?date=2026-10-03",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "get-transactions"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-10-03"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "duplicate-transaction",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/transactions/duplicate-transaction?transactionId=00000000-0000-0000-0000-000000000050",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "duplicate-transaction"
+              ],
+              "query": [
+                {
+                  "key": "transactionId",
+                  "value": "00000000-0000-0000-0000-000000000050"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-balances-for-all-accounts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/transactions/get-balances-for-all-accounts?date=2026-10-03",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "get-balances-for-all-accounts"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-10-03"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-balance-for-account",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/transactions/get-balance-for-account?accountId=00000000-0000-0000-0000-000000000011&date=2026-10-03",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "get-balance-for-account"
+              ],
+              "query": [
+                {
+                  "key": "accountId",
+                  "value": "00000000-0000-0000-0000-000000000011"
+                },
+                {
+                  "key": "date",
+                  "value": "2026-10-03"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "add",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/transactions/add",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"dateTime\": \"2026-10-03T12:00:00Z\",\r\n  \"description\": \"Postman manual test\",\r\n  \"entries\": [\r\n    {\r\n      \"accountId\": \"00000000-0000-0000-0000-000000000011\",\r\n      \"amount\": -100,\r\n      \"rate\": 1\r\n    },\r\n    {\r\n      \"accountId\": \"00000000-0000-0000-0000-000000000012\",\r\n      \"amount\": 100,\r\n      \"rate\": 1\r\n    }\r\n  ]\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "update",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/transactions/update",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000050\",\r\n  \"dateTime\": \"2026-10-03T12:00:00Z\",\r\n  \"description\": \"Postman manual test\",\r\n  \"entries\": [\r\n    {\r\n      \"accountId\": \"00000000-0000-0000-0000-000000000011\",\r\n      \"amount\": -100,\r\n      \"rate\": 1\r\n    },\r\n    {\r\n      \"accountId\": \"00000000-0000-0000-0000-000000000012\",\r\n      \"amount\": 100,\r\n      \"rate\": 1\r\n    }\r\n  ]\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/transactions/delete",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000050\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete-transactions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/transactions/delete-transactions",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "delete-transactions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"fromDate\": \"2026-10-01\",\r\n  \"toDate\": \"2026-10-03\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "refresh-transactions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/transactions/refresh-transactions",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "refresh-transactions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"date\": \"2026-10-03\",\r\n  \"transactionIds\": [\r\n    \"00000000-0000-0000-0000-000000000040\",\r\n    \"00000000-0000-0000-0000-000000000050\"\r\n  ],\r\n  \"accountId\": \"00000000-0000-0000-0000-000000000011\",\r\n  \"categoryId\": null,\r\n  \"correspondentId\": null,\r\n  \"projectId\": null\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-transactions-by-account",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/transactions/get-transactions-by-account?accountId=00000000-0000-0000-0000-000000000011&date=2026-10-03",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "get-transactions-by-account"
+              ],
+              "query": [
+                {
+                  "key": "accountId",
+                  "value": "00000000-0000-0000-0000-000000000011"
+                },
+                {
+                  "key": "date",
+                  "value": "2026-10-03"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-transactions-by-category",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/transactions/get-transactions-by-category?categoryId=00000000-0000-0000-0000-000000000020&date=2026-10-03",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "get-transactions-by-category"
+              ],
+              "query": [
+                {
+                  "key": "categoryId",
+                  "value": "00000000-0000-0000-0000-000000000020"
+                },
+                {
+                  "key": "date",
+                  "value": "2026-10-03"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-transactions-by-correspondent",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/transactions/get-transactions-by-correspondent?correspondentId=00000000-0000-0000-0000-000000000021&date=2026-10-03",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "get-transactions-by-correspondent"
+              ],
+              "query": [
+                {
+                  "key": "correspondentId",
+                  "value": "00000000-0000-0000-0000-000000000021"
+                },
+                {
+                  "key": "date",
+                  "value": "2026-10-03"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-transactions-by-project",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/transactions/get-transactions-by-project?projectId=00000000-0000-0000-0000-000000000022&date=2026-10-03",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "get-transactions-by-project"
+              ],
+              "query": [
+                {
+                  "key": "projectId",
+                  "value": "00000000-0000-0000-0000-000000000022"
+                },
+                {
+                  "key": "date",
+                  "value": "2026-10-03"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete-transactions-by-account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/transactions/delete-transactions-by-account",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "delete-transactions-by-account"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"accountId\": \"00000000-0000-0000-0000-000000000011\",\r\n  \"fromDate\": \"2026-10-01\",\r\n  \"toDate\": \"2026-10-03\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete-transactions-by-category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/transactions/delete-transactions-by-category",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "delete-transactions-by-category"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"categoryId\": \"00000000-0000-0000-0000-000000000020\",\r\n  \"fromDate\": \"2026-10-01\",\r\n  \"toDate\": \"2026-10-03\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete-transactions-by-correspondent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/transactions/delete-transactions-by-correspondent",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "delete-transactions-by-correspondent"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"correspondentId\": \"00000000-0000-0000-0000-000000000021\",\r\n  \"fromDate\": \"2026-10-01\",\r\n  \"toDate\": \"2026-10-03\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete-transactions-by-project",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/transactions/delete-transactions-by-project",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "transactions",
+                "delete-transactions-by-project"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"projectId\": \"00000000-0000-0000-0000-000000000022\",\r\n  \"fromDate\": \"2026-10-01\",\r\n  \"toDate\": \"2026-10-03\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "CurrencyRate",
+      "item": [
+        {
+          "name": "add-or-update",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/currency-rates/add-or-update",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "currency-rates",
+                "add-or-update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"currencyId\": \"00000000-0000-0000-0000-000000000007\",\r\n  \"date\": \"2026-10-03\",\r\n  \"rate\": 41.50,\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/currency-rates/delete",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "currency-rates",
+                "delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"currencyId\": \"00000000-0000-0000-0000-000000000007\",\r\n  \"fromDate\": \"2026-10-01\",\r\n  \"toDate\": \"2026-10-03\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-rates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/currency-rates/get-rates?currencyId=00000000-0000-0000-0000-000000000007",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "currency-rates",
+                "get-rates"
+              ],
+              "query": [
+                {
+                  "key": "currencyId",
+                  "value": "00000000-0000-0000-0000-000000000007"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-rate",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/currency-rates/get-rate?accountId=00000000-0000-0000-0000-000000000011&date=2026-10-03",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "currency-rates",
+                "get-rate"
+              ],
+              "query": [
+                {
+                  "key": "accountId",
+                  "value": "00000000-0000-0000-0000-000000000011"
+                },
+                {
+                  "key": "date",
+                  "value": "2026-10-03"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Currency",
+      "item": [
+        {
+          "name": "get-by-id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/currencies/get-by-id?id=00000000-0000-0000-0000-000000000007",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "currencies",
+                "get-by-id"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "00000000-0000-0000-0000-000000000007"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-all-currencies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/currencies/get-all-currencies",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "currencies",
+                "get-all-currencies"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-available-currencies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/currencies/get-available-currencies",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "currencies",
+                "get-available-currencies"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "add",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/currencies/add",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "currencies",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"initialRate\": 45.5,\r\n  \"code\": \"EUR\",\r\n  \"symbol\": \"\\u20AC\",\r\n  \"name\": \"Postman example\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "update",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/currencies/update",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "currencies",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000007\",\r\n  \"code\": \"USD\",\r\n  \"symbol\": \"$\",\r\n  \"name\": \"Updated example\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/currencies/delete",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "currencies",
+                "delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000007\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/currencies/set-order",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "currencies",
+                "set-order"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000007\",\r\n  \"order\": 0\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-favorite-status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/currencies/set-favorite-status",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "currencies",
+                "set-favorite-status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000007\",\r\n  \"isFavorite\": true\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Account",
+      "item": [
+        {
+          "name": "get-by-id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/accounts/get-by-id?id=00000000-0000-0000-0000-000000000011",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "accounts",
+                "get-by-id"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "00000000-0000-0000-0000-000000000011"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-default-name",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/accounts/get-default-name?correspondentId=00000000-0000-0000-0000-000000000021&categoryId=00000000-0000-0000-0000-000000000020&projectId=00000000-0000-0000-0000-000000000022",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "accounts",
+                "get-default-name"
+              ],
+              "query": [
+                {
+                  "key": "correspondentId",
+                  "value": "00000000-0000-0000-0000-000000000021"
+                },
+                {
+                  "key": "categoryId",
+                  "value": "00000000-0000-0000-0000-000000000020"
+                },
+                {
+                  "key": "projectId",
+                  "value": "00000000-0000-0000-0000-000000000022"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "add",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/accounts/add",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "accounts",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"currencyId\": \"00000000-0000-0000-0000-000000000001\",\r\n  \"categoryId\": \"00000000-0000-0000-0000-000000000020\",\r\n  \"correspondentId\": \"00000000-0000-0000-0000-000000000021\",\r\n  \"projectId\": \"00000000-0000-0000-0000-000000000022\",\r\n  \"groupId\": \"22d0bbcc-37ec-4af4-b5c7-9caf34fec1e9\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Postman example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "update",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/accounts/update",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "accounts",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000011\",\r\n  \"currencyId\": \"00000000-0000-0000-0000-000000000001\",\r\n  \"categoryId\": \"00000000-0000-0000-0000-000000000020\",\r\n  \"correspondentId\": \"00000000-0000-0000-0000-000000000021\",\r\n  \"projectId\": \"00000000-0000-0000-0000-000000000022\",\r\n  \"groupId\": \"22d0bbcc-37ec-4af4-b5c7-9caf34fec1e9\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Updated example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/accounts/delete",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "accounts",
+                "delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000011\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/accounts/set-order",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "accounts",
+                "set-order"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000011\",\r\n  \"order\": 0\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-favorite-status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/accounts/set-favorite-status",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "accounts",
+                "set-favorite-status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000011\",\r\n  \"isFavorite\": true\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "move-to-another-group",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/accounts/move-to-another-group",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "accounts",
+                "move-to-another-group"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000011\",\r\n  \"toGroupId\": \"22d0bbcc-37ec-4af4-b5c7-9caf34fec1e9\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "combine-elements",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/accounts/combine-elements",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "accounts",
+                "combine-elements"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"toElementId\": \"00000000-0000-0000-0000-000000000012\",\r\n  \"fromElementId\": \"00000000-0000-0000-0000-000000000011\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "AccountGroup",
+      "item": [
+        {
+          "name": "get-accounts-tree",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/account-groups/get-accounts-tree",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "account-groups",
+                "get-accounts-tree"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-tree",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/account-groups/get-tree",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "account-groups",
+                "get-tree"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-all-groups",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/account-groups/get-all-groups",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "account-groups",
+                "get-all-groups"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-by-id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/account-groups/get-by-id?id=00000000-0000-0000-0000-000000000101",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "account-groups",
+                "get-by-id"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "00000000-0000-0000-0000-000000000101"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "add",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/account-groups/add",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "account-groups",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"parentId\": \"22d0bbcc-37ec-4af4-b5c7-9caf34fec1e9\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Postman example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "update",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/account-groups/update",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "account-groups",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000101\",\r\n  \"parentId\": \"22d0bbcc-37ec-4af4-b5c7-9caf34fec1e9\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Updated example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/account-groups/delete",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "account-groups",
+                "delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000101\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/account-groups/set-order",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "account-groups",
+                "set-order"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000101\",\r\n  \"order\": 0\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-favorite-status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/account-groups/set-favorite-status",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "account-groups",
+                "set-favorite-status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000101\",\r\n  \"isFavorite\": true\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "move-to-another-parent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/account-groups/move-to-another-parent",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "account-groups",
+                "move-to-another-parent"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"groupId\": \"00000000-0000-0000-0000-000000000101\",\r\n  \"toParentId\": \"22d0bbcc-37ec-4af4-b5c7-9caf34fec1e9\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "combine-groups",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/account-groups/combine-groups",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "account-groups",
+                "combine-groups"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"toGroupId\": \"22d0bbcc-37ec-4af4-b5c7-9caf34fec1e9\",\r\n  \"fromGroupId\": \"00000000-0000-0000-0000-000000000101\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Category",
+      "item": [
+        {
+          "name": "get-by-id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/categories/get-by-id?id=00000000-0000-0000-0000-000000000020",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "categories",
+                "get-by-id"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "00000000-0000-0000-0000-000000000020"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "add",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/categories/add",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "categories",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"groupId\": \"cdb033f6-8686-4222-b33f-66b5a3bf2948\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Postman example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "update",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/categories/update",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "categories",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000020\",\r\n  \"groupId\": \"cdb033f6-8686-4222-b33f-66b5a3bf2948\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Updated example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/categories/delete",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "categories",
+                "delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000020\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/categories/set-order",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "categories",
+                "set-order"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000020\",\r\n  \"order\": 0\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-favorite-status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/categories/set-favorite-status",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "categories",
+                "set-favorite-status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000020\",\r\n  \"isFavorite\": true\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "move-to-another-group",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/categories/move-to-another-group",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "categories",
+                "move-to-another-group"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000020\",\r\n  \"toGroupId\": \"cdb033f6-8686-4222-b33f-66b5a3bf2948\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "combine-elements",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/categories/combine-elements",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "categories",
+                "combine-elements"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"toElementId\": \"00000000-0000-0000-0000-000000000020\",\r\n  \"fromElementId\": \"00000000-0000-0000-0000-000000000020\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "CategoryGroup",
+      "item": [
+        {
+          "name": "get-tree",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/category-groups/get-tree",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "category-groups",
+                "get-tree"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-all-groups",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/category-groups/get-all-groups",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "category-groups",
+                "get-all-groups"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-by-id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/category-groups/get-by-id?id=00000000-0000-0000-0000-000000000102",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "category-groups",
+                "get-by-id"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "00000000-0000-0000-0000-000000000102"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "add",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/category-groups/add",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "category-groups",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"parentId\": \"cdb033f6-8686-4222-b33f-66b5a3bf2948\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Postman example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "update",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/category-groups/update",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "category-groups",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000102\",\r\n  \"parentId\": \"cdb033f6-8686-4222-b33f-66b5a3bf2948\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Updated example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/category-groups/delete",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "category-groups",
+                "delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000102\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/category-groups/set-order",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "category-groups",
+                "set-order"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000102\",\r\n  \"order\": 0\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-favorite-status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/category-groups/set-favorite-status",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "category-groups",
+                "set-favorite-status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000102\",\r\n  \"isFavorite\": true\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "move-to-another-parent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/category-groups/move-to-another-parent",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "category-groups",
+                "move-to-another-parent"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"groupId\": \"00000000-0000-0000-0000-000000000102\",\r\n  \"toParentId\": \"cdb033f6-8686-4222-b33f-66b5a3bf2948\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "combine-groups",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/category-groups/combine-groups",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "category-groups",
+                "combine-groups"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"toGroupId\": \"cdb033f6-8686-4222-b33f-66b5a3bf2948\",\r\n  \"fromGroupId\": \"00000000-0000-0000-0000-000000000102\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Correspondent",
+      "item": [
+        {
+          "name": "get-by-id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/correspondents/get-by-id?id=00000000-0000-0000-0000-000000000021",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondents",
+                "get-by-id"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "00000000-0000-0000-0000-000000000021"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "add",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/correspondents/add",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondents",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"groupId\": \"9c19a1fe-9c57-4703-9105-79075987ee45\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Postman example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "update",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/correspondents/update",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondents",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000021\",\r\n  \"groupId\": \"9c19a1fe-9c57-4703-9105-79075987ee45\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Updated example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/correspondents/delete",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondents",
+                "delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000021\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/correspondents/set-order",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondents",
+                "set-order"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000021\",\r\n  \"order\": 0\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-favorite-status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/correspondents/set-favorite-status",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondents",
+                "set-favorite-status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000021\",\r\n  \"isFavorite\": true\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "move-to-another-group",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/correspondents/move-to-another-group",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondents",
+                "move-to-another-group"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000021\",\r\n  \"toGroupId\": \"9c19a1fe-9c57-4703-9105-79075987ee45\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "combine-elements",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/correspondents/combine-elements",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondents",
+                "combine-elements"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"toElementId\": \"00000000-0000-0000-0000-000000000021\",\r\n  \"fromElementId\": \"00000000-0000-0000-0000-000000000021\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "CorrespondentGroup",
+      "item": [
+        {
+          "name": "get-tree",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/correspondent-groups/get-tree",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondent-groups",
+                "get-tree"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-all-groups",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/correspondent-groups/get-all-groups",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondent-groups",
+                "get-all-groups"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-by-id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/correspondent-groups/get-by-id?id=00000000-0000-0000-0000-000000000103",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondent-groups",
+                "get-by-id"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "00000000-0000-0000-0000-000000000103"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "add",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/correspondent-groups/add",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondent-groups",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"parentId\": \"9c19a1fe-9c57-4703-9105-79075987ee45\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Postman example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "update",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/correspondent-groups/update",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondent-groups",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000103\",\r\n  \"parentId\": \"9c19a1fe-9c57-4703-9105-79075987ee45\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Updated example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/correspondent-groups/delete",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondent-groups",
+                "delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000103\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/correspondent-groups/set-order",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondent-groups",
+                "set-order"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000103\",\r\n  \"order\": 0\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-favorite-status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/correspondent-groups/set-favorite-status",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondent-groups",
+                "set-favorite-status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000103\",\r\n  \"isFavorite\": true\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "move-to-another-parent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/correspondent-groups/move-to-another-parent",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondent-groups",
+                "move-to-another-parent"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"groupId\": \"00000000-0000-0000-0000-000000000103\",\r\n  \"toParentId\": \"9c19a1fe-9c57-4703-9105-79075987ee45\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "combine-groups",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/correspondent-groups/combine-groups",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "correspondent-groups",
+                "combine-groups"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"toGroupId\": \"9c19a1fe-9c57-4703-9105-79075987ee45\",\r\n  \"fromGroupId\": \"00000000-0000-0000-0000-000000000103\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Project",
+      "item": [
+        {
+          "name": "get-by-id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/projects/get-by-id?id=00000000-0000-0000-0000-000000000022",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "projects",
+                "get-by-id"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "00000000-0000-0000-0000-000000000022"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "add",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/projects/add",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "projects",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"groupId\": \"7c9385f6-28f2-4947-8b44-e81dd8d01949\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Postman example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "update",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/projects/update",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "projects",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000022\",\r\n  \"groupId\": \"7c9385f6-28f2-4947-8b44-e81dd8d01949\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Updated example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/projects/delete",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "projects",
+                "delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000022\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/projects/set-order",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "projects",
+                "set-order"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000022\",\r\n  \"order\": 0\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-favorite-status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/projects/set-favorite-status",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "projects",
+                "set-favorite-status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000022\",\r\n  \"isFavorite\": true\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "move-to-another-group",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/projects/move-to-another-group",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "projects",
+                "move-to-another-group"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000022\",\r\n  \"toGroupId\": \"7c9385f6-28f2-4947-8b44-e81dd8d01949\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "combine-elements",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/projects/combine-elements",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "projects",
+                "combine-elements"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"toElementId\": \"00000000-0000-0000-0000-000000000022\",\r\n  \"fromElementId\": \"00000000-0000-0000-0000-000000000022\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "ProjectGroup",
+      "item": [
+        {
+          "name": "get-tree",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/project-groups/get-tree",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "project-groups",
+                "get-tree"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-all-groups",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/project-groups/get-all-groups",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "project-groups",
+                "get-all-groups"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-by-id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/project-groups/get-by-id?id=00000000-0000-0000-0000-000000000104",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "project-groups",
+                "get-by-id"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "00000000-0000-0000-0000-000000000104"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "add",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/project-groups/add",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "project-groups",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"parentId\": \"7c9385f6-28f2-4947-8b44-e81dd8d01949\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Postman example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "update",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/project-groups/update",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "project-groups",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000104\",\r\n  \"parentId\": \"7c9385f6-28f2-4947-8b44-e81dd8d01949\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Updated example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/project-groups/delete",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "project-groups",
+                "delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000104\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/project-groups/set-order",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "project-groups",
+                "set-order"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000104\",\r\n  \"order\": 0\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-favorite-status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/project-groups/set-favorite-status",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "project-groups",
+                "set-favorite-status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000104\",\r\n  \"isFavorite\": true\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "move-to-another-parent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/project-groups/move-to-another-parent",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "project-groups",
+                "move-to-another-parent"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"groupId\": \"00000000-0000-0000-0000-000000000104\",\r\n  \"toParentId\": \"7c9385f6-28f2-4947-8b44-e81dd8d01949\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "combine-groups",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/project-groups/combine-groups",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "project-groups",
+                "combine-groups"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"toGroupId\": \"7c9385f6-28f2-4947-8b44-e81dd8d01949\",\r\n  \"fromGroupId\": \"00000000-0000-0000-0000-000000000104\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Template",
+      "item": [
+        {
+          "name": "get-by-id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/templates/get-by-id?id=00000000-0000-0000-0000-000000000030",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "templates",
+                "get-by-id"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "00000000-0000-0000-0000-000000000030"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "apply-template",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/templates/apply-template?templateId=00000000-0000-0000-0000-000000000030",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "templates",
+                "apply-template"
+              ],
+              "query": [
+                {
+                  "key": "templateId",
+                  "value": "00000000-0000-0000-0000-000000000030"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "from-transaction",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/templates/from-transaction?transactionId=00000000-0000-0000-0000-000000000050",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "templates",
+                "from-transaction"
+              ],
+              "query": [
+                {
+                  "key": "transactionId",
+                  "value": "00000000-0000-0000-0000-000000000050"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "add",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/templates/add",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "templates",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"groupId\": \"b232a84f-47d8-426e-aa54-ba8771b8b6de\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Postman example\",\r\n  \"description\": \"Postman manual test\",\r\n  \"entries\": [\r\n    {\r\n      \"accountId\": \"00000000-0000-0000-0000-000000000011\",\r\n      \"amount\": -100\r\n    },\r\n    {\r\n      \"accountId\": \"00000000-0000-0000-0000-000000000012\",\r\n      \"amount\": 100\r\n    }\r\n  ]\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "update",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/templates/update",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "templates",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000030\",\r\n  \"groupId\": \"b232a84f-47d8-426e-aa54-ba8771b8b6de\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Updated example\",\r\n  \"description\": \"Postman manual test\",\r\n  \"entries\": [\r\n    {\r\n      \"accountId\": \"00000000-0000-0000-0000-000000000011\",\r\n      \"amount\": -100\r\n    },\r\n    {\r\n      \"accountId\": \"00000000-0000-0000-0000-000000000012\",\r\n      \"amount\": 100\r\n    }\r\n  ]\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/templates/delete",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "templates",
+                "delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000030\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/templates/set-order",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "templates",
+                "set-order"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000030\",\r\n  \"order\": 0\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-favorite-status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/templates/set-favorite-status",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "templates",
+                "set-favorite-status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000030\",\r\n  \"isFavorite\": true\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "move-to-another-group",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/templates/move-to-another-group",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "templates",
+                "move-to-another-group"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000030\",\r\n  \"toGroupId\": \"b232a84f-47d8-426e-aa54-ba8771b8b6de\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "combine-elements",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/templates/combine-elements",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "templates",
+                "combine-elements"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"toElementId\": \"00000000-0000-0000-0000-000000000030\",\r\n  \"fromElementId\": \"00000000-0000-0000-0000-000000000030\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "TemplateGroup",
+      "item": [
+        {
+          "name": "get-tree",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/template-groups/get-tree",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "template-groups",
+                "get-tree"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-all-groups",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/template-groups/get-all-groups",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "template-groups",
+                "get-all-groups"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get-by-id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host-name}}/template-groups/get-by-id?id=00000000-0000-0000-0000-000000000105",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "template-groups",
+                "get-by-id"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "00000000-0000-0000-0000-000000000105"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "add",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/template-groups/add",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "template-groups",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"parentId\": \"b232a84f-47d8-426e-aa54-ba8771b8b6de\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Postman example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "update",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/template-groups/update",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "template-groups",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000105\",\r\n  \"parentId\": \"b232a84f-47d8-426e-aa54-ba8771b8b6de\",\r\n  \"isFavorite\": true,\r\n  \"name\": \"Updated example\",\r\n  \"description\": \"Postman manual test\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/template-groups/delete",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "template-groups",
+                "delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000105\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/template-groups/set-order",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "template-groups",
+                "set-order"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000105\",\r\n  \"order\": 0\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "set-favorite-status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/template-groups/set-favorite-status",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "template-groups",
+                "set-favorite-status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000105\",\r\n  \"isFavorite\": true\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "move-to-another-parent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/template-groups/move-to-another-parent",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "template-groups",
+                "move-to-another-parent"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"groupId\": \"00000000-0000-0000-0000-000000000105\",\r\n  \"toParentId\": \"b232a84f-47d8-426e-aa54-ba8771b8b6de\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "combine-groups",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host-name}}/template-groups/combine-groups",
+              "host": [
+                "{{host-name}}"
+              ],
+              "path": [
+                "template-groups",
+                "combine-groups"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"toGroupId\": \"b232a84f-47d8-426e-aa54-ba8771b8b6de\",\r\n  \"fromGroupId\": \"00000000-0000-0000-0000-000000000105\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "host-name",
+      "value": "http://localhost:5290",
+      "type": "string",
+      "description": "API root URL including scheme, without a trailing slash; for example http://localhost:7199."
+    }
+  ]
+}

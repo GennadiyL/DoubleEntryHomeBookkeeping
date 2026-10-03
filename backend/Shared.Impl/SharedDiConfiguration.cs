@@ -19,15 +19,15 @@ public static class SharedDiConfiguration
 	{
 		services.AddScoped<ISharedContext, SharedContext>();
 
-		services.AddScoped<IDateTimeService, DateTimeService>();
-		services.AddScoped<IDirectoryService, DirectoryService>();
-		services.AddScoped<IFileService, FileService>();
-		services.AddScoped<IZipService, ZipService>();
-		services.AddScoped<ITlsService, TlsService>();
-		services.AddScoped<IXmlService, XmlService>();
-		services.AddScoped<IJsonService, JsonService>();
+		services.AddSingleton<IDateTimeService, DateTimeService>();
+		services.AddSingleton<IDirectoryService, DirectoryService>();
+		services.AddSingleton<IFileService, FileService>();
+		services.AddSingleton<IZipService, ZipService>();
+		services.AddSingleton<ITlsService, TlsService>();
+		services.AddSingleton<IXmlService, XmlService>();
+		services.AddSingleton<IJsonService, JsonService>();
 
-		services.AddScoped<ILogService, NullLogService>();
-		services.AddScoped<IMessageService, InProcessBusMessageService>();
+		services.AddSingleton<ILogService, NullLogService>();
+		services.AddSingleton<IMessageService, InProcessBusMessageService>();
 	}
 }

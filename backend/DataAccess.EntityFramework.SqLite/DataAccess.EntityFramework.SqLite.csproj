@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
@@ -12,6 +12,12 @@
 
     <ItemGroup>
         <ProjectReference Include="..\DataAccess.EntityFramework\DataAccess.EntityFramework.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="Assets">
+        <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>

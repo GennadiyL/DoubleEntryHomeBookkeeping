@@ -12,8 +12,6 @@ builder.Services.AddExceptionHandler<WebApiExceptionHandler>();
 
 WebApplication app = builder.Build();
 
-//await app.Services.EnsureCreatedAsync();
-
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
