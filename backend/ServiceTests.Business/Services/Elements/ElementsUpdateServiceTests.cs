@@ -70,7 +70,7 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<TService>();
 		_group = new TGroup { Id = Guid.NewGuid(), Name = "Group" };
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
+		_groupRepository.GetWithContentsById(_group.Id).Returns(_group);
 		_element = new TElement
 		{
 			Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
@@ -78,7 +78,7 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(_element);
-		_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns(_element);
+		_repository.GetById(_element.Id, CancellationToken.None).Returns(_element);
 		_param = new ElementParam
 		{
 			GroupId = _group.Id,
@@ -112,7 +112,7 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 			Assert.That(_element.ModificationType.HasFlag(ModificationType.Content), Is.True);
 		});
 		_repository.Received(1).Update(_element);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -124,7 +124,7 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 		await _service.Update(_element.Id, _param);
 		Assert.That(_element.Description, Is.Null);
 		Assert.That(_element.IsFavorite, Is.False);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(false)]
@@ -186,7 +186,7 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 	[Test]
 	public void Update_MissingGroup_Rejects()
 	{
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns((TGroup?)null);
+		_groupRepository.GetWithContentsById(_group.Id).Returns((TGroup?)null);
 		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, _param));
 		AssertNoWrites();
 	}
@@ -217,7 +217,7 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 		}
 		else
 		{
-			_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns((TElement?)null);
+			_repository.GetById(_element.Id, CancellationToken.None).Returns((TElement?)null);
 		}
 		Assert.ThrowsAsync<ElementNotFoundException>(async () => await _service.Update(_element.Id, _param));
 		AssertNoWrites();
@@ -226,7 +226,7 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 	[Test]
 	public void Update_ReadFailure_PropagatesWithoutWrites()
 	{
-		_repository.GetByIdAsync(_element.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
+		_repository.GetById(_element.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Update(_element.Id, _param));
 		AssertNoWrites();
 	}
@@ -234,7 +234,7 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 	[Test]
 	public void Update_GroupReadFailure_PropagatesWithoutWrites()
 	{
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).ThrowsAsync(new InvalidOperationException());
+		_groupRepository.GetWithContentsById(_group.Id).ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Update(_element.Id, _param));
 		AssertNoWrites();
 	}
@@ -253,7 +253,7 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 	public void Update_SaveFailure_Propagates()
 	{
 		_element.Order = 5;
-		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException());
+		_unitOfWork.SaveChanges().ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Update(_element.Id, _param));
 	}
 
@@ -268,5 +268,5 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 
 	private void AssertNoSave() =>
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 }

@@ -39,7 +39,7 @@ internal sealed class TransactionRepository : Repository<AppDbContext, Transacti
 		}
 	}
 
-	public async Task<ICollection<TransactionEntity>> SearchAsync(TransactionSearch search, CancellationToken cancellationToken = default)
+	public async Task<ICollection<TransactionEntity>> Search(TransactionSearch search, CancellationToken cancellationToken = default)
 	{
 		IQueryable<Transaction> query = Entities.AsNoTracking().Where(transaction => transaction.DeleteRevision == null);
 		if (search.FromDateTime.HasValue)

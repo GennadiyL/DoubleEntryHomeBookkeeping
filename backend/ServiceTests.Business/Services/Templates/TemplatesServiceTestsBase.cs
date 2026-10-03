@@ -65,22 +65,22 @@ public abstract class TemplatesServiceTestsBase
 		_scope = _provider.CreateScope();
 		Service = _scope.ServiceProvider.GetRequiredService<ITemplateService>();
 		Group = new TemplateGroup { Id = Guid.NewGuid(), Name = "Group" };
-		GroupRepository.GetWithContentsByIdAsync(Group.Id, Arg.Any<CancellationToken>()).Returns(Group);
+		GroupRepository.GetWithContentsById(Group.Id, Arg.Any<CancellationToken>()).Returns(Group);
 		Template = AddSibling("Existing", 0);
 		Template.EditRevision = 7;
 		Template.Description = "Description";
 		Currency = new Currency { Id = Guid.NewGuid(), Name = "Dollar", Code = "USD", Symbol = "$" };
 		Account = new Account { Id = Guid.NewGuid(), Name = "Cash", CurrencyId = Currency.Id, Currency = Currency };
-		UnitOfWork.AccountRepo.GetByIdAsync(Account.Id, Arg.Any<CancellationToken>()).Returns(Account);
-		UnitOfWork.CurrencyRepo.GetByIdAsync(Currency.Id, Arg.Any<CancellationToken>()).Returns(Currency);
+		UnitOfWork.AccountRepo.GetById(Account.Id, Arg.Any<CancellationToken>()).Returns(Account);
+		UnitOfWork.CurrencyRepo.GetById(Currency.Id, Arg.Any<CancellationToken>()).Returns(Currency);
 		Config = new SystemConfig { Id = Guid.NewGuid(), BaseCurrencyId = Currency.Id };
-		UnitOfWork.SystemConfigRepo.GetAllAsync(Arg.Any<CancellationToken>()).Returns(new List<SystemConfig> { Config });
+		UnitOfWork.SystemConfigRepo.GetAll(Arg.Any<CancellationToken>()).Returns(new List<SystemConfig> { Config });
 		Entries = [new TemplateEntry
 		{
 			Id = Guid.NewGuid(), TemplateId = Template.Id, Template = Template,
 			AccountId = Account.Id, Account = Account, Amount = 10m, Position = 0
 		}];
-		EntryRepository.GetByTemplateIdAsync(Template.Id, Arg.Any<CancellationToken>()).Returns(Entries);
+		EntryRepository.GetByTemplateId(Template.Id, Arg.Any<CancellationToken>()).Returns(Entries);
 		Param = new TemplateParam { Name = "  New  ", GroupId = Group.Id, Description = "  Notes  ", IsFavorite = true };
 	}
 
@@ -95,7 +95,7 @@ public abstract class TemplatesServiceTestsBase
 	{
 		Template item = new() { Id = Guid.NewGuid(), Name = name, GroupId = Group.Id, Group = Group, Order = order };
 		Group.Elements.Add(item);
-		Repository.GetByIdAsync(item.Id, Arg.Any<CancellationToken>()).Returns(item);
+		Repository.GetById(item.Id, Arg.Any<CancellationToken>()).Returns(item);
 		return item;
 	}
 
@@ -113,6 +113,6 @@ public abstract class TemplatesServiceTestsBase
 		EntryRepository.DidNotReceiveWithAnyArgs().RemoveRange(default!);
 		UnitOfWork.TransactionRepo.DidNotReceiveWithAnyArgs().Add(default!);
 		UnitOfWork.TransactionRepo.DidNotReceiveWithAnyArgs().Update(default!);
-		UnitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
+		UnitOfWork.DidNotReceiveWithAnyArgs().SaveChanges(default);
 	}
 }

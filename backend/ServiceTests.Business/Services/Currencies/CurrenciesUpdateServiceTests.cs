@@ -35,7 +35,7 @@ public sealed class CurrenciesUpdateServiceTests : CurrenciesServiceTestsBase
 		Assert.That(Currency.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
 		Unit.CurrencyRateRepo.DidNotReceiveWithAnyArgs().Update(default!);
 		Unit.CurrencyRepo.Received(1).Update(Currency);
-		await Unit.Received(1).SaveChangesAsync();
+		await Unit.Received(1).SaveChanges();
 	}
 
 	[Test]

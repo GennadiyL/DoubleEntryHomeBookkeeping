@@ -14,27 +14,27 @@ internal sealed class AccountRepository : ElementRepository<AccountGroupEntity, 
 	{
 	}
 
-	public async Task<ICollection<AccountEntity>> GetByCategoryIdAsync(Guid categoryId, CancellationToken cancellationToken = default)
+	public async Task<ICollection<AccountEntity>> GetByCategoryId(Guid categoryId, CancellationToken cancellationToken = default)
 	{
 		List<Account> accounts = await Entities.AsNoTracking()
 			.Where(account => account.CategoryId == categoryId).ToListAsync(cancellationToken);
 		return Mapper.Map<Account, AccountEntity>(accounts);
 	}
 
-	public async Task<ICollection<AccountEntity>> GetByCorrespondentIdAsync(Guid correspondentId, CancellationToken cancellationToken = default)
+	public async Task<ICollection<AccountEntity>> GetByCorrespondentId(Guid correspondentId, CancellationToken cancellationToken = default)
 	{
 		List<Account> accounts = await Entities.AsNoTracking()
 			.Where(account => account.CorrespondentId == correspondentId).ToListAsync(cancellationToken);
 		return Mapper.Map<Account, AccountEntity>(accounts);
 	}
 
-	public async Task<ICollection<AccountEntity>> GetByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default)
+	public async Task<ICollection<AccountEntity>> GetByProjectId(Guid projectId, CancellationToken cancellationToken = default)
 	{
 		List<Account> accounts = await Entities.AsNoTracking()
 			.Where(account => account.ProjectId == projectId).ToListAsync(cancellationToken);
 		return Mapper.Map<Account, AccountEntity>(accounts);
 	}
 
-	public Task<bool> HasByCurrencyIdAsync(Guid currencyId, CancellationToken cancellationToken = default) =>
+	public Task<bool> HasByCurrencyId(Guid currencyId, CancellationToken cancellationToken = default) =>
 		Entities.AsNoTracking().AnyAsync(account => account.CurrencyId == currencyId, cancellationToken);
 }

@@ -13,14 +13,14 @@ internal sealed class TemplateEntryRepository : Repository<AppDbContext, Templat
 	{
 	}
 
-	public async Task<ICollection<TemplateEntryEntity>> GetByAccountIdAsync(Guid accountId, CancellationToken cancellationToken = default)
+	public async Task<ICollection<TemplateEntryEntity>> GetByAccountId(Guid accountId, CancellationToken cancellationToken = default)
 	{
 		List<DalEntity> entries = await Entities.AsNoTracking()
 			.Where(entry => entry.AccountId == accountId).ToListAsync(cancellationToken);
 		return Mapper.Map<DalEntity, TemplateEntryEntity>(entries);
 	}
 
-	public async Task<ICollection<TemplateEntryEntity>> GetByTemplateIdAsync(Guid templateId, CancellationToken cancellationToken = default)
+	public async Task<ICollection<TemplateEntryEntity>> GetByTemplateId(Guid templateId, CancellationToken cancellationToken = default)
 	{
 		List<DalEntity> entries = await Entities.AsNoTracking()
 			.Where(entry => entry.TemplateId == templateId).ToListAsync(cancellationToken);

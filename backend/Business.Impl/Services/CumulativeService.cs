@@ -28,21 +28,21 @@ internal sealed class CumulativeService : ICumulativeService
 		_operation = operation;
 	}
 
-	public async Task RebuildAsync(CancellationToken cancellationToken = default)
+	public async Task Rebuild(CancellationToken cancellationToken = default)
 	{
-		IUnitOfWorkTransaction transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
+		IUnitOfWorkTransaction transaction = await _unitOfWork.BeginTransaction(cancellationToken);
 		try
 		{
-			ICollection<Account> accounts = await _unitOfWork.AccountRepo.GetAllAsync(cancellationToken);
+			ICollection<Account> accounts = await _unitOfWork.AccountRepo.GetAll(cancellationToken);
 			foreach (Account account in accounts.Where(account => !account.IsDeleted()))
 			{
-				await _operation.RecalculateAsync(account.Id, cancellationToken);
+				await _operation.Recalculate(account.Id, cancellationToken);
 			}
-			await _unitOfWork.CommitTransactionAsync(transaction, cancellationToken);
+			await _unitOfWork.CommitTransaction(transaction, cancellationToken);
 		}
 		catch
 		{
-			await _unitOfWork.RollbackTransactionAsync(transaction, CancellationToken.None);
+			await _unitOfWork.RollbackTransaction(transaction, CancellationToken.None);
 			throw;
 		}
 	}

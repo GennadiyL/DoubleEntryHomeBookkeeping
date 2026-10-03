@@ -48,9 +48,9 @@ public sealed class AccountsMoveToAnotherGroupServiceTests
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<IAccountService>();
 		_destination = new AccountGroup { Id = Guid.NewGuid(), Name = "Destination" };
-		_groupRepository.GetWithContentsByIdAsync(_destination.Id).Returns(_destination);
+		_groupRepository.GetWithContentsById(_destination.Id).Returns(_destination);
 		_group = new AccountGroup { Id = Guid.NewGuid(), Name = "Group" };
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
+		_groupRepository.GetWithContentsById(_group.Id).Returns(_group);
 		_element = new Account
 		{
 			Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
@@ -58,7 +58,7 @@ public sealed class AccountsMoveToAnotherGroupServiceTests
 			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(_element);
-		_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns(_element);
+		_repository.GetById(_element.Id, CancellationToken.None).Returns(_element);
 	}
 
 	[TearDown]
@@ -89,7 +89,7 @@ public sealed class AccountsMoveToAnotherGroupServiceTests
 			Assert.That(_destination.Elements.Last().Order, Is.EqualTo(7));
 		});
 		_repository.Received(1).Update(_element);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 		_groupRepository.DidNotReceive().Update(Arg.Any<AccountGroup>());
 	}
 
@@ -105,7 +105,7 @@ public sealed class AccountsMoveToAnotherGroupServiceTests
 		await _service.MoveToAnotherGroup(_element.Id, _destination.Id);
 		Assert.That(_element.Order, Is.EqualTo(0));
 		Assert.That(_element.GroupId, Is.EqualTo(_destination.Id));
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -133,7 +133,7 @@ public sealed class AccountsMoveToAnotherGroupServiceTests
 		_destination.Children.Add(new AccountGroup { Id = Guid.NewGuid(), Name = _element.Name });
 		_destination.Elements.Add(new Account { Id = Guid.NewGuid(), Name = _element.Name.ToUpperInvariant() });
 		await _service.MoveToAnotherGroup(_element.Id, _destination.Id);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(true)]
@@ -157,7 +157,7 @@ public sealed class AccountsMoveToAnotherGroupServiceTests
 		}
 		else
 		{
-			_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns((Account?)null);
+			_repository.GetById(_element.Id, CancellationToken.None).Returns((Account?)null);
 		}
 		Assert.ThrowsAsync<ElementNotFoundException>(async () => await _service.MoveToAnotherGroup(_element.Id, _destination.Id));
 		AssertUnchanged();
@@ -173,7 +173,7 @@ public sealed class AccountsMoveToAnotherGroupServiceTests
 		}
 		else
 		{
-			_groupRepository.GetWithContentsByIdAsync(_destination.Id).Returns((AccountGroup?)null);
+			_groupRepository.GetWithContentsById(_destination.Id).Returns((AccountGroup?)null);
 		}
 		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.MoveToAnotherGroup(_element.Id, _destination.Id));
 		AssertUnchanged();
@@ -194,11 +194,11 @@ public sealed class AccountsMoveToAnotherGroupServiceTests
 	{
 		if (destination)
 		{
-			_groupRepository.GetWithContentsByIdAsync(_destination.Id).ThrowsAsync(new InvalidOperationException());
+			_groupRepository.GetWithContentsById(_destination.Id).ThrowsAsync(new InvalidOperationException());
 		}
 		else
 		{
-			_repository.GetByIdAsync(_element.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
+			_repository.GetById(_element.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
 		}
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.MoveToAnotherGroup(_element.Id, _destination.Id));
 		AssertUnchanged();
@@ -215,7 +215,7 @@ public sealed class AccountsMoveToAnotherGroupServiceTests
 	[Test]
 	public void MoveToAnotherGroup_SaveFailure_Propagates()
 	{
-		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException());
+		_unitOfWork.SaveChanges().ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.MoveToAnotherGroup(_element.Id, _destination.Id));
 	}
 
@@ -239,5 +239,5 @@ public sealed class AccountsMoveToAnotherGroupServiceTests
 
 	private void AssertNoSave() =>
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 }

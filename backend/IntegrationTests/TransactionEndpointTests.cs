@@ -61,7 +61,7 @@ public sealed class TransactionEndpointTests
 			unit.AccountRepo.Add(new Account { Id = accountId, Name = "Main", GroupId = group.Id, Group = group, CurrencyId = currency.Id, Currency = currency });
 			unit.AccountRepo.Add(new Account { Id = otherId, Name = "Other", Order = 1, GroupId = group.Id, Group = group, CurrencyId = currency.Id, Currency = currency });
 			unit.SystemConfigRepo.Add(new SystemConfig { Id = Guid.NewGuid(), BaseCurrencyId = currency.Id, AmountPrecision = 2 });
-			await unit.SaveChangesAsync();
+			await unit.SaveChanges();
 		}
 		await app.StartAsync();
 		using HttpClient client = app.GetTestClient();

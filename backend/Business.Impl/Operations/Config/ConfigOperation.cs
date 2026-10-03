@@ -45,7 +45,7 @@ internal sealed class ConfigOperation : IConfigOperation
 
 	public async Task<SystemConfig> GetSystemConfig(CancellationToken cancellationToken = default)
 	{
-		ICollection<SystemConfig> configurations = await _unitOfWork.SystemConfigRepo.GetAllAsync(cancellationToken);
+		ICollection<SystemConfig> configurations = await _unitOfWork.SystemConfigRepo.GetAll(cancellationToken);
 		if (configurations.Count != 1)
 		{
 			throw new InvalidOperationException("The System configuration singleton is missing or invalid.");
@@ -59,7 +59,7 @@ internal sealed class ConfigOperation : IConfigOperation
 		Guid? balancingAccountId = config.BalancingAccountId;
 		if (balancingAccountId.HasValue)
 		{
-			Account? account = await _unitOfWork.AccountRepo.GetByIdAsync(balancingAccountId.Value, cancellationToken);
+			Account? account = await _unitOfWork.AccountRepo.GetById(balancingAccountId.Value, cancellationToken);
 			if (account is null || account.IsDeleted())
 			{
 				balancingAccountId = null;
@@ -81,7 +81,7 @@ internal sealed class ConfigOperation : IConfigOperation
 
 	public async Task<LocalConfig> GetLocalConfig(CancellationToken cancellationToken = default)
 	{
-		ICollection<LocalConfig> configurations = await _unitOfWork.LocalConfigRepo.GetAllAsync(cancellationToken);
+		ICollection<LocalConfig> configurations = await _unitOfWork.LocalConfigRepo.GetAll(cancellationToken);
 		if (configurations.Count != 1)
 		{
 			throw new InvalidOperationException("The Local configuration singleton is missing or invalid.");

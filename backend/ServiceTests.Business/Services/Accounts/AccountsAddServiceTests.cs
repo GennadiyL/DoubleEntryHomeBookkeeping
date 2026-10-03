@@ -40,7 +40,7 @@ public sealed class AccountsAddServiceTests
 		_currencyRepository = Substitute.For<ICurrencyRepository>();
 		_unitOfWork.CurrencyRepo.Returns(_currencyRepository);
 		_currency = new Currency { Id = Guid.NewGuid(), Code = "USD", Symbol = "$", Name = "US Dollar" };
-		_currencyRepository.GetByIdAsync(_currency.Id, CancellationToken.None).Returns(_currency);
+		_currencyRepository.GetById(_currency.Id, CancellationToken.None).Returns(_currency);
 		_unitOfWork.AccountRepo.Returns(_repository);
 		_unitOfWork.AccountGroupRepo.Returns(_groupRepository);
 		IServiceCollection services = new ServiceCollection();
@@ -53,7 +53,7 @@ public sealed class AccountsAddServiceTests
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<IAccountService>();
 		_group = new AccountGroup { Id = Guid.NewGuid(), Name = "Group" };
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
+		_groupRepository.GetWithContentsById(_group.Id).Returns(_group);
 		_param = new AccountParam
 		{
 			GroupId = _group.Id,
@@ -81,8 +81,8 @@ public sealed class AccountsAddServiceTests
 			element.Name == _param.Name && element.Description == _param.Description &&
 			element.IsFavorite && !element.IsDeleted() && element.Order == 0 &&
 			element.EditRevision == null && element.DeleteRevision == null));
-		await _groupRepository.Received(1).GetWithContentsByIdAsync(_group.Id);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _groupRepository.Received(1).GetWithContentsById(_group.Id);
+		await _unitOfWork.Received(1).SaveChanges();
 		_groupRepository.DidNotReceive().Update(Arg.Any<AccountGroup>());
 	}
 
@@ -115,7 +115,7 @@ public sealed class AccountsAddServiceTests
 	{
 		_group.Elements.Add(new Account { Id = Guid.NewGuid(), Name = _param.Name, DeleteRevision = deleted ? 0 : null });
 		await _service.Add(_param);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -176,7 +176,7 @@ public sealed class AccountsAddServiceTests
 	[Test]
 	public void Add_MissingGroup_RejectsWithoutSaving()
 	{
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns((AccountGroup?)null);
+		_groupRepository.GetWithContentsById(_group.Id).Returns((AccountGroup?)null);
 		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}
@@ -200,7 +200,7 @@ public sealed class AccountsAddServiceTests
 	[Test]
 	public void Add_LookupFails_PropagatesWithoutWrites()
 	{
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).ThrowsAsync(new InvalidOperationException("Read failed."));
+		_groupRepository.GetWithContentsById(_group.Id).ThrowsAsync(new InvalidOperationException("Read failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}
@@ -217,7 +217,7 @@ public sealed class AccountsAddServiceTests
 	[Test]
 	public void Add_SaveFails_PropagatesFailure()
 	{
-		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException("Save failed."));
+		_unitOfWork.SaveChanges().ThrowsAsync(new InvalidOperationException("Save failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Add(_param));
 	}
 
@@ -239,7 +239,7 @@ public sealed class AccountsAddServiceTests
 		}
 		else
 		{
-			_currencyRepository.GetByIdAsync(_currency.Id, CancellationToken.None).Returns((Currency?)null);
+			_currencyRepository.GetById(_currency.Id, CancellationToken.None).Returns((Currency?)null);
 		}
 		Assert.ThrowsAsync<CurrencyNotFoundException>(async () => await _service.Add(_param));
 		AssertNoWrites();
@@ -254,9 +254,9 @@ public sealed class AccountsAddServiceTests
 		_param.CategoryId = category.Id;
 		_param.CorrespondentId = correspondent.Id;
 		_param.ProjectId = project.Id;
-		_unitOfWork.CategoryRepo.GetByIdAsync(category.Id, CancellationToken.None).Returns(category);
-		_unitOfWork.CorrespondentRepo.GetByIdAsync(correspondent.Id, CancellationToken.None).Returns(correspondent);
-		_unitOfWork.ProjectRepo.GetByIdAsync(project.Id, CancellationToken.None).Returns(project);
+		_unitOfWork.CategoryRepo.GetById(category.Id, CancellationToken.None).Returns(category);
+		_unitOfWork.CorrespondentRepo.GetById(correspondent.Id, CancellationToken.None).Returns(correspondent);
+		_unitOfWork.ProjectRepo.GetById(project.Id, CancellationToken.None).Returns(project);
 		await _service.Add(_param);
 		_repository.Received(1).Add(Arg.Is<Account>(account =>
 			account.CurrencyId == _currency.Id && ReferenceEquals(account.Currency, _currency) &&
@@ -281,17 +281,17 @@ public sealed class AccountsAddServiceTests
 		{
 			case "Category":
 				_param.CategoryId = id;
-				_unitOfWork.CategoryRepo.GetByIdAsync(id, CancellationToken.None)
+				_unitOfWork.CategoryRepo.GetById(id, CancellationToken.None)
 					.Returns(state == "deleted" ? new Category { Id = id, DeleteRevision = 0 } : null);
 				break;
 			case "Correspondent":
 				_param.CorrespondentId = id;
-				_unitOfWork.CorrespondentRepo.GetByIdAsync(id, CancellationToken.None)
+				_unitOfWork.CorrespondentRepo.GetById(id, CancellationToken.None)
 					.Returns(state == "deleted" ? new Correspondent { Id = id, DeleteRevision = 0 } : null);
 				break;
 			case "Project":
 				_param.ProjectId = id;
-				_unitOfWork.ProjectRepo.GetByIdAsync(id, CancellationToken.None)
+				_unitOfWork.ProjectRepo.GetById(id, CancellationToken.None)
 					.Returns(state == "deleted" ? new Project { Id = id, DeleteRevision = 0 } : null);
 				break;
 		}
@@ -309,7 +309,7 @@ public sealed class AccountsAddServiceTests
 	[Test]
 	public void Add_CurrencyReadFailure_PropagatesWithoutWrites()
 	{
-		_currencyRepository.GetByIdAsync(_currency.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
+		_currencyRepository.GetById(_currency.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}
@@ -334,5 +334,5 @@ public sealed class AccountsAddServiceTests
 
 	private void AssertNoSave() =>
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 }

@@ -32,7 +32,7 @@ public sealed class CurrencyRatesGetRatesServiceTests : CurrencyRatesServiceTest
 		latest.Description = "Latest";
 		CurrencyRate deleted = CreateRate(Param.Date.AddDays(1), 5m);
 		deleted.DeleteRevision = 0;
-		Unit.CurrencyRateRepo.GetByCurrencyIdAsync(Currency.Id, Arg.Any<CancellationToken>())
+		Unit.CurrencyRateRepo.GetByCurrencyId(Currency.Id, Arg.Any<CancellationToken>())
 			.Returns(new List<CurrencyRate> { earlier, initial, deleted, latest });
 
 		List<CurrencyRateInfo> result = await Service.GetRates(Currency.Id);
@@ -60,9 +60,9 @@ public sealed class CurrencyRatesGetRatesServiceTests : CurrencyRatesServiceTest
 	public async Task GetRates_ForwardsCancellation()
 	{
 		using CancellationTokenSource source = new();
-		Unit.CurrencyRateRepo.GetByCurrencyIdAsync(Currency.Id, source.Token).Returns(new List<CurrencyRate>());
+		Unit.CurrencyRateRepo.GetByCurrencyId(Currency.Id, source.Token).Returns(new List<CurrencyRate>());
 		Assert.That(await Service.GetRates(Currency.Id, source.Token), Is.Empty);
-		await Unit.CurrencyRateRepo.Received(1).GetByCurrencyIdAsync(Currency.Id, source.Token);
+		await Unit.CurrencyRateRepo.Received(1).GetByCurrencyId(Currency.Id, source.Token);
 		AssertNoWrites();
 	}
 }

@@ -46,7 +46,7 @@ public sealed class TemplatesDeleteServiceTests : TemplatesServiceTestsBase
 		Repository.Received(1).Update(Template);
 		Repository.Received(1).Update(sibling);
 		EntryRepository.DidNotReceiveWithAnyArgs().RemoveRange(default!);
-		await UnitOfWork.Received(1).SaveChangesAsync();
+		await UnitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(false)]

@@ -65,7 +65,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<TService>();
 		_parent = new TGroup { Id = Guid.NewGuid(), Name = "Parent" };
-		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns(_parent);
+		_repository.GetWithChildrenById(_parent.Id).Returns(_parent);
 		_group = new TGroup
 		{
 			Id = Guid.NewGuid(),
@@ -78,7 +78,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 			ModificationType = ModificationType.None
 		};
 		_parent.Children.Add(_group);
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
+		_repository.GetById(_group.Id, CancellationToken.None).Returns(_group);
 		_param = new GroupParam
 		{
 			ParentId = _parent.Id,
@@ -109,9 +109,9 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 			group.IsFavorite && !group.IsDeleted() && group.Order == 7 &&
 			group.EditRevision == originalRevision && group.ModificationType == ModificationType.Content));
 		_repository.DidNotReceive().Add(Arg.Any<TGroup>());
-		await _unitOfWork.Received(1).SaveChangesAsync();
-		await _repository.Received(1).GetByIdAsync(id, CancellationToken.None);
-		await _repository.Received(1).GetWithChildrenByIdAsync(_parent.Id);
+		await _unitOfWork.Received(1).SaveChanges();
+		await _repository.Received(1).GetById(id, CancellationToken.None);
+		await _repository.Received(1).GetWithChildrenById(_parent.Id);
 	}
 
 	[Test]
@@ -171,7 +171,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 	[Test]
 	public void Update_MissingGroup_RejectsWithoutSaving()
 	{
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns((TGroup?)null);
+		_repository.GetById(_group.Id, CancellationToken.None).Returns((TGroup?)null);
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Update(_group.Id, _param));
 		AssertNoChangesOrWrites();
 	}
@@ -203,7 +203,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 		}
 		else
 		{
-			_repository.GetWithChildrenByIdAsync(_parent.Id).Returns((TGroup?)null);
+			_repository.GetWithChildrenById(_parent.Id).Returns((TGroup?)null);
 		}
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Update(_group.Id, _param));
 		AssertNoChangesOrWrites();
@@ -243,7 +243,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 		_repository.Received(1).Update(Arg.Is<TGroup>(group =>
 			group.EditRevision == revision && group.DeleteRevision == null &&
 			group.ModificationType == (flags | ModificationType.Content) && group.Order == 7));
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -274,11 +274,11 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 			_group.Parent = _group;
 		}
 		_param.ParentId = _group.ParentId;
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
+		_repository.GetById(_group.Id, CancellationToken.None).Returns(_group);
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Update(_group.Id, _param));
 		AssertNoChangesOrWrites();
 		Assert.That(_repository.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IGroupRepository<TGroup, TElement>.GetWithChildrenByIdAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IGroupRepository<TGroup, TElement>.GetWithChildrenById)), Is.False);
 	}
 
 	[Test]
@@ -294,7 +294,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 	[Test]
 	public void Update_SaveFails_PropagatesFailure()
 	{
-		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException("Save failed."));
+		_unitOfWork.SaveChanges().ThrowsAsync(new InvalidOperationException("Save failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Update(_group.Id, _param));
 	}
 
@@ -303,7 +303,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 		_repository.DidNotReceive().Add(Arg.Any<TGroup>());
 		_repository.DidNotReceive().Update(Arg.Any<TGroup>());
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 		Assert.Multiple(() =>
 		{
 			Assert.That(_group.Name, Is.EqualTo("Old name"));

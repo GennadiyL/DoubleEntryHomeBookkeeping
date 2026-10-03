@@ -46,7 +46,7 @@ public sealed class AccountsSetFavoriteStatusServiceTests
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<IAccountService>();
 		_group = new AccountGroup { Id = Guid.NewGuid(), Name = "Group" };
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
+		_groupRepository.GetWithContentsById(_group.Id).Returns(_group);
 		_element = new Account
 		{
 			Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
@@ -54,7 +54,7 @@ public sealed class AccountsSetFavoriteStatusServiceTests
 			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(_element);
-		_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns(_element);
+		_repository.GetById(_element.Id, CancellationToken.None).Returns(_element);
 	}
 
 	[TearDown]
@@ -82,7 +82,7 @@ public sealed class AccountsSetFavoriteStatusServiceTests
 			Assert.That(_element.IsDeleted(), Is.False);
 		});
 		_repository.Received(1).Update(_element);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 		Assert.That(_groupRepository.ReceivedCalls(), Is.Empty);
 	}
 
@@ -114,7 +114,7 @@ public sealed class AccountsSetFavoriteStatusServiceTests
 		}
 		else
 		{
-			_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns((Account?)null);
+			_repository.GetById(_element.Id, CancellationToken.None).Returns((Account?)null);
 		}
 		Assert.ThrowsAsync<ElementNotFoundException>(async () => await _service.SetFavoriteStatus(_element.Id, true));
 		AssertNoWrites();
@@ -123,7 +123,7 @@ public sealed class AccountsSetFavoriteStatusServiceTests
 	[Test]
 	public void SetFavoriteStatus_ReadFailure_PropagatesWithoutWrites()
 	{
-		_repository.GetByIdAsync(_element.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
+		_repository.GetById(_element.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetFavoriteStatus(_element.Id, true));
 		AssertNoWrites();
 	}
@@ -142,7 +142,7 @@ public sealed class AccountsSetFavoriteStatusServiceTests
 	public void SetFavoriteStatus_SaveFailure_Propagates()
 	{
 		_element.Order = 5;
-		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException());
+		_unitOfWork.SaveChanges().ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetFavoriteStatus(_element.Id, true));
 	}
 
@@ -157,5 +157,5 @@ public sealed class AccountsSetFavoriteStatusServiceTests
 
 	private void AssertNoSave() =>
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 }

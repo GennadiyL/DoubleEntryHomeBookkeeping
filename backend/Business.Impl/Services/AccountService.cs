@@ -38,17 +38,17 @@ internal sealed class AccountService : IAccountService
 
 	public async Task<AccountInfo> GetById(Guid id, CancellationToken cancellationToken = default)
 	{
-		Account? account = await _repository.GetByIdAsync(id, cancellationToken);
+		Account? account = await _repository.GetById(id, cancellationToken);
 		if (account is null || account.IsDeleted())
 		{
 			throw new ElementNotFoundException("The account does not exist or is deleted.");
 		}
-		AccountGroup? group = await _groupRepository.GetByIdAsync(account.GroupId, cancellationToken);
+		AccountGroup? group = await _groupRepository.GetById(account.GroupId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
 		}
-		Currency? currency = await _unitOfWork.CurrencyRepo.GetByIdAsync(account.CurrencyId, cancellationToken);
+		Currency? currency = await _unitOfWork.CurrencyRepo.GetById(account.CurrencyId, cancellationToken);
 		if (currency is null || currency.IsDeleted())
 		{
 			throw new CurrencyNotFoundException("The currency does not exist or is deleted.");
@@ -83,7 +83,7 @@ internal sealed class AccountService : IAccountService
 			throw new InvalidElementException("An account name, group identifier, and currency identifier are required.");
 		}
 
-		AccountGroup? group = await _groupRepository.GetWithContentsByIdAsync(param.GroupId, cancellationToken);
+		AccountGroup? group = await _groupRepository.GetWithContentsById(param.GroupId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new InvalidElementException("The group does not exist or is deleted.");
@@ -119,7 +119,7 @@ internal sealed class AccountService : IAccountService
 			ModificationType = ModificationType.None,
 		};
 		_repository.Add(element);
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 		return element.Id;
 	}
 
@@ -137,7 +137,7 @@ internal sealed class AccountService : IAccountService
 			throw new InvalidElementException("Use MoveToAnotherGroup to change the group.");
 		}
 
-		AccountGroup? group = await _groupRepository.GetWithContentsByIdAsync(element.GroupId, cancellationToken);
+		AccountGroup? group = await _groupRepository.GetWithContentsById(element.GroupId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new InvalidElementException("The group does not exist or is deleted.");
@@ -162,14 +162,14 @@ internal sealed class AccountService : IAccountService
 		element.IsFavorite = param.IsFavorite;
 		element.SetEditedContent();
 		_repository.Update(element);
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 	}
 
 	public async Task Delete(Guid entityId, CancellationToken cancellationToken = default)
 	{
 		Account element = await GetActiveElement(entityId, cancellationToken);
-		if (await _unitOfWork.TransactionEntryRepo.HasByAccountIdAsync(entityId, cancellationToken) ||
-			(await _unitOfWork.TemplateEntryRepo.GetByAccountIdAsync(entityId, cancellationToken)).Count != 0)
+		if (await _unitOfWork.TransactionEntryRepo.HasByAccountId(entityId, cancellationToken) ||
+			(await _unitOfWork.TemplateEntryRepo.GetByAccountId(entityId, cancellationToken)).Count != 0)
 		{
 			throw new InvalidElementException("The account is referenced by a transaction or template.");
 		}
@@ -178,7 +178,7 @@ internal sealed class AccountService : IAccountService
 		element.SetDeleted();
 		_repository.Update(element);
 		NormalizeAccounts(group.Elements.Where(item => item.Id != element.Id && !item.IsDeleted()));
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 	}
 
 	public async Task SetOrder(Guid entityId, int order, CancellationToken cancellationToken = default)
@@ -189,7 +189,7 @@ internal sealed class AccountService : IAccountService
 		}
 
 		Account element = await GetActiveElement(entityId, cancellationToken);
-		AccountGroup? group = await _groupRepository.GetWithContentsByIdAsync(element.GroupId, cancellationToken);
+		AccountGroup? group = await _groupRepository.GetWithContentsById(element.GroupId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
@@ -221,7 +221,7 @@ internal sealed class AccountService : IAccountService
 			sibling.SetEditedOrder();
 			_repository.Update(sibling);
 		}
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 	}
 
 	public async Task SetFavoriteStatus(Guid entityId, bool isFavorite, CancellationToken cancellationToken = default)
@@ -235,7 +235,7 @@ internal sealed class AccountService : IAccountService
 		element.IsFavorite = isFavorite;
 		element.SetEditedContent();
 		_repository.Update(element);
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 	}
 
 	public async Task MoveToAnotherGroup(Guid entityId, Guid toGroupId, CancellationToken cancellationToken = default)
@@ -246,7 +246,7 @@ internal sealed class AccountService : IAccountService
 		}
 
 		Account element = await GetActiveElement(entityId, cancellationToken);
-		AccountGroup? destination = await _groupRepository.GetWithContentsByIdAsync(toGroupId, cancellationToken);
+		AccountGroup? destination = await _groupRepository.GetWithContentsById(toGroupId, cancellationToken);
 		if (destination is null || destination.IsDeleted())
 		{
 			throw new InvalidElementException("The destination group does not exist or is deleted.");
@@ -266,7 +266,7 @@ internal sealed class AccountService : IAccountService
 		element.SetEditedContent();
 		element.SetEditedOrder();
 		_repository.Update(element);
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 	}
 
 	public async Task CombineElements(Guid toElementId, Guid fromElementId, CancellationToken cancellationToken = default)
@@ -280,7 +280,7 @@ internal sealed class AccountService : IAccountService
 			throw new InvalidElementException("Two account identifiers are required.");
 		}
 
-		IUnitOfWorkTransaction transactionScope = await _unitOfWork.BeginTransactionAsync(cancellationToken);
+		IUnitOfWorkTransaction transactionScope = await _unitOfWork.BeginTransaction(cancellationToken);
 		try
 		{
 			Account source = await GetActiveElement(fromElementId, cancellationToken);
@@ -291,12 +291,12 @@ internal sealed class AccountService : IAccountService
 			}
 	
 			AccountGroup group = await GetActiveGroup(source.GroupId, cancellationToken);
-			ICollection<TransactionEntry> transactionEntries = await _unitOfWork.TransactionEntryRepo.GetByAccountIdAsync(fromElementId, cancellationToken);
-			ICollection<TemplateEntry> templateEntries = await _unitOfWork.TemplateEntryRepo.GetByAccountIdAsync(fromElementId, cancellationToken);
+			ICollection<TransactionEntry> transactionEntries = await _unitOfWork.TransactionEntryRepo.GetByAccountId(fromElementId, cancellationToken);
+			ICollection<TemplateEntry> templateEntries = await _unitOfWork.TemplateEntryRepo.GetByAccountId(fromElementId, cancellationToken);
 			List<Transaction> transactions = [];
 			foreach (Guid id in transactionEntries.Select(entry => entry.TransactionId).Distinct())
 			{
-				Transaction? transaction = await _unitOfWork.TransactionRepo.GetByIdAsync(id, cancellationToken);
+				Transaction? transaction = await _unitOfWork.TransactionRepo.GetById(id, cancellationToken);
 				if (transaction is null)
 				{
 					throw new InvalidOperationException("A referenced transaction is missing.");
@@ -306,7 +306,7 @@ internal sealed class AccountService : IAccountService
 			List<Template> templates = [];
 			foreach (Guid id in templateEntries.Select(entry => entry.TemplateId).Distinct())
 			{
-				Template? template = await _unitOfWork.TemplateRepo.GetByIdAsync(id, cancellationToken);
+				Template? template = await _unitOfWork.TemplateRepo.GetById(id, cancellationToken);
 				if (template is null)
 				{
 					throw new InvalidOperationException("A referenced template is missing.");
@@ -340,20 +340,20 @@ internal sealed class AccountService : IAccountService
 			source.SetDeleted();
 			_repository.Update(source);
 			NormalizeAccounts(group.Elements.Where(item => item.Id != source.Id && !item.IsDeleted()));
-			await _unitOfWork.SaveChangesAsync(cancellationToken);
-			await _cumulativeOperation.RecalculateAsync(destination.Id, cancellationToken);
-			await _unitOfWork.CommitTransactionAsync(transactionScope, cancellationToken);
+			await _unitOfWork.SaveChanges(cancellationToken);
+			await _cumulativeOperation.Recalculate(destination.Id, cancellationToken);
+			await _unitOfWork.CommitTransaction(transactionScope, cancellationToken);
 		}
 		catch
 		{
-			await _unitOfWork.RollbackTransactionAsync(transactionScope, CancellationToken.None);
+			await _unitOfWork.RollbackTransaction(transactionScope, CancellationToken.None);
 			throw;
 		}
 	}
 
 	private async Task<AccountGroup> GetActiveGroup(Guid groupId, CancellationToken cancellationToken = default)
 	{
-		AccountGroup? group = await _groupRepository.GetWithContentsByIdAsync(groupId, cancellationToken);
+		AccountGroup? group = await _groupRepository.GetWithContentsById(groupId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
@@ -385,7 +385,7 @@ internal sealed class AccountService : IAccountService
 			throw new InvalidElementException("An element identifier is required.");
 		}
 
-		Account? element = await _repository.GetByIdAsync(entityId, cancellationToken);
+		Account? element = await _repository.GetById(entityId, cancellationToken);
 		if (element is null || element.IsDeleted())
 		{
 			throw new ElementNotFoundException("The element does not exist or is deleted.");
@@ -395,7 +395,7 @@ internal sealed class AccountService : IAccountService
 
 	private async Task<(Currency Currency, Category? Category, Correspondent? Correspondent, Project? Project)> ResolveReferences(AccountParam param, CancellationToken cancellationToken = default)
 	{
-		Currency? currency = await _unitOfWork.CurrencyRepo.GetByIdAsync(param.CurrencyId, cancellationToken);
+		Currency? currency = await _unitOfWork.CurrencyRepo.GetById(param.CurrencyId, cancellationToken);
 		if (currency is null || currency.IsDeleted())
 		{
 			throw new CurrencyNotFoundException("The currency does not exist or is deleted.");
@@ -419,7 +419,7 @@ internal sealed class AccountService : IAccountService
 			throw new InvalidElementException("An optional reference must be a nonempty identifier or null.");
 		}
 
-		T? entity = await repository.GetByIdAsync(id.Value, cancellationToken);
+		T? entity = await repository.GetById(id.Value, cancellationToken);
 		if (entity is null || entity.IsDeleted())
 		{
 			throw new ElementNotFoundException("The referenced element does not exist or is deleted.");

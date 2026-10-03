@@ -31,7 +31,7 @@ public sealed class TemplatesSetFavoriteStatusServiceTests : TemplatesServiceTes
 		Assert.That(Template.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
 		Assert.That(Template.EditRevision, Is.EqualTo(7));
 		Repository.Received(1).Update(Template);
-		await UnitOfWork.Received(1).SaveChangesAsync();
+		await UnitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]

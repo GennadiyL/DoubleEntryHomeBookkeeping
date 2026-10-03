@@ -38,7 +38,7 @@ public sealed class TemplatesSetOrderServiceTests : TemplatesServiceTestsBase
 		Assert.That(deleted.Order, Is.EqualTo(1));
 		Assert.That(Template.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
 		Assert.That(other.ModificationType, Is.EqualTo(ModificationType.Order));
-		await UnitOfWork.Received(1).SaveChangesAsync();
+		await UnitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]

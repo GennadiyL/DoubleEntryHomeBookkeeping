@@ -72,7 +72,7 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<TService>();
 		_group = new TGroup { Id = Guid.NewGuid(), Name = "Group" };
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
+		_groupRepository.GetWithContentsById(_group.Id).Returns(_group);
 		_element = new TElement
 		{
 			Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
@@ -80,24 +80,24 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(_element);
-		_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns(_element);
+		_repository.GetById(_element.Id, CancellationToken.None).Returns(_element);
 		_destination = new TElement
 		{
 			Id = Guid.NewGuid(), Name = "Destination", GroupId = Guid.NewGuid(), Order = 4,
 			EditRevision = 1, ModificationType = ModificationType.None
 		};
-		_repository.GetByIdAsync(_destination.Id, CancellationToken.None).Returns(_destination);
+		_repository.GetById(_destination.Id, CancellationToken.None).Returns(_destination);
 		_accounts = [];
 		switch (_element)
 		{
 			case Category:
-				_accountRepository.GetByCategoryIdAsync(_element.Id).Returns(_accounts);
+				_accountRepository.GetByCategoryId(_element.Id).Returns(_accounts);
 				break;
 			case Correspondent:
-				_accountRepository.GetByCorrespondentIdAsync(_element.Id).Returns(_accounts);
+				_accountRepository.GetByCorrespondentId(_element.Id).Returns(_accounts);
 				break;
 			case Project:
-				_accountRepository.GetByProjectIdAsync(_element.Id).Returns(_accounts);
+				_accountRepository.GetByProjectId(_element.Id).Returns(_accounts);
 				break;
 		}
 	}
@@ -164,16 +164,16 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 		AssertDestinationUnchanged();
 		_repository.Received(1).Update(_element);
 		_repository.DidNotReceive().Update(_destination);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 		Assert.That(_accountRepository.ReceivedCalls().Count(call => call.GetMethodInfo().Name.StartsWith("GetBy", StringComparison.Ordinal)), Is.EqualTo(1));
 		Assert.That(_accountRepository.ReceivedCalls().Single(call => call.GetMethodInfo().Name.StartsWith("GetBy", StringComparison.Ordinal))
-			.GetMethodInfo().Name, Is.EqualTo($"GetBy{typeof(TElement).Name}IdAsync"));
+			.GetMethodInfo().Name, Is.EqualTo($"GetBy{typeof(TElement).Name}Id"));
 		Received.InOrder(() =>
 		{
 			_accountRepository.Update(active);
 			_accountRepository.Update(deleted);
 			_repository.Update(_element);
-			_unitOfWork.SaveChangesAsync();
+			_unitOfWork.SaveChanges();
 		});
 	}
 
@@ -191,7 +191,7 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 		Assert.That(_destination.IsDeleted(), Is.False);
 		_accountRepository.DidNotReceive().Update(Arg.Any<Account>());
 		_repository.Received(1).Update(_element);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -241,7 +241,7 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 		}
 		else
 		{
-			_repository.GetByIdAsync(target.Id, CancellationToken.None).Returns((TElement?)null);
+			_repository.GetById(target.Id, CancellationToken.None).Returns((TElement?)null);
 		}
 		Assert.ThrowsAsync<ElementNotFoundException>(async () => await _service.CombineElements(_destination.Id, _element.Id));
 		Assert.That(_accountRepository.ReceivedCalls(), Is.Empty);
@@ -252,7 +252,7 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 	[TestCase(true)]
 	public void CombineElements_ElementReadFailure_PropagatesWithoutWrites(bool destination)
 	{
-		_repository.GetByIdAsync(destination ? _destination.Id : _element.Id, CancellationToken.None)
+		_repository.GetById(destination ? _destination.Id : _element.Id, CancellationToken.None)
 			.ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.CombineElements(_destination.Id, _element.Id));
 		Assert.That(_element.IsDeleted(), Is.False);
@@ -265,13 +265,13 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 		switch (_element)
 		{
 			case Category:
-				_accountRepository.GetByCategoryIdAsync(_element.Id).ThrowsAsync(new InvalidOperationException());
+				_accountRepository.GetByCategoryId(_element.Id).ThrowsAsync(new InvalidOperationException());
 				break;
 			case Correspondent:
-				_accountRepository.GetByCorrespondentIdAsync(_element.Id).ThrowsAsync(new InvalidOperationException());
+				_accountRepository.GetByCorrespondentId(_element.Id).ThrowsAsync(new InvalidOperationException());
 				break;
 			case Project:
-				_accountRepository.GetByProjectIdAsync(_element.Id).ThrowsAsync(new InvalidOperationException());
+				_accountRepository.GetByProjectId(_element.Id).ThrowsAsync(new InvalidOperationException());
 				break;
 		}
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.CombineElements(_destination.Id, _element.Id));
@@ -305,7 +305,7 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 	public void CombineElements_SaveFailure_Propagates()
 	{
 		AddAccount(false);
-		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException());
+		_unitOfWork.SaveChanges().ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.CombineElements(_destination.Id, _element.Id));
 	}
 
@@ -348,5 +348,5 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 
 	private void AssertNoSave() =>
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 }

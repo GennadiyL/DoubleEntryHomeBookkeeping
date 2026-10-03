@@ -69,7 +69,7 @@ public sealed class ElementsDeleteServiceTests<TGroup, TElement, TService, TRepo
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<TService>();
 		_group = new TGroup { Id = Guid.NewGuid(), Name = "Group" };
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
+		_groupRepository.GetWithContentsById(_group.Id).Returns(_group);
 		_element = new TElement
 		{
 			Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
@@ -77,7 +77,7 @@ public sealed class ElementsDeleteServiceTests<TGroup, TElement, TService, TRepo
 			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(_element);
-		_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns(_element);
+		_repository.GetById(_element.Id, CancellationToken.None).Returns(_element);
 	}
 
 	[TearDown]
@@ -108,7 +108,7 @@ public sealed class ElementsDeleteServiceTests<TGroup, TElement, TService, TRepo
 			Assert.That(_element.IsFavorite, Is.False);
 		});
 		_repository.Received(1).Update(_element);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 		_groupRepository.DidNotReceive().Update(Arg.Any<TGroup>());
 	}
 
@@ -130,7 +130,7 @@ public sealed class ElementsDeleteServiceTests<TGroup, TElement, TService, TRepo
 		}
 		else
 		{
-			_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns((TElement?)null);
+			_repository.GetById(_element.Id, CancellationToken.None).Returns((TElement?)null);
 		}
 		Assert.ThrowsAsync<ElementNotFoundException>(async () => await _service.Delete(_element.Id));
 		AssertNoWrites();
@@ -139,7 +139,7 @@ public sealed class ElementsDeleteServiceTests<TGroup, TElement, TService, TRepo
 	[Test]
 	public void Delete_ReadFailure_PropagatesWithoutWrites()
 	{
-		_repository.GetByIdAsync(_element.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
+		_repository.GetById(_element.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Delete(_element.Id));
 		AssertNoWrites();
 	}
@@ -158,7 +158,7 @@ public sealed class ElementsDeleteServiceTests<TGroup, TElement, TService, TRepo
 	public void Delete_SaveFailure_Propagates()
 	{
 		_element.Order = 5;
-		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException());
+		_unitOfWork.SaveChanges().ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Delete(_element.Id));
 	}
 
@@ -173,5 +173,5 @@ public sealed class ElementsDeleteServiceTests<TGroup, TElement, TService, TRepo
 
 	private void AssertNoSave() =>
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 }

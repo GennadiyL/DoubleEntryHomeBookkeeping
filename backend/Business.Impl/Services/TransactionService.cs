@@ -54,7 +54,7 @@ internal sealed class TransactionService : ITransactionService
 		{
 			throw new InvalidElementException("A valid UTC transaction timestamp is required.");
 		}
-		IUnitOfWorkTransaction transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
+		IUnitOfWorkTransaction transaction = await _unitOfWork.BeginTransaction(cancellationToken);
 		try
 		{
 			Transaction entity = entityId.HasValue
@@ -62,7 +62,7 @@ internal sealed class TransactionService : ITransactionService
 				: new Transaction { Id = Guid.NewGuid() };
 			DateTime fromDateTime = entityId.HasValue && entity.DateTime < param.DateTime ? entity.DateTime : param.DateTime;
 			ICollection<TransactionEntry> oldEntries = entityId.HasValue
-				? await _unitOfWork.TransactionEntryRepo.GetByTransactionIdAsync(entity.Id, cancellationToken)
+				? await _unitOfWork.TransactionEntryRepo.GetByTransactionId(entity.Id, cancellationToken)
 				: new List<TransactionEntry>();
 			SystemConfig config = await _configOperation.GetSystemConfig(cancellationToken);
 			List<TransactionEntry> entries = [];
@@ -73,7 +73,7 @@ internal sealed class TransactionService : ITransactionService
 				{
 					throw new InvalidElementException("Every entry requires valid account, amount and rate values.");
 				}
-				Account? account = await _unitOfWork.AccountRepo.GetByIdAsync(input.AccountId, cancellationToken);
+				Account? account = await _unitOfWork.AccountRepo.GetById(input.AccountId, cancellationToken);
 				if (account is null || account.IsDeleted())
 				{
 					throw new InvalidElementException("The entry account does not exist or is deleted.");
@@ -101,7 +101,7 @@ internal sealed class TransactionService : ITransactionService
 			if (entityId.HasValue)
 			{
 				entity.SetEditedContent();
-				await _unitOfWork.TransactionEntryRepo.RemoveRangeAsync(oldEntries, cancellationToken);
+				await _unitOfWork.TransactionEntryRepo.RemoveRange(oldEntries, cancellationToken);
 				_unitOfWork.TransactionRepo.Update(entity);
 			}
 			else
@@ -112,40 +112,40 @@ internal sealed class TransactionService : ITransactionService
 			{
 				_unitOfWork.TransactionEntryRepo.Add(entry);
 			}
-			await _unitOfWork.SaveChangesAsync(cancellationToken);
+			await _unitOfWork.SaveChanges(cancellationToken);
 			foreach (Guid accountId in accounts)
 			{
-				await _cumulativeOperation.RecalculateAsync(accountId, fromDateTime, cancellationToken);
+				await _cumulativeOperation.Recalculate(accountId, fromDateTime, cancellationToken);
 			}
-			await _unitOfWork.CommitTransactionAsync(transaction, cancellationToken);
+			await _unitOfWork.CommitTransaction(transaction, cancellationToken);
 			return entity.Id;
 		}
 		catch
 		{
-			await _unitOfWork.RollbackTransactionAsync(transaction, CancellationToken.None);
+			await _unitOfWork.RollbackTransaction(transaction, CancellationToken.None);
 			throw;
 		}
 	}
 
 	public async Task Delete(Guid entityId, CancellationToken cancellationToken = default)
 	{
-		IUnitOfWorkTransaction transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
+		IUnitOfWorkTransaction transaction = await _unitOfWork.BeginTransaction(cancellationToken);
 		try
 		{
 			Transaction entity = await GetActiveTransaction(entityId, cancellationToken);
-			ICollection<TransactionEntry> entries = await _unitOfWork.TransactionEntryRepo.GetByTransactionIdAsync(entity.Id, cancellationToken);
+			ICollection<TransactionEntry> entries = await _unitOfWork.TransactionEntryRepo.GetByTransactionId(entity.Id, cancellationToken);
 			entity.SetDeleted();
 			_unitOfWork.TransactionRepo.Update(entity);
-			await _unitOfWork.SaveChangesAsync(cancellationToken);
+			await _unitOfWork.SaveChanges(cancellationToken);
 			foreach (Guid accountId in entries.Select(entry => entry.AccountId).Distinct())
 			{
-				await _cumulativeOperation.RecalculateAsync(accountId, entity.DateTime, cancellationToken);
+				await _cumulativeOperation.Recalculate(accountId, entity.DateTime, cancellationToken);
 			}
-			await _unitOfWork.CommitTransactionAsync(transaction, cancellationToken);
+			await _unitOfWork.CommitTransaction(transaction, cancellationToken);
 		}
 		catch
 		{
-			await _unitOfWork.RollbackTransactionAsync(transaction, CancellationToken.None);
+			await _unitOfWork.RollbackTransaction(transaction, CancellationToken.None);
 			throw;
 		}
 	}
@@ -172,14 +172,14 @@ internal sealed class TransactionService : ITransactionService
 			throw new InvalidElementException("The beginning of the range must not follow its end.");
 		}
 		search = search with { FromDateTime = StartOfDay(fromDate), BeforeDateTime = EndOfDay(toDate) };
-		IUnitOfWorkTransaction transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
+		IUnitOfWorkTransaction transaction = await _unitOfWork.BeginTransaction(cancellationToken);
 		try
 		{
 			await ValidateFilter(search, cancellationToken);
-			ICollection<Transaction> matches = await _unitOfWork.TransactionRepo.SearchAsync(search, cancellationToken);
+			ICollection<Transaction> matches = await _unitOfWork.TransactionRepo.Search(search, cancellationToken);
 			if (matches.Count == 0)
 			{
-				await _unitOfWork.RollbackTransactionAsync(transaction, CancellationToken.None);
+				await _unitOfWork.RollbackTransaction(transaction, CancellationToken.None);
 				return;
 			}
 			Dictionary<Guid, DateTime> affected = new();
@@ -195,16 +195,16 @@ internal sealed class TransactionService : ITransactionService
 				entity.SetDeleted();
 				_unitOfWork.TransactionRepo.Update(entity);
 			}
-			await _unitOfWork.SaveChangesAsync(cancellationToken);
+			await _unitOfWork.SaveChanges(cancellationToken);
 			foreach (KeyValuePair<Guid, DateTime> account in affected)
 			{
-				await _cumulativeOperation.RecalculateAsync(account.Key, account.Value, cancellationToken);
+				await _cumulativeOperation.Recalculate(account.Key, account.Value, cancellationToken);
 			}
-			await _unitOfWork.CommitTransactionAsync(transaction, cancellationToken);
+			await _unitOfWork.CommitTransaction(transaction, cancellationToken);
 		}
 		catch
 		{
-			await _unitOfWork.RollbackTransactionAsync(transaction, CancellationToken.None);
+			await _unitOfWork.RollbackTransaction(transaction, CancellationToken.None);
 			throw;
 		}
 	}
@@ -228,7 +228,7 @@ internal sealed class TransactionService : ITransactionService
 	{
 		await ValidateFilter(search, cancellationToken);
 		search = search with { BeforeDateTime = EndOfDay(date), MaximumCount = AppValues.MaxTransactionListCount + 1 };
-		ICollection<Transaction> entities = await _unitOfWork.TransactionRepo.SearchAsync(search, cancellationToken);
+		ICollection<Transaction> entities = await _unitOfWork.TransactionRepo.Search(search, cancellationToken);
 		TransactionListInfo result = new() { LimitExceeded = entities.Count > AppValues.MaxTransactionListCount };
 		result.Transactions.AddRange(entities.Take(AppValues.MaxTransactionListCount).Select(ToInfo));
 		return result;
@@ -255,7 +255,7 @@ internal sealed class TransactionService : ITransactionService
 		{
 			return result;
 		}
-		ICollection<Transaction> entities = await _unitOfWork.TransactionRepo.SearchAsync(search, cancellationToken);
+		ICollection<Transaction> entities = await _unitOfWork.TransactionRepo.Search(search, cancellationToken);
 		result.Transactions.AddRange(entities.Select(ToInfo));
 		HashSet<Guid> retained = [.. entities.Select(entity => entity.Id)];
 		result.RemovedTransactionIds.AddRange(search.Ids.Where(id => !retained.Contains(id)));
@@ -264,7 +264,7 @@ internal sealed class TransactionService : ITransactionService
 
 	public async Task<TransactionInfo> GetById(Guid id, CancellationToken cancellationToken = default)
 	{
-		ICollection<Transaction> matches = await _unitOfWork.TransactionRepo.SearchAsync(
+		ICollection<Transaction> matches = await _unitOfWork.TransactionRepo.Search(
 			new TransactionSearch { Ids = [id] }, cancellationToken);
 		Transaction? entity = matches.SingleOrDefault();
 		if (entity is null)
@@ -284,13 +284,13 @@ internal sealed class TransactionService : ITransactionService
 
 	public async Task<List<AccountBalanceInfo>> GetBalancesForAllAccounts(DateOnly date, CancellationToken cancellationToken = default)
 	{
-		ICollection<Account> accounts = await _unitOfWork.AccountRepo.GetAllAsync(cancellationToken);
+		ICollection<Account> accounts = await _unitOfWork.AccountRepo.GetAll(cancellationToken);
 		return await GetBalances(accounts.Where(account => !account.IsDeleted()).ToList(), date, null, cancellationToken);
 	}
 
 	public async Task<AccountBalanceInfo> GetBalanceForAccount(Guid accountId, DateOnly date, CancellationToken cancellationToken = default)
 	{
-		Account? account = await _unitOfWork.AccountRepo.GetByIdAsync(accountId, cancellationToken);
+		Account? account = await _unitOfWork.AccountRepo.GetById(accountId, cancellationToken);
 		if (account is null || account.IsDeleted())
 		{
 			throw new ElementNotFoundException("The account does not exist or is deleted.");
@@ -301,7 +301,7 @@ internal sealed class TransactionService : ITransactionService
 	private async Task<List<AccountBalanceInfo>> GetBalances(List<Account> accounts, DateOnly date, Guid? accountId, CancellationToken cancellationToken)
 	{
 		SystemConfig config = await _configOperation.GetSystemConfig(cancellationToken);
-		ICollection<Transaction> entities = await _unitOfWork.TransactionRepo.SearchAsync(
+		ICollection<Transaction> entities = await _unitOfWork.TransactionRepo.Search(
 			new TransactionSearch { BeforeDateTime = EndOfDay(date), AccountId = accountId, State = TransactionState.Confirmed },
 			cancellationToken);
 		Dictionary<Guid, AccountBalanceInfo> balances = accounts.ToDictionary(account => account.Id,
@@ -330,22 +330,22 @@ internal sealed class TransactionService : ITransactionService
 		bool valid = true;
 		if (search.AccountId.HasValue)
 		{
-			Account? entity = await _unitOfWork.AccountRepo.GetByIdAsync(search.AccountId.Value, cancellationToken);
+			Account? entity = await _unitOfWork.AccountRepo.GetById(search.AccountId.Value, cancellationToken);
 			valid = entity is not null && !entity.IsDeleted();
 		}
 		if (search.CategoryId.HasValue)
 		{
-			Category? entity = await _unitOfWork.CategoryRepo.GetByIdAsync(search.CategoryId.Value, cancellationToken);
+			Category? entity = await _unitOfWork.CategoryRepo.GetById(search.CategoryId.Value, cancellationToken);
 			valid &= entity is not null && !entity.IsDeleted();
 		}
 		if (search.CorrespondentId.HasValue)
 		{
-			Correspondent? entity = await _unitOfWork.CorrespondentRepo.GetByIdAsync(search.CorrespondentId.Value, cancellationToken);
+			Correspondent? entity = await _unitOfWork.CorrespondentRepo.GetById(search.CorrespondentId.Value, cancellationToken);
 			valid &= entity is not null && !entity.IsDeleted();
 		}
 		if (search.ProjectId.HasValue)
 		{
-			Project? entity = await _unitOfWork.ProjectRepo.GetByIdAsync(search.ProjectId.Value, cancellationToken);
+			Project? entity = await _unitOfWork.ProjectRepo.GetById(search.ProjectId.Value, cancellationToken);
 			valid &= entity is not null && !entity.IsDeleted();
 		}
 		if (!valid)
@@ -356,7 +356,7 @@ internal sealed class TransactionService : ITransactionService
 
 	private async Task<Transaction> GetActiveTransaction(Guid id, CancellationToken cancellationToken)
 	{
-		Transaction? entity = await _unitOfWork.TransactionRepo.GetByIdAsync(id, cancellationToken);
+		Transaction? entity = await _unitOfWork.TransactionRepo.GetById(id, cancellationToken);
 		if (entity is null || entity.IsDeleted())
 		{
 			throw new ElementNotFoundException("The transaction does not exist or is deleted.");

@@ -73,7 +73,7 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 			ModificationType = ModificationType.None
 		};
 		_parent.Children.Add(_group);
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
+		_repository.GetById(_group.Id, CancellationToken.None).Returns(_group);
 	}
 
 	[TearDown]
@@ -102,8 +102,8 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 			group.EditRevision == originalRevision && group.ParentId == _parent.Id &&
 			ReferenceEquals(group.Parent, _parent) && group.Order == 7 &&
 			group.Name == "Old name" && group.Description == "Old description" && !group.IsDeleted()));
-		await _repository.Received(1).GetByIdAsync(id, CancellationToken.None);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _repository.Received(1).GetById(id, CancellationToken.None);
+		await _unitOfWork.Received(1).SaveChanges();
 		_repository.DidNotReceive().Add(Arg.Any<TGroup>());
 		_repository.DidNotReceive().Update(child);
 		Assert.That(_group.Children.Single(), Is.SameAs(child));
@@ -137,7 +137,7 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 	[TestCase(false)]
 	public void SetFavoriteStatus_MissingGroup_RejectsWithoutSaving(bool isFavorite)
 	{
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns((TGroup?)null);
+		_repository.GetById(_group.Id, CancellationToken.None).Returns((TGroup?)null);
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.SetFavoriteStatus(_group.Id, isFavorite));
 		AssertNoWrites();
 	}
@@ -172,7 +172,7 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 			_group.ParentId = _group.Id;
 			_group.Parent = _group;
 		}
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
+		_repository.GetById(_group.Id, CancellationToken.None).Returns(_group);
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.SetFavoriteStatus(_group.Id, isFavorite));
 		Assert.That(_group.IsFavorite, Is.False);
 		Assert.That(_group.EditRevision, Is.EqualTo(1));
@@ -194,7 +194,7 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 		Assert.That(_group.DeleteRevision, Is.Null);
 		Assert.That(_group.ModificationType, Is.EqualTo(flags | ModificationType.Content));
 		_repository.Received(1).Update(_group);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -215,7 +215,7 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 	[Test]
 	public void SetFavoriteStatus_LookupFails_PropagatesFailureWithoutWrites()
 	{
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException("Read failed."));
+		_repository.GetById(_group.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException("Read failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetFavoriteStatus(_group.Id, true));
 		AssertNoWrites();
 	}
@@ -227,13 +227,13 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 			.Do(_ => throw new InvalidOperationException("Update failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetFavoriteStatus(_group.Id, true));
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 	}
 
 	[Test]
 	public void SetFavoriteStatus_SaveFails_PropagatesFailure()
 	{
-		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException("Save failed."));
+		_unitOfWork.SaveChanges().ThrowsAsync(new InvalidOperationException("Save failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetFavoriteStatus(_group.Id, true));
 	}
 
@@ -242,6 +242,6 @@ public sealed class GroupsSetFavoriteStatusServiceTests<TGroup, TElement, TServi
 		_repository.DidNotReceive().Add(Arg.Any<TGroup>());
 		_repository.DidNotReceive().Update(Arg.Any<TGroup>());
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 	}
 }

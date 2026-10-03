@@ -2,5 +2,5 @@ namespace DataAccess.Core.Behaviors;
 
 public interface ICommand
 {
-	public Task<TOutput> RunAsync<TInput, TOutput>(TInput data, CancellationToken cancellationToken = default);
+	public Task<TOutput> Run<TInput, TOutput>(TInput data, CancellationToken cancellationToken = default);
 }

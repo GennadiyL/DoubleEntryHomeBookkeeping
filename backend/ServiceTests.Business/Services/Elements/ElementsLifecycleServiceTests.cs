@@ -83,7 +83,7 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<TService>();
 		_group = new TGroup { Id = Guid.NewGuid(), Name = "Group" };
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
+		_groupRepository.GetWithContentsById(_group.Id).Returns(_group);
 		_element = new TElement
 		{
 			Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
@@ -91,12 +91,12 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(_element);
-		_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns(_element);
+		_repository.GetById(_element.Id, CancellationToken.None).Returns(_element);
 		_accounts = [];
-		_accountRepository.GetByCategoryIdAsync(_element.Id, Arg.Any<CancellationToken>()).Returns(_accounts);
-		_accountRepository.GetByCorrespondentIdAsync(_element.Id, Arg.Any<CancellationToken>()).Returns(_accounts);
-		_accountRepository.GetByProjectIdAsync(_element.Id, Arg.Any<CancellationToken>()).Returns(_accounts);
-		_groupRepository.GetByIdAsync(_group.Id, Arg.Any<CancellationToken>()).Returns(_group);
+		_accountRepository.GetByCategoryId(_element.Id, Arg.Any<CancellationToken>()).Returns(_accounts);
+		_accountRepository.GetByCorrespondentId(_element.Id, Arg.Any<CancellationToken>()).Returns(_accounts);
+		_accountRepository.GetByProjectId(_element.Id, Arg.Any<CancellationToken>()).Returns(_accounts);
+		_groupRepository.GetById(_group.Id, Arg.Any<CancellationToken>()).Returns(_group);
 	}
 
 	[TearDown]
@@ -127,7 +127,7 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 				item.Description == "  Notes  " && item.EditRevision == null &&
 				item.DeleteRevision == null && item.ModificationType == ModificationType.None));
 		}
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(false)]
@@ -184,7 +184,7 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 		Assert.That(deleted.Order, Is.EqualTo(4));
 		_repository.Received(1).Update(survivor);
 		_repository.DidNotReceive().Update(deleted);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(false)]
@@ -192,7 +192,7 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 	public void Delete_InvalidContainingGroup_DoesNotDelete(bool deleted)
 	{
 		if (deleted) { _group.DeleteRevision = 0; }
-		else { _groupRepository.GetWithContentsByIdAsync(_group.Id).Returns((TGroup?)null); }
+		else { _groupRepository.GetWithContentsById(_group.Id).Returns((TGroup?)null); }
 
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Delete(_element.Id));
 
@@ -208,7 +208,7 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 		TElement targetSibling = new() { Id = Guid.NewGuid(), Name = "Other", Order = 9, ModificationType = ModificationType.Content };
 		TElement deleted = new() { Id = Guid.NewGuid(), Name = "Deleted", Order = 4, DeleteRevision = 0 };
 		TGroup destination = new() { Id = Guid.NewGuid(), Elements = [targetSibling, deleted] };
-		_groupRepository.GetWithContentsByIdAsync(destination.Id).Returns(destination);
+		_groupRepository.GetWithContentsById(destination.Id).Returns(destination);
 
 		await _service.MoveToAnotherGroup(_element.Id, destination.Id);
 
@@ -224,7 +224,7 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 		}
 		Assert.That(deleted.Order, Is.EqualTo(4));
 		_repository.DidNotReceive().Update(deleted);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -232,8 +232,8 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 	{
 		TElement sibling = new() { Id = Guid.NewGuid(), Name = "Other", Order = 8 };
 		TGroup destination = new() { Id = Guid.NewGuid(), Elements = [sibling] };
-		_groupRepository.GetWithContentsByIdAsync(destination.Id).Returns(destination);
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns((TGroup?)null);
+		_groupRepository.GetWithContentsById(destination.Id).Returns(destination);
+		_groupRepository.GetWithContentsById(_group.Id).Returns((TGroup?)null);
 
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.MoveToAnotherGroup(_element.Id, destination.Id));
 
@@ -262,7 +262,7 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 		TElement destination = new() { Id = Guid.NewGuid(), Name = "Destination", GroupId = _group.Id,
 			Order = 8, EditRevision = 7, ModificationType = ModificationType.Content };
 		_group.Elements.Add(destination);
-		_repository.GetByIdAsync(destination.Id).Returns(destination);
+		_repository.GetById(destination.Id).Returns(destination);
 		_element.EditRevision = null;
 		_element.ModificationType = ModificationType.Order;
 
@@ -275,7 +275,7 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 		Assert.That(destination.EditRevision, Is.EqualTo(7));
 		Assert.That(destination.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
 		_repository.Received(1).Update(destination);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(null)]
@@ -332,7 +332,7 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 	public void GetById_InvalidGroup_ThrowsNotFound(bool deleted)
 	{
 		if (deleted) { _group.DeleteRevision = 0; }
-		else { _groupRepository.GetByIdAsync(_group.Id, Arg.Any<CancellationToken>()).Returns((TGroup?)null); }
+		else { _groupRepository.GetById(_group.Id, Arg.Any<CancellationToken>()).Returns((TGroup?)null); }
 
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.GetById(_element.Id));
 
@@ -344,12 +344,12 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 	{
 		using CancellationTokenSource cancellation = new();
 		CancellationToken token = cancellation.Token;
-		_repository.GetByIdAsync(_element.Id, token).Returns(_element);
+		_repository.GetById(_element.Id, token).Returns(_element);
 
 		await _service.GetById(_element.Id, token);
 
-		await _repository.Received(1).GetByIdAsync(_element.Id, token);
-		await _groupRepository.Received(1).GetByIdAsync(_group.Id, token);
+		await _repository.Received(1).GetById(_element.Id, token);
+		await _groupRepository.Received(1).GetById(_group.Id, token);
 		AssertNoWrites();
 	}
 
@@ -358,7 +358,7 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 	{
 		using CancellationTokenSource cancellation = new();
 		cancellation.Cancel();
-		_repository.GetByIdAsync(_element.Id, cancellation.Token).ThrowsAsync(new OperationCanceledException(cancellation.Token));
+		_repository.GetById(_element.Id, cancellation.Token).ThrowsAsync(new OperationCanceledException(cancellation.Token));
 
 		Assert.ThrowsAsync<OperationCanceledException>(async () => await _service.GetById(_element.Id, cancellation.Token));
 
@@ -370,12 +370,12 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 	{
 		using CancellationTokenSource cancellation = new();
 		CancellationToken token = cancellation.Token;
-		_groupRepository.GetWithContentsByIdAsync(_group.Id, token).Returns(_group);
+		_groupRepository.GetWithContentsById(_group.Id, token).Returns(_group);
 
 		await _service.Add(new ElementParam { GroupId = _group.Id, Name = "New" }, token);
 
-		await _groupRepository.Received(1).GetWithContentsByIdAsync(_group.Id, token);
-		await _unitOfWork.Received(1).SaveChangesAsync(token);
+		await _groupRepository.Received(1).GetWithContentsById(_group.Id, token);
+		await _unitOfWork.Received(1).SaveChanges(token);
 	}
 
 	[TestCase(null)]
@@ -391,7 +391,7 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 		Assert.That(_element.EditRevision, Is.EqualTo(revision));
 		Assert.That(_element.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
 		Assert.That(_element.Order, Is.EqualTo(1));
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -405,7 +405,7 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 		Assert.That(_element.Order, Is.Zero);
 		Assert.That(_element.EditRevision, Is.EqualTo(7));
 		Assert.That(_element.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -427,23 +427,23 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 	{
 		using CancellationTokenSource cancellation = new();
 		CancellationToken token = cancellation.Token;
-		_repository.GetByIdAsync(_element.Id, token).Returns(_element);
-		_groupRepository.GetWithContentsByIdAsync(_group.Id, token).Returns(_group);
+		_repository.GetById(_element.Id, token).Returns(_element);
+		_groupRepository.GetWithContentsById(_group.Id, token).Returns(_group);
 
 		await _service.Delete(_element.Id, token);
 
-		await _repository.Received(1).GetByIdAsync(_element.Id, token);
-		await _groupRepository.Received(1).GetWithContentsByIdAsync(_group.Id, token);
+		await _repository.Received(1).GetById(_element.Id, token);
+		await _groupRepository.Received(1).GetWithContentsById(_group.Id, token);
 		Assert.That(_accountRepository.ReceivedCalls().Single().GetArguments()[1], Is.EqualTo(token));
-		await _unitOfWork.Received(1).SaveChangesAsync(token);
+		await _unitOfWork.Received(1).SaveChanges(token);
 	}
 
 	[Test]
 	public void Delete_ReferenceLookupFailure_DoesNotDelete()
 	{
-		_accountRepository.GetByCategoryIdAsync(_element.Id, Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException());
-		_accountRepository.GetByCorrespondentIdAsync(_element.Id, Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException());
-		_accountRepository.GetByProjectIdAsync(_element.Id, Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException());
+		_accountRepository.GetByCategoryId(_element.Id, Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException());
+		_accountRepository.GetByCorrespondentId(_element.Id, Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException());
+		_accountRepository.GetByProjectId(_element.Id, Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException());
 
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Delete(_element.Id));
 
@@ -455,8 +455,8 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 	[TestCase(true)]
 	public void GetById_LookupFailure_PropagatesWithoutWrites(bool group)
 	{
-		if (group) { _groupRepository.GetByIdAsync(_group.Id).ThrowsAsync(new InvalidOperationException()); }
-		else { _repository.GetByIdAsync(_element.Id).ThrowsAsync(new InvalidOperationException()); }
+		if (group) { _groupRepository.GetById(_group.Id).ThrowsAsync(new InvalidOperationException()); }
+		else { _repository.GetById(_element.Id).ThrowsAsync(new InvalidOperationException()); }
 
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.GetById(_element.Id));
 
@@ -469,6 +469,6 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 		_repository.DidNotReceive().Update(Arg.Any<TElement>());
 		_accountRepository.DidNotReceive().Update(Arg.Any<Account>());
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 	}
 }

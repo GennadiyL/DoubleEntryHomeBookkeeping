@@ -14,23 +14,23 @@ internal sealed class TransactionEntryRepository : Repository<AppDbContext, Tran
 	{
 	}
 
-	public async Task<ICollection<TransactionEntryEntity>> GetByAccountIdAsync(Guid accountId, CancellationToken cancellationToken = default)
+	public async Task<ICollection<TransactionEntryEntity>> GetByAccountId(Guid accountId, CancellationToken cancellationToken = default)
 	{
 		List<DalEntity> entries = await Entities.AsNoTracking()
 			.Where(entry => entry.AccountId == accountId).ToListAsync(cancellationToken);
 		return Mapper.Map<DalEntity, TransactionEntryEntity>(entries);
 	}
 
-	public Task<bool> HasByAccountIdAsync(Guid accountId, CancellationToken cancellationToken = default) =>
+	public Task<bool> HasByAccountId(Guid accountId, CancellationToken cancellationToken = default) =>
 		Entities.AsNoTracking().AnyAsync(entry => entry.AccountId == accountId, cancellationToken);
 
-	public async Task<ICollection<TransactionEntryEntity>> GetByTransactionIdAsync(Guid transactionId, CancellationToken cancellationToken = default)
+	public async Task<ICollection<TransactionEntryEntity>> GetByTransactionId(Guid transactionId, CancellationToken cancellationToken = default)
 	{
 		List<DalEntity> entries = await Entities.AsNoTracking()
 			.Where(entry => entry.TransactionId == transactionId).ToListAsync(cancellationToken);
 		return Mapper.Map<DalEntity, TransactionEntryEntity>(entries);
 	}
-	public Task RemoveRangeAsync(IEnumerable<TransactionEntryEntity> entries, CancellationToken cancellationToken = default)
+	public Task RemoveRange(IEnumerable<TransactionEntryEntity> entries, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		Dictionary<Guid, DalEntity> tracked = Entities.Local.ToDictionary(entry => entry.Id);
@@ -42,7 +42,7 @@ internal sealed class TransactionEntryRepository : Repository<AppDbContext, Tran
 		return Task.CompletedTask;
 	}
 
-	public Task<decimal?> GetPreviousAsync(Guid accountId, DateTime beforeDateTime, CancellationToken cancellationToken = default) =>
+	public Task<decimal?> GetPrevious(Guid accountId, DateTime beforeDateTime, CancellationToken cancellationToken = default) =>
 		Entities.AsNoTracking()
 			.Where(entry => entry.AccountId == accountId && entry.Transaction!.DeleteRevision == null &&
 				entry.Transaction.State == TransactionState.Confirmed && entry.Transaction.DateTime < beforeDateTime)

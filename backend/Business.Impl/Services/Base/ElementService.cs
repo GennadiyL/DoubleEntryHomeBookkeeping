@@ -36,12 +36,12 @@ public abstract class ElementService<TGroup, TElement> :
 
 	public async Task<ElementInfo> GetById(Guid id, CancellationToken cancellationToken = default)
 	{
-		TElement? element = await _repository.GetByIdAsync(id, cancellationToken);
+		TElement? element = await _repository.GetById(id, cancellationToken);
 		if (element is null || element.IsDeleted())
 		{
 			throw new ElementNotFoundException("The element does not exist or is deleted.");
 		}
-		TGroup? group = await _groupRepository.GetByIdAsync(element.GroupId, cancellationToken);
+		TGroup? group = await _groupRepository.GetById(element.GroupId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
@@ -64,7 +64,7 @@ public abstract class ElementService<TGroup, TElement> :
 			throw new InvalidElementException("An element name and group identifier are required.");
 		}
 
-		TGroup? group = await _groupRepository.GetWithContentsByIdAsync(param.GroupId, cancellationToken);
+		TGroup? group = await _groupRepository.GetWithContentsById(param.GroupId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new InvalidElementException("The group does not exist or is deleted.");
@@ -95,7 +95,7 @@ public abstract class ElementService<TGroup, TElement> :
 			ModificationType = ModificationType.None,
 		};
 		_repository.Add(element);
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 		return element.Id;
 	}
 
@@ -113,7 +113,7 @@ public abstract class ElementService<TGroup, TElement> :
 			throw new InvalidElementException("Use MoveToAnotherGroup to change the group.");
 		}
 
-		TGroup? group = await _groupRepository.GetWithContentsByIdAsync(element.GroupId, cancellationToken);
+		TGroup? group = await _groupRepository.GetWithContentsById(element.GroupId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new InvalidElementException("The group does not exist or is deleted.");
@@ -129,7 +129,7 @@ public abstract class ElementService<TGroup, TElement> :
 		element.IsFavorite = param.IsFavorite;
 		element.SetEditedContent();
 		_repository.Update(element);
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 	}
 
 	public async Task Delete(Guid entityId, CancellationToken cancellationToken = default)
@@ -144,7 +144,7 @@ public abstract class ElementService<TGroup, TElement> :
 		element.SetDeleted();
 		_repository.Update(element);
 		NormalizeElements(group.Elements.Where(item => item.Id != element.Id && !item.IsDeleted()));
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 	}
 
 	public async Task SetOrder(Guid entityId, int order, CancellationToken cancellationToken = default)
@@ -155,7 +155,7 @@ public abstract class ElementService<TGroup, TElement> :
 		}
 
 		TElement element = await GetActiveElement(entityId, cancellationToken);
-		TGroup? group = await _groupRepository.GetWithContentsByIdAsync(element.GroupId, cancellationToken);
+		TGroup? group = await _groupRepository.GetWithContentsById(element.GroupId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
@@ -187,7 +187,7 @@ public abstract class ElementService<TGroup, TElement> :
 			sibling.SetEditedOrder();
 			_repository.Update(sibling);
 		}
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 	}
 
 	public async Task SetFavoriteStatus(Guid entityId, bool isFavorite, CancellationToken cancellationToken = default)
@@ -201,7 +201,7 @@ public abstract class ElementService<TGroup, TElement> :
 		element.IsFavorite = isFavorite;
 		element.SetEditedContent();
 		_repository.Update(element);
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 	}
 
 	public async Task MoveToAnotherGroup(Guid entityId, Guid toGroupId, CancellationToken cancellationToken = default)
@@ -212,7 +212,7 @@ public abstract class ElementService<TGroup, TElement> :
 		}
 
 		TElement element = await GetActiveElement(entityId, cancellationToken);
-		TGroup? destination = await _groupRepository.GetWithContentsByIdAsync(toGroupId, cancellationToken);
+		TGroup? destination = await _groupRepository.GetWithContentsById(toGroupId, cancellationToken);
 		if (destination is null || destination.IsDeleted())
 		{
 			throw new InvalidElementException("The destination group does not exist or is deleted.");
@@ -238,7 +238,7 @@ public abstract class ElementService<TGroup, TElement> :
 		element.SetEditedContent();
 		element.SetEditedOrder();
 		_repository.Update(element);
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 	}
 
 	public async Task CombineElements(Guid toElementId, Guid fromElementId, CancellationToken cancellationToken = default)
@@ -267,12 +267,12 @@ public abstract class ElementService<TGroup, TElement> :
 		source.SetEditedContent();
 		_repository.Update(source);
 		NormalizeElements(group.Elements.Where(item => item.Id != source.Id && !item.IsDeleted()));
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 	}
 
 	private async Task<TGroup> GetActiveGroup(Guid groupId, CancellationToken cancellationToken = default)
 	{
-		TGroup? group = await _groupRepository.GetWithContentsByIdAsync(groupId, cancellationToken);
+		TGroup? group = await _groupRepository.GetWithContentsById(groupId, cancellationToken);
 		if (group is null || group.IsDeleted())
 		{
 			throw new GroupNotFoundException("The group does not exist or is deleted.");
@@ -304,7 +304,7 @@ public abstract class ElementService<TGroup, TElement> :
 			throw new InvalidElementException("An element identifier is required.");
 		}
 
-		TElement? element = await _repository.GetByIdAsync(entityId, cancellationToken);
+		TElement? element = await _repository.GetById(entityId, cancellationToken);
 		if (element is null || element.IsDeleted())
 		{
 			throw new ElementNotFoundException("The element does not exist or is deleted.");

@@ -402,8 +402,8 @@ dotnet_style_allow_multiple_blank_lines_experimental = true:silent
 # Custom analyzer configurations
 #
 
-# Require Async suffix for names of Async Methods
-dotnet_diagnostic.VSTHRD200.severity = error
+# Application methods omit Async; framework-required member names stay unchanged.
+dotnet_diagnostic.VSTHRD200.severity = none
 # Inrerfaces should start form I, Generic types should start from T
 dotnet_diagnostic.CA1715.severity = error
 # Explicitely apply configure await on async calls

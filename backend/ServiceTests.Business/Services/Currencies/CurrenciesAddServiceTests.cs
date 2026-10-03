@@ -45,7 +45,7 @@ public sealed class CurrenciesAddServiceTests : CurrenciesServiceTestsBase
 		Assert.That(initial.Rate, Is.EqualTo(1.2344m));
 		Assert.That((initial.EditRevision, initial.DeleteRevision, initial.ModificationType), Is.EqualTo(((long?)null, (long?)null, ModificationType.None)));
 		Assert.That(saved.Rates.Single(), Is.SameAs(initial));
-		await Unit.Received(1).SaveChangesAsync();
+		await Unit.Received(1).SaveChanges();
 	}
 
 	[TestCase(0)]
@@ -132,8 +132,8 @@ public sealed class CurrenciesAddServiceTests : CurrenciesServiceTestsBase
 	{
 		using CancellationTokenSource source = new();
 		await Service.Add(Param, 1m, source.Token);
-		await Unit.CurrencyRepo.Received(1).GetAllAsync(source.Token);
-		await Unit.SystemConfigRepo.Received(1).GetAllAsync(source.Token);
-		await Unit.Received(1).SaveChangesAsync(source.Token);
+		await Unit.CurrencyRepo.Received(1).GetAll(source.Token);
+		await Unit.SystemConfigRepo.Received(1).GetAll(source.Token);
+		await Unit.Received(1).SaveChanges(source.Token);
 	}
 }

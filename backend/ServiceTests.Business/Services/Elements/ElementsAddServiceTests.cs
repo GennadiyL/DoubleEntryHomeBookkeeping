@@ -69,7 +69,7 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<TService>();
 		_group = new TGroup { Id = Guid.NewGuid(), Name = "Group" };
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
+		_groupRepository.GetWithContentsById(_group.Id).Returns(_group);
 		_param = new ElementParam
 		{
 			GroupId = _group.Id,
@@ -96,8 +96,8 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 			element.Name == _param.Name && element.Description == _param.Description &&
 			element.IsFavorite && !element.IsDeleted() && element.Order == 0 &&
 			element.EditRevision == null && element.DeleteRevision == null && element.ModificationType == ModificationType.None));
-		await _groupRepository.Received(1).GetWithContentsByIdAsync(_group.Id);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _groupRepository.Received(1).GetWithContentsById(_group.Id);
+		await _unitOfWork.Received(1).SaveChanges();
 		_groupRepository.DidNotReceive().Update(Arg.Any<TGroup>());
 	}
 
@@ -191,7 +191,7 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 	[Test]
 	public void Add_MissingGroup_RejectsWithoutSaving()
 	{
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns((TGroup?)null);
+		_groupRepository.GetWithContentsById(_group.Id).Returns((TGroup?)null);
 		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}
@@ -215,7 +215,7 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 	[Test]
 	public void Add_LookupFails_PropagatesWithoutWrites()
 	{
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).ThrowsAsync(new InvalidOperationException("Read failed."));
+		_groupRepository.GetWithContentsById(_group.Id).ThrowsAsync(new InvalidOperationException("Read failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}
@@ -232,7 +232,7 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 	[Test]
 	public void Add_SaveFails_PropagatesFailure()
 	{
-		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException("Save failed."));
+		_unitOfWork.SaveChanges().ThrowsAsync(new InvalidOperationException("Save failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Add(_param));
 	}
 
@@ -246,5 +246,5 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 
 	private void AssertNoSave() =>
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 }

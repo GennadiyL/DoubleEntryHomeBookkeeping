@@ -12,6 +12,6 @@ namespace DataAccess.Contracts.Commands;
 /// </summary>
 public interface ICumulativeAmountCommand
 {
-	public Task RecalculateAsync(Guid accountId, CancellationToken cancellationToken = default);
-	public Task RecalculateAsync(Guid accountId, DateTime fromDateTime, decimal initialAmount, CancellationToken cancellationToken = default);
+	public Task Recalculate(Guid accountId, CancellationToken cancellationToken = default);
+	public Task Recalculate(Guid accountId, DateTime fromDateTime, decimal initialAmount, CancellationToken cancellationToken = default);
 }

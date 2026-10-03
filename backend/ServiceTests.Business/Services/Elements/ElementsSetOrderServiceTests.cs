@@ -67,7 +67,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<TService>();
 		_group = new TGroup { Id = Guid.NewGuid(), Name = "Group" };
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
+		_groupRepository.GetWithContentsById(_group.Id).Returns(_group);
 		_element = new TElement
 		{
 			Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
@@ -75,7 +75,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(_element);
-		_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns(_element);
+		_repository.GetById(_element.Id, CancellationToken.None).Returns(_element);
 	}
 
 	[TearDown]
@@ -122,7 +122,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 		Assert.That(_element.Name, Is.EqualTo("Existing"));
 		Assert.That(_element.EditRevision, Is.EqualTo(1));
 		Assert.That(_element.GroupId, Is.EqualTo(_group.Id));
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -135,7 +135,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 		Assert.That(first.Order, Is.EqualTo(0));
 		Assert.That(other.Order, Is.EqualTo(1));
 		Assert.That(_element.Order, Is.EqualTo(2));
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -195,7 +195,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 	[Test]
 	public void SetOrder_MissingGroup_Rejects()
 	{
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns((TGroup?)null);
+		_groupRepository.GetWithContentsById(_group.Id).Returns((TGroup?)null);
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.SetOrder(_element.Id, 0));
 		AssertNoWrites();
 	}
@@ -226,7 +226,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 		}
 		else
 		{
-			_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns((TElement?)null);
+			_repository.GetById(_element.Id, CancellationToken.None).Returns((TElement?)null);
 		}
 		Assert.ThrowsAsync<ElementNotFoundException>(async () => await _service.SetOrder(_element.Id, 0));
 		AssertNoWrites();
@@ -235,7 +235,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 	[Test]
 	public void SetOrder_ReadFailure_PropagatesWithoutWrites()
 	{
-		_repository.GetByIdAsync(_element.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
+		_repository.GetById(_element.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetOrder(_element.Id, 0));
 		AssertNoWrites();
 	}
@@ -243,7 +243,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 	[Test]
 	public void SetOrder_GroupReadFailure_PropagatesWithoutWrites()
 	{
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).ThrowsAsync(new InvalidOperationException());
+		_groupRepository.GetWithContentsById(_group.Id).ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetOrder(_element.Id, 0));
 		AssertNoWrites();
 	}
@@ -262,7 +262,7 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 	public void SetOrder_SaveFailure_Propagates()
 	{
 		_element.Order = 5;
-		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException());
+		_unitOfWork.SaveChanges().ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetOrder(_element.Id, 0));
 	}
 
@@ -288,5 +288,5 @@ public sealed class ElementsSetOrderServiceTests<TGroup, TElement, TService, TRe
 
 	private void AssertNoSave() =>
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 }

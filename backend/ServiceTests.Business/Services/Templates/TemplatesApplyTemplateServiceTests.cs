@@ -35,7 +35,7 @@ public sealed class TemplatesApplyTemplateServiceTests : TemplatesServiceTestsBa
 		Assert.That(result.Entries[0].AccountName, Is.EqualTo(Account.Name));
 		Assert.That(result.Entries[0].Amount, Is.EqualTo(10m));
 		Assert.That(result.Entries[0].Rate, Is.EqualTo(1m));
-		await UnitOfWork.CurrencyRateRepo.DidNotReceiveWithAnyArgs().GetApplicableAsync(default, default, default);
+		await UnitOfWork.CurrencyRateRepo.DidNotReceiveWithAnyArgs().GetApplicable(default, default, default);
 		AssertNoWrites();
 	}
 
@@ -46,7 +46,7 @@ public sealed class TemplatesApplyTemplateServiceTests : TemplatesServiceTestsBa
 		DateOnly date = DateOnly.FromDateTime(Now.ToLocalTime());
 		CurrencyRate rate = new() { Id = Guid.NewGuid(), CurrencyId = Currency.Id, Currency = Currency,
 			Date = date.AddDays(-1), Rate = 1.2345m };
-		UnitOfWork.CurrencyRateRepo.GetApplicableAsync(Currency.Id, date, Arg.Any<CancellationToken>()).Returns(rate);
+		UnitOfWork.CurrencyRateRepo.GetApplicable(Currency.Id, date, Arg.Any<CancellationToken>()).Returns(rate);
 		Entries[0].Position = 1;
 		Entries.Add(new TemplateEntry { Template = Template, Account = Account, AccountId = Account.Id,
 			Amount = -4m, Position = 0 });
@@ -56,7 +56,7 @@ public sealed class TemplatesApplyTemplateServiceTests : TemplatesServiceTestsBa
 
 		Assert.That(result.Entries.Select(entry => entry.Amount), Is.EqualTo(new[] { -4m, 10m }));
 		Assert.That(result.Entries.All(entry => entry.Rate == rate.Rate), Is.True);
-		await UnitOfWork.CurrencyRateRepo.Received(2).GetApplicableAsync(Currency.Id, date, source.Token);
+		await UnitOfWork.CurrencyRateRepo.Received(2).GetApplicable(Currency.Id, date, source.Token);
 		AssertNoWrites();
 	}
 
@@ -82,7 +82,7 @@ public sealed class TemplatesApplyTemplateServiceTests : TemplatesServiceTestsBa
 	public void ApplyTemplate_InvalidRateFailsWithoutSaving(int value)
 	{
 		Config.BaseCurrencyId = Guid.NewGuid();
-		UnitOfWork.CurrencyRateRepo.GetApplicableAsync(Currency.Id, Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+		UnitOfWork.CurrencyRateRepo.GetApplicable(Currency.Id, Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
 			.Returns(new CurrencyRate { Currency = Currency, CurrencyId = Currency.Id, Rate = value });
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await Service.ApplyTemplate(Template.Id));
 		AssertNoWrites();

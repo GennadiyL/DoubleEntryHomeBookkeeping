@@ -24,7 +24,7 @@ public abstract class UnitOfWork<TContext> : IUnitOfWork
 		ServiceProvider = serviceProvider;
 	}
 
-	public async Task<IUnitOfWorkTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
+	public async Task<IUnitOfWorkTransaction> BeginTransaction(CancellationToken cancellationToken = default)
 	{
 		IDbContextTransaction transaction =
 			await Context.Database.BeginTransactionAsync(cancellationToken);
@@ -32,17 +32,17 @@ public abstract class UnitOfWork<TContext> : IUnitOfWork
 		return new UnitOfWorkTransaction(Context, transaction);
 	}
 
-	public async Task CommitTransactionAsync(
+	public async Task CommitTransaction(
 		IUnitOfWorkTransaction transaction,
 		CancellationToken cancellationToken = default)
 	{
 		UnitOfWorkTransaction unitOfWorkTransaction = GetTransaction(transaction);
 
-		await unitOfWorkTransaction.CommitAsync(cancellationToken);
+		await unitOfWorkTransaction.Commit(cancellationToken);
 		await unitOfWorkTransaction.DisposeAsync();
 	}
 
-	public async Task RollbackTransactionAsync(
+	public async Task RollbackTransaction(
 		IUnitOfWorkTransaction transaction,
 		CancellationToken cancellationToken = default)
 	{
@@ -50,7 +50,7 @@ public abstract class UnitOfWork<TContext> : IUnitOfWork
 
 		try
 		{
-			await unitOfWorkTransaction.RollbackAsync(cancellationToken);
+			await unitOfWorkTransaction.Rollback(cancellationToken);
 		}
 		finally
 		{
@@ -65,9 +65,9 @@ public abstract class UnitOfWork<TContext> : IUnitOfWork
 		}
 	}
 
-	public void SaveChanges() => Context.SaveChanges();
+	public void SaveChangesSync() => Context.SaveChanges();
 
-	public Task SaveChangesAsync(CancellationToken cancellationToken = default) => Context.SaveChangesAsync(cancellationToken);
+	public Task SaveChanges(CancellationToken cancellationToken = default) => Context.SaveChangesAsync(cancellationToken);
 
 	private UnitOfWorkTransaction GetTransaction(IUnitOfWorkTransaction transaction)
 	{

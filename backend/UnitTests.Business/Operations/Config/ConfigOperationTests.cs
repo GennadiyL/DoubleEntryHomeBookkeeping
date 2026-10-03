@@ -39,11 +39,11 @@ public sealed class ConfigOperationTests
 			MasterDatasetKey = "dataset", AmountPrecision = 3, RatePrecision = 4,
 			EditRevision = 7, ModificationType = ModificationType.Order
 		};
-		unit.SystemConfigRepo.GetAllAsync(Arg.Any<CancellationToken>()).Returns(new List<SystemConfig> { stored });
-		unit.LocalConfigRepo.GetAllAsync(Arg.Any<CancellationToken>()).Returns(new List<LocalConfig> { new() });
+		unit.SystemConfigRepo.GetAll(Arg.Any<CancellationToken>()).Returns(new List<SystemConfig> { stored });
+		unit.LocalConfigRepo.GetAll(Arg.Any<CancellationToken>()).Returns(new List<LocalConfig> { new() });
 		if (state is "live" or "deleted")
 		{
-			unit.AccountRepo.GetByIdAsync(selectedId!.Value, Arg.Any<CancellationToken>())
+			unit.AccountRepo.GetById(selectedId!.Value, Arg.Any<CancellationToken>())
 				.Returns(new Account { Id = selectedId.Value, DeleteRevision = state == "deleted" ? 0L : null });
 		}
 		ConfigOperation operation = new(unit);
@@ -69,14 +69,14 @@ public sealed class ConfigOperationTests
 		Assert.That(stored.ModificationType, Is.EqualTo(ModificationType.Order));
 		if (selectedId.HasValue)
 		{
-			await unit.AccountRepo.Received(1).GetByIdAsync(selectedId.Value, source.Token);
+			await unit.AccountRepo.Received(1).GetById(selectedId.Value, source.Token);
 		}
 		else
 		{
-			await unit.AccountRepo.DidNotReceiveWithAnyArgs().GetByIdAsync(default, default);
+			await unit.AccountRepo.DidNotReceiveWithAnyArgs().GetById(default, default);
 		}
 		unit.SystemConfigRepo.DidNotReceiveWithAnyArgs().Update(default!);
 		unit.SystemConfigRepo.DidNotReceiveWithAnyArgs().Add(default!);
-		await unit.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
+		await unit.DidNotReceiveWithAnyArgs().SaveChanges(default);
 	}
 }

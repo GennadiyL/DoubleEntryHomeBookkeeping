@@ -33,7 +33,7 @@ public sealed class CurrenciesSetFavoriteStatusServiceTests : CurrenciesServiceT
 		Assert.That(target.IsFavorite, Is.True);
 		Assert.That(target.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
 		Assert.That(target.EditRevision, Is.EqualTo(7));
-		await Unit.Received(1).SaveChangesAsync();
+		await Unit.Received(1).SaveChanges();
 	}
 
 	[Test]

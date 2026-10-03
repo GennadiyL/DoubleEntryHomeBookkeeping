@@ -13,7 +13,7 @@ internal sealed class CurrencyRateRepository : Repository<AppDbContext, Currency
 	{
 	}
 
-	public async Task<CurrencyRateEntity?> GetApplicableAsync(Guid currencyId, DateOnly date, CancellationToken cancellationToken = default)
+	public async Task<CurrencyRateEntity?> GetApplicable(Guid currencyId, DateOnly date, CancellationToken cancellationToken = default)
 	{
 		DalEntity? rate = await Entities.AsNoTracking()
 			.Where(item => item.CurrencyId == currencyId && item.Date <= date && item.DeleteRevision == null)
@@ -21,21 +21,21 @@ internal sealed class CurrencyRateRepository : Repository<AppDbContext, Currency
 		return rate is null ? null : Mapper.Map<DalEntity, CurrencyRateEntity>(rate);
 	}
 
-	public async Task<CurrencyRateEntity?> GetByCurrencyAndDateAsync(Guid currencyId, DateOnly date, CancellationToken cancellationToken = default)
+	public async Task<CurrencyRateEntity?> GetByCurrencyAndDate(Guid currencyId, DateOnly date, CancellationToken cancellationToken = default)
 	{
 		DalEntity? rate = await Entities.AsNoTracking()
 			.SingleOrDefaultAsync(item => item.CurrencyId == currencyId && item.Date == date, cancellationToken);
 		return rate is null ? null : Mapper.Map<DalEntity, CurrencyRateEntity>(rate);
 	}
 
-	public async Task<ICollection<CurrencyRateEntity>> GetByCurrencyIdAsync(Guid currencyId, CancellationToken cancellationToken = default)
+	public async Task<ICollection<CurrencyRateEntity>> GetByCurrencyId(Guid currencyId, CancellationToken cancellationToken = default)
 	{
 		List<DalEntity> rates = await Entities.AsNoTracking()
 			.Where(item => item.CurrencyId == currencyId && item.DeleteRevision == null).ToListAsync(cancellationToken);
 		return Mapper.Map<DalEntity, CurrencyRateEntity>(rates);
 	}
 
-	public async Task<ICollection<CurrencyRateEntity>> GetByCurrencyAndDateRangeAsync(Guid currencyId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default)
+	public async Task<ICollection<CurrencyRateEntity>> GetByCurrencyAndDateRange(Guid currencyId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default)
 	{
 		List<DalEntity> rates = await Entities.AsNoTracking()
 			.Where(item => item.CurrencyId == currencyId && item.Date >= fromDate && item.Date <= toDate && item.DeleteRevision == null)

@@ -34,8 +34,8 @@ public sealed class TemplatesFromTransactionServiceTests : TemplatesServiceTests
 			new TransactionEntry { Id = Guid.NewGuid(), Transaction = transaction, TransactionId = transaction.Id,
 				Account = Account, AccountId = Account.Id, Amount = -2m, Rate = 4m, Position = 0 }
 		];
-		UnitOfWork.TransactionRepo.GetByIdAsync(transaction.Id, Arg.Any<CancellationToken>()).Returns(transaction);
-		UnitOfWork.TransactionEntryRepo.GetByTransactionIdAsync(transaction.Id, Arg.Any<CancellationToken>()).Returns(entries);
+		UnitOfWork.TransactionRepo.GetById(transaction.Id, Arg.Any<CancellationToken>()).Returns(transaction);
+		UnitOfWork.TransactionEntryRepo.GetByTransactionId(transaction.Id, Arg.Any<CancellationToken>()).Returns(entries);
 
 		using CancellationTokenSource source = new();
 		FromTransactionInfo result = await Service.FromTransaction(transaction.Id, source.Token);
@@ -45,7 +45,7 @@ public sealed class TemplatesFromTransactionServiceTests : TemplatesServiceTests
 		Assert.That(result.Entries.All(entry => entry.AccountName == Account.Name && entry.CurrencyName == Currency.Name), Is.True);
 		result.Entries[0].Amount = 100m;
 		Assert.That(entries[1].Amount, Is.EqualTo(-2m));
-		await UnitOfWork.TransactionEntryRepo.Received(1).GetByTransactionIdAsync(transaction.Id, source.Token);
+		await UnitOfWork.TransactionEntryRepo.Received(1).GetByTransactionId(transaction.Id, source.Token);
 		AssertNoWrites();
 	}
 
@@ -54,7 +54,7 @@ public sealed class TemplatesFromTransactionServiceTests : TemplatesServiceTests
 	public void FromTransaction_RejectsUnsupportedState(TransactionState state)
 	{
 		Transaction transaction = new() { Id = Guid.NewGuid(), State = state };
-		UnitOfWork.TransactionRepo.GetByIdAsync(transaction.Id, Arg.Any<CancellationToken>()).Returns(transaction);
+		UnitOfWork.TransactionRepo.GetById(transaction.Id, Arg.Any<CancellationToken>()).Returns(transaction);
 		Assert.ThrowsAsync<InvalidElementException>(async () => await Service.FromTransaction(transaction.Id));
 		AssertNoWrites();
 	}
@@ -66,7 +66,7 @@ public sealed class TemplatesFromTransactionServiceTests : TemplatesServiceTests
 		Transaction transaction = new() { Id = Guid.NewGuid(), State = TransactionState.Draft, DeleteRevision = 0 };
 		if (deleted)
 		{
-			UnitOfWork.TransactionRepo.GetByIdAsync(transaction.Id, Arg.Any<CancellationToken>()).Returns(transaction);
+			UnitOfWork.TransactionRepo.GetById(transaction.Id, Arg.Any<CancellationToken>()).Returns(transaction);
 		}
 		Assert.ThrowsAsync<ElementNotFoundException>(async () => await Service.FromTransaction(transaction.Id));
 		AssertNoWrites();
@@ -76,8 +76,8 @@ public sealed class TemplatesFromTransactionServiceTests : TemplatesServiceTests
 	public async Task FromTransaction_AllowsEmptyDraft()
 	{
 		Transaction transaction = new() { Id = Guid.NewGuid(), State = TransactionState.Draft };
-		UnitOfWork.TransactionRepo.GetByIdAsync(transaction.Id, Arg.Any<CancellationToken>()).Returns(transaction);
-		UnitOfWork.TransactionEntryRepo.GetByTransactionIdAsync(transaction.Id, Arg.Any<CancellationToken>()).Returns(new List<TransactionEntry>());
+		UnitOfWork.TransactionRepo.GetById(transaction.Id, Arg.Any<CancellationToken>()).Returns(transaction);
+		UnitOfWork.TransactionEntryRepo.GetByTransactionId(transaction.Id, Arg.Any<CancellationToken>()).Returns(new List<TransactionEntry>());
 		FromTransactionInfo result = await Service.FromTransaction(transaction.Id);
 		Assert.That(result.Entries, Is.Empty);
 		AssertNoWrites();

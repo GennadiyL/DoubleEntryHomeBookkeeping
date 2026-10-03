@@ -16,5 +16,5 @@ public interface ICumulativeService
 	/// Rebuilds all account cumulative amounts before a downloaded database is made available.
 	/// Commits the complete rebuild or rolls back all its writes on failure.
 	/// </summary>
-	public Task RebuildAsync(CancellationToken cancellationToken = default);
+	public Task Rebuild(CancellationToken cancellationToken = default);
 }

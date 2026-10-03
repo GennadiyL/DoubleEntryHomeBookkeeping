@@ -78,8 +78,8 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 			new TGroup { Id = _group.Id, ParentId = _parent.Id, Order = 1 },
 			new TGroup { Id = Guid.NewGuid(), ParentId = _parent.Id, Order = 2 }
 		];
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
-		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns(_parent);
+		_repository.GetById(_group.Id, CancellationToken.None).Returns(_group);
+		_repository.GetWithChildrenById(_parent.Id).Returns(_parent);
 	}
 
 	[TearDown]
@@ -102,7 +102,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 	{
 		List<TGroup> siblings = [.. _parent.Children];
 		TGroup target = siblings[from];
-		_repository.GetByIdAsync(target.Id, CancellationToken.None).Returns(target);
+		_repository.GetById(target.Id, CancellationToken.None).Returns(target);
 		List<Guid> expected = [.. siblings.Select(child => child.Id)];
 		expected.RemoveAt(from);
 		expected.Insert(to, target.Id);
@@ -143,7 +143,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 				Assert.That(sibling.IsDeleted(), Is.False);
 			});
 		}
-		await _unitOfWork.Received(from == to ? 0 : 1).SaveChangesAsync();
+		await _unitOfWork.Received(from == to ? 0 : 1).SaveChanges();
 		_repository.DidNotReceive().Add(Arg.Any<TGroup>());
 	}
 
@@ -170,7 +170,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 		{
 			_repository.Received(1).Update(sibling);
 		}
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -183,7 +183,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 		await _service.SetOrder(_group.Id, 2);
 		Assert.That(siblings.Single(child => child.Id == _group.Id).Order, Is.EqualTo(2));
 		Assert.That(siblings.Select(child => child.Order).Order(), Is.EqualTo((int[])[0, 1, 2]));
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -243,7 +243,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 	[Test]
 	public void SetOrder_MissingGroup_RejectsWithoutSaving()
 	{
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns((TGroup?)null);
+		_repository.GetById(_group.Id, CancellationToken.None).Returns((TGroup?)null);
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.SetOrder(_group.Id, 0));
 		AssertNoWrites();
 	}
@@ -268,7 +268,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 	[Test]
 	public void SetOrder_MissingParent_RejectsWithoutSaving()
 	{
-		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns((TGroup?)null);
+		_repository.GetWithChildrenById(_parent.Id).Returns((TGroup?)null);
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.SetOrder(_group.Id, 0));
 		AssertNoWrites();
 	}
@@ -311,7 +311,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 		Assert.That(target.EditRevision, Is.EqualTo(revision));
 		Assert.That(target.DeleteRevision, Is.Null);
 		Assert.That(target.ModificationType, Is.EqualTo(flags | ModificationType.Order));
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -340,7 +340,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 			TemplateGroup => RootsIds.TemplateGroupId,
 			_ => throw new InvalidOperationException()
 		};
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
+		_repository.GetById(_group.Id, CancellationToken.None).Returns(_group);
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.SetOrder(_group.Id, 0));
 		AssertNoWrites();
 	}
@@ -348,7 +348,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 	[Test]
 	public void SetOrder_ParentLookupFails_PropagatesFailureWithoutWrites()
 	{
-		_repository.GetWithChildrenByIdAsync(_parent.Id).ThrowsAsync(new InvalidOperationException("Read failed."));
+		_repository.GetWithChildrenById(_parent.Id).ThrowsAsync(new InvalidOperationException("Read failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetOrder(_group.Id, 0));
 		AssertNoWrites();
 	}
@@ -356,7 +356,7 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 	[Test]
 	public void SetOrder_SaveFails_PropagatesFailure()
 	{
-		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException("Save failed."));
+		_unitOfWork.SaveChanges().ThrowsAsync(new InvalidOperationException("Save failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.SetOrder(_group.Id, 0));
 	}
 
@@ -365,6 +365,6 @@ public sealed class GroupsSetOrderServiceTests<TGroup, TElement, TService, TRepo
 		_repository.DidNotReceive().Add(Arg.Any<TGroup>());
 		_repository.DidNotReceive().Update(Arg.Any<TGroup>());
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 	}
 }

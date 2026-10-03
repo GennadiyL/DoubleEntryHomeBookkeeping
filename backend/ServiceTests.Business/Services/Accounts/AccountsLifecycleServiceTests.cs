@@ -58,7 +58,7 @@ public sealed class AccountsLifecycleServiceTests
 		_currencyRepository = Substitute.For<ICurrencyRepository>();
 		_unitOfWork.CurrencyRepo.Returns(_currencyRepository);
 		_currency = new Currency { Id = Guid.NewGuid(), Code = "USD", Symbol = "$", Name = "US Dollar" };
-		_currencyRepository.GetByIdAsync(_currency.Id, CancellationToken.None).Returns(_currency);
+		_currencyRepository.GetById(_currency.Id, CancellationToken.None).Returns(_currency);
 		_unitOfWork.AccountRepo.Returns(_repository);
 		_unitOfWork.AccountGroupRepo.Returns(_groupRepository);
 		IServiceCollection services = new ServiceCollection();
@@ -71,24 +71,24 @@ public sealed class AccountsLifecycleServiceTests
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<IAccountService>();
 		_group = new AccountGroup { Id = Guid.NewGuid(), Name = "Group" };
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
-		_groupRepository.GetByIdAsync(_group.Id, Arg.Any<CancellationToken>()).Returns(_group);
-		_groupRepository.GetWithContentsByIdAsync(_group.Id, Arg.Any<CancellationToken>()).Returns(_group);
-		_currencyRepository.GetByIdAsync(_currency.Id, Arg.Any<CancellationToken>()).Returns(_currency);
+		_groupRepository.GetWithContentsById(_group.Id).Returns(_group);
+		_groupRepository.GetById(_group.Id, Arg.Any<CancellationToken>()).Returns(_group);
+		_groupRepository.GetWithContentsById(_group.Id, Arg.Any<CancellationToken>()).Returns(_group);
+		_currencyRepository.GetById(_currency.Id, Arg.Any<CancellationToken>()).Returns(_currency);
 		_account = new Account { Id = Guid.NewGuid(), Name = "Existing", GroupId = _group.Id, Group = _group,
 			CurrencyId = _currency.Id, Currency = _currency, Order = 0, EditRevision = 5 };
 		_group.Elements.Add(_account);
-		_repository.GetByIdAsync(_account.Id, Arg.Any<CancellationToken>()).Returns(_account);
+		_repository.GetById(_account.Id, Arg.Any<CancellationToken>()).Returns(_account);
 		_system = new SystemConfig { Id = Guid.NewGuid(), BaseCurrencyId = _currency.Id, EditRevision = 7 };
 		_local = new LocalConfig { Id = Guid.NewGuid() };
-		_unitOfWork.SystemConfigRepo.GetAllAsync(Arg.Any<CancellationToken>()).Returns(new List<SystemConfig> { _system });
-		_unitOfWork.LocalConfigRepo.GetAllAsync(Arg.Any<CancellationToken>()).Returns(new List<LocalConfig> { _local });
+		_unitOfWork.SystemConfigRepo.GetAll(Arg.Any<CancellationToken>()).Returns(new List<SystemConfig> { _system });
+		_unitOfWork.LocalConfigRepo.GetAll(Arg.Any<CancellationToken>()).Returns(new List<LocalConfig> { _local });
 		_category = new Category { Id = Guid.NewGuid(), Name = "Cat" };
 		_correspondent = new Correspondent { Id = Guid.NewGuid(), Name = "Corr" };
 		_project = new Project { Id = Guid.NewGuid(), Name = "Proj" };
-		_unitOfWork.CategoryRepo.GetByIdAsync(_category.Id, Arg.Any<CancellationToken>()).Returns(_category);
-		_unitOfWork.CorrespondentRepo.GetByIdAsync(_correspondent.Id, Arg.Any<CancellationToken>()).Returns(_correspondent);
-		_unitOfWork.ProjectRepo.GetByIdAsync(_project.Id, Arg.Any<CancellationToken>()).Returns(_project);
+		_unitOfWork.CategoryRepo.GetById(_category.Id, Arg.Any<CancellationToken>()).Returns(_category);
+		_unitOfWork.CorrespondentRepo.GetById(_correspondent.Id, Arg.Any<CancellationToken>()).Returns(_correspondent);
+		_unitOfWork.ProjectRepo.GetById(_project.Id, Arg.Any<CancellationToken>()).Returns(_project);
 		_param = new AccountParam
 		{
 			GroupId = _group.Id,
@@ -118,7 +118,7 @@ public sealed class AccountsLifecycleServiceTests
 			item.Description == "  Notes  " && item.Order == 1 &&
 			item.EditRevision == null && item.DeleteRevision == null &&
 			item.ModificationType == ModificationType.None));
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(null)]
@@ -147,17 +147,17 @@ public sealed class AccountsLifecycleServiceTests
 		Assert.That(_account.Name, Is.EqualTo("New name"));
 		Assert.That(_account.EditRevision, Is.EqualTo(5));
 		Assert.That(_account.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(false)]
 	[TestCase(true)]
 	public void Delete_AnyEntryReference_Rejects(bool transaction)
 	{
-		if (transaction) { _unitOfWork.TransactionEntryRepo.HasByAccountIdAsync(_account.Id).Returns(true); }
+		if (transaction) { _unitOfWork.TransactionEntryRepo.HasByAccountId(_account.Id).Returns(true); }
 		else
 		{
-			_unitOfWork.TemplateEntryRepo.GetByAccountIdAsync(_account.Id).Returns(new List<TemplateEntry>
+			_unitOfWork.TemplateEntryRepo.GetByAccountId(_account.Id).Returns(new List<TemplateEntry>
 			{
 				new() { Account = _account, AccountId = _account.Id, Template = new Template { DeleteRevision = 0 } }
 			});
@@ -198,7 +198,7 @@ public sealed class AccountsLifecycleServiceTests
 		Assert.That(_system.EditRevision, Is.EqualTo(7));
 		Assert.That(_system.ModificationType, Is.EqualTo(ModificationType.Order));
 		_repository.DidNotReceive().Update(deleted);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(false)]
@@ -217,14 +217,14 @@ public sealed class AccountsLifecycleServiceTests
 	[Test]
 	public async Task Delete_DoesNotRequireOrReadConfiguration()
 	{
-		_unitOfWork.SystemConfigRepo.GetAllAsync().Returns(new List<SystemConfig>());
+		_unitOfWork.SystemConfigRepo.GetAll().Returns(new List<SystemConfig>());
 
 		await _service.Delete(_account.Id);
 
 		Assert.That(_account.DeleteRevision, Is.Zero);
-		await _unitOfWork.SystemConfigRepo.DidNotReceiveWithAnyArgs().GetAllAsync(default);
+		await _unitOfWork.SystemConfigRepo.DidNotReceiveWithAnyArgs().GetAll(default);
 		_unitOfWork.SystemConfigRepo.DidNotReceiveWithAnyArgs().Update(default!);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -235,7 +235,7 @@ public sealed class AccountsLifecycleServiceTests
 		Account existing = new() { Id = Guid.NewGuid(), Name = _account.Name, Order = 8 };
 		Account deleted = new() { Id = Guid.NewGuid(), Order = 4, DeleteRevision = 0 };
 		AccountGroup destination = new() { Id = Guid.NewGuid(), Elements = [existing, deleted] };
-		_groupRepository.GetWithContentsByIdAsync(destination.Id).Returns(destination);
+		_groupRepository.GetWithContentsById(destination.Id).Returns(destination);
 
 		await _service.MoveToAnotherGroup(_account.Id, destination.Id);
 
@@ -248,7 +248,7 @@ public sealed class AccountsLifecycleServiceTests
 		Assert.That(sibling.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
 		Assert.That(existing.Order, Is.Zero);
 		Assert.That(deleted.Order, Is.EqualTo(4));
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(false)]
@@ -270,7 +270,7 @@ public sealed class AccountsLifecycleServiceTests
 		Account destination = new() { Id = Guid.NewGuid(), CurrencyId = _currency.Id, GroupId = _group.Id,
 			Order = 4, EditRevision = 6, ModificationType = ModificationType.Content };
 		_group.Elements.Add(destination);
-		_repository.GetByIdAsync(destination.Id).Returns(destination);
+		_repository.GetById(destination.Id).Returns(destination);
 		_system.BalancingAccountId = _account.Id;
 		_account.ModificationType = ModificationType.Order;
 		Transaction parent = new() { Id = Guid.NewGuid(), EditRevision = 9, ModificationType = ModificationType.Order };
@@ -285,10 +285,10 @@ public sealed class AccountsLifecycleServiceTests
 			AccountId = _account.Id, Account = _account, Amount = 3, Position = 4 };
 		parent.Entries = [first, second, alreadyDestination];
 		template.Entries = [templateEntry];
-		_unitOfWork.TransactionEntryRepo.GetByAccountIdAsync(_account.Id).Returns(new List<TransactionEntry> { first, second });
-		_unitOfWork.TemplateEntryRepo.GetByAccountIdAsync(_account.Id).Returns(new List<TemplateEntry> { templateEntry });
-		_unitOfWork.TransactionRepo.GetByIdAsync(parent.Id).Returns(parent);
-		_unitOfWork.TemplateRepo.GetByIdAsync(template.Id).Returns(template);
+		_unitOfWork.TransactionEntryRepo.GetByAccountId(_account.Id).Returns(new List<TransactionEntry> { first, second });
+		_unitOfWork.TemplateEntryRepo.GetByAccountId(_account.Id).Returns(new List<TemplateEntry> { templateEntry });
+		_unitOfWork.TransactionRepo.GetById(parent.Id).Returns(parent);
+		_unitOfWork.TemplateRepo.GetById(template.Id).Returns(template);
 
 		await _service.CombineElements(destination.Id, _account.Id);
 
@@ -313,16 +313,16 @@ public sealed class AccountsLifecycleServiceTests
 		_unitOfWork.TransactionRepo.Received(1).Update(parent);
 		_unitOfWork.TemplateRepo.Received(1).Update(template);
 		_unitOfWork.TransactionEntryRepo.DidNotReceive().Update(alreadyDestination);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
 	public void Combine_MissingParent_DoesNotRewriteEntries()
 	{
 		Account destination = new() { Id = Guid.NewGuid(), CurrencyId = _currency.Id };
-		_repository.GetByIdAsync(destination.Id).Returns(destination);
+		_repository.GetById(destination.Id).Returns(destination);
 		TransactionEntry entry = new() { TransactionId = Guid.NewGuid(), Transaction = null!, AccountId = _account.Id, Account = _account };
-		_unitOfWork.TransactionEntryRepo.GetByAccountIdAsync(_account.Id).Returns(new List<TransactionEntry> { entry });
+		_unitOfWork.TransactionEntryRepo.GetByAccountId(_account.Id).Returns(new List<TransactionEntry> { entry });
 
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.CombineElements(destination.Id, _account.Id));
 
@@ -380,7 +380,7 @@ public sealed class AccountsLifecycleServiceTests
 	public void GetDefaultName_MissingOrInvalidSettings_Fails(bool invalid)
 	{
 		if (invalid) { _local.AccountNameOrder = AccountNameOrder.Undefined; }
-		else { _unitOfWork.LocalConfigRepo.GetAllAsync().Returns(new List<LocalConfig>()); }
+		else { _unitOfWork.LocalConfigRepo.GetAll().Returns(new List<LocalConfig>()); }
 
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.GetDefaultName(null, null, null));
 
@@ -392,7 +392,7 @@ public sealed class AccountsLifecycleServiceTests
 	public void GetDefaultName_InvalidClassification_Rejects(bool deleted)
 	{
 		if (deleted) { _category.DeleteRevision = 0; }
-		else { _unitOfWork.CategoryRepo.GetByIdAsync(_category.Id).Returns((Category?)null); }
+		else { _unitOfWork.CategoryRepo.GetById(_category.Id).Returns((Category?)null); }
 
 		Assert.ThrowsAsync<ElementNotFoundException>(async () => await _service.GetDefaultName(null, _category.Id, null));
 
@@ -458,7 +458,7 @@ public sealed class AccountsLifecycleServiceTests
 	public void GetById_InvalidGroup_ThrowsNotFound(bool deleted)
 	{
 		if (deleted) { _group.DeleteRevision = 0; }
-		else { _groupRepository.GetByIdAsync(_group.Id).Returns((AccountGroup?)null); }
+		else { _groupRepository.GetById(_group.Id).Returns((AccountGroup?)null); }
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.GetById(_account.Id));
 		AssertNoWrites();
 	}
@@ -468,7 +468,7 @@ public sealed class AccountsLifecycleServiceTests
 	public void GetById_InvalidCurrency_ThrowsNotFound(bool deleted)
 	{
 		if (deleted) { _currency.DeleteRevision = 0; }
-		else { _currencyRepository.GetByIdAsync(_currency.Id).Returns((Currency?)null); }
+		else { _currencyRepository.GetById(_currency.Id).Returns((Currency?)null); }
 		Assert.ThrowsAsync<CurrencyNotFoundException>(async () => await _service.GetById(_account.Id));
 		AssertNoWrites();
 	}
@@ -482,13 +482,13 @@ public sealed class AccountsLifecycleServiceTests
 		await _service.GetById(_account.Id, token);
 		await _service.GetDefaultName(_correspondent.Id, _category.Id, _project.Id, token);
 
-		await _repository.Received(1).GetByIdAsync(_account.Id, token);
-		await _groupRepository.Received(1).GetByIdAsync(_group.Id, token);
-		await _currencyRepository.Received(1).GetByIdAsync(_currency.Id, token);
-		await _unitOfWork.LocalConfigRepo.Received(1).GetAllAsync(token);
-		await _unitOfWork.CategoryRepo.Received(1).GetByIdAsync(_category.Id, token);
-		await _unitOfWork.CorrespondentRepo.Received(1).GetByIdAsync(_correspondent.Id, token);
-		await _unitOfWork.ProjectRepo.Received(1).GetByIdAsync(_project.Id, token);
+		await _repository.Received(1).GetById(_account.Id, token);
+		await _groupRepository.Received(1).GetById(_group.Id, token);
+		await _currencyRepository.Received(1).GetById(_currency.Id, token);
+		await _unitOfWork.LocalConfigRepo.Received(1).GetAll(token);
+		await _unitOfWork.CategoryRepo.Received(1).GetById(_category.Id, token);
+		await _unitOfWork.CorrespondentRepo.Received(1).GetById(_correspondent.Id, token);
+		await _unitOfWork.ProjectRepo.Received(1).GetById(_project.Id, token);
 		AssertNoWrites();
 	}
 
@@ -497,7 +497,7 @@ public sealed class AccountsLifecycleServiceTests
 	{
 		using CancellationTokenSource cancellation = new();
 		cancellation.Cancel();
-		_repository.GetByIdAsync(_account.Id, cancellation.Token).ThrowsAsync(new OperationCanceledException(cancellation.Token));
+		_repository.GetById(_account.Id, cancellation.Token).ThrowsAsync(new OperationCanceledException(cancellation.Token));
 
 		Assert.ThrowsAsync<OperationCanceledException>(async () => await _service.GetById(_account.Id, cancellation.Token));
 
@@ -511,6 +511,6 @@ public sealed class AccountsLifecycleServiceTests
 		_unitOfWork.SystemConfigRepo.DidNotReceive().Update(Arg.Any<SystemConfig>());
 		_unitOfWork.TransactionEntryRepo.DidNotReceive().Update(Arg.Any<TransactionEntry>());
 		_unitOfWork.TemplateEntryRepo.DidNotReceive().Update(Arg.Any<TemplateEntry>());
-		Assert.That(_unitOfWork.ReceivedCalls().Any(call => call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+		Assert.That(_unitOfWork.ReceivedCalls().Any(call => call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 	}
 }

@@ -74,8 +74,8 @@ public sealed class GroupsGetAllGroupsServiceTests<TGroup, TElement, TService, T
 			ModificationType = ModificationType.None
 		};
 		_parent.Children.Add(_group);
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
-		_repository.GetByIdAsync(_parent.Id, CancellationToken.None).Returns(_parent);
+		_repository.GetById(_group.Id, CancellationToken.None).Returns(_group);
+		_repository.GetById(_parent.Id, CancellationToken.None).Returns(_parent);
 	}
 
 	[TearDown]
@@ -105,7 +105,7 @@ public sealed class GroupsGetAllGroupsServiceTests<TGroup, TElement, TService, T
 		_group.IsFavorite = true;
 		_group.ModificationType = ModificationType.Content | ModificationType.Order;
 		TGroup nested = new() { Id = Guid.NewGuid(), ParentId = _group.Id, Name = "Nested", Order = 0 };
-		_repository.GetAllAsync(CancellationToken.None).Returns(new List<TGroup> { nested, _group, _parent });
+		_repository.GetAll(CancellationToken.None).Returns(new List<TGroup> { nested, _group, _parent });
 		List<GroupInfo> result = await _service.GetAllGroups();
 		GroupInfo group = result.Single(item => item.Id == _group.Id);
 		Assert.Multiple(() =>
@@ -138,7 +138,7 @@ public sealed class GroupsGetAllGroupsServiceTests<TGroup, TElement, TService, T
 		_parent.ParentId = _parent.Id;
 		TGroup pending = new() { Id = Guid.NewGuid(), DeleteRevision = 0 };
 		TGroup deleted = new() { Id = Guid.NewGuid(), DeleteRevision = 9 };
-		_repository.GetAllAsync(CancellationToken.None).Returns(new List<TGroup> { pending, _group, deleted, _parent });
+		_repository.GetAll(CancellationToken.None).Returns(new List<TGroup> { pending, _group, deleted, _parent });
 		List<GroupInfo> result = await _service.GetAllGroups();
 		Assert.That(result.Select(group => group.Id), Is.EquivalentTo(new[] { _group.Id, _parent.Id }));
 		AssertReadOnly();
@@ -151,7 +151,7 @@ public sealed class GroupsGetAllGroupsServiceTests<TGroup, TElement, TService, T
 		TGroup first = new() { Id = Guid.Parse("00000001-0000-0000-0000-000000000000"), ParentId = _parent.Id, Order = 4 };
 		TGroup second = new() { Id = Guid.Parse("80000000-0000-0000-0000-000000000000"), ParentId = _parent.Id, Order = 4 };
 		_group.Order = 10;
-		_repository.GetAllAsync(CancellationToken.None).Returns(new List<TGroup> { _group, second, _parent, first });
+		_repository.GetAll(CancellationToken.None).Returns(new List<TGroup> { _group, second, _parent, first });
 		List<GroupInfo> result = await _service.GetAllGroups();
 		Assert.That(result.Where(item => item.Id != _parent.Id).Select(item => item.Id), Is.EqualTo(new[] { first.Id, second.Id, _group.Id }));
 		Assert.That(result.Where(item => item.Id != _parent.Id).Select(item => item.Order), Is.EqualTo((int[])[4, 4, 10]));
@@ -161,7 +161,7 @@ public sealed class GroupsGetAllGroupsServiceTests<TGroup, TElement, TService, T
 	[Test]
 	public async Task GetAllGroups_EmptyRepository_ReturnsEmptyList()
 	{
-		_repository.GetAllAsync(CancellationToken.None).Returns(new List<TGroup>());
+		_repository.GetAll(CancellationToken.None).Returns(new List<TGroup>());
 		Assert.That(await _service.GetAllGroups(), Is.Empty);
 		AssertReadOnly();
 	}
@@ -171,7 +171,7 @@ public sealed class GroupsGetAllGroupsServiceTests<TGroup, TElement, TService, T
 	public void GetAllGroups_MissingOrDeletedParent_RejectsIncompleteHierarchy(bool deleted)
 	{
 		_parent.DeleteRevision = 0;
-		_repository.GetAllAsync(CancellationToken.None).Returns(deleted
+		_repository.GetAll(CancellationToken.None).Returns(deleted
 			? new List<TGroup> { _group, _parent } : new List<TGroup> { _group });
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.GetAllGroups());
 		AssertReadOnly();
@@ -180,7 +180,7 @@ public sealed class GroupsGetAllGroupsServiceTests<TGroup, TElement, TService, T
 	[Test]
 	public void GetAllGroups_ReadFailure_PropagatesWithoutSaving()
 	{
-		_repository.GetAllAsync(CancellationToken.None).ThrowsAsync(new InvalidOperationException("Read failed."));
+		_repository.GetAll(CancellationToken.None).ThrowsAsync(new InvalidOperationException("Read failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.GetAllGroups());
 		AssertReadOnly();
 	}
@@ -188,8 +188,8 @@ public sealed class GroupsGetAllGroupsServiceTests<TGroup, TElement, TService, T
 	private void AssertReadOnly()
 	{
 		Assert.That(_repository.ReceivedCalls().Count(), Is.EqualTo(1));
-		Assert.That(_repository.ReceivedCalls().Single().GetMethodInfo().Name, Is.EqualTo("GetAllAsync"));
+		Assert.That(_repository.ReceivedCalls().Single().GetMethodInfo().Name, Is.EqualTo("GetAll"));
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 	}
 }

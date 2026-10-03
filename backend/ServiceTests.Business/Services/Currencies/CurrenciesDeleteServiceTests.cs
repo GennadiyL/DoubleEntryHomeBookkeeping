@@ -49,7 +49,7 @@ public sealed class CurrenciesDeleteServiceTests : CurrenciesServiceTestsBase
 		Assert.That(deleted.Order, Is.EqualTo(12));
 		Unit.CurrencyRateRepo.DidNotReceiveWithAnyArgs().Update(default!);
 		Unit.SystemConfigRepo.DidNotReceiveWithAnyArgs().Update(default!);
-		await Unit.Received(1).SaveChangesAsync();
+		await Unit.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -63,7 +63,7 @@ public sealed class CurrenciesDeleteServiceTests : CurrenciesServiceTestsBase
 	[Test]
 	public void Delete_RejectsReferencedCurrency()
 	{
-		Unit.AccountRepo.HasByCurrencyIdAsync(Currency.Id, Arg.Any<CancellationToken>()).Returns(true);
+		Unit.AccountRepo.HasByCurrencyId(Currency.Id, Arg.Any<CancellationToken>()).Returns(true);
 		Assert.ThrowsAsync<InvalidCurrencyException>(async () => await Service.Delete(Currency.Id));
 		Assert.That(Currency.DeleteRevision, Is.Null);
 		AssertNoWrites();
@@ -83,9 +83,9 @@ public sealed class CurrenciesDeleteServiceTests : CurrenciesServiceTestsBase
 	{
 		using CancellationTokenSource source = new();
 		await Service.Delete(Currency.Id, source.Token);
-		await Unit.CurrencyRepo.Received(1).GetByIdAsync(Currency.Id, source.Token);
-		await Unit.AccountRepo.Received(1).HasByCurrencyIdAsync(Currency.Id, source.Token);
-		await Unit.CurrencyRepo.Received(1).GetAllAsync(source.Token);
-		await Unit.Received(1).SaveChangesAsync(source.Token);
+		await Unit.CurrencyRepo.Received(1).GetById(Currency.Id, source.Token);
+		await Unit.AccountRepo.Received(1).HasByCurrencyId(Currency.Id, source.Token);
+		await Unit.CurrencyRepo.Received(1).GetAll(source.Token);
+		await Unit.Received(1).SaveChanges(source.Token);
 	}
 }

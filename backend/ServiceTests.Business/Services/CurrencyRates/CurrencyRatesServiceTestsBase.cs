@@ -40,9 +40,9 @@ public abstract class CurrencyRatesServiceTestsBase
 		Currency = new Currency { Id = Guid.NewGuid(), Code = "EUR", Name = "Euro", Symbol = "EUR" };
 		Account = new Account { Id = Guid.NewGuid(), Name = "Cash", CurrencyId = Currency.Id, Currency = Currency };
 		Config = new SystemConfig { Id = Guid.NewGuid(), BaseCurrencyId = Guid.NewGuid(), RatePrecision = 4 };
-		Unit.CurrencyRepo.GetByIdAsync(Currency.Id, Arg.Any<CancellationToken>()).Returns(Currency);
-		Unit.AccountRepo.GetByIdAsync(Account.Id, Arg.Any<CancellationToken>()).Returns(Account);
-		Unit.SystemConfigRepo.GetAllAsync(Arg.Any<CancellationToken>()).Returns(new List<SystemConfig> { Config });
+		Unit.CurrencyRepo.GetById(Currency.Id, Arg.Any<CancellationToken>()).Returns(Currency);
+		Unit.AccountRepo.GetById(Account.Id, Arg.Any<CancellationToken>()).Returns(Account);
+		Unit.SystemConfigRepo.GetAll(Arg.Any<CancellationToken>()).Returns(new List<SystemConfig> { Config });
 		IServiceCollection services = new ServiceCollection();
 		services.AddSharedModule();
 		services.AddBusinessModule();
@@ -72,6 +72,6 @@ public abstract class CurrencyRatesServiceTestsBase
 		Unit.CurrencyRateRepo.DidNotReceiveWithAnyArgs().Update(default!);
 		Unit.CurrencyRepo.DidNotReceiveWithAnyArgs().Update(default!);
 		Unit.SystemConfigRepo.DidNotReceiveWithAnyArgs().Update(default!);
-		Unit.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
+		Unit.DidNotReceiveWithAnyArgs().SaveChanges(default);
 	}
 }

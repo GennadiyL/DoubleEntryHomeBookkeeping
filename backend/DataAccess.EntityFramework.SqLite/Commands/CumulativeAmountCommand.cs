@@ -24,13 +24,13 @@ internal sealed class CumulativeAmountCommand : ICumulativeAmountCommand
 		_context = context;
 	}
 
-	public Task RecalculateAsync(Guid accountId, CancellationToken cancellationToken = default) =>
-		ExecuteAsync(accountId, null, 0m, cancellationToken);
+	public Task Recalculate(Guid accountId, CancellationToken cancellationToken = default) =>
+		Execute(accountId, null, 0m, cancellationToken);
 
-	public Task RecalculateAsync(Guid accountId, DateTime fromDateTime, decimal initialAmount, CancellationToken cancellationToken = default) =>
-		ExecuteAsync(accountId, fromDateTime, initialAmount, cancellationToken);
+	public Task Recalculate(Guid accountId, DateTime fromDateTime, decimal initialAmount, CancellationToken cancellationToken = default) =>
+		Execute(accountId, fromDateTime, initialAmount, cancellationToken);
 
-	private async Task ExecuteAsync(Guid accountId, DateTime? fromDateTime, decimal initialAmount, CancellationToken cancellationToken)
+	private async Task Execute(Guid accountId, DateTime? fromDateTime, decimal initialAmount, CancellationToken cancellationToken)
 	{
 		long seed = ScaledAmount.ToStorage(initialAmount);
 		int confirmed = (int)TransactionState.Confirmed;

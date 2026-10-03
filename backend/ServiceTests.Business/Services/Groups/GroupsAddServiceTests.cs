@@ -63,7 +63,7 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<TService>();
 		_parent = new TGroup { Id = Guid.NewGuid(), Name = "Parent" };
-		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns(_parent);
+		_repository.GetWithChildrenById(_parent.Id).Returns(_parent);
 		_param = new GroupParam
 		{
 			ParentId = _parent.Id,
@@ -92,8 +92,8 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 			group.IsFavorite && !group.IsDeleted() && group.Order == 0 &&
 			group.EditRevision == null && group.DeleteRevision == null &&
 			group.ModificationType == ModificationType.None));
-		await _unitOfWork.Received(1).SaveChangesAsync();
-		await _repository.Received(1).GetWithChildrenByIdAsync(_parent.Id);
+		await _unitOfWork.Received(1).SaveChanges();
+		await _repository.Received(1).GetWithChildrenById(_parent.Id);
 	}
 
 	[Test]
@@ -158,7 +158,7 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 	[Test]
 	public void Add_MissingParent_RejectsWithoutSaving()
 	{
-		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns((TGroup?)null);
+		_repository.GetWithChildrenById(_parent.Id).Returns((TGroup?)null);
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Add(_param));
 		AssertNoWrites();
 	}
@@ -207,7 +207,7 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 	[Test]
 	public void Add_SaveFails_PropagatesFailure()
 	{
-		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException("Save failed."));
+		_unitOfWork.SaveChanges().ThrowsAsync(new InvalidOperationException("Save failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Add(_param));
 	}
 
@@ -216,10 +216,10 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 	{
 		using CancellationTokenSource cancellation = new();
 		CancellationToken token = cancellation.Token;
-		_repository.GetWithChildrenByIdAsync(_parent.Id, token).Returns(_parent);
+		_repository.GetWithChildrenById(_parent.Id, token).Returns(_parent);
 		await _service.Add(_param, token);
-		await _repository.Received(1).GetWithChildrenByIdAsync(_parent.Id, token);
-		await _unitOfWork.Received(1).SaveChangesAsync(token);
+		await _repository.Received(1).GetWithChildrenById(_parent.Id, token);
+		await _unitOfWork.Received(1).SaveChanges(token);
 	}
 
 	[Test]
@@ -228,7 +228,7 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 		using CancellationTokenSource cancellation = new();
 		cancellation.Cancel();
 		CancellationToken token = cancellation.Token;
-		_repository.GetWithChildrenByIdAsync(_parent.Id, token).Returns(Task.FromCanceled<TGroup?>(token));
+		_repository.GetWithChildrenById(_parent.Id, token).Returns(Task.FromCanceled<TGroup?>(token));
 		Assert.CatchAsync<OperationCanceledException>(async () => await _service.Add(_param, token));
 		AssertNoWrites();
 	}
@@ -237,6 +237,6 @@ public sealed class GroupsAddServiceTests<TGroup, TElement, TService, TRepositor
 	{
 		_repository.DidNotReceive().Add(Arg.Any<TGroup>());
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 	}
 }

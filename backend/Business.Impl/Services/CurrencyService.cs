@@ -42,7 +42,7 @@ internal sealed class CurrencyService : ICurrencyService
 	{
 		ValidateMetadata(param);
 		CurrencyProfile profile = _currencyOperation.GetCurrencyData(param.Code);
-		ICollection<Currency> currencies = await _unitOfWork.CurrencyRepo.GetAllAsync(cancellationToken);
+		ICollection<Currency> currencies = await _unitOfWork.CurrencyRepo.GetAll(cancellationToken);
 		if (currencies.Any(currency => string.Equals(currency.Code, profile.Code, StringComparison.OrdinalIgnoreCase)))
 		{
 			throw new InvalidCurrencyException("A currency with this ISO code already exists.");
@@ -73,7 +73,7 @@ internal sealed class CurrencyService : ICurrencyService
 		currency.Rates.Add(initial);
 		_unitOfWork.CurrencyRepo.Add(currency);
 		_unitOfWork.CurrencyRateRepo.Add(initial);
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 		return currency.Id;
 	}
 
@@ -89,7 +89,7 @@ internal sealed class CurrencyService : ICurrencyService
 		currency.Symbol = param.Symbol.Trim();
 		currency.SetEditedContent();
 		_unitOfWork.CurrencyRepo.Update(currency);
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 	}
 
 	public async Task Delete(Guid currencyId, CancellationToken cancellationToken = default)
@@ -100,11 +100,11 @@ internal sealed class CurrencyService : ICurrencyService
 		{
 			throw new InvalidCurrencyException("The base currency cannot be deleted.");
 		}
-		if (await _unitOfWork.AccountRepo.HasByCurrencyIdAsync(currencyId, cancellationToken))
+		if (await _unitOfWork.AccountRepo.HasByCurrencyId(currencyId, cancellationToken))
 		{
 			throw new InvalidCurrencyException("The currency is referenced by an account.");
 		}
-		ICollection<Currency> currencies = await _unitOfWork.CurrencyRepo.GetAllAsync(cancellationToken);
+		ICollection<Currency> currencies = await _unitOfWork.CurrencyRepo.GetAll(cancellationToken);
 		List<Currency> survivors = [.. currencies.Where(item => item.Id != currencyId && !item.IsDeleted())
 			.OrderBy(item => item.Order).ThenBy(item => item.Id.ToString("D"), StringComparer.Ordinal)];
 		currency.SetDeleted();
@@ -120,7 +120,7 @@ internal sealed class CurrencyService : ICurrencyService
 			survivor.SetEditedOrder();
 			_unitOfWork.CurrencyRepo.Update(survivor);
 		}
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 	}
 
 	public async Task SetOrder(Guid entityId, int order, CancellationToken cancellationToken = default)
@@ -130,7 +130,7 @@ internal sealed class CurrencyService : ICurrencyService
 			throw new InvalidCurrencyException("A non-negative currency order is required.");
 		}
 		await GetActiveCurrency(entityId, cancellationToken);
-		ICollection<Currency> currencies = await _unitOfWork.CurrencyRepo.GetAllAsync(cancellationToken);
+		ICollection<Currency> currencies = await _unitOfWork.CurrencyRepo.GetAll(cancellationToken);
 		List<Currency> ordered = [.. currencies.Where(currency => !currency.IsDeleted())
 			.OrderBy(currency => currency.Order).ThenBy(currency => currency.Id.ToString("D"), StringComparer.Ordinal)];
 		Currency? target = ordered.SingleOrDefault(currency => currency.Id == entityId);
@@ -155,7 +155,7 @@ internal sealed class CurrencyService : ICurrencyService
 			currency.SetEditedOrder();
 			_unitOfWork.CurrencyRepo.Update(currency);
 		}
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 	}
 
 	public async Task SetFavoriteStatus(Guid entityId, bool isFavorite, CancellationToken cancellationToken = default)
@@ -168,7 +168,7 @@ internal sealed class CurrencyService : ICurrencyService
 		currency.IsFavorite = isFavorite;
 		currency.SetEditedContent();
 		_unitOfWork.CurrencyRepo.Update(currency);
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 	}
 
 	public async Task<CurrencyInfo> GetById(Guid id, CancellationToken cancellationToken = default) =>
@@ -176,7 +176,7 @@ internal sealed class CurrencyService : ICurrencyService
 
 	public async Task<List<CurrencyInfo>> GetAllCurrencies(CancellationToken cancellationToken = default)
 	{
-		ICollection<Currency> currencies = await _unitOfWork.CurrencyRepo.GetAllAsync(cancellationToken);
+		ICollection<Currency> currencies = await _unitOfWork.CurrencyRepo.GetAll(cancellationToken);
 		return [.. currencies.Where(currency => !currency.IsDeleted()).OrderBy(currency => currency.Order)
 			.ThenBy(currency => currency.Id.ToString("D"), StringComparer.Ordinal).Select(GetInfo)];
 	}
@@ -191,7 +191,7 @@ internal sealed class CurrencyService : ICurrencyService
 
 	private async Task<Currency> GetActiveCurrency(Guid currencyId, CancellationToken cancellationToken = default)
 	{
-		Currency? currency = await _unitOfWork.CurrencyRepo.GetByIdAsync(currencyId, cancellationToken);
+		Currency? currency = await _unitOfWork.CurrencyRepo.GetById(currencyId, cancellationToken);
 		if (currency is null || currency.IsDeleted())
 		{
 			throw new CurrencyNotFoundException("The currency does not exist or is deleted.");

@@ -54,7 +54,7 @@ internal sealed class CurrencyRateService : ICurrencyRateService
 		{
 			throw new InvalidCurrencyException("The base-currency rate must be one.");
 		}
-		CurrencyRate? existing = await _unitOfWork.CurrencyRateRepo.GetByCurrencyAndDateAsync(currency.Id, param.Date, cancellationToken);
+		CurrencyRate? existing = await _unitOfWork.CurrencyRateRepo.GetByCurrencyAndDate(currency.Id, param.Date, cancellationToken);
 		if (existing is not null && existing.IsDeleted())
 		{
 			throw new InvalidCurrencyException("The rate for this currency and date has been deleted.");
@@ -80,7 +80,7 @@ internal sealed class CurrencyRateService : ICurrencyRateService
 			existing.SetEditedContent();
 			_unitOfWork.CurrencyRateRepo.Update(existing);
 		}
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 		return existing.Id;
 	}
 
@@ -91,7 +91,7 @@ internal sealed class CurrencyRateService : ICurrencyRateService
 			throw new InvalidCurrencyException("The start date must not be after the end date.");
 		}
 		await GetActiveCurrency(currencyId, cancellationToken);
-		ICollection<CurrencyRate> rates = await _unitOfWork.CurrencyRateRepo.GetByCurrencyAndDateRangeAsync(currencyId, fromDate, toDate, cancellationToken);
+		ICollection<CurrencyRate> rates = await _unitOfWork.CurrencyRateRepo.GetByCurrencyAndDateRange(currencyId, fromDate, toDate, cancellationToken);
 		List<CurrencyRate> selected = [.. rates.Where(rate => !rate.IsInitial && !rate.IsDeleted())];
 		if (selected.Count == 0)
 		{
@@ -102,13 +102,13 @@ internal sealed class CurrencyRateService : ICurrencyRateService
 			rate.SetDeleted();
 			_unitOfWork.CurrencyRateRepo.Update(rate);
 		}
-		await _unitOfWork.SaveChangesAsync(cancellationToken);
+		await _unitOfWork.SaveChanges(cancellationToken);
 	}
 
 	public async Task<List<CurrencyRateInfo>> GetRates(Guid currencyId, CancellationToken cancellationToken = default)
 	{
 		await GetActiveCurrency(currencyId, cancellationToken);
-		ICollection<CurrencyRate> rates = await _unitOfWork.CurrencyRateRepo.GetByCurrencyIdAsync(currencyId, cancellationToken);
+		ICollection<CurrencyRate> rates = await _unitOfWork.CurrencyRateRepo.GetByCurrencyId(currencyId, cancellationToken);
 		return [.. rates.Where(rate => !rate.IsDeleted()).OrderByDescending(rate => rate.Date).Select(rate => new CurrencyRateInfo
 		{
 			CurrencyId = rate.CurrencyId, Date = rate.Date, Rate = rate.Rate,
@@ -118,7 +118,7 @@ internal sealed class CurrencyRateService : ICurrencyRateService
 
 	public async Task<decimal> GetRate(Guid accountId, DateOnly date, CancellationToken cancellationToken = default)
 	{
-		Account? account = await _unitOfWork.AccountRepo.GetByIdAsync(accountId, cancellationToken);
+		Account? account = await _unitOfWork.AccountRepo.GetById(accountId, cancellationToken);
 		if (account is null || account.IsDeleted())
 		{
 			throw new ElementNotFoundException("The account does not exist or is deleted.");
@@ -129,7 +129,7 @@ internal sealed class CurrencyRateService : ICurrencyRateService
 		{
 			return 1m;
 		}
-		CurrencyRate? applicable = await _unitOfWork.CurrencyRateRepo.GetApplicableAsync(currency.Id, date, cancellationToken);
+		CurrencyRate? applicable = await _unitOfWork.CurrencyRateRepo.GetApplicable(currency.Id, date, cancellationToken);
 		if (applicable is null)
 		{
 			throw new InvalidOperationException("The currency has no applicable rate.");
@@ -143,7 +143,7 @@ internal sealed class CurrencyRateService : ICurrencyRateService
 
 	private async Task<Currency> GetActiveCurrency(Guid currencyId, CancellationToken cancellationToken = default)
 	{
-		Currency? currency = await _unitOfWork.CurrencyRepo.GetByIdAsync(currencyId, cancellationToken);
+		Currency? currency = await _unitOfWork.CurrencyRepo.GetById(currencyId, cancellationToken);
 		if (currency is null || currency.IsDeleted())
 		{
 			throw new CurrencyNotFoundException("The currency does not exist or is deleted.");

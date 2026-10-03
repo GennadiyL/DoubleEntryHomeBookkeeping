@@ -105,12 +105,12 @@ public sealed class GroupsGetTreeServiceTests<TGroup, TElement, TService, TRepos
 		_parent.ParentId = _parent.Id;
 		_parent.Parent = _parent;
 		_destination = new TGroup { Id = Guid.NewGuid(), ParentId = _parent.Id, Name = "Destination" };
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
-		_repository.GetByIdAsync(_parent.Id, CancellationToken.None).Returns(_parent);
-		_repository.GetWithContentsByIdAsync(_destination.Id).Returns(_destination);
-		_repository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
-		_repository.GetWithContentsByIdAsync(_parent.Id).Returns(_parent);
-		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns(_parent);
+		_repository.GetById(_group.Id, CancellationToken.None).Returns(_group);
+		_repository.GetById(_parent.Id, CancellationToken.None).Returns(_parent);
+		_repository.GetWithContentsById(_destination.Id).Returns(_destination);
+		_repository.GetWithContentsById(_group.Id).Returns(_group);
+		_repository.GetWithContentsById(_parent.Id).Returns(_parent);
+		_repository.GetWithChildrenById(_parent.Id).Returns(_parent);
 	}
 
 	[TearDown]
@@ -142,8 +142,8 @@ public sealed class GroupsGetTreeServiceTests<TGroup, TElement, TService, TRepos
 			Order = 8, IsFavorite = true, EditRevision = 7,
 			ModificationType = ModificationType.Content | ModificationType.Order
 		};
-		_repository.GetAllAsync(CancellationToken.None).Returns(new List<TGroup> { _group, _parent });
-		_elementRepository.GetAllAsync(CancellationToken.None).Returns(new List<TElement> { element, rootElement });
+		_repository.GetAll(CancellationToken.None).Returns(new List<TGroup> { _group, _parent });
+		_elementRepository.GetAll(CancellationToken.None).Returns(new List<TElement> { element, rootElement });
 		TreeInfo result = await _service.GetTree();
 		ElementInfo info = result.Elements.Single(item => item.Id == element.Id);
 		Assert.Multiple(() =>
@@ -178,8 +178,8 @@ public sealed class GroupsGetTreeServiceTests<TGroup, TElement, TService, TRepos
 		TGroup deletedGroup = new() { Id = Guid.NewGuid(), DeleteRevision = 0 };
 		TElement pending = new() { Id = Guid.NewGuid(), GroupId = deletedGroup.Id, DeleteRevision = 0 };
 		TElement deleted = new() { Id = Guid.NewGuid(), GroupId = _parent.Id, DeleteRevision = 7 };
-		_repository.GetAllAsync(CancellationToken.None).Returns(new List<TGroup> { _parent, deletedGroup });
-		_elementRepository.GetAllAsync(CancellationToken.None).Returns(new List<TElement> { pending, deleted });
+		_repository.GetAll(CancellationToken.None).Returns(new List<TGroup> { _parent, deletedGroup });
+		_elementRepository.GetAll(CancellationToken.None).Returns(new List<TElement> { pending, deleted });
 		TreeInfo result = await _service.GetTree();
 		Assert.That(result.Groups.Select(item => item.Id), Is.EqualTo(new[] { _parent.Id }));
 		Assert.That(result.Elements, Is.Empty);
@@ -191,8 +191,8 @@ public sealed class GroupsGetTreeServiceTests<TGroup, TElement, TService, TRepos
 	{
 		TElement first = new() { Id = Guid.Parse("00000001-0000-0000-0000-000000000000"), GroupId = _parent.Id, Order = 9 };
 		TElement second = new() { Id = Guid.Parse("80000000-0000-0000-0000-000000000000"), GroupId = _parent.Id, Order = 9 };
-		_repository.GetAllAsync(CancellationToken.None).Returns(new List<TGroup> { _parent });
-		_elementRepository.GetAllAsync(CancellationToken.None).Returns(new List<TElement> { second, first });
+		_repository.GetAll(CancellationToken.None).Returns(new List<TGroup> { _parent });
+		_elementRepository.GetAll(CancellationToken.None).Returns(new List<TElement> { second, first });
 		TreeInfo result = await _service.GetTree();
 		Assert.That(result.Elements.Select(item => item.Id), Is.EqualTo(new[] { first.Id, second.Id }));
 		Assert.That(result.Elements.All(item => item.Order == 9), Is.True);
@@ -203,8 +203,8 @@ public sealed class GroupsGetTreeServiceTests<TGroup, TElement, TService, TRepos
 	[Test]
 	public async Task GetTree_EmptyCatalog_ReturnsEmptyCollections()
 	{
-		_repository.GetAllAsync(CancellationToken.None).Returns(new List<TGroup>());
-		_elementRepository.GetAllAsync(CancellationToken.None).Returns(new List<TElement>());
+		_repository.GetAll(CancellationToken.None).Returns(new List<TGroup>());
+		_elementRepository.GetAll(CancellationToken.None).Returns(new List<TElement>());
 		TreeInfo result = await _service.GetTree();
 		Assert.That(result.Groups, Is.Empty);
 		Assert.That(result.Elements, Is.Empty);
@@ -216,8 +216,8 @@ public sealed class GroupsGetTreeServiceTests<TGroup, TElement, TService, TRepos
 	public void GetTree_LiveElementWithUnavailableGroup_ThrowsNotFound(bool deleted)
 	{
 		_parent.DeleteRevision = deleted ? 0 : null;
-		_repository.GetAllAsync(CancellationToken.None).Returns(deleted ? new List<TGroup> { _parent } : new List<TGroup>());
-		_elementRepository.GetAllAsync(CancellationToken.None).Returns(new List<TElement> { new() { Id = Guid.NewGuid(), GroupId = _parent.Id } });
+		_repository.GetAll(CancellationToken.None).Returns(deleted ? new List<TGroup> { _parent } : new List<TGroup>());
+		_elementRepository.GetAll(CancellationToken.None).Returns(new List<TElement> { new() { Id = Guid.NewGuid(), GroupId = _parent.Id } });
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.GetTree());
 		AssertReadOnly();
 	}
@@ -225,8 +225,8 @@ public sealed class GroupsGetTreeServiceTests<TGroup, TElement, TService, TRepos
 	[Test]
 	public void GetTree_ElementLookupFailure_PropagatesWithoutSaving()
 	{
-		_repository.GetAllAsync(CancellationToken.None).Returns(new List<TGroup> { _parent });
-		_elementRepository.GetAllAsync(CancellationToken.None).ThrowsAsync(new InvalidOperationException("Read failed."));
+		_repository.GetAll(CancellationToken.None).Returns(new List<TGroup> { _parent });
+		_elementRepository.GetAll(CancellationToken.None).ThrowsAsync(new InvalidOperationException("Read failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.GetTree());
 		AssertReadOnly();
 	}
@@ -236,22 +236,22 @@ public sealed class GroupsGetTreeServiceTests<TGroup, TElement, TService, TRepos
 	{
 		using CancellationTokenSource cancellation = new();
 		CancellationToken token = cancellation.Token;
-		_repository.GetAllAsync(token).Returns(new List<TGroup> { _parent });
-		_elementRepository.GetAllAsync(token).Returns(new List<TElement>());
+		_repository.GetAll(token).Returns(new List<TGroup> { _parent });
+		_elementRepository.GetAll(token).Returns(new List<TElement>());
 		TreeInfo result = await _service.GetTree(token);
 		Assert.That(result.Groups.Count, Is.EqualTo(1));
-		await _repository.Received(1).GetAllAsync(token);
-		await _elementRepository.Received(1).GetAllAsync(token);
+		await _repository.Received(1).GetAll(token);
+		await _elementRepository.Received(1).GetAll(token);
 		AssertReadOnly();
 	}
 
 	private void AssertReadOnly()
 	{
 		Assert.That(_repository.ReceivedCalls().Count(), Is.EqualTo(1));
-		Assert.That(_repository.ReceivedCalls().Single().GetMethodInfo().Name, Is.EqualTo("GetAllAsync"));
+		Assert.That(_repository.ReceivedCalls().Single().GetMethodInfo().Name, Is.EqualTo("GetAll"));
 		Assert.That(_elementRepository.ReceivedCalls().Count(), Is.EqualTo(1));
-		Assert.That(_elementRepository.ReceivedCalls().Single().GetMethodInfo().Name, Is.EqualTo("GetAllAsync"));
+		Assert.That(_elementRepository.ReceivedCalls().Single().GetMethodInfo().Name, Is.EqualTo("GetAll"));
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 	}
 }

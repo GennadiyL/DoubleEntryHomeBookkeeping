@@ -24,12 +24,12 @@ internal sealed class CumulativeOperation : ICumulativeOperation
 		_command = command;
 	}
 
-	public Task RecalculateAsync(Guid accountId, CancellationToken cancellationToken = default) =>
-		_command.RecalculateAsync(accountId, cancellationToken);
+	public Task Recalculate(Guid accountId, CancellationToken cancellationToken = default) =>
+		_command.Recalculate(accountId, cancellationToken);
 
-	public async Task RecalculateAsync(Guid accountId, DateTime fromDateTime, CancellationToken cancellationToken = default)
+	public async Task Recalculate(Guid accountId, DateTime fromDateTime, CancellationToken cancellationToken = default)
 	{
-		decimal? previous = await _unitOfWork.TransactionEntryRepo.GetPreviousAsync(accountId, fromDateTime, cancellationToken);
-		await _command.RecalculateAsync(accountId, fromDateTime, previous ?? 0m, cancellationToken);
+		decimal? previous = await _unitOfWork.TransactionEntryRepo.GetPrevious(accountId, fromDateTime, cancellationToken);
+		await _command.Recalculate(accountId, fromDateTime, previous ?? 0m, cancellationToken);
 	}
 }

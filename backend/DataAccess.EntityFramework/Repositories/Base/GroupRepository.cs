@@ -18,7 +18,7 @@ internal abstract class GroupRepository<TGroup, TElement, TD> : Repository<AppDb
 
 	public Task<ICollection<TGroup>> GetByName(string name, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-	public async Task<TGroup?> GetWithChildrenByIdAsync(Guid id, CancellationToken cancellationToken = default)
+	public async Task<TGroup?> GetWithChildrenById(Guid id, CancellationToken cancellationToken = default)
 	{
 		TD? group = await Entities.AsNoTracking().Include("Children")
 			.SingleOrDefaultAsync(entity => entity.Id == id, cancellationToken);
@@ -27,7 +27,7 @@ internal abstract class GroupRepository<TGroup, TElement, TD> : Repository<AppDb
 
 	public Task<int> GetMaxOrderInParent(Guid? parentId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-	public async Task<TGroup?> GetWithContentsByIdAsync(Guid id, CancellationToken cancellationToken = default)
+	public async Task<TGroup?> GetWithContentsById(Guid id, CancellationToken cancellationToken = default)
 	{
 		TD? group = await Entities.AsNoTracking().Include("Children").Include("Elements")
 			.SingleOrDefaultAsync(entity => entity.Id == id, cancellationToken);

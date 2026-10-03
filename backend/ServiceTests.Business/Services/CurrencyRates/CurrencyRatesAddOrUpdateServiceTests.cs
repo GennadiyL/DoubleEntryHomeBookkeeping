@@ -42,7 +42,7 @@ public sealed class CurrencyRatesAddOrUpdateServiceTests : CurrencyRatesServiceT
 		Assert.That(saved.DeleteRevision, Is.Null);
 		Assert.That(saved.ModificationType, Is.EqualTo(ModificationType.None));
 		Unit.CurrencyRateRepo.DidNotReceiveWithAnyArgs().Update(default!);
-		await Unit.Received(1).SaveChangesAsync();
+		await Unit.Received(1).SaveChanges();
 	}
 
 	[TestCase(false)]
@@ -52,7 +52,7 @@ public sealed class CurrencyRatesAddOrUpdateServiceTests : CurrencyRatesServiceT
 		if (initial) { Param.Date = AppValues.InitialDate; }
 		CurrencyRate existing = CreateRate(Param.Date);
 		existing.ModificationType = ModificationType.Order;
-		Unit.CurrencyRateRepo.GetByCurrencyAndDateAsync(Currency.Id, Param.Date, Arg.Any<CancellationToken>()).Returns(existing);
+		Unit.CurrencyRateRepo.GetByCurrencyAndDate(Currency.Id, Param.Date, Arg.Any<CancellationToken>()).Returns(existing);
 		Guid id = await Service.AddOrUpdate(Param);
 		Assert.That(id, Is.EqualTo(existing.Id));
 		Assert.That(existing.Date, Is.EqualTo(Param.Date));
@@ -62,7 +62,7 @@ public sealed class CurrencyRatesAddOrUpdateServiceTests : CurrencyRatesServiceT
 		Assert.That(existing.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
 		Unit.CurrencyRateRepo.Received(1).Update(existing);
 		Unit.CurrencyRateRepo.DidNotReceiveWithAnyArgs().Add(default!);
-		await Unit.Received(1).SaveChangesAsync();
+		await Unit.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -70,7 +70,7 @@ public sealed class CurrencyRatesAddOrUpdateServiceTests : CurrencyRatesServiceT
 	{
 		CurrencyRate existing = CreateRate(Param.Date, 1.2344m);
 		existing.Description = Param.Description;
-		Unit.CurrencyRateRepo.GetByCurrencyAndDateAsync(Currency.Id, Param.Date, Arg.Any<CancellationToken>()).Returns(existing);
+		Unit.CurrencyRateRepo.GetByCurrencyAndDate(Currency.Id, Param.Date, Arg.Any<CancellationToken>()).Returns(existing);
 		Assert.That(await Service.AddOrUpdate(Param), Is.EqualTo(existing.Id));
 		AssertNoWrites();
 	}
@@ -159,7 +159,7 @@ public sealed class CurrencyRatesAddOrUpdateServiceTests : CurrencyRatesServiceT
 	{
 		CurrencyRate existing = CreateRate(Param.Date);
 		existing.DeleteRevision = revision;
-		Unit.CurrencyRateRepo.GetByCurrencyAndDateAsync(Currency.Id, Param.Date, Arg.Any<CancellationToken>()).Returns(existing);
+		Unit.CurrencyRateRepo.GetByCurrencyAndDate(Currency.Id, Param.Date, Arg.Any<CancellationToken>()).Returns(existing);
 		Assert.ThrowsAsync<InvalidCurrencyException>(async () => await Service.AddOrUpdate(Param));
 		Assert.That(existing.DeleteRevision, Is.EqualTo(revision));
 		Assert.That(existing.Rate, Is.EqualTo(2m));
@@ -172,9 +172,9 @@ public sealed class CurrencyRatesAddOrUpdateServiceTests : CurrencyRatesServiceT
 	{
 		using CancellationTokenSource source = new();
 		await Service.AddOrUpdate(Param, source.Token);
-		await Unit.CurrencyRepo.Received(1).GetByIdAsync(Currency.Id, source.Token);
-		await Unit.SystemConfigRepo.Received(1).GetAllAsync(source.Token);
-		await Unit.CurrencyRateRepo.Received(1).GetByCurrencyAndDateAsync(Currency.Id, Param.Date, source.Token);
-		await Unit.Received(1).SaveChangesAsync(source.Token);
+		await Unit.CurrencyRepo.Received(1).GetById(Currency.Id, source.Token);
+		await Unit.SystemConfigRepo.Received(1).GetAll(source.Token);
+		await Unit.CurrencyRateRepo.Received(1).GetByCurrencyAndDate(Currency.Id, Param.Date, source.Token);
+		await Unit.Received(1).SaveChanges(source.Token);
 	}
 }

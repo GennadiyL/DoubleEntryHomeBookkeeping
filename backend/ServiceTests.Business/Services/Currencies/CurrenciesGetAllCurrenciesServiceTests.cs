@@ -47,7 +47,7 @@ public sealed class CurrenciesGetAllCurrenciesServiceTests : CurrenciesServiceTe
 	{
 		using CancellationTokenSource source = new();
 		await Service.GetAllCurrencies(source.Token);
-		await Unit.CurrencyRepo.Received(1).GetAllAsync(source.Token);
+		await Unit.CurrencyRepo.Received(1).GetAll(source.Token);
 		AssertNoWrites();
 	}
 }

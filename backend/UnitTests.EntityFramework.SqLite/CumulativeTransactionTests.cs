@@ -79,7 +79,7 @@ public sealed class CumulativeTransactionTests
 		_unitOfWork.AccountRepo.Add(_other);
 		_unitOfWork.AccountRepo.Add(_destination);
 		_unitOfWork.SystemConfigRepo.Add(new SystemConfig { Id = Guid.NewGuid(), BaseCurrencyId = currency.Id, AmountPrecision = 4 });
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChanges();
 		_context.ChangeTracker.Clear();
 	}
 
@@ -102,10 +102,10 @@ public sealed class CumulativeTransactionTests
 		Guid deleted = Guid.NewGuid();
 		Seed(draft, _date.AddHours(-1), TransactionState.Draft, null, (_account, 100m));
 		Seed(deleted, _date.AddHours(-2), TransactionState.Confirmed, 0, (_account, 200m), (_other, -200m));
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChanges();
 		_context.ChangeTracker.Clear();
 
-		await _cumulative.RebuildAsync();
+		await _cumulative.Rebuild();
 
 		TransactionInfo firstInfo = await _service.GetById(first);
 		TransactionInfo secondInfo = await _service.GetById(second);
@@ -116,10 +116,10 @@ public sealed class CumulativeTransactionTests
 			Assert.That(secondInfo.Entries[0].CumulativeAmount, Is.EqualTo(12m));
 			Assert.That(draftInfo.Entries[0].CumulativeAmount, Is.Zero);
 		});
-		Assert.That((await _unitOfWork.TransactionEntryRepo.GetByTransactionIdAsync(deleted)).First().CumulativeAmount, Is.EqualTo(77m));
-		Assert.That((await _unitOfWork.TransactionRepo.GetByIdAsync(first))!.ModificationType, Is.EqualTo(ModificationType.None));
-		Assert.That(await _unitOfWork.TransactionEntryRepo.GetPreviousAsync(_account.Id, _date.AddTicks(1)), Is.EqualTo(12m));
-		Assert.That(await _unitOfWork.TransactionEntryRepo.GetPreviousAsync(_account.Id, _date), Is.Null);
+		Assert.That((await _unitOfWork.TransactionEntryRepo.GetByTransactionId(deleted)).First().CumulativeAmount, Is.EqualTo(77m));
+		Assert.That((await _unitOfWork.TransactionRepo.GetById(first))!.ModificationType, Is.EqualTo(ModificationType.None));
+		Assert.That(await _unitOfWork.TransactionEntryRepo.GetPrevious(_account.Id, _date.AddTicks(1)), Is.EqualTo(12m));
+		Assert.That(await _unitOfWork.TransactionEntryRepo.GetPrevious(_account.Id, _date), Is.Null);
 	}
 
 	[Test]
@@ -129,11 +129,11 @@ public sealed class CumulativeTransactionTests
 		Guid later = Guid.NewGuid();
 		Seed(earlier, _date, TransactionState.Confirmed, null, (_account, 50m), (_other, -50m));
 		Seed(later, _date.AddDays(1), TransactionState.Confirmed, null, (_account, -10m), (_other, 10m));
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChanges();
 		_context.ChangeTracker.Clear();
-		DataAccess.Core.Entities.IUnitOfWorkTransaction transaction = await _unitOfWork.BeginTransactionAsync();
-		await _scope.ServiceProvider.GetRequiredService<ICumulativeAmountCommand>().RecalculateAsync(_account.Id, _date.AddDays(1), 50m);
-		await _unitOfWork.CommitTransactionAsync(transaction);
+		DataAccess.Core.Entities.IUnitOfWorkTransaction transaction = await _unitOfWork.BeginTransaction();
+		await _scope.ServiceProvider.GetRequiredService<ICumulativeAmountCommand>().Recalculate(_account.Id, _date.AddDays(1), 50m);
+		await _unitOfWork.CommitTransaction(transaction);
 		Assert.That((await _service.GetById(earlier)).Entries[0].CumulativeAmount, Is.EqualTo(77m));
 		Assert.That((await _service.GetById(later)).Entries[0].CumulativeAmount, Is.EqualTo(40m));
 		Assert.That((await _service.GetById(later)).Entries[1].CumulativeAmount, Is.EqualTo(77m));
@@ -193,9 +193,9 @@ public sealed class CumulativeTransactionTests
 		{
 			Seed(Guid.NewGuid(), _date.AddMinutes(index), TransactionState.Confirmed, null, (_account, 1m), (_other, -1m));
 		}
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChanges();
 		_context.ChangeTracker.Clear();
-		await _cumulative.RebuildAsync();
+		await _cumulative.Rebuild();
 		DateOnly selected = new(2025, 1, 2);
 		TransactionListInfo initial = await _service.GetTransactionsByAccount(_account.Id, selected);
 		Assert.That(initial.Transactions, Has.Count.EqualTo(300));
@@ -224,9 +224,9 @@ public sealed class CumulativeTransactionTests
 		{
 			Seed(Guid.NewGuid(), _date.AddMinutes(index), TransactionState.Confirmed, null, (_account, 1m), (_other, -1m));
 		}
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChanges();
 		_context.ChangeTracker.Clear();
-		await _cumulative.RebuildAsync();
+		await _cumulative.Rebuild();
 		await _service.DeleteTransactionsByAccount(_account.Id, new DateOnly(2024, 12, 31), new DateOnly(2025, 1, 2));
 		Assert.That((await _service.GetById(keep)).Entries[0].CumulativeAmount, Is.EqualTo(5m));
 		Assert.That((await _service.GetTransactions(new DateOnly(2025, 1, 5))).Transactions, Has.Count.EqualTo(1));
@@ -250,11 +250,11 @@ public sealed class CumulativeTransactionTests
 	{
 		await _service.Add(Input(_date, AppValues.MaxDecimal));
 		Guid edited = await _service.Add(Input(_date.AddDays(1), -1m));
-		ICollection<TransactionEntry> original = await _unitOfWork.TransactionEntryRepo.GetByTransactionIdAsync(edited);
+		ICollection<TransactionEntry> original = await _unitOfWork.TransactionEntryRepo.GetByTransactionId(edited);
 		Assert.ThrowsAsync<SqliteException>(async () => await _service.Update(edited, Input(_date.AddDays(1), 1m)));
 		StartNewScopeAfterRollback();
 		TransactionInfo restored = await _service.GetById(edited);
-		ICollection<TransactionEntry> restoredEntries = await _unitOfWork.TransactionEntryRepo.GetByTransactionIdAsync(edited);
+		ICollection<TransactionEntry> restoredEntries = await _unitOfWork.TransactionEntryRepo.GetByTransactionId(edited);
 		Assert.That(restoredEntries.Select(entry => entry.Id), Is.EquivalentTo(original.Select(entry => entry.Id)));
 		Assert.That(restored.Entries[0].Amount, Is.EqualTo(-1m));
 		Assert.That(restored.Entries[0].CumulativeAmount, Is.EqualTo(AppValues.MaxDecimal - 1m));
@@ -272,7 +272,7 @@ public sealed class CumulativeTransactionTests
 		IAccountService accounts = _scope.ServiceProvider.GetRequiredService<IAccountService>();
 		Assert.ThrowsAsync<SqliteException>(async () => await accounts.CombineElements(_destination.Id, _account.Id));
 		StartNewScopeAfterRollback();
-		Account? source = await _unitOfWork.AccountRepo.GetByIdAsync(_account.Id);
+		Account? source = await _unitOfWork.AccountRepo.GetById(_account.Id);
 		Assert.That(source!.DeleteRevision, Is.Null);
 		TransactionInfo restored = await _service.GetById(first);
 		Assert.That(restored.Entries[0].AccountId, Is.EqualTo(_account.Id));
@@ -284,7 +284,7 @@ public sealed class CumulativeTransactionTests
 		Account removed = new() { Id = Guid.NewGuid(), Name = "Removed", GroupId = _account.GroupId, Group = _account.Group,
 			CurrencyId = _account.CurrencyId, Currency = _account.Currency, DeleteRevision = 0 };
 		_unitOfWork.AccountRepo.Add(removed);
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChanges();
 		_context.ChangeTracker.Clear();
 		Business.Contracts.Services.Accounts.AccountTreeInfo tree = await _scope.ServiceProvider
 			.GetRequiredService<IAccountGroupService>().GetAccountsTree();
@@ -311,12 +311,12 @@ public sealed class CumulativeTransactionTests
 		Guid entryId = Guid.NewGuid();
 		_unitOfWork.TemplateEntryRepo.Add(new TemplateEntry { Id = entryId, TemplateId = template.Id, Template = template,
 			AccountId = _account.Id, Account = _account, Amount = -12.3456m });
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChanges();
 		_context.ChangeTracker.Clear();
-		TransactionEntry entry = (await _unitOfWork.TransactionEntryRepo.GetByTransactionIdAsync(transactionId)).Single();
+		TransactionEntry entry = (await _unitOfWork.TransactionEntryRepo.GetByTransactionId(transactionId)).Single();
 		entry.Rate = 1.2345m;
 		_unitOfWork.TransactionEntryRepo.Update(entry);
-		await _unitOfWork.SaveChangesAsync();
+		await _unitOfWork.SaveChanges();
 		_context.ChangeTracker.Clear();
 		using System.Data.Common.DbCommand command = _context.Database.GetDbConnection().CreateCommand();
 		command.CommandText = "SELECT Rate, typeof(Rate) FROM TransactionEntries UNION ALL SELECT Rate, typeof(Rate) FROM CurrencyRates UNION ALL SELECT Amount, typeof(Amount) FROM TemplateEntries";
@@ -328,9 +328,9 @@ public sealed class CumulativeTransactionTests
 			Assert.That(reader.GetString(1), Is.EqualTo("integer"));
 		}
 		Assert.That(stored, Is.EqualTo(new long[] { 12345, 12345, -123456 }));
-		Assert.That((await _unitOfWork.TransactionEntryRepo.GetByTransactionIdAsync(transactionId)).Single().Rate, Is.EqualTo(1.2345m));
-		Assert.That((await _unitOfWork.CurrencyRateRepo.GetAllAsync()).Single().Rate, Is.EqualTo(1.2345m));
-		Assert.That((await _unitOfWork.TemplateEntryRepo.GetByIdAsync(entryId))!.Amount, Is.EqualTo(-12.3456m));
+		Assert.That((await _unitOfWork.TransactionEntryRepo.GetByTransactionId(transactionId)).Single().Rate, Is.EqualTo(1.2345m));
+		Assert.That((await _unitOfWork.CurrencyRateRepo.GetAll()).Single().Rate, Is.EqualTo(1.2345m));
+		Assert.That((await _unitOfWork.TemplateEntryRepo.GetById(entryId))!.Amount, Is.EqualTo(-12.3456m));
 	}
 	private void StartNewScopeAfterRollback()
 	{

@@ -104,12 +104,12 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		_parent.ParentId = _parent.Id;
 		_parent.Parent = _parent;
 		_destination = new TGroup { Id = Guid.NewGuid(), ParentId = _parent.Id, Name = "Destination" };
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
-		_repository.GetByIdAsync(_parent.Id, CancellationToken.None).Returns(_parent);
-		_repository.GetWithContentsByIdAsync(_destination.Id).Returns(_destination);
-		_repository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
-		_repository.GetWithContentsByIdAsync(_parent.Id).Returns(_parent);
-		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns(_parent);
+		_repository.GetById(_group.Id, CancellationToken.None).Returns(_group);
+		_repository.GetById(_parent.Id, CancellationToken.None).Returns(_parent);
+		_repository.GetWithContentsById(_destination.Id).Returns(_destination);
+		_repository.GetWithContentsById(_group.Id).Returns(_group);
+		_repository.GetWithContentsById(_parent.Id).Returns(_parent);
+		_repository.GetWithChildrenById(_parent.Id).Returns(_parent);
 	}
 
 	[TearDown]
@@ -166,7 +166,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		_repository.Received(1).Update(_group);
 		_repository.DidNotReceive().Update(grandchild);
 		_elementRepository.Received(1).Update(element);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(false)]
@@ -262,7 +262,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		Assert.That(_group.IsDeleted(), Is.True);
 		_repository.Received(1).Update(_group);
 		_elementRepository.DidNotReceive().Update(Arg.Any<TElement>());
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -304,7 +304,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 	{
 		TGroup target = source ? _group : _destination;
 		if (deleted) { target.DeleteRevision = 0; }
-		else { _repository.GetWithContentsByIdAsync(target.Id).Returns((TGroup?)null); }
+		else { _repository.GetWithContentsById(target.Id).Returns((TGroup?)null); }
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.CombineGroups(_destination.Id, _group.Id));
 		AssertNoWrites();
 	}
@@ -326,7 +326,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		{
 			TGroup next = new() { Id = Guid.NewGuid() };
 			ancestor.ParentId = next.Id;
-			_repository.GetByIdAsync(next.Id, CancellationToken.None).Returns(next);
+			_repository.GetById(next.Id, CancellationToken.None).Returns(next);
 			ancestor = next;
 		}
 		ancestor.ParentId = _group.Id;
@@ -339,8 +339,8 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 	{
 		TGroup ancestor = new() { Id = Guid.NewGuid(), ParentId = _destination.Id };
 		_destination.ParentId = ancestor.Id;
-		_repository.GetByIdAsync(ancestor.Id, CancellationToken.None).Returns(ancestor);
-		_repository.GetByIdAsync(_destination.Id, CancellationToken.None).Returns(_destination);
+		_repository.GetById(ancestor.Id, CancellationToken.None).Returns(ancestor);
+		_repository.GetById(_destination.Id, CancellationToken.None).Returns(_destination);
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.CombineGroups(_destination.Id, _group.Id));
 		AssertNoWrites();
 	}
@@ -350,7 +350,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 	public void Combine_MissingOrDeletedAncestor_Rejects(bool deleted)
 	{
 		if (deleted) { _parent.DeleteRevision = 0; }
-		else { _repository.GetByIdAsync(_parent.Id, CancellationToken.None).Returns((TGroup?)null); }
+		else { _repository.GetById(_parent.Id, CancellationToken.None).Returns((TGroup?)null); }
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.CombineGroups(_destination.Id, _group.Id));
 		AssertNoWrites();
 	}
@@ -369,7 +369,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		Assert.That(child.Order, Is.EqualTo(elements ? 0 : 1));
 		Assert.That(element.Order, Is.EqualTo(elements ? 1 : 0));
 		Assert.That(_group.IsDeleted(), Is.True);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -386,7 +386,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 	[Test]
 	public void Combine_SaveFails_PropagatesFailure()
 	{
-		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException("Save failed."));
+		_unitOfWork.SaveChanges().ThrowsAsync(new InvalidOperationException("Save failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.CombineGroups(_destination.Id, _group.Id));
 	}
 
@@ -423,7 +423,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		});
 		_repository.Received(1).Update(sibling);
 		_repository.DidNotReceive().Update(deleted);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -453,7 +453,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 			TemplateGroup => RootsIds.TemplateGroupId,
 			_ => throw new InvalidOperationException()
 		};
-		_repository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
+		_repository.GetWithContentsById(_group.Id).Returns(_group);
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.CombineGroups(_destination.Id, _group.Id));
 		AssertNoWrites();
 	}
@@ -475,5 +475,5 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 
 	private void AssertNoSave() =>
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 }

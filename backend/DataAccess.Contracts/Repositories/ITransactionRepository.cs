@@ -16,5 +16,5 @@ namespace DataAccess.Contracts.Repositories;
 /// </summary>
 public interface ITransactionRepository : IRepository<Transaction>
 {
-	public Task<ICollection<Transaction>> SearchAsync(TransactionSearch search, CancellationToken cancellationToken = default);
+	public Task<ICollection<Transaction>> Search(TransactionSearch search, CancellationToken cancellationToken = default);
 }

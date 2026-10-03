@@ -76,8 +76,8 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 			ModificationType = ModificationType.None
 		};
 		_parent.Children.Add(_group);
-		_repository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
-		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns(_parent);
+		_repository.GetWithContentsById(_group.Id).Returns(_group);
+		_repository.GetWithChildrenById(_parent.Id).Returns(_parent);
 	}
 
 	[TearDown]
@@ -102,8 +102,8 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 			ReferenceEquals(group.Parent, _parent) && group.Order == 7 &&
 			group.Name == "Old name" && group.Description == "Old description" && group.IsFavorite &&
 			group.ModificationType == ModificationType.None));
-		await _repository.Received(1).GetWithContentsByIdAsync(id);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _repository.Received(1).GetWithContentsById(id);
+		await _unitOfWork.Received(1).SaveChanges();
 		_repository.DidNotReceive().Add(Arg.Any<TGroup>());
 	}
 
@@ -118,7 +118,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 	[Test]
 	public void Delete_MissingGroup_RejectsWithoutSaving()
 	{
-		_repository.GetWithContentsByIdAsync(_group.Id).Returns((TGroup?)null);
+		_repository.GetWithContentsById(_group.Id).Returns((TGroup?)null);
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.Delete(_group.Id));
 		AssertNoWrites(false);
 	}
@@ -177,7 +177,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		_repository.Received(1).Update(_group);
 		Assert.That(child.ModificationType, Is.EqualTo(ModificationType.None));
 		Assert.That(element.ModificationType, Is.EqualTo(ModificationType.None));
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(false)]
@@ -201,7 +201,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		Assert.That(_group.DeleteRevision, Is.EqualTo(0));
 		Assert.That(_group.EditRevision, Is.Null);
 		Assert.That(_group.ModificationType, Is.EqualTo(ModificationType.None));
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -216,7 +216,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		_repository.Received(1).Update(Arg.Is<TGroup>(group =>
 			group.Id == _group.Id && group.EditRevision == revision && group.DeleteRevision == 0 &&
 			group.ModificationType == flags));
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(null)]
@@ -251,7 +251,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		_repository.DidNotReceive().Update(unchanged);
 		_repository.DidNotReceive().Update(deleted);
 		_repository.DidNotReceive().Update(_parent);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -277,7 +277,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		}
 		else
 		{
-			_repository.GetWithChildrenByIdAsync(_parent.Id).Returns((TGroup?)null);
+			_repository.GetWithChildrenById(_parent.Id).Returns((TGroup?)null);
 		}
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Delete(_group.Id));
 		AssertNoWrites(false);
@@ -302,7 +302,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		Assert.That(_group.EditRevision, Is.Null);
 		Assert.That(_group.Children.All(child => child.DeleteRevision == 0 && child.ModificationType == ModificationType.None), Is.True);
 		Assert.That(_group.Elements.All(element => element.DeleteRevision == 0 && element.ModificationType == ModificationType.None), Is.True);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -317,7 +317,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 			TemplateGroup => RootsIds.TemplateGroupId,
 			_ => throw new InvalidOperationException()
 		};
-		_repository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
+		_repository.GetWithContentsById(_group.Id).Returns(_group);
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.Delete(_group.Id));
 		AssertNoWrites(false);
 	}
@@ -325,7 +325,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 	[Test]
 	public void Delete_LookupFails_PropagatesFailureWithoutWrites()
 	{
-		_repository.GetWithContentsByIdAsync(_group.Id).ThrowsAsync(new InvalidOperationException("Read failed."));
+		_repository.GetWithContentsById(_group.Id).ThrowsAsync(new InvalidOperationException("Read failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Delete(_group.Id));
 		AssertNoWrites(false);
 	}
@@ -333,7 +333,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 	[Test]
 	public void Delete_SaveFails_PropagatesFailure()
 	{
-		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException("Save failed."));
+		_unitOfWork.SaveChanges().ThrowsAsync(new InvalidOperationException("Save failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Delete(_group.Id));
 	}
 
@@ -342,7 +342,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		_repository.DidNotReceive().Add(Arg.Any<TGroup>());
 		_repository.DidNotReceive().Update(Arg.Any<TGroup>());
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 		Assert.That(_group.IsDeleted(), Is.EqualTo(expectedDeleted));
 		Assert.That(_group.ModificationType, Is.EqualTo(ModificationType.None));
 	}

@@ -12,6 +12,6 @@ namespace Business.Impl.Operations.Cumulative;
 /// </summary>
 internal interface ICumulativeOperation
 {
-	public Task RecalculateAsync(Guid accountId, CancellationToken cancellationToken = default);
-	public Task RecalculateAsync(Guid accountId, DateTime fromDateTime, CancellationToken cancellationToken = default);
+	public Task Recalculate(Guid accountId, CancellationToken cancellationToken = default);
+	public Task Recalculate(Guid accountId, DateTime fromDateTime, CancellationToken cancellationToken = default);
 }

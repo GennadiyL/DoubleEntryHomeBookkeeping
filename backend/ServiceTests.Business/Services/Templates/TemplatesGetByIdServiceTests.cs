@@ -66,10 +66,10 @@ public sealed class TemplatesGetByIdServiceTests : TemplatesServiceTestsBase
 	{
 		using CancellationTokenSource source = new();
 		await Service.GetById(Template.Id, source.Token);
-		await Repository.Received(1).GetByIdAsync(Template.Id, source.Token);
-		await EntryRepository.Received(1).GetByTemplateIdAsync(Template.Id, source.Token);
-		await UnitOfWork.AccountRepo.Received(1).GetByIdAsync(Account.Id, source.Token);
-		await UnitOfWork.CurrencyRepo.Received(1).GetByIdAsync(Currency.Id, source.Token);
+		await Repository.Received(1).GetById(Template.Id, source.Token);
+		await EntryRepository.Received(1).GetByTemplateId(Template.Id, source.Token);
+		await UnitOfWork.AccountRepo.Received(1).GetById(Account.Id, source.Token);
+		await UnitOfWork.CurrencyRepo.Received(1).GetById(Currency.Id, source.Token);
 		AssertNoWrites();
 	}
 }

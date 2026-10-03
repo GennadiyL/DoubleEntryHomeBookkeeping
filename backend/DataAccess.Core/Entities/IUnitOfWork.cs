@@ -2,17 +2,17 @@ namespace DataAccess.Core.Entities;
 
 public interface IUnitOfWork
 {
-	public Task<IUnitOfWorkTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default);
+	public Task<IUnitOfWorkTransaction> BeginTransaction(CancellationToken cancellationToken = default);
 
-	public Task CommitTransactionAsync(
+	public Task CommitTransaction(
 		IUnitOfWorkTransaction transaction,
 		CancellationToken cancellationToken = default);
 
-	public Task RollbackTransactionAsync(
+	public Task RollbackTransaction(
 		IUnitOfWorkTransaction transaction,
 		CancellationToken cancellationToken = default);
 
-	public Task SaveChangesAsync(CancellationToken cancellationToken = default);
+	public Task SaveChanges(CancellationToken cancellationToken = default);
 
-	public void SaveChanges();
+	public void SaveChangesSync();
 }

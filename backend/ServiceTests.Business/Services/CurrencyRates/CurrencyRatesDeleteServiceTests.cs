@@ -33,7 +33,7 @@ public sealed class CurrencyRatesDeleteServiceTests : CurrencyRatesServiceTestsB
 		CurrencyRate last = CreateRate(Param.Date);
 		first.EditRevision = revision;
 		first.ModificationType = flags;
-		Unit.CurrencyRateRepo.GetByCurrencyAndDateRangeAsync(Currency.Id, AppValues.InitialDate, Param.Date, Arg.Any<CancellationToken>())
+		Unit.CurrencyRateRepo.GetByCurrencyAndDateRange(Currency.Id, AppValues.InitialDate, Param.Date, Arg.Any<CancellationToken>())
 			.Returns(new List<CurrencyRate> { initial, first, last });
 
 		await Service.Delete(Currency.Id, AppValues.InitialDate, Param.Date);
@@ -46,18 +46,18 @@ public sealed class CurrencyRatesDeleteServiceTests : CurrencyRatesServiceTestsB
 		Unit.CurrencyRateRepo.DidNotReceive().Update(initial);
 		Unit.CurrencyRateRepo.Received(1).Update(first);
 		Unit.CurrencyRateRepo.Received(1).Update(last);
-		await Unit.Received(1).SaveChangesAsync();
+		await Unit.Received(1).SaveChanges();
 	}
 
 	[Test]
 	public async Task Delete_EqualEndpointsSelectOneDay()
 	{
 		CurrencyRate rate = CreateRate(Param.Date);
-		Unit.CurrencyRateRepo.GetByCurrencyAndDateRangeAsync(Currency.Id, Param.Date, Param.Date, Arg.Any<CancellationToken>())
+		Unit.CurrencyRateRepo.GetByCurrencyAndDateRange(Currency.Id, Param.Date, Param.Date, Arg.Any<CancellationToken>())
 			.Returns(new List<CurrencyRate> { rate });
 		await Service.Delete(Currency.Id, Param.Date, Param.Date);
 		Assert.That(rate.DeleteRevision, Is.Zero);
-		await Unit.Received(1).SaveChangesAsync();
+		await Unit.Received(1).SaveChanges();
 	}
 
 	[TestCase(false)]
@@ -65,7 +65,7 @@ public sealed class CurrencyRatesDeleteServiceTests : CurrencyRatesServiceTestsB
 	public async Task Delete_NoOrdinaryMatchesDoesNotCommit(bool initial)
 	{
 		List<CurrencyRate> rates = initial ? [CreateRate(AppValues.InitialDate)] : [];
-		Unit.CurrencyRateRepo.GetByCurrencyAndDateRangeAsync(Currency.Id, AppValues.InitialDate, Param.Date, Arg.Any<CancellationToken>()).Returns(rates);
+		Unit.CurrencyRateRepo.GetByCurrencyAndDateRange(Currency.Id, AppValues.InitialDate, Param.Date, Arg.Any<CancellationToken>()).Returns(rates);
 		await Service.Delete(Currency.Id, AppValues.InitialDate, Param.Date);
 		AssertNoWrites();
 	}
@@ -94,9 +94,9 @@ public sealed class CurrencyRatesDeleteServiceTests : CurrencyRatesServiceTestsB
 	{
 		using CancellationTokenSource source = new();
 		CurrencyRate rate = CreateRate(Param.Date);
-		Unit.CurrencyRateRepo.GetByCurrencyAndDateRangeAsync(Currency.Id, Param.Date, Param.Date, source.Token).Returns(new List<CurrencyRate> { rate });
+		Unit.CurrencyRateRepo.GetByCurrencyAndDateRange(Currency.Id, Param.Date, Param.Date, source.Token).Returns(new List<CurrencyRate> { rate });
 		await Service.Delete(Currency.Id, Param.Date, Param.Date, source.Token);
-		await Unit.CurrencyRateRepo.Received(1).GetByCurrencyAndDateRangeAsync(Currency.Id, Param.Date, Param.Date, source.Token);
-		await Unit.Received(1).SaveChangesAsync(source.Token);
+		await Unit.CurrencyRateRepo.Received(1).GetByCurrencyAndDateRange(Currency.Id, Param.Date, Param.Date, source.Token);
+		await Unit.Received(1).SaveChanges(source.Token);
 	}
 }

@@ -1,0 +1,18 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Business.Core -> \\MYLEGION\Shared\DoubleEntryHomeBookkeeping\docs\validation\cumulative-implementation\bin\Business.Core\debug\Business.Core.dll
+  Shared.Contracts -> \\MYLEGION\Shared\DoubleEntryHomeBookkeeping\docs\validation\cumulative-implementation\bin\Shared.Contracts\debug\Shared.Contracts.dll
+  Messaging.Contracts -> \\MYLEGION\Shared\DoubleEntryHomeBookkeeping\docs\validation\cumulative-implementation\bin\Messaging.Contracts\debug\Messaging.Contracts.dll
+  DataAccess.Core -> \\MYLEGION\Shared\DoubleEntryHomeBookkeeping\docs\validation\cumulative-implementation\bin\DataAccess.Core\debug\DataAccess.Core.dll
+  Tests.Common -> \\MYLEGION\Shared\DoubleEntryHomeBookkeeping\docs\validation\cumulative-implementation\bin\Tests.Common\debug\Tests.Common.dll
+  Shared.Impl -> \\MYLEGION\Shared\DoubleEntryHomeBookkeeping\docs\validation\cumulative-implementation\bin\Shared.Impl\debug\Shared.Impl.dll
+  Business.Models -> \\MYLEGION\Shared\DoubleEntryHomeBookkeeping\docs\validation\cumulative-implementation\bin\Business.Models\debug\Business.Models.dll
+  DataAccess.Contracts -> \\MYLEGION\Shared\DoubleEntryHomeBookkeeping\docs\validation\cumulative-implementation\bin\DataAccess.Contracts\debug\DataAccess.Contracts.dll
+  Business.Contracts -> \\MYLEGION\Shared\DoubleEntryHomeBookkeeping\docs\validation\cumulative-implementation\bin\Business.Contracts\debug\Business.Contracts.dll
+  Messaging.InProcessBus -> \\MYLEGION\Shared\DoubleEntryHomeBookkeeping\docs\validation\cumulative-implementation\bin\Messaging.InProcessBus\debug\Messaging.InProcessBus.dll
+  Business.Impl -> \\MYLEGION\Shared\DoubleEntryHomeBookkeeping\docs\validation\cumulative-implementation\bin\Business.Impl\debug\Business.Impl.dll
+  ServiceTests.Business -> \\MYLEGION\Shared\DoubleEntryHomeBookkeeping\docs\validation\cumulative-implementation\bin\ServiceTests.Business\debug\ServiceTests.Business.dll
+Test run for \\MYLEGION\Shared\DoubleEntryHomeBookkeeping\docs\validation\cumulative-implementation\bin\ServiceTests.Business\debug\ServiceTests.Business.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:  2253, Skipped:     0, Total:  2253, Duration: 1 s - ServiceTests.Business.dll (net10.0)

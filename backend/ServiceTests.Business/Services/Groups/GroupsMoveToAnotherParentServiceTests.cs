@@ -77,10 +77,10 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 		_parent.ParentId = _parent.Id;
 		_parent.Parent = _parent;
 		_destination = new TGroup { Id = Guid.NewGuid(), ParentId = _parent.Id, Name = "Destination" };
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
-		_repository.GetByIdAsync(_parent.Id, CancellationToken.None).Returns(_parent);
-		_repository.GetWithChildrenByIdAsync(_destination.Id).Returns(_destination);
-		_repository.GetWithChildrenByIdAsync(_parent.Id).Returns(_parent);
+		_repository.GetById(_group.Id, CancellationToken.None).Returns(_group);
+		_repository.GetById(_parent.Id, CancellationToken.None).Returns(_parent);
+		_repository.GetWithChildrenById(_destination.Id).Returns(_destination);
+		_repository.GetWithChildrenById(_parent.Id).Returns(_parent);
 	}
 
 	[TearDown]
@@ -115,7 +115,7 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 		_repository.DidNotReceive().Update(child);
 		_repository.DidNotReceive().Update(_parent);
 		_repository.DidNotReceive().Update(_destination);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -167,7 +167,7 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 	public void Move_MissingOrDeletedGroup_Rejects(bool deleted)
 	{
 		if (deleted) { _group.DeleteRevision = 0; }
-		else { _repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns((TGroup?)null); }
+		else { _repository.GetById(_group.Id, CancellationToken.None).Returns((TGroup?)null); }
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.MoveToAnotherParent(_group.Id, _destination.Id));
 		AssertUnchangedAndNoWrites();
 	}
@@ -201,7 +201,7 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 		{
 			TGroup next = new() { Id = Guid.NewGuid(), ParentId = _group.Id };
 			ancestor.ParentId = next.Id;
-			_repository.GetByIdAsync(next.Id, CancellationToken.None).Returns(next);
+			_repository.GetById(next.Id, CancellationToken.None).Returns(next);
 			ancestor = next;
 		}
 		ancestor.ParentId = _group.Id;
@@ -214,8 +214,8 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 	{
 		TGroup ancestor = new() { Id = Guid.NewGuid(), ParentId = _destination.Id };
 		_destination.ParentId = ancestor.Id;
-		_repository.GetByIdAsync(ancestor.Id, CancellationToken.None).Returns(ancestor);
-		_repository.GetByIdAsync(_destination.Id, CancellationToken.None).Returns(_destination);
+		_repository.GetById(ancestor.Id, CancellationToken.None).Returns(ancestor);
+		_repository.GetById(_destination.Id, CancellationToken.None).Returns(_destination);
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.MoveToAnotherParent(_group.Id, _destination.Id));
 		AssertUnchangedAndNoWrites();
 	}
@@ -225,7 +225,7 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 	public void Move_MissingOrDeletedDestination_Rejects(bool deleted)
 	{
 		if (deleted) { _destination.DeleteRevision = 0; }
-		else { _repository.GetWithChildrenByIdAsync(_destination.Id).Returns((TGroup?)null); }
+		else { _repository.GetWithChildrenById(_destination.Id).Returns((TGroup?)null); }
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.MoveToAnotherParent(_group.Id, _destination.Id));
 		AssertUnchangedAndNoWrites();
 	}
@@ -235,7 +235,7 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 	public void Move_MissingOrDeletedAncestor_Rejects(bool deleted)
 	{
 		if (deleted) { _parent.DeleteRevision = 0; }
-		else { _repository.GetByIdAsync(_parent.Id, CancellationToken.None).Returns((TGroup?)null); }
+		else { _repository.GetById(_parent.Id, CancellationToken.None).Returns((TGroup?)null); }
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.MoveToAnotherParent(_group.Id, _destination.Id));
 		AssertUnchangedAndNoWrites();
 	}
@@ -305,7 +305,7 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 		_repository.DidNotReceive().Update(unchanged);
 		_repository.DidNotReceive().Update(deleted);
 		_repository.DidNotReceive().Update(_parent);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -320,7 +320,7 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 			TemplateGroup => RootsIds.TemplateGroupId,
 			_ => throw new InvalidOperationException()
 		};
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
+		_repository.GetById(_group.Id, CancellationToken.None).Returns(_group);
 		Assert.ThrowsAsync<InvalidGroupException>(async () => await _service.MoveToAnotherParent(_group.Id, _destination.Id));
 		AssertUnchangedAndNoWrites();
 	}
@@ -331,7 +331,7 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 	{
 		_destination.ParentId = _destination.Id;
 		if (deleted) { _parent.DeleteRevision = 0; }
-		else { _repository.GetWithChildrenByIdAsync(_parent.Id).Returns((TGroup?)null); }
+		else { _repository.GetWithChildrenById(_parent.Id).Returns((TGroup?)null); }
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.MoveToAnotherParent(_group.Id, _destination.Id));
 		AssertUnchangedAndNoWrites();
 	}
@@ -339,7 +339,7 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 	[Test]
 	public void Move_AncestorLookupFails_PropagatesWithoutWrites()
 	{
-		_repository.GetByIdAsync(_parent.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException("Read failed."));
+		_repository.GetById(_parent.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException("Read failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.MoveToAnotherParent(_group.Id, _destination.Id));
 		AssertUnchangedAndNoWrites();
 	}
@@ -347,7 +347,7 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 	[Test]
 	public void Move_SaveFails_PropagatesFailure()
 	{
-		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException("Save failed."));
+		_unitOfWork.SaveChanges().ThrowsAsync(new InvalidOperationException("Save failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.MoveToAnotherParent(_group.Id, _destination.Id));
 	}
 
@@ -364,5 +364,5 @@ public sealed class GroupsMoveToAnotherParentServiceTests<TGroup, TElement, TSer
 
 	private void AssertNoSave() =>
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 }

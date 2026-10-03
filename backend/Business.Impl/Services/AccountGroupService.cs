@@ -25,8 +25,8 @@ internal sealed class AccountGroupService : GroupService<AccountGroup, Account>,
 		AccountTreeInfo result = new();
 		result.Groups.AddRange(await GetAllGroups(cancellationToken));
 		Dictionary<Guid, GroupInfo> groups = result.Groups.ToDictionary(group => group.Id);
-		ICollection<Account> accounts = await _unitOfWork.AccountRepo.GetAllAsync(cancellationToken);
-		ICollection<Currency> currencies = await _unitOfWork.CurrencyRepo.GetAllAsync(cancellationToken);
+		ICollection<Account> accounts = await _unitOfWork.AccountRepo.GetAll(cancellationToken);
+		ICollection<Currency> currencies = await _unitOfWork.CurrencyRepo.GetAll(cancellationToken);
 		Dictionary<Guid, Currency> activeCurrencies = currencies.Where(currency => !currency.IsDeleted()).ToDictionary(currency => currency.Id);
 		foreach (Account account in accounts.Where(account => !account.IsDeleted())
 			.OrderBy(account => account.Order).ThenBy(account => account.Id.ToString("D"), StringComparer.Ordinal))

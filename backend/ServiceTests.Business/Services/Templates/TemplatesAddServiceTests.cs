@@ -54,7 +54,7 @@ public sealed class TemplatesAddServiceTests : TemplatesServiceTestsBase
 			ReferenceEquals(entry.Template, saved) && entry.AccountId == Account.Id), Is.True);
 		Assert.That(saved.Entries.Select(entry => entry.Amount), Is.EqualTo(Enumerable.Range(0, count).Select(index => index + 1.24m)));
 		EntryRepository.Received(count).Add(Arg.Any<TemplateEntry>());
-		await UnitOfWork.Received(1).SaveChangesAsync();
+		await UnitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(null)]
@@ -118,7 +118,7 @@ public sealed class TemplatesAddServiceTests : TemplatesServiceTestsBase
 		Config.AmountPrecision = 4;
 		AddInput(decimal.Parse(input, CultureInfo.InvariantCulture));
 		await Service.Add(Param);
-		await UnitOfWork.Received(1).SaveChangesAsync();
+		await UnitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(false)]
@@ -175,9 +175,9 @@ public sealed class TemplatesAddServiceTests : TemplatesServiceTestsBase
 		using CancellationTokenSource source = new();
 		AddInput(1m);
 		await Service.Add(Param, source.Token);
-		await GroupRepository.Received(1).GetWithContentsByIdAsync(Group.Id, source.Token);
-		await UnitOfWork.SystemConfigRepo.Received(1).GetAllAsync(source.Token);
-		await UnitOfWork.AccountRepo.Received(1).GetByIdAsync(Account.Id, source.Token);
-		await UnitOfWork.Received(1).SaveChangesAsync(source.Token);
+		await GroupRepository.Received(1).GetWithContentsById(Group.Id, source.Token);
+		await UnitOfWork.SystemConfigRepo.Received(1).GetAll(source.Token);
+		await UnitOfWork.AccountRepo.Received(1).GetById(Account.Id, source.Token);
+		await UnitOfWork.Received(1).SaveChanges(source.Token);
 	}
 }

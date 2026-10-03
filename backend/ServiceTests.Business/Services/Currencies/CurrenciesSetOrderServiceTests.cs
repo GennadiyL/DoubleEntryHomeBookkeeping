@@ -36,7 +36,7 @@ public sealed class CurrenciesSetOrderServiceTests : CurrenciesServiceTestsBase
 		Assert.That(BaseCurrency.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
 		Assert.That(Currency.EditRevision, Is.EqualTo(7));
 		Assert.That(deleted.Order, Is.EqualTo(8));
-		await Unit.Received(1).SaveChangesAsync();
+		await Unit.Received(1).SaveChanges();
 	}
 
 	[TestCase(-1)]
@@ -64,7 +64,7 @@ public sealed class CurrenciesSetOrderServiceTests : CurrenciesServiceTestsBase
 		await Service.SetOrder(first.Id, 0);
 		Assert.That(first.Order, Is.Zero);
 		Assert.That(second.Order, Is.EqualTo(1));
-		await Unit.Received(1).SaveChangesAsync();
+		await Unit.Received(1).SaveChanges();
 	}
 
 	[Test]

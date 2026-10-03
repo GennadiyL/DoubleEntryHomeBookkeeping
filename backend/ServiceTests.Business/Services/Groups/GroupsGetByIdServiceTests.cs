@@ -74,8 +74,8 @@ public sealed class GroupsGetByIdServiceTests<TGroup, TElement, TService, TRepos
 			ModificationType = ModificationType.None
 		};
 		_parent.Children.Add(_group);
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
-		_repository.GetByIdAsync(_parent.Id, CancellationToken.None).Returns(_parent);
+		_repository.GetById(_group.Id, CancellationToken.None).Returns(_group);
+		_repository.GetById(_parent.Id, CancellationToken.None).Returns(_parent);
 	}
 
 	[TearDown]
@@ -126,12 +126,12 @@ public sealed class GroupsGetByIdServiceTests<TGroup, TElement, TService, TRepos
 			_ => throw new InvalidOperationException()
 		};
 		_group.ParentId = _group.Id;
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).Returns(_group);
+		_repository.GetById(_group.Id, CancellationToken.None).Returns(_group);
 		GroupInfo result = await _service.GetById(_group.Id);
 		Assert.That(result.IsRoot, Is.True);
 		Assert.That(result.ParentId, Is.EqualTo(_group.Id));
 		Assert.That(result.ParentName, Is.EqualTo(_group.Name));
-		await _repository.Received(1).GetByIdAsync(_group.Id, CancellationToken.None);
+		await _repository.Received(1).GetById(_group.Id, CancellationToken.None);
 		AssertNoWrites();
 	}
 
@@ -158,7 +158,7 @@ public sealed class GroupsGetByIdServiceTests<TGroup, TElement, TService, TRepos
 	public void GetById_InvalidParent_ThrowsNotFound(bool deleted)
 	{
 		if (deleted) { _parent.DeleteRevision = 0; }
-		else { _repository.GetByIdAsync(_parent.Id, CancellationToken.None).Returns((TGroup?)null); }
+		else { _repository.GetById(_parent.Id, CancellationToken.None).Returns((TGroup?)null); }
 		Assert.ThrowsAsync<GroupNotFoundException>(async () => await _service.GetById(_group.Id));
 		AssertNoWrites();
 	}
@@ -166,7 +166,7 @@ public sealed class GroupsGetByIdServiceTests<TGroup, TElement, TService, TRepos
 	[Test]
 	public void GetById_LookupFailure_PropagatesWithoutSaving()
 	{
-		_repository.GetByIdAsync(_group.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException("Read failed."));
+		_repository.GetById(_group.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException("Read failed."));
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.GetById(_group.Id));
 		AssertNoWrites();
 	}
@@ -176,6 +176,6 @@ public sealed class GroupsGetByIdServiceTests<TGroup, TElement, TService, TRepos
 		_repository.DidNotReceive().Add(Arg.Any<TGroup>());
 		_repository.DidNotReceive().Update(Arg.Any<TGroup>());
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 	}
 }

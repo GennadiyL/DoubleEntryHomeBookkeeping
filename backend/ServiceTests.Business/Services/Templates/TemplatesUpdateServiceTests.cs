@@ -46,7 +46,7 @@ public sealed class TemplatesUpdateServiceTests : TemplatesServiceTestsBase
 		EntryRepository.Received(1).RemoveRange(Entries);
 		EntryRepository.Received(count).Add(Arg.Any<TemplateEntry>());
 		Repository.Received(1).Update(Template);
-		await UnitOfWork.Received(1).SaveChangesAsync();
+		await UnitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -96,8 +96,8 @@ public sealed class TemplatesUpdateServiceTests : TemplatesServiceTestsBase
 	{
 		using CancellationTokenSource source = new();
 		await Service.Update(Template.Id, Param, source.Token);
-		await Repository.Received(1).GetByIdAsync(Template.Id, source.Token);
-		await EntryRepository.Received(1).GetByTemplateIdAsync(Template.Id, source.Token);
-		await UnitOfWork.Received(1).SaveChangesAsync(source.Token);
+		await Repository.Received(1).GetById(Template.Id, source.Token);
+		await EntryRepository.Received(1).GetByTemplateId(Template.Id, source.Token);
+		await UnitOfWork.Received(1).SaveChanges(source.Token);
 	}
 }

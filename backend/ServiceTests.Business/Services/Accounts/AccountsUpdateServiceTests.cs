@@ -42,7 +42,7 @@ public sealed class AccountsUpdateServiceTests
 		_currencyRepository = Substitute.For<ICurrencyRepository>();
 		_unitOfWork.CurrencyRepo.Returns(_currencyRepository);
 		_currency = new Currency { Id = Guid.NewGuid(), Code = "USD", Symbol = "$", Name = "US Dollar" };
-		_currencyRepository.GetByIdAsync(_currency.Id, CancellationToken.None).Returns(_currency);
+		_currencyRepository.GetById(_currency.Id, CancellationToken.None).Returns(_currency);
 		_unitOfWork.AccountRepo.Returns(_repository);
 		_unitOfWork.AccountGroupRepo.Returns(_groupRepository);
 		IServiceCollection services = new ServiceCollection();
@@ -55,7 +55,7 @@ public sealed class AccountsUpdateServiceTests
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<IAccountService>();
 		_group = new AccountGroup { Id = Guid.NewGuid(), Name = "Group" };
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
+		_groupRepository.GetWithContentsById(_group.Id).Returns(_group);
 		_element = new Account
 		{
 			Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
@@ -64,7 +64,7 @@ public sealed class AccountsUpdateServiceTests
 			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(_element);
-		_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns(_element);
+		_repository.GetById(_element.Id, CancellationToken.None).Returns(_element);
 		_param = new AccountParam
 		{
 			GroupId = _group.Id,
@@ -99,7 +99,7 @@ public sealed class AccountsUpdateServiceTests
 			Assert.That(_element.ModificationType.HasFlag(ModificationType.Content), Is.True);
 		});
 		_repository.Received(1).Update(_element);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -111,7 +111,7 @@ public sealed class AccountsUpdateServiceTests
 		await _service.Update(_element.Id, _param);
 		Assert.That(_element.Description, Is.Null);
 		Assert.That(_element.IsFavorite, Is.False);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(false)]
@@ -121,7 +121,7 @@ public sealed class AccountsUpdateServiceTests
 		_group.Elements.Add(new Account { Id = Guid.NewGuid(), Name = _param.Name, DeleteRevision = deleted ? 0 : null });
 		await _service.Update(_element.Id, _param);
 		Assert.That(_element.Name, Is.EqualTo(_param.Name));
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -173,7 +173,7 @@ public sealed class AccountsUpdateServiceTests
 	[Test]
 	public void Update_MissingGroup_Rejects()
 	{
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns((AccountGroup?)null);
+		_groupRepository.GetWithContentsById(_group.Id).Returns((AccountGroup?)null);
 		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, _param));
 		AssertNoWrites();
 	}
@@ -204,7 +204,7 @@ public sealed class AccountsUpdateServiceTests
 		}
 		else
 		{
-			_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns((Account?)null);
+			_repository.GetById(_element.Id, CancellationToken.None).Returns((Account?)null);
 		}
 		Assert.ThrowsAsync<ElementNotFoundException>(async () => await _service.Update(_element.Id, _param));
 		AssertNoWrites();
@@ -213,7 +213,7 @@ public sealed class AccountsUpdateServiceTests
 	[Test]
 	public void Update_ReadFailure_PropagatesWithoutWrites()
 	{
-		_repository.GetByIdAsync(_element.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
+		_repository.GetById(_element.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Update(_element.Id, _param));
 		AssertNoWrites();
 	}
@@ -221,7 +221,7 @@ public sealed class AccountsUpdateServiceTests
 	[Test]
 	public void Update_GroupReadFailure_PropagatesWithoutWrites()
 	{
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).ThrowsAsync(new InvalidOperationException());
+		_groupRepository.GetWithContentsById(_group.Id).ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Update(_element.Id, _param));
 		AssertNoWrites();
 	}
@@ -240,7 +240,7 @@ public sealed class AccountsUpdateServiceTests
 	public void Update_SaveFailure_Propagates()
 	{
 		_element.Order = 5;
-		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException());
+		_unitOfWork.SaveChanges().ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Update(_element.Id, _param));
 	}
 
@@ -263,7 +263,7 @@ public sealed class AccountsUpdateServiceTests
 		}
 		else
 		{
-			_currencyRepository.GetByIdAsync(_currency.Id, CancellationToken.None).Returns((Currency?)null);
+			_currencyRepository.GetById(_currency.Id, CancellationToken.None).Returns((Currency?)null);
 		}
 		Assert.ThrowsAsync<CurrencyNotFoundException>(async () => await _service.Update(_element.Id, _param));
 		AssertNoWrites();
@@ -278,9 +278,9 @@ public sealed class AccountsUpdateServiceTests
 		_param.CategoryId = category.Id;
 		_param.CorrespondentId = correspondent.Id;
 		_param.ProjectId = project.Id;
-		_unitOfWork.CategoryRepo.GetByIdAsync(category.Id, CancellationToken.None).Returns(category);
-		_unitOfWork.CorrespondentRepo.GetByIdAsync(correspondent.Id, CancellationToken.None).Returns(correspondent);
-		_unitOfWork.ProjectRepo.GetByIdAsync(project.Id, CancellationToken.None).Returns(project);
+		_unitOfWork.CategoryRepo.GetById(category.Id, CancellationToken.None).Returns(category);
+		_unitOfWork.CorrespondentRepo.GetById(correspondent.Id, CancellationToken.None).Returns(correspondent);
+		_unitOfWork.ProjectRepo.GetById(project.Id, CancellationToken.None).Returns(project);
 		await _service.Update(_element.Id, _param);
 		_repository.Received(1).Update(Arg.Is<Account>(account =>
 			account.CurrencyId == _currency.Id && ReferenceEquals(account.Currency, _currency) &&
@@ -305,17 +305,17 @@ public sealed class AccountsUpdateServiceTests
 		{
 			case "Category":
 				_param.CategoryId = id;
-				_unitOfWork.CategoryRepo.GetByIdAsync(id, CancellationToken.None)
+				_unitOfWork.CategoryRepo.GetById(id, CancellationToken.None)
 					.Returns(state == "deleted" ? new Category { Id = id, DeleteRevision = 0 } : null);
 				break;
 			case "Correspondent":
 				_param.CorrespondentId = id;
-				_unitOfWork.CorrespondentRepo.GetByIdAsync(id, CancellationToken.None)
+				_unitOfWork.CorrespondentRepo.GetById(id, CancellationToken.None)
 					.Returns(state == "deleted" ? new Correspondent { Id = id, DeleteRevision = 0 } : null);
 				break;
 			case "Project":
 				_param.ProjectId = id;
-				_unitOfWork.ProjectRepo.GetByIdAsync(id, CancellationToken.None)
+				_unitOfWork.ProjectRepo.GetById(id, CancellationToken.None)
 					.Returns(state == "deleted" ? new Project { Id = id, DeleteRevision = 0 } : null);
 				break;
 		}
@@ -333,7 +333,7 @@ public sealed class AccountsUpdateServiceTests
 	[Test]
 	public void Update_CurrencyReadFailure_PropagatesWithoutWrites()
 	{
-		_currencyRepository.GetByIdAsync(_currency.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
+		_currencyRepository.GetById(_currency.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.Update(_element.Id, _param));
 		AssertNoWrites();
 	}
@@ -373,7 +373,7 @@ public sealed class AccountsUpdateServiceTests
 	public void Update_UsedAccount_CannotChangeCurrencyOrOtherFields()
 	{
 		NewCurrency();
-		_unitOfWork.TransactionEntryRepo.HasByAccountIdAsync(_element.Id).Returns(true);
+		_unitOfWork.TransactionEntryRepo.HasByAccountId(_element.Id).Returns(true);
 		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, _param));
 		Assert.That(_element.CurrencyId, Is.EqualTo(_currency.Id));
 		Assert.That(_element.Name, Is.EqualTo("Existing"));
@@ -384,19 +384,19 @@ public sealed class AccountsUpdateServiceTests
 	[Test]
 	public async Task Update_UsedAccount_SameCurrencyAllowsOtherEdits()
 	{
-		_unitOfWork.TransactionEntryRepo.HasByAccountIdAsync(_element.Id).Returns(true);
+		_unitOfWork.TransactionEntryRepo.HasByAccountId(_element.Id).Returns(true);
 		await _service.Update(_element.Id, _param);
 		Assert.That(_element.Name, Is.EqualTo(_param.Name));
 		Assert.That(_element.CurrencyId, Is.EqualTo(_currency.Id));
 		Assert.That(_unitOfWork.TransactionEntryRepo.ReceivedCalls(), Is.Empty);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
 	public void Update_CurrencyChange_RejectsWithoutUsageLookup()
 	{
 		NewCurrency();
-		_unitOfWork.TransactionEntryRepo.HasByAccountIdAsync(_element.Id).ThrowsAsync(new InvalidOperationException());
+		_unitOfWork.TransactionEntryRepo.HasByAccountId(_element.Id).ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, _param));
 		Assert.That(_element.CurrencyId, Is.EqualTo(_currency.Id));
 		AssertNoWrites();
@@ -406,7 +406,7 @@ public sealed class AccountsUpdateServiceTests
 	{
 		Currency currency = new() { Id = Guid.NewGuid(), Code = "EUR", Symbol = "€", Name = "Euro" };
 		_param.CurrencyId = currency.Id;
-		_currencyRepository.GetByIdAsync(currency.Id, CancellationToken.None).Returns(currency);
+		_currencyRepository.GetById(currency.Id, CancellationToken.None).Returns(currency);
 		return currency;
 	}
 
@@ -420,5 +420,5 @@ public sealed class AccountsUpdateServiceTests
 
 	private void AssertNoSave() =>
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 }

@@ -29,7 +29,7 @@ public sealed class TemplatesMoveToAnotherGroupServiceTests : TemplatesServiceTe
 		TemplateGroup destination = new() { Id = Guid.NewGuid(), Name = "Destination" };
 		Template destinationSibling = new() { Id = Guid.NewGuid(), Name = "Destination sibling", Order = 7 };
 		destination.Elements.Add(destinationSibling);
-		GroupRepository.GetWithContentsByIdAsync(destination.Id, Arg.Any<CancellationToken>()).Returns(destination);
+		GroupRepository.GetWithContentsById(destination.Id, Arg.Any<CancellationToken>()).Returns(destination);
 		Template.Entries = Entries;
 
 		await Service.MoveToAnotherGroup(Template.Id, destination.Id);
@@ -42,7 +42,7 @@ public sealed class TemplatesMoveToAnotherGroupServiceTests : TemplatesServiceTe
 		Assert.That(destinationSibling.Order, Is.Zero);
 		Assert.That(Template.Entries, Is.SameAs(Entries));
 		EntryRepository.DidNotReceiveWithAnyArgs().RemoveRange(default!);
-		await UnitOfWork.Received(1).SaveChangesAsync();
+		await UnitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -57,7 +57,7 @@ public sealed class TemplatesMoveToAnotherGroupServiceTests : TemplatesServiceTe
 	{
 		TemplateGroup destination = new() { Id = Guid.NewGuid(), Name = "Destination" };
 		destination.Elements.Add(new Template { Name = " existing " });
-		GroupRepository.GetWithContentsByIdAsync(destination.Id, Arg.Any<CancellationToken>()).Returns(destination);
+		GroupRepository.GetWithContentsById(destination.Id, Arg.Any<CancellationToken>()).Returns(destination);
 		Assert.ThrowsAsync<InvalidElementException>(async () => await Service.MoveToAnotherGroup(Template.Id, destination.Id));
 		Assert.That(Template.GroupId, Is.EqualTo(Group.Id));
 		AssertNoWrites();
@@ -67,7 +67,7 @@ public sealed class TemplatesMoveToAnotherGroupServiceTests : TemplatesServiceTe
 	public void MoveToAnotherGroup_RejectsDeletedDestination()
 	{
 		TemplateGroup destination = new() { Id = Guid.NewGuid(), Name = "Destination", DeleteRevision = 0 };
-		GroupRepository.GetWithContentsByIdAsync(destination.Id, Arg.Any<CancellationToken>()).Returns(destination);
+		GroupRepository.GetWithContentsById(destination.Id, Arg.Any<CancellationToken>()).Returns(destination);
 		Assert.ThrowsAsync<InvalidElementException>(async () => await Service.MoveToAnotherGroup(Template.Id, destination.Id));
 		AssertNoWrites();
 	}

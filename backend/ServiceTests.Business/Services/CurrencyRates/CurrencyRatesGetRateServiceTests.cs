@@ -28,7 +28,7 @@ public sealed class CurrencyRatesGetRateServiceTests : CurrencyRatesServiceTests
 	{
 		Config.BaseCurrencyId = Currency.Id;
 		Assert.That(await Service.GetRate(Account.Id, Param.Date), Is.EqualTo(1m));
-		await Unit.CurrencyRateRepo.DidNotReceiveWithAnyArgs().GetApplicableAsync(default, default, default);
+		await Unit.CurrencyRateRepo.DidNotReceiveWithAnyArgs().GetApplicable(default, default, default);
 		AssertNoWrites();
 	}
 
@@ -37,7 +37,7 @@ public sealed class CurrencyRatesGetRateServiceTests : CurrencyRatesServiceTests
 	public async Task GetRate_ReturnsApplicableStoredRateWithoutChangingEntries(bool initial)
 	{
 		CurrencyRate rate = CreateRate(initial ? AppValues.InitialDate : Param.Date.AddDays(-1), 1.2345m);
-		Unit.CurrencyRateRepo.GetApplicableAsync(Currency.Id, Param.Date, Arg.Any<CancellationToken>()).Returns(rate);
+		Unit.CurrencyRateRepo.GetApplicable(Currency.Id, Param.Date, Arg.Any<CancellationToken>()).Returns(rate);
 		Assert.That(await Service.GetRate(Account.Id, Param.Date), Is.EqualTo(1.2345m));
 		Assert.That(rate.EditRevision, Is.EqualTo(7));
 		Assert.That(rate.ModificationType, Is.EqualTo(ModificationType.None));
@@ -77,7 +77,7 @@ public sealed class CurrencyRatesGetRateServiceTests : CurrencyRatesServiceTests
 	public void GetRate_InvalidStoredRateIsCriticalFailure(string value)
 	{
 		CurrencyRate rate = CreateRate(Param.Date, decimal.Parse(value, CultureInfo.InvariantCulture));
-		Unit.CurrencyRateRepo.GetApplicableAsync(Currency.Id, Param.Date, Arg.Any<CancellationToken>()).Returns(rate);
+		Unit.CurrencyRateRepo.GetApplicable(Currency.Id, Param.Date, Arg.Any<CancellationToken>()).Returns(rate);
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await Service.GetRate(Account.Id, Param.Date));
 		AssertNoWrites();
 	}
@@ -86,11 +86,11 @@ public sealed class CurrencyRatesGetRateServiceTests : CurrencyRatesServiceTests
 	public async Task GetRate_ForwardsExactDateAndCancellation()
 	{
 		using CancellationTokenSource source = new();
-		Unit.CurrencyRateRepo.GetApplicableAsync(Currency.Id, Param.Date, source.Token).Returns(CreateRate(Param.Date));
+		Unit.CurrencyRateRepo.GetApplicable(Currency.Id, Param.Date, source.Token).Returns(CreateRate(Param.Date));
 		await Service.GetRate(Account.Id, Param.Date, source.Token);
-		await Unit.AccountRepo.Received(1).GetByIdAsync(Account.Id, source.Token);
-		await Unit.CurrencyRepo.Received(1).GetByIdAsync(Currency.Id, source.Token);
-		await Unit.CurrencyRateRepo.Received(1).GetApplicableAsync(Currency.Id, Param.Date, source.Token);
+		await Unit.AccountRepo.Received(1).GetById(Account.Id, source.Token);
+		await Unit.CurrencyRepo.Received(1).GetById(Currency.Id, source.Token);
+		await Unit.CurrencyRateRepo.Received(1).GetApplicable(Currency.Id, Param.Date, source.Token);
 		AssertNoWrites();
 	}
 }

@@ -42,7 +42,7 @@ public sealed class AccountsCombineElementsServiceTests
 		_repository = Substitute.For<IAccountRepository>();
 		_groupRepository = Substitute.For<IAccountGroupRepository>();
 		_unitOfWork = Substitute.For<IAppUnitOfWork>();
-		_unitOfWork.SystemConfigRepo.GetAllAsync().Returns(new List<SystemConfig> { new() { Id = Guid.NewGuid(), BaseCurrencyId = Guid.NewGuid() } });
+		_unitOfWork.SystemConfigRepo.GetAll().Returns(new List<SystemConfig> { new() { Id = Guid.NewGuid(), BaseCurrencyId = Guid.NewGuid() } });
 		_transactionRepository = Substitute.For<ITransactionEntryRepository>();
 		_templateRepository = Substitute.For<ITemplateEntryRepository>();
 		_unitOfWork.TransactionEntryRepo.Returns(_transactionRepository);
@@ -59,7 +59,7 @@ public sealed class AccountsCombineElementsServiceTests
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<IAccountService>();
 		_group = new AccountGroup { Id = Guid.NewGuid(), Name = "Group" };
-		_groupRepository.GetWithContentsByIdAsync(_group.Id).Returns(_group);
+		_groupRepository.GetWithContentsById(_group.Id).Returns(_group);
 		_element = new Account
 		{
 			Id = Guid.NewGuid(), GroupId = _group.Id, Group = _group,
@@ -67,7 +67,7 @@ public sealed class AccountsCombineElementsServiceTests
 			EditRevision = 1, ModificationType = ModificationType.None
 		};
 		_group.Elements.Add(_element);
-		_repository.GetByIdAsync(_element.Id, CancellationToken.None).Returns(_element);
+		_repository.GetById(_element.Id, CancellationToken.None).Returns(_element);
 		_element.CurrencyId = Guid.NewGuid();
 		_destination = new Account
 		{
@@ -76,14 +76,14 @@ public sealed class AccountsCombineElementsServiceTests
 			ProjectId = Guid.NewGuid(), CorrespondentId = Guid.NewGuid(),
 			EditRevision = 1, ModificationType = ModificationType.None
 		};
-		_repository.GetByIdAsync(_destination.Id, CancellationToken.None).Returns(_destination);
+		_repository.GetById(_destination.Id, CancellationToken.None).Returns(_destination);
 		_transactions = [];
 		_templates = [];
-		_transactionRepository.GetByAccountIdAsync(_element.Id).Returns(_transactions);
-		_templateRepository.GetByAccountIdAsync(_element.Id).Returns(_templates);
-		_unitOfWork.TransactionRepo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+		_transactionRepository.GetByAccountId(_element.Id).Returns(_transactions);
+		_templateRepository.GetByAccountId(_element.Id).Returns(_templates);
+		_unitOfWork.TransactionRepo.GetById(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
 			.Returns(call => _transactions.FirstOrDefault(entry => entry.TransactionId == call.Arg<Guid>())?.Transaction);
-		_unitOfWork.TemplateRepo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+		_unitOfWork.TemplateRepo.GetById(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
 			.Returns(call => _templates.FirstOrDefault(entry => entry.TemplateId == call.Arg<Guid>())?.Template);
 	}
 
@@ -148,15 +148,15 @@ public sealed class AccountsCombineElementsServiceTests
 		_templateRepository.Received(1).Update(templateEntry);
 		_repository.Received(1).Update(_element);
 		_repository.DidNotReceive().Update(_destination);
-		await _transactionRepository.Received(1).GetByAccountIdAsync(_element.Id);
-		await _templateRepository.Received(1).GetByAccountIdAsync(_element.Id);
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _transactionRepository.Received(1).GetByAccountId(_element.Id);
+		await _templateRepository.Received(1).GetByAccountId(_element.Id);
+		await _unitOfWork.Received(1).SaveChanges();
 		Received.InOrder(() =>
 		{
 			_transactionRepository.Update(entry);
 			_templateRepository.Update(templateEntry);
 			_repository.Update(_element);
-			_unitOfWork.SaveChangesAsync();
+			_unitOfWork.SaveChanges();
 		});
 	}
 
@@ -167,7 +167,7 @@ public sealed class AccountsCombineElementsServiceTests
 		Assert.That(_element.IsDeleted(), Is.True);
 		_transactionRepository.DidNotReceive().Update(Arg.Any<TransactionEntry>());
 		_templateRepository.DidNotReceive().Update(Arg.Any<TemplateEntry>());
-		await _unitOfWork.Received(1).SaveChangesAsync();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -212,7 +212,7 @@ public sealed class AccountsCombineElementsServiceTests
 		}
 		else
 		{
-			_repository.GetByIdAsync(account.Id, CancellationToken.None).Returns((Account?)null);
+			_repository.GetById(account.Id, CancellationToken.None).Returns((Account?)null);
 		}
 		Assert.ThrowsAsync<ElementNotFoundException>(async () => await _service.CombineElements(_destination.Id, _element.Id));
 		Assert.That(_transactionRepository.ReceivedCalls(), Is.Empty);
@@ -231,16 +231,16 @@ public sealed class AccountsCombineElementsServiceTests
 		switch (stage)
 		{
 			case "source":
-				_repository.GetByIdAsync(_element.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
+				_repository.GetById(_element.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
 				break;
 			case "destination":
-				_repository.GetByIdAsync(_destination.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
+				_repository.GetById(_destination.Id, CancellationToken.None).ThrowsAsync(new InvalidOperationException());
 				break;
 			case "transaction":
-				_transactionRepository.GetByAccountIdAsync(_element.Id).ThrowsAsync(new InvalidOperationException());
+				_transactionRepository.GetByAccountId(_element.Id).ThrowsAsync(new InvalidOperationException());
 				break;
 			case "template":
-				_templateRepository.GetByAccountIdAsync(_element.Id).ThrowsAsync(new InvalidOperationException());
+				_templateRepository.GetByAccountId(_element.Id).ThrowsAsync(new InvalidOperationException());
 				break;
 		}
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.CombineElements(_destination.Id, _element.Id));
@@ -278,7 +278,7 @@ public sealed class AccountsCombineElementsServiceTests
 	[Test]
 	public void CombineElements_SaveFailure_Propagates()
 	{
-		_unitOfWork.SaveChangesAsync().ThrowsAsync(new InvalidOperationException());
+		_unitOfWork.SaveChanges().ThrowsAsync(new InvalidOperationException());
 		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.CombineElements(_destination.Id, _element.Id));
 	}
 
@@ -297,5 +297,5 @@ public sealed class AccountsCombineElementsServiceTests
 
 	private void AssertNoSave() =>
 		Assert.That(_unitOfWork.ReceivedCalls().Any(call =>
-			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChangesAsync)), Is.False);
+			call.GetMethodInfo().Name == nameof(IAppUnitOfWork.SaveChanges)), Is.False);
 }

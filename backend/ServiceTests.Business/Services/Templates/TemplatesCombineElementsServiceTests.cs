@@ -29,6 +29,6 @@ public sealed class TemplatesCombineElementsServiceTests : TemplatesServiceTests
 		Assert.ThrowsAsync<NotSupportedException>(async () =>
 			await Service.CombineElements(Template.Id, equal ? Template.Id : Guid.NewGuid()));
 		AssertNoWrites();
-		Repository.DidNotReceiveWithAnyArgs().GetByIdAsync(default, default);
+		Repository.DidNotReceiveWithAnyArgs().GetById(default, default);
 	}
 }
