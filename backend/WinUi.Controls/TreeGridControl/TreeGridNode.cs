@@ -6,19 +6,19 @@ namespace WinUi.Controls.TreeGridControl;
 
 /// <summary>
 /// Supplies a domain-independent row and its child hierarchy to TreeGrid.
-/// The same instance retains expansion, favorite and checkbox state while hidden.
+/// The same instance retains expansion, star and checkbox state while hidden.
 /// Children contain groups or leaves in the order supplied by the application.
 /// Parent and depth are maintained by the visible-tree projection.
 /// Data can hold an application view model for additional column bindings.
 /// Checkbox state is independent of the selected row.
-/// The application owns checkbox propagation and persistence.
+/// TreeGrid propagates user checkbox changes; the application owns persistence.
 /// Instances and child collections are changed on the UI thread.
 /// </summary>
 public sealed partial class TreeGridNode : INotifyPropertyChanged
 {
 	private string _name = string.Empty;
 	private bool _isExpanded;
-	private bool _isFavorite;
+	private bool _isStarred;
 	private bool? _isChecked = false;
 	private int _depth;
 	private bool _isGroup;
@@ -28,7 +28,7 @@ public sealed partial class TreeGridNode : INotifyPropertyChanged
 	public bool IsGroup { get => _isGroup; set => SetField(ref _isGroup, value); }
 	public object? Data { get => _data; set => SetField(ref _data, value); }
 	public bool IsExpanded { get => _isExpanded; set => SetField(ref _isExpanded, value); }
-	public bool IsFavorite { get => _isFavorite; set => SetField(ref _isFavorite, value); }
+	public bool IsStarred { get => _isStarred; set => SetField(ref _isStarred, value); }
 	public bool? IsChecked { get => _isChecked; set => SetField(ref _isChecked, value); }
 	public int Depth { get => _depth; internal set => SetField(ref _depth, value); }
 	public TreeGridNode? Parent { get; internal set; }

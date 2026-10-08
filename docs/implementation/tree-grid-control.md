@@ -11,16 +11,16 @@ Double-click/Enter reports activation in the footer; no editor is opened yet.
 ## Public surface
 
 - TreeGrid.ItemsSource: observable root nodes; populate each node's Children.
-- TreeGridNode: Name, IsGroup, Data, IsExpanded, IsFavorite, nullable IsChecked.
-- TreeGrid.Columns: extra columns between Name and Favorite, with Header,
+- TreeGridNode: Name, IsGroup, Data, IsExpanded, IsStarred, nullable IsChecked.
+- TreeGrid.Columns: extra columns between Name and Star, with Header,
   BindingPath, proportional Width and optional CellTemplate. Bindings and cell
   templates receive the node; Data can contain an application view model.
   Replace a column in the collection to apply changed column settings.
 - TreeGrid.ShowCheckboxes: changes visibility without clearing state.
 - TreeGrid.SelectedNode: separate from checkbox selection.
-- RowActivated, FavoriteChanged, CheckStateChanged, SelectedNodeChanged:
-  host integration events. Favorite and checkbox events follow the local state
-  change. The host owns saving, rollback and checkbox propagation.
+- RowActivated, StarChanged, CheckStateChanged, SelectedNodeChanged:
+  host integration events. Star and checkbox events follow the local state
+  change. TreeGrid propagates checkbox changes through descendants and recalculates ancestors; the host owns saving and rollback.
 - Mutate the tree and its collections on the UI thread. A node may occur only
   once; only groups may have children.
 

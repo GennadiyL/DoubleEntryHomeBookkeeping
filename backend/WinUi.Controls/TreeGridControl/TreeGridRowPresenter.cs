@@ -13,7 +13,7 @@ namespace WinUi.Controls.TreeGridControl;
 /// Renders one recycled TreeGrid row using the owner's column definitions.
 /// The first cell contains indentation, expander, optional checkbox and name.
 /// Additional cells bind to the row or its application-provided Data object.
-/// The favorite button and checkbox do not activate the row.
+/// The star button and checkbox do not activate the row.
 /// Subscriptions follow the loaded lifetime and changing data context.
 /// Actual hierarchy depth is retained while visual indentation stops at eight.
 /// Public visibility is required by the control's XAML data template.
@@ -26,7 +26,7 @@ public sealed partial class TreeGridRowPresenter : UserControl
 	private TreeGridNode? _node;
 	private Button? _expander;
 	private TextBlock? _expanderGlyph;
-	private Button? _favorite;
+	private Button? _star;
 	private CheckBox? _check;
 	private Grid? _nameArea;
 	private Border? _selectionOutline;
@@ -133,11 +133,11 @@ public sealed partial class TreeGridRowPresenter : UserControl
 			Grid.SetColumn(cell, i + 1);
 			row.Children.Add(cell);
 		}
-		_favorite = new Button { Width = 20, MinWidth = 0, Height = 24, MinHeight = 0, FontSize = 16, VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(0), Background = null, BorderThickness = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Center };
-		_favorite.Click += (_, _) => _owner.ToggleFavorite(_node);
-		_favorite.DoubleTapped += StopDoubleTap;
-		Grid.SetColumn(_favorite, _owner.Columns.Count + 1);
-		row.Children.Add(_favorite);
+		_star = new Button { Width = 20, MinWidth = 0, Height = 24, MinHeight = 0, FontSize = 16, VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(0), Background = null, BorderThickness = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Center };
+		_star.Click += (_, _) => _owner.ToggleStar(_node);
+		_star.DoubleTapped += StopDoubleTap;
+		Grid.SetColumn(_star, _owner.Columns.Count + 1);
+		row.Children.Add(_star);
 		_selectionOutline = new Border { BorderThickness = new Thickness(1), IsHitTestVisible = false };
 		_selectionOutline.BorderBrush = _selectionBorderBrush;
 		Grid.SetColumnSpan(_selectionOutline, _owner.Columns.Count + 2);
@@ -164,7 +164,7 @@ public sealed partial class TreeGridRowPresenter : UserControl
 
 	private void UpdateState()
 	{
-		if (_node is null || _owner is null || _expander is null || _expanderGlyph is null || _favorite is null || _check is null || _nameArea is null)
+		if (_node is null || _owner is null || _expander is null || _expanderGlyph is null || _star is null || _check is null || _nameArea is null)
 		{
 			return;
 		}
@@ -179,9 +179,9 @@ public sealed partial class TreeGridRowPresenter : UserControl
 		_check.Visibility = _owner.ShowCheckboxes ? Visibility.Visible : Visibility.Collapsed;
 		_check.IsChecked = _node.IsChecked;
 		AutomationProperties.SetName(_check, "Check " + _node.Name);
-		_favorite.Content = _node.IsFavorite ? "★" : "☆";
-		AutomationProperties.SetName(_favorite, (_node.IsFavorite ? "Remove favorite " : "Add favorite ") + _node.Name);
-		ToolTipService.SetToolTip(_favorite, _node.IsFavorite ? "Remove from favorites" : "Add to favorites");
+		_star.Content = _node.IsStarred ? "★" : "☆";
+		AutomationProperties.SetName(_star, (_node.IsStarred ? "Remove star " : "Add star ") + _node.Name);
+		ToolTipService.SetToolTip(_star, _node.IsStarred ? "Remove star" : "Add star");
 	}
 
 	private void UpdateSelection()

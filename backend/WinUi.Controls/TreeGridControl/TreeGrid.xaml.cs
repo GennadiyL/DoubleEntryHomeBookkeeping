@@ -10,11 +10,11 @@ namespace WinUi.Controls.TreeGridControl;
 
 /// <summary>
 /// Displays a reusable, virtualized hierarchy with aligned data columns.
-/// The name and favorite cells surround application-defined additional columns.
+/// The name and star cells surround application-defined additional columns.
 /// A separate visible projection preserves collapsed descendants and their state.
 /// Selection remains independent of optional three-state checkboxes.
 /// Row activation and user changes are exposed to the hosting application.
-/// Domain validation, checkbox propagation and persistence belong to that host.
+/// Domain validation and persistence belong to that host.
 /// Header and row widths share the same proportional column definitions.
 /// Public visibility permits construction from application XAML.
 /// </summary>
@@ -44,7 +44,7 @@ public sealed partial class TreeGrid : UserControl
 	public string NameHeader { get => (string)GetValue(NameHeaderProperty); set => SetValue(NameHeaderProperty, value); }
 	public ObservableCollection<TreeGridColumn> Columns { get; } = new();
 	public event EventHandler<TreeGridNode>? RowActivated;
-	public event EventHandler<TreeGridNode>? FavoriteChanged;
+	public event EventHandler<TreeGridNode>? StarChanged;
 	public event EventHandler<TreeGridNode>? CheckStateChanged;
 	public event EventHandler<TreeGridNode?>? SelectedNodeChanged;
 	internal event EventHandler? LayoutChanged;
@@ -115,15 +115,15 @@ public sealed partial class TreeGrid : UserControl
 		RowActivated?.Invoke(this, node);
 	}
 
-	internal void ToggleFavorite(TreeGridNode node)
+	internal void ToggleStar(TreeGridNode node)
 	{
-		node.IsFavorite = !node.IsFavorite;
-		FavoriteChanged?.Invoke(this, node);
+		node.IsStarred = !node.IsStarred;
+		StarChanged?.Invoke(this, node);
 	}
 
 	internal void ToggleCheck(TreeGridNode node)
 	{
-		node.IsChecked = node.IsChecked != true;
+		TreeGridCheckState.Toggle(node);
 		CheckStateChanged?.Invoke(this, node);
 	}
 
@@ -158,7 +158,7 @@ public sealed partial class TreeGrid : UserControl
 		{
 			AddHeader(Columns[i].Header, i + 1, HorizontalAlignment.Center, 14);
 		}
-		AddHeader("★", Columns.Count + 1, HorizontalAlignment.Center, 28);
+		AddHeader("★", Columns.Count + 1, HorizontalAlignment.Center, 24);
 		MinWidth = 352 + Columns.Count * 60;
 		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}

@@ -9,7 +9,7 @@ namespace Dehb.WinUi;
 /// Hosts the first interactive catalog TreeGrid demonstration.
 /// Accounts include a currency column; correspondents use the common layout.
 /// Sample hierarchies are kept separately when switching catalog views.
-/// Expansion, favorite and checkbox values remain attached to their rows.
+/// Expansion, star and checkbox values remain attached to their rows.
 /// User actions update a status message so control behavior can be checked.
 /// This temporary host does not read or modify the Local database.
 /// Business editors and persistence will be connected in a later increment.
@@ -61,16 +61,16 @@ public sealed partial class MainWindow : Window
 	}
 
 	private void OnRowActivated(object? sender, TreeGridNode node) => StatusText.Text = $"Activated: {node.Name}";
-	private void OnFavoriteChanged(object? sender, TreeGridNode node) => StatusText.Text = $"{node.Name}: favorite {(node.IsFavorite ? "on" : "off")}";
+	private void OnStarChanged(object? sender, TreeGridNode node) => StatusText.Text = $"{node.Name}: star {(node.IsStarred ? "on" : "off")}";
 	private void OnCheckStateChanged(object? sender, TreeGridNode node) => StatusText.Text = $"{node.Name}: {(node.IsChecked == true ? "checked" : "unchecked")}";
 
 	private static ObservableCollection<TreeGridNode> CreateAccounts()
 	{
 		TreeGridNode root = new() { Name = "Accounts", IsGroup = true, IsExpanded = true };
 		TreeGridNode daily = new() { Name = "Daily", IsGroup = true, IsExpanded = true };
-		daily.Children.Add(new TreeGridNode { Name = "Cash", Data = "UAH", IsFavorite = true });
+		daily.Children.Add(new TreeGridNode { Name = "Cash", Data = "UAH", IsStarred = true });
 		daily.Children.Add(new TreeGridNode { Name = "Cash", Data = "USD" });
-		daily.Children.Add(new TreeGridNode { Name = "Groceries", Data = "UAH", IsFavorite = true });
+		daily.Children.Add(new TreeGridNode { Name = "Groceries", Data = "UAH", IsStarred = true });
 		TreeGridNode savings = new() { Name = "Savings", IsGroup = true };
 		savings.Children.Add(new TreeGridNode { Name = "Emergency fund", Data = "EUR" });
 		root.Children.Add(daily);
@@ -89,7 +89,7 @@ public sealed partial class MainWindow : Window
 	{
 		TreeGridNode root = new() { Name = "Correspondents", IsGroup = true, IsExpanded = true };
 		TreeGridNode shops = new() { Name = "Shops", IsGroup = true, IsExpanded = true, IsChecked = null };
-		shops.Children.Add(new TreeGridNode { Name = "Supermarket", IsFavorite = true, IsChecked = true });
+		shops.Children.Add(new TreeGridNode { Name = "Supermarket", IsStarred = true, IsChecked = true });
 		shops.Children.Add(new TreeGridNode { Name = "Local bakery" });
 		TreeGridNode services = new() { Name = "Services", IsGroup = true };
 		services.Children.Add(new TreeGridNode { Name = "Internet provider" });
