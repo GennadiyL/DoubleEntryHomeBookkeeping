@@ -2,6 +2,7 @@ using System.ComponentModel;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -20,19 +21,24 @@ namespace WinUi.Controls.TreeGridControl;
 /// </summary>
 public sealed partial class TreeGridRowPresenter : UserControl
 {
+	private readonly SolidColorBrush _selectionBorderBrush = new(Windows.UI.Color.FromArgb(255, 96, 96, 96));
 	private TreeGrid? _owner;
 	private TreeGridNode? _node;
 	private Button? _expander;
+	private TextBlock? _expanderGlyph;
 	private Button? _favorite;
 	private CheckBox? _check;
 	private Grid? _nameArea;
+	private Border? _selectionOutline;
 
 	public TreeGridRowPresenter()
 	{
 		HorizontalContentAlignment = HorizontalAlignment.Stretch;
+		IsTabStop = false;
 		Loaded += OnLoaded;
 		Unloaded += OnUnloaded;
 		DataContextChanged += (_, _) => BindNode();
+		Tapped += OnTapped;
 		DoubleTapped += OnDoubleTapped;
 	}
 
@@ -47,6 +53,7 @@ public sealed partial class TreeGridRowPresenter : UserControl
 		if (_owner is not null)
 		{
 			_owner.LayoutChanged += OnLayoutChanged;
+			_owner.SelectedNodeChanged += OnSelectedNodeChanged;
 		}
 		BindNode();
 	}
@@ -56,6 +63,7 @@ public sealed partial class TreeGridRowPresenter : UserControl
 		if (_owner is not null)
 		{
 			_owner.LayoutChanged -= OnLayoutChanged;
+			_owner.SelectedNodeChanged -= OnSelectedNodeChanged;
 		}
 		if (_node is not null)
 		{
@@ -80,6 +88,7 @@ public sealed partial class TreeGridRowPresenter : UserControl
 	}
 
 	private void OnLayoutChanged(object? sender, EventArgs e) => Render();
+	private void OnSelectedNodeChanged(object? sender, TreeGridNode? node) => UpdateSelection();
 	private void OnNodeChanged(object? sender, PropertyChangedEventArgs e) => UpdateState();
 
 	private void Render()
@@ -89,17 +98,19 @@ public sealed partial class TreeGridRowPresenter : UserControl
 			Content = null;
 			return;
 		}
-		Grid row = new() { MinHeight = 40 };
+		Grid row = new() { MinHeight = 28, Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent) };
 		_owner.ConfigureColumns(row);
 		_nameArea = new Grid { VerticalAlignment = VerticalAlignment.Center };
 		_nameArea.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 		_nameArea.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 		_nameArea.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-		_expander = new Button { Width = 28, Height = 28, Padding = new Thickness(0), Background = null, BorderThickness = new Thickness(0) };
+		_expander = new Button { Width = 28, Height = 24, MinHeight = 0, Padding = new Thickness(0), Background = null, BorderThickness = new Thickness(0) };
+		_expanderGlyph = new TextBlock();
+		_expander.Content = _expanderGlyph;
 		_expander.Click += (_, _) => _node.IsExpanded = !_node.IsExpanded;
 		_expander.DoubleTapped += StopDoubleTap;
 		_nameArea.Children.Add(_expander);
-		_check = new CheckBox { MinWidth = 0, Margin = new Thickness(4, 0, 8, 0), IsThreeState = true };
+		_check = new CheckBox { MinWidth = 0, MinHeight = 0, Height = 24, Padding = new Thickness(0), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 8, 0), IsThreeState = true };
 		_check.Click += (_, _) =>
 		{
 			_owner.ToggleCheck(_node);
@@ -122,12 +133,17 @@ public sealed partial class TreeGridRowPresenter : UserControl
 			Grid.SetColumn(cell, i + 1);
 			row.Children.Add(cell);
 		}
-		_favorite = new Button { Width = 36, Height = 32, Padding = new Thickness(0), Background = null, BorderThickness = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Center };
+		_favorite = new Button { Width = 20, MinWidth = 0, Height = 24, MinHeight = 0, FontSize = 16, VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(0), Background = null, BorderThickness = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Center };
 		_favorite.Click += (_, _) => _owner.ToggleFavorite(_node);
 		_favorite.DoubleTapped += StopDoubleTap;
 		Grid.SetColumn(_favorite, _owner.Columns.Count + 1);
 		row.Children.Add(_favorite);
+		_selectionOutline = new Border { BorderThickness = new Thickness(1), IsHitTestVisible = false };
+		_selectionOutline.BorderBrush = _selectionBorderBrush;
+		Grid.SetColumnSpan(_selectionOutline, _owner.Columns.Count + 2);
+		row.Children.Add(_selectionOutline);
 		Content = row;
+		UpdateSelection();
 		UpdateState();
 	}
 
@@ -148,12 +164,14 @@ public sealed partial class TreeGridRowPresenter : UserControl
 
 	private void UpdateState()
 	{
-		if (_node is null || _owner is null || _expander is null || _favorite is null || _check is null || _nameArea is null)
+		if (_node is null || _owner is null || _expander is null || _expanderGlyph is null || _favorite is null || _check is null || _nameArea is null)
 		{
 			return;
 		}
 		_nameArea.Margin = new Thickness(Math.Min(_node.Depth, 8) * 16, 0, 0, 0);
-		_expander.Content = _node.IsExpanded ? "⌄" : "›";
+		_expanderGlyph.Text = _node.IsExpanded ? "⌄" : "›";
+		_expanderGlyph.RenderTransform = new TranslateTransform { Y = _node.IsExpanded ? -3 : -1 };
+		_expander.FontSize = _node.IsExpanded ? 13 : 18;
 		_expander.Opacity = _node.IsGroup ? 1 : 0;
 		_expander.IsHitTestVisible = _node.IsGroup;
 		_expander.IsTabStop = _node.IsGroup;
@@ -164,6 +182,34 @@ public sealed partial class TreeGridRowPresenter : UserControl
 		_favorite.Content = _node.IsFavorite ? "★" : "☆";
 		AutomationProperties.SetName(_favorite, (_node.IsFavorite ? "Remove favorite " : "Add favorite ") + _node.Name);
 		ToolTipService.SetToolTip(_favorite, _node.IsFavorite ? "Remove from favorites" : "Add to favorites");
+	}
+
+	private void UpdateSelection()
+	{
+		if (_selectionOutline is not null)
+		{
+			_selectionOutline.Visibility = _node is not null && ReferenceEquals(_owner?.SelectedNode, _node)
+				? Visibility.Visible
+				: Visibility.Collapsed;
+		}
+	}
+
+	private void OnTapped(object sender, TappedRoutedEventArgs e)
+	{
+		DependencyObject? source = e.OriginalSource as DependencyObject;
+		while (source is not null && source != this)
+		{
+			if (source is ButtonBase or TextBox or PasswordBox or ComboBox or Slider)
+			{
+				return;
+			}
+			source = VisualTreeHelper.GetParent(source);
+		}
+		if (_node is not null && _owner is not null)
+		{
+			_owner.SelectFromPointer(_node);
+			e.Handled = true;
+		}
 	}
 
 	private void OnDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)

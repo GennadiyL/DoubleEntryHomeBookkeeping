@@ -8,18 +8,44 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <Grid x:Name="HeaderGrid" Margin="8,0" Height="36" />
+        <Grid x:Name="HeaderGrid" Margin="8,0,28,0" Height="36" />
         <ListView x:Name="RowsList" Grid.Row="1" SelectionMode="Single"
                   HorizontalContentAlignment="Stretch"
                   ScrollViewer.HorizontalScrollMode="Disabled"
                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                  ScrollViewer.VerticalScrollBarVisibility="Auto"
-                  SelectionChanged="OnSelectionChanged" KeyDown="OnKeyDown">
+                  ScrollViewer.VerticalScrollBarVisibility="Visible"
+                  SelectionChanged="OnSelectionChanged" PreviewKeyDown="OnRowsPreviewKeyDown">
+            <ListView.Resources>
+                <Style TargetType="ScrollViewer" BasedOn="{StaticResource DefaultScrollViewerStyle}">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ScrollViewer">
+                                <Grid Background="{TemplateBinding Background}" ColumnSpacing="4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="16" />
+                                    </Grid.ColumnDefinitions>
+                                    <ScrollContentPresenter x:Name="ScrollContentPresenter"
+                                                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                            Margin="{TemplateBinding Padding}" />
+                                    <ScrollBar x:Name="VerticalScrollBar" Grid.Column="1"
+                                               Orientation="Vertical" IndicatorMode="MouseIndicator"
+                                               IsTabStop="False"
+                                               Maximum="{TemplateBinding ScrollableHeight}"
+                                               Value="{TemplateBinding VerticalOffset}"
+                                               ViewportSize="{TemplateBinding ViewportHeight}" />
+                                </Grid>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ListView.Resources>
             <ListView.ItemContainerStyle>
                 <Style TargetType="ListViewItem">
                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                     <Setter Property="Padding" Value="8,0" />
-                    <Setter Property="MinHeight" Value="40" />
+                    <Setter Property="MinHeight" Value="28" />
+                    <Setter Property="UseSystemFocusVisuals" Value="False" />
                 </Style>
             </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>

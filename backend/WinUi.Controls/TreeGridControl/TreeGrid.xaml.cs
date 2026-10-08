@@ -97,7 +97,16 @@ public sealed partial class TreeGrid : UserControl
 			}
 			grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(column.Width, GridUnitType.Star), MinWidth = 60 });
 		}
-		grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 64 });
+		grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) });
+	}
+
+	internal void SelectFromPointer(TreeGridNode node)
+	{
+		SelectedNode = node;
+		if (RowsList.ContainerFromItem(node) is ListViewItem container)
+		{
+			container.Focus(FocusState.Pointer);
+		}
 	}
 
 	internal void Activate(TreeGridNode node)
@@ -144,19 +153,25 @@ public sealed partial class TreeGrid : UserControl
 		}
 		ConfigureColumns(HeaderGrid);
 		HeaderGrid.Children.Clear();
-		AddHeader(NameHeader, 0, HorizontalAlignment.Left);
+		AddHeader(NameHeader, 0, HorizontalAlignment.Left, 14);
 		for (int i = 0; i < Columns.Count; i++)
 		{
-			AddHeader(Columns[i].Header, i + 1, HorizontalAlignment.Center);
+			AddHeader(Columns[i].Header, i + 1, HorizontalAlignment.Center, 14);
 		}
-		AddHeader("Favorite", Columns.Count + 1, HorizontalAlignment.Center);
-		MinWidth = 360 + Columns.Count * 60;
+		AddHeader("★", Columns.Count + 1, HorizontalAlignment.Center, 28);
+		MinWidth = 352 + Columns.Count * 60;
 		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 
-	private void AddHeader(string text, int column, HorizontalAlignment alignment)
+	private void AddHeader(string text, int column, HorizontalAlignment alignment, int fontSize)
 	{
-		TextBlock header = new() { Text = text, HorizontalAlignment = alignment, VerticalAlignment = VerticalAlignment.Center };
+		TextBlock header = new()
+		{
+			Text = text,
+			HorizontalAlignment = alignment,
+			VerticalAlignment = VerticalAlignment.Center,
+			FontSize = fontSize
+		};
 		Grid.SetColumn(header, column);
 		HeaderGrid.Children.Add(header);
 	}
@@ -169,7 +184,7 @@ public sealed partial class TreeGrid : UserControl
 		}
 	}
 
-	private void OnKeyDown(object sender, KeyRoutedEventArgs e)
+	private void OnRowsPreviewKeyDown(object sender, KeyRoutedEventArgs e)
 	{
 		DependencyObject? source = e.OriginalSource as DependencyObject;
 		while (source is not null && source is not ListViewItem && source != RowsList)
