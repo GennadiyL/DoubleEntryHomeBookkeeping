@@ -19,7 +19,8 @@ public record ConfigurationInfo
 	public int AmountPrecision { get; init; }
 	public int RatePrecision { get; init; }
 	public AccountNameOrder AccountNameOrder { get; init; }
-	public required string DefaultAccountNameSeparator { get; init; }
+	public required string AccountNameSeparator { get; init; }
+	public bool AccountNameAddCurrency { get; init; }
 	public ConflictPriority ConflictPriority { get; init; }
 	public SyncTrigger SyncTrigger { get; init; }
 }

@@ -11,5 +11,6 @@ internal class LocalConfig : IDalEntity
 	public ConflictPriority ConflictPriority { get; set; } = ConflictPriority.Local;
 	public SyncTrigger SyncTrigger { get; set; } = SyncTrigger.ManualOnly;
 	public long SnapshotRevision { get; set; }
-	public string DefaultAccountNameSeparator { get; set; } = "/";
+	public string AccountNameSeparator { get; set; } = "/";
+	public bool AccountNameAddCurrency { get; set; }
 }

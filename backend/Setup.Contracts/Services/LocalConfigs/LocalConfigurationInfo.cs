@@ -15,7 +15,8 @@ namespace Setup.Contracts.Services.LocalConfigs;
 public record LocalConfigurationInfo
 {
 	public AccountNameOrder AccountNameOrder { get; set; } = AccountNameOrder.CorrespondentCategoryProject;
-	public string DefaultAccountNameSeparator { get; set; } = "/";
+	public string AccountNameSeparator { get; set; } = "/";
+	public bool AccountNameAddCurrency { get; set; }
 	public ConflictPriority ConflictPriority { get; set; } = ConflictPriority.Local;
 	public SyncTrigger SyncTrigger { get; set; } = SyncTrigger.ManualOnly;
 }

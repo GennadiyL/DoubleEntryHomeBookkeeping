@@ -2,29 +2,202 @@
 
 ## Document Control and BRD Reference
 
-- Version: **0.155**. Status: **Draft**. Date: **2026-10-03**.
-- Business source: [BRD 0.51](BRD.md), controlled Draft revision of approved BRD 0.32, incorporating the accepted corrections and the 2026-10-01 Draft entry-validity and Confirmed-to-Draft decisions. Prior 0.32 approval: requesting user, 2026-09-27, “I approve BRD. Lets start with TRD”; no personal name inferred. That approval does not cover 0.51; full-version approval remains outstanding.
-- Scope: core bookkeeping, synchronization and first use. Owner/intended approver: requesting user.
+- Revision 0.232, 2026-10-08: define Business-only WinUI integration against an existing Local database, defer other domains, and record the accepted coordinator account-reference registry. No complete-document approval inferred.
+
+- Revision 0.231, 2026-10-08: record accepted report JSON, post-date-save calculation and CSV-export failure outcomes, aligned with BRD 0.217. No full approval or application implementation inferred.
+
+- Revision 0.230, 2026-10-08: user confirmed CurrencyHeader Amount/BaseAmount are null and appear as blank cells in UI/CSV. Report-row Kind, removal of Key/Level and separate warnings remain confirmed. Draft status retained.
+
+- Revision 0.229, 2026-10-08: user accepted removal of Key and Level from report-result rows. Currency-header numeric fields still require clarification; no decision on their nullability is inferred. Draft status retained.
+
+- Revision 0.228, 2026-10-08: user confirmed flat ordered report-result rows, explicit Data/CurrencyHeader/CurrencySubtotal/GrandTotal kinds, and warnings separate from rows. Header field nullability and obsolete Key/Level proposals remain for clarification. Draft status retained.
+
+- Revision 0.227, 2026-10-08: user confirmed ReportGroup/shared report catalog fields match the other five catalogs. Application is pre-production; update initial schema/seed data for fresh databases instead of migrating old development reports. No scripts or databases are changed in this documentation revision.
+
+- Revision 0.226, 2026-10-08: user confirmed AccountNameOrder, AccountNameSeparator and AccountNameAddCurrency as the LocalConfig naming properties. GetDefaultName reads the saved flag; CurrencyId may be absent with the flag off and must identify a valid currency with it on. DTO fields align; no application code changed or full-version approval inferred.
+
+- Revision 0.225, 2026-10-08: user confirmed reuse of the existing flat ConfigurationInfo read shape and editable-only Settings save input, and replaced the GetDefaultName bool argument with saved LocalConfig.AddCurrencyToAccountName. CurrencyId remains an input; conditional validation is still open. Draft status retained.
+
+- Revision 0.224, 2026-10-08: user confirmed combined Setup Settings read/save, atomic Local/System persistence, and CurrencyId/AddCurrency inputs for account-name generation. Remaining DTO layout and conditional currency validation stay open; no full-version approval inferred.
+
+- Controlled revision 0.223, 2026-10-08: requesting user explicitly requested the four-rule cleanup, aligned to BRD 0.217. Local is the default conflict priority; Currency has no Description while CurrencyRate retains it; AmountPrecision and RatePrecision govern calculation and display; Drafts have no separate entry-count limit, but every present entry must be valid and have an Account. Confirmed state still requires at least two valid entries and exact balance. No complete-document approval is inferred.
+
+- Version: **0.232**. Status: **Draft**. Date: **2026-10-08**.
+- Business source: [BRD 0.218](BRD.md), Draft dated 2026-10-08, and the individually confirmed UI/business decisions in this conversation. Prior full-version approval covers BRD 0.32 only, requesting user, 2026-09-27. No approval of complete BRD 0.218 or TRD 0.232 is inferred.
+- Scope: core bookkeeping, synchronization, first use and Windows UI integration. Owner/intended approver: requesting user.
 - Revision basis: replaces legacy TRD 0.1 while retaining its parent-reference constraint. Discovery sources: [core](001-personal-bookkeeping/discovery.md), [synchronization](002-synchronization/discovery.md), [first use](003-first-using/discovery.md). Later BRD decisions supersede their historical statements.
 - Naming: BRD uses Business Capabilities `BC-###`; this TRD uses Detailed Use Cases `UC-###-##`, linked to `OP-###` under `SVC-###`. This is the user-selected convention, replacing the skill's default BRD UC convention.
 - Authority: approved business behavior is binding. This TRD's proposed schemas, operation grouping, DTO shapes, error identifiers and concurrency policies require review. Approval of BRD does not approve TRD or authorize implementation. On 2026-10-03 the requesting user explicitly authorized starting implementation of the cumulative-amount and transaction-list decisions; this does not imply full-document approval.
 - No previous PM/DTO/SVC/OP IDs existed in legacy TRD; identifiers introduced here are stable for subsequent revisions.
+- Draft alignment authorization: requesting user, 2026-10-06, Lets start TRD, following BRD 0.177 and the completed UI discussion. Repository instructions authorize expanding TRD as requirements stabilize. This authorizes draft alignment from individually confirmed decisions despite current BRD Draft status, not formal document approval or application changes.
 
 ## Technical Scope and Constraints
+
+### Common C# conventions — confirmed 2026-10-08
+
+- Ordinary method parameters must be explicit. Prefer method overloads when different supported call forms are needed, rather than optional parameters with default values.
+- Optional parameters are reserved for exceptional conventions, such as `CancellationToken cancellationToken = default`.
+- Nullability is independent of optionality. A required nullable parameter must still be passed explicitly, including `null` when allowed by the operation.
+- `IAccountService.GetDefaultName` and its implementation require explicit `Guid? currencyId`, without `= null`. No three-argument convenience overload is introduced by this change. Currency validation still depends on `AccountNameAddCurrency`.
+
+- Avoid type aliases in ordinary code. Use them only in exceptional cases, such as two types with the same name used in one file. For a name collision, alias only one of the types; use the other by its original name.
+- When Business and DAL models share a name, alias the Business model as `{Name}Entity` and import the DAL model namespace normally. For example, use `using CurrencyRateEntity = Business.Models.Entities.CurrencyRate;` and refer to the DAL model as `CurrencyRate`, without a `DalEntity` alias.
 
 ### Confirmed inputs retained
 
 - Android and Windows desktop, single-user prototype, one master and multiple registered complete local copies (BR-001–BR-005, NFR-001).
 - SQLite business data locally and on Azure; first-version SQLite Admin.db. Azure Functions perform initial creation/connection. Prototype deployment address hardcoded. Version-two administration planned for Microsoft SQL Server; business datasets remain SQLite. These are explicit user technical inputs retained by BRD, not newly selected architecture.
-- Two configuration tables: System synchronizes; Local does not. Base currency and AmountPrecision/RatePrecision: selected at creation, immutable, stored in System. Display amounts/BaseAmount with AmountPrecision and rates with RatePrecision; no independent display precision. Local: default account-name order/separator, sync trigger, conflict priority (BR-005, BR-012, BR-017).
+- Two configuration tables: System synchronizes; Local does not. Base currency and AmountPrecision/RatePrecision: selected at creation, immutable, stored in System. Display amounts/BaseAmount with AmountPrecision and rates with RatePrecision; no independent display precision. Local: default account-name order/separator, Add currency flag, sync trigger and conflict priority. LocalConfig.AccountNameAddCurrency is a required bool, default false, confirmed 2026-10-08.
 - Versioned master files such as `{Guid}.db`; prepare changes in a copy and publish a complete candidate; download a complete local replacement. Recovery selects latest published version, not original failed snapshot. SyncKey/outcome/receipt tracking is necessary to resolve lost responses without duplicate business application (BR-038–BR-040; synchronization source).
 - TransactionEntry and TemplateEntry retain BOTH parent navigation/reference and parent foreign-key identity; both identify the same parent. This explicit legacy TRD requirement survives; language mapping is deferred. Group root refers to itself as parent but is excluded from its own Children. Groups have child groups and corresponding elements; every element has a group identity/reference (core source).
 - UTC transaction time; AmountPrecision/RatePrecision decimal calculation with midpoint-to-even; on-demand balances/reports. Stored entry rate is independent of rate catalog. JSON saved-report instructions preserve identities and explicit overrides; do not rewrite except user save (BR-015–BR-028).
 - Currency catalog follows the user-supplied CultureInfo/RegionInfo enumeration recorded in BRD: exclude neutral/invalid regions, map ISO code/symbol/English name, keep first entry per code. No new catalog source selected.
 
+### Windows UI framework and local service calls — 2026-10-04
+
+- The Windows desktop application will use WinUI 3 with C# and XAML. This is the user-confirmed Windows UI framework choice.
+- The Windows application hosts the required dependencies, resolves Business service interfaces through dependency injection and calls them directly in process. Local UI operations do not call WebAPI or require a running WebAPI host.
+- WebAPI remains a separate host for remote service access. Android and future Apple/Linux UI framework choices remain outside this Windows decision; a shared cross-platform UI is not required.
+
+### Windows UI integration — 2026-10-06
+
+Source: [BRD 0.218, Main Navigation and its UI sections](BRD.md#main-navigation). The exact labels, defaults, financial display formulas, selection rules and failure behavior in those confirmed sections are authoritative for this draft. This section maps them to technical responsibilities; it does not approve proposed models/DTOs or claim implementation completion.
+
+#### Host and shell
+
+WinUI 3/C#/XAML remains selected. The Windows host resolves service interfaces through DI and calls them in process. Local UI does not call WebAPI; remote Master access remains behind the service/integration boundary. One application instance brings its existing window/top modal to the front on repeated activation. Restore main-window size, position and maximized state. No application theme feature is required; no fixed palette is inferred.
+
+Navigation is Daily work (Ledger, Reports), Catalogs (Accounts, Correspondents, Categories, Projects, Templates, Currencies), Application (Synchronization, Settings, Help, Exit). Main-screen selection/scroll/search/filter state is session-only; window geometry is restored across launches. Exact storage/lifetime is TQ-15/16.
+
+Service read results and unsaved editor state must remain detached from persistence. Save/Cancel and independently saved nested catalog actions follow BRD. Dates and formatted numeric display use regional settings; amount/rate editing follows the separate plain-text rule below, transaction time HH:mm without seconds, amount/rate precision configured, storage UTC/date-only as already defined. Input must preserve exact decimal monetary values. The reusable TextBox-based amount/rate component and per-call data-service scope policy are confirmed below; remaining controls, numeric editing/commit behavior and UI dispatch stay TQ-15.
+
+#### Five catalog window types and routing
+
+The six catalogs include Reports/ReportGroup. Report checkbox filters are a separate UI surface.
+
+| Window type | Capability |
+| --- | --- |
+| Edit-select groups+elements | Docked management or modal element picker; eligible elements only; group/element management and ordinary moves |
+| Edit-select groups | Modal group choice with group Add/Edit/Delete/Move; no element commands or merges |
+| Select only groups | Modal leaf groups-only picker; no mutation, favorite edit or further editor/picker |
+| Edit element | Modal unsaved fields/reference pickers/Favorite, saved only on Save |
+| Edit group | Modal unsaved Name/Parent/Favorite; parent picker always Select only groups |
+
+- Active identity is (catalog, window type); docked catalog counts. Only top modal is usable/closable. Different catalogs may coexist in the chain.
+- Element selection uses Edit-select groups+elements. A group choice uses Select only groups when either same-catalog Edit-select presentation or Edit group editor is active; otherwise Edit-select groups. Edit element alone does not force fallback.
+- Docked double-click edits except report Run; picker double-click accepts eligible rows. Explicit Edit handles editing inside pickers. All selection paths enforce caller eligibility.
+- Merge groups and supported element combination are docked-main-only, unavailable in every popup including Shift-drag. Ordinary permitted moves remain in Edit-select; leaf select-only is readonly.
+- Editor failure preserves entered values; dirty Cancel/X uses discard confirmation. Successfully completed nested catalog activity remains saved even if parent is canceled.
+- Groups-only rows show direct hidden-element counts, excluding descendants/child groups. Required projections/loading for ReportGroup remain TQ-16.
+- Search navigates names across the complete applicable tree, including collapsed branches, with Next/Previous wraparound; it does not filter or persist. Disable it under Favorites only.
+- Pickers open Favorites off and reveal current identity. Optional references have Clear; mandatory do not. Favorites retain matches/ancestor paths; groups-only filtering uses group flags. Inline stars are writable only where modification is permitted. Failure restores old row/state/selection/filter; successful removal and Add/Edit reveal follow the distinct BRD rules.
+- Refresh calling references after independent edits: retain identity after rename/move; eligible deleted optional references clear silently. New transaction/template deleted accounts remove entries; existing editors protect current accounts including unsaved choices. Deleted new-account currency or unsaved element Group clears the mandatory field and blocks Save. Draft-reference enforcement uses the confirmed coordinator registry below.
+
+#### Screen-to-service responsibilities
+
+| Surface | Binding and required behavior | Technical gap |
+| --- | --- | --- |
+| Ledger/transaction | OP-026–030/057/061/063; initial latest 300 all-account rows, single selection and modal editor; duplicate/template drafts; account-filter last matching entry cumulative amount | Cap wrapper/refresh TQ-05; exact all-account amount formula remains BRD source; no new balance formula inferred |
+| Accounts/classifications | OP-005–013/022/023/025/053/054/062/063; management, immutable saved currency; no balance display on Accounts screen | OP-025 receives CurrencyId and reads AccountNameAddCurrency from LocalConfig; currency is optional with the flag off and required/valid with it on |
+| Currencies/rates | OP-014–020; selected rate panel, immutable code, no currency-picker search; range deletion skips Initial silently | Existing precision/date/base/initial-rate rules retained |
+| Templates | OP-033–036/009/063; Name/Group/Description/Favorite, ordered Account/Amount/readonly currency entries | Unsaved preparation and refresh/reference rules retained |
+| Reports | OP-037–040/070; ReportGroup tree; double-click Run; period popup then readonly result/CSV | ReportGroup model conventions confirmed; update fresh initialization and service projections; date-only mutation remains TQ-16 |
+| Settings | OP-071/072; one Setup read and one atomic Setup save for Local/shared sections; staged Save/Cancel, readonly immutable values, eligible balancing-account picker | Combined operations and one-transaction Save confirmed 2026-10-08; existing flat ConfigurationInfo read shape retained; editable-only save payload confirmed |
+| Sync | OP-043–050; Ready/Recovery required, Sync now/Retry recovery, modal stages/cancel, readonly summary/TXT | Runtime signals/absent results TQ-04/07/15 |
+| First start | OP-001–004; Continue after credentials, automatic attachment or same-dialog Create/Back | Auth/check/bootstrap/request details TQ-03/04/16 |
+| Help/shell | Modal Help User guide/About/Close; guide disabled until available; bundled PDF/default Windows viewer, About name/version | PDF authoring deferred; host/package/file/window state details TQ-15/16 |
+
+#### Orchestration constraints
+
+- Report filter trees are readonly full classification sets, independent Unassigned/Root siblings, inherited overrides and partial checks. Root excludes Unassigned; search leaves checks unchanged; no Favorites or catalog mutation.
+- Run saves only From/To, preserving grouping, all saved classification IDs/overrides and other report settings, then closes period popup and calculates readonly results. Explicit full settings Save alone may normalize edited selection. CSV export includes the complete table; generated results are not persisted report data.
+- Report CSV uses comma-separated columns. Enclose values containing commas, double quotes or line breaks in double quotes, escaping embedded double quotes by doubling them. Export numbers without thousands separators, using a decimal dot and configured precision; export dates as yyyy-MM-dd. These export formats are independent of Windows regional settings. Encode report CSV files as UTF-8 with BOM, preserving business text in its stored language.
+- Report CSV starts with the column-header row, followed by the complete report table including grouping labels and totals. Do not prepend title or date-range metadata lines.
+- For an empty report result, keep Save CSV available and export column headers only. No matching data remains a results-popup message rather than a CSV data row. Existing empty-filter warnings still apply.
+- Include a report group when it contains matching transactions even if its signed total is zero; omit groups with no matching transactions. This does not change the existing matching-entry and accounting-inclusion rules.
+- Order report date groups chronologically. Category/Project/Correspondent groups follow their catalog tree order. CSV preserves the displayed report row order.
+- Currency groups in report results follow the currency catalog order. When Unassigned has matching data, show it before named Category/Project/Correspondent groups within the applicable report grouping. In the grouping-label column of report results and CSV, use the full classification path, such as Home/Food or Travel/Food, to distinguish identical names under different groups. This does not change stored names or catalog/editor name display.
+- When Currency grouping is enabled, display each currency as a section heading followed by its result rows. Keep all sections visible without expand/collapse controls. Show each currency subtotal after its section and the grand total at the bottom, using bold text for totals. Preserve BR-027 rules for own/base currency totals and mixed-currency grand totals. Display negative report amounts with a minus sign rather than parentheses; existing regional display formatting and separate CSV numeric formatting remain applicable.
+- Suggest ReportName_yyyyMMdd_HHmmss.csv in the Save dialog, using export time and replacing filename-forbidden characters in the report name. The user may change the filename. Exact replacement character and export-time timezone are not selected by this rule.
+- Export the synchronization summary TXT as UTF-8 with BOM, containing the text displayed in the summary popup. Existing English technical-text and original-language business-text rules apply.
+- Application-generated technical text in reports, logs and similar outputs is English, including column headings, status labels and diagnostic messages. Business text, such as account/category names and user-entered descriptions, remains in the user's language exactly as stored; do not translate it. This language rule does not change the separately confirmed numeric/date formats.
+- Settings missing balancing account is empty and permits other changes; groups/non-base/no selection disable Select. Separator empty/whitespace normalizes to / on focus loss or Save. Trigger change does not start sync immediately. One Setup call saves Local/System together in one transaction under OP-072. Read uses the existing flat ConfigurationInfo shape. Save accepts editable settings only. LocalConfig.AccountNameAddCurrency is a required bool, default false.
+- Manual sync auto-shows summary after progress closes for every outcome. Startup errors/cancellation/conflicts/corrections show summary and then permit Ledger only if access allows. Successful exit closes directly or after correction/conflict summary; failed/canceled exit offers Retry/Exit/Cancel exit. Cancellation completion does not claim Master rollback.
+- Pending recovery/expiry gates remain service-owned authoritative state, not inferred from labels. Confirmed expiry follows disposal/message/Download, not permanent Expired screen status.
+
+#### Report failure contract — confirmed 2026-10-08
+
+Invalid persisted report JSON must surface an error from report loading/deserialization; do not replace the definition with empty/default settings or write a repaired value. This is a failure, distinct from a valid definition whose filter selects nothing. OP-070 date-range persistence and OP-037 calculation are separate operations: after successful date save, a calculation failure leaves the saved dates unchanged, shows an error and returns to the report list rather than opening results. Do not roll back the previously committed dates or claim successful calculation. CSV-export failure is handled in the results popup: retain the generated result rows, keep the popup open, show an error and allow an explicit retry of file saving without rerunning the report. No automatic retry or new report persistence is introduced. Existing diagnostic redaction and editor/error rules remain applicable; concrete exception classes remain TQ-07.
+
+#### UI foundations — confirmed decisions and open choices
+
+- MVVM is confirmed by the user, 2026-10-06, after the XAML/code-behind/ViewModel explanation. XAML defines layout/bindings; code-behind handles initialization and UI-specific events; a separate ViewModel holds screen state and commands. Authoritative business validation and persistence stay in existing services called in process.
+- CommunityToolkit.Mvvm is selected 2026-10-06 after the manual/generated property-notification comparison. Use its observable-property and command helpers in UI ViewModels. WinUI observable properties use the documented partial-property form. The exact compatible package version remains an implementation/runtime choice; domain/DAL contracts and validation responsibilities are unchanged.
+- Dialog hosting is confirmed 2026-10-06: owned WinUI windows for nested editors/pickers, ContentDialog for simple confirmations, and one shared coordinator managing opening/closing, parent blocking, focus restoration and existing catalog/window-type routing rules. The coordinator tracks the chain; individual dialogs retain their UI/ViewModels. This decision does not register popup instances as DI singletons or resolve data-service scope lifetime.
+- Open each popup centered over its immediate parent. Do not add automatic popup resizing or repositioning to accommodate a smaller monitor; the user closes popups before maximizing or adjusting the main window.
+- Only the main window has a minimize button; popups have none. The user must close all modal popups before operating the main window, including minimizing, maximizing or resizing it. Do not introduce a minimize/restore-whole-stack command.
+- The main window has one normal Windows taskbar icon, allowing the user to return after minimizing it. Popups have no separate taskbar icons. The previously confirmed main-window-only minimize button and modal parent-blocking rules remain unchanged.
+- Tree pickers, transaction/template editors and report-result popups are resizable. Simple forms, such as group-name editors, have a fixed size. Existing minimum usable dimensions remain applicable.
+- Persist resizable popup dimensions locally per popup type, and separately per catalog/mode for tree pickers. Restore those dimensions when reopened, centering over the current parent rather than restoring the previous popup position.
+- Store UI preferences for window geometry and column widths in a local JSON settings file under the Windows user profile. These UI preferences do not synchronize. Existing business Local/System configuration contracts remain unchanged.
+- Persist column widths when Apply is clicked, resizable popup dimensions when the popup closes, and main-window geometry on application exit.
+- If the UI settings file is missing or invalid, use default UI settings so the application can open. This fallback does not change bookkeeping data.
+- Data-service lifetime is confirmed 2026-10-06. DbContext, repositories, Business services and components depending on that context retain Scoped registrations. All repositories/services in one call share its scope/context; existing compatible Shared singleton helpers are not changed by this rule.
+- The boundary matches WebAPI: one request scope around a call, disposed after completion. WinUI explicitly creates a scope for each logical service call, resolves the service within it, waits for completion and then disposes the scope on success/failure. The next call receives a fresh scoped graph/context.
+- DAL AsNoTracking reads do not make context reuse across calls safe: write operations attach entities. Tracked entities from one public service call must not remain in the context used by the next UI call. A popup lifetime is not the data-service scope lifetime.
+- ViewModels retain detached/materialized DTO/editor values between calls, not DbContext/repository/scoped-service instances. An application-wide UI coordinator/runner uses a scope factory for data calls; it does not capture scoped Business/DAL dependencies.
+- The synchronous local-UI decision does not itself change existing service signatures. How the UI integrates any asynchronous service implementation remains an implementation detail; per-call scope disposal must still follow actual operation completion.
+- No application classes or lifetime registrations are changed/generated in this documentation turn. Scope-runner wiring remains an implementation detail under TQ-15; the boundary/Scoped policy is settled.
+
+References: [Microsoft MVVM Toolkit](https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/), [Microsoft ContentDialog](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.controls.contentdialog). The native dialog limitation must be respected by the chosen stack implementation. The reusable decimal input component and per-call scope boundary are confirmed. Remaining controls, numeric editing/commit behavior, dispatcher/progress/cancellation, scope-runner wiring and cache refresh remain TQ-15.
+
+#### Amount/rate input control — confirmed
+
+Confirmed by the requesting user, 2026-10-06: use one reusable TextBox-based input component that parses decimal directly, uses Windows regional formatting for display rather than editing, and applies AmountPrecision/RatePrecision with caller-specific amount/rate validation. TextBox is built in; the decimal parsing/precision/validation behavior is application-owned and reused across amount/rate fields. All existing amount/rate/empty-value/business validation rules remain binding. No application control or source file is created by this decision.
+
+WinUI NumberBox.Value is double, so its numeric value is not the authoritative exact-decimal amount/rate input. [Microsoft NumberBox.Value documentation](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.controls.numberbox.value?view=windows-app-sdk-1.8). The component choice and focus-loss/Save validation and formatting boundaries are settled; remaining numeric-input details stay under TQ-15. [Microsoft TextBox documentation](https://learn.microsoft.com/en-us/windows/apps/develop/ui/controls/text-box).
+
+- While editing amount/rate text, allow unfinished values such as a minus sign or a number ending with the decimal separator without immediately reporting an error. Validate on focus loss and on Save. Apply configured precision and the existing rounding rule at those boundaries, not after every keystroke. If validation fails, preserve the entered text, show an error beside that field and prevent saving until corrected. Existing empty-value and caller-specific amount/rate rules remain binding.
+- On entering an amount/rate field, select its entire value for replacement and use plain, unformatted editing text without thousands grouping or regional formatting. Apply display formatting after focus leaves a valid field. Use a dot as the decimal separator while editing, regardless of Windows regional settings; for example, edit 1234.56 and format it regionally only after focus loss. Pasted input uses the same plain dot-decimal format: ignore surrounding whitespace, but reject currency symbols and thousands separators under the existing field-validation rules. The numeric keypad decimal key inserts a dot regardless of Windows settings. Accept simple decimal numbers only; calculator expressions and scientific notation are unsupported. If Save encounters invalid input, focus the first invalid field and preserve the other entered values.
+
+#### Date/time controls — confirmed
+
+Confirmed by the requesting user, 2026-10-06: use built-in CalendarDatePicker for calendar dates and built-in TimePicker for transaction time. Transaction time display/input is 24-hour HH:mm without seconds; this replaces the earlier seconds-capable custom input proposal and HH:mm:ss UI requirement in BRD. Configure the TimePicker clock as 24HourClock.
+
+The native TimePicker ignores seconds. Confirmed by the requesting user, 2026-10-06: save seconds as 00 for a new transaction or when the user changes an existing transaction time. If the existing time is unchanged, preserve its stored seconds. Keep the original time value distinct from the minute-only control value so initialization or editing other fields does not silently clear seconds. UTC transaction timestamps and date-only semantics remain as previously defined; no stored field-type change or database-wide timestamp truncation/migration is authorized. The separate report default-name format remains unchanged.
+
+References: [Microsoft CalendarDatePicker](https://learn.microsoft.com/en-us/windows/apps/develop/ui/controls/calendar-date-picker), [Microsoft TimePicker](https://learn.microsoft.com/en-us/windows/apps/develop/ui/controls/time-picker).
+
+#### Flattened ListView tree — confirmed foundation
+
+Source: requesting user's row-ViewModel proposal and confirmations, 2026-10-06. Visual reference: [TreeGrid.png](../sources/TreeGrid/TreeGrid.png). The reference establishes a combined hierarchy with aligned data columns and no connector lines; its task-specific columns do not replace the bookkeeping catalogs' defined columns.
+
+- Use a reusable ListView-based flattened tree. Each row uses a common column layout, with an indented name/expander area in the first column. Keep the other column boundaries aligned. Native TreeView and third-party TreeGrid components are not selected for this approach.
+- Keep the complete set of detached row ViewModels separately from the observable VisibleRows collection bound to ListView.ItemsSource. An IsVisible property alone does not filter the collection. Preserve row identities and existing row instances when updating the visible collection in the established hierarchy/order.
+- A row represents exactly one group or one element; GroupModel and ElementModel are mutually exclusive. Retain a stable identity and parent association. IndentLevel follows hierarchy depth; an element is one level below its parent group. These are UI state concepts, not new persistent models or service DTO contracts.
+- IsOpened belongs to group UI state. A row can appear only when every ancestor is open and the existing mode/filter permits it. Collapsing an ancestor hides its entire descendant range without clearing descendants' own expansion flags. Reopening traverses only open ancestor paths; closed subgroups remain visible while their descendants remain hidden.
+- Recalculate the visible projection after expansion/collapse and relevant hierarchy/filter changes, then update the existing bound collection. ListView supplies row selection, scrolling and virtualization; hierarchy visibility and permitted drag/drop actions are application responsibilities. Preserve the virtualizing list layout with a constrained viewport.
+- Dropping between sibling rows reorders the dragged item within that sibling sequence: groups among groups, elements among elements. Show an insertion line for reorder placement. Dropping onto a group retains the existing move-into-group behavior and main-window Shift-merge exception. Existing catalog/mode permissions remain binding.
+- Favorites only does not disable sibling reordering or permitted moves into another group. Dropping between two visible siblings places the dragged item immediately after the preceding visible sibling in the complete sibling sequence, including hidden items; the user example is insertion after Order 5 and before visible Order 9 at Order 6. Dropping at the start places the item first in the complete sibling sequence. First position retains the existing zero-based stored Order = 0; the numbering convention does not change. Keep the established separate group/element sequences and mode permissions.
+- Show a not-allowed cursor for invalid drop destinations and make no change, including when a group is dragged into its own descendant. Existing domain validation remains authoritative.
+- While dragging near the top or bottom edge of the tree viewport, automatically scroll so destinations outside the visible area can be reached.
+- Escape during an active drag cancels only that drag, without closing the current popup or changing stored data. Groups expanded by hover during the drag remain open after a drop or cancellation.
+- Report row check state uses a nullable Boolean: true checked, false unchecked, null partial. It represents BR-024's existing report selection rules across the underlying tree, including hidden descendants; ordinary management trees do not show these checkboxes.
+- For mouse interaction, only the expander arrow toggles expansion. Ordinary row clicks select; existing double-click edit/select rules and independent star/checkbox interactions remain applicable.
+- When the tree row area has keyboard focus, Up/Down selects the previous/next visible row. Right Arrow expands a closed group; on an expanded group it selects the first visible child, if any. Left Arrow collapses an expanded group; otherwise it selects the parent, if any. At the root, the parent-navigation action does nothing. Navigation uses the actual hierarchy even beyond the visual indentation cap and preserves existing picker eligibility rules.
+- With a tree row focused, Enter invokes the same action as double-click: edit in management views, select an eligible item in selection pickers, or run a saved report. Existing mode-specific eligibility and disabled-action rules apply. Home/End selects the first/last visible row. In report checkbox trees, Space toggles the selected row checkbox; a partially checked group becomes fully checked, following the existing report checkbox propagation rules. These row shortcuts do not override text-entry or other focused controls.
+- After saved catalog changes, refresh affected open screens and pickers when they become active again. This includes returning from a nested picker canceled after independently saving catalog changes.
+- During tree refresh, preserve expanded groups, selection and scroll position where possible. Previously confirmed rules for revealing added/moved items and other explicit selection/visibility outcomes take priority.
+- If refresh fails, keep the previous rows visible, show an error with Retry, and disable editing and selection confirmation until refresh succeeds. Cancel/Close remains available.
+- Ordinary local SQLite loading and editor saving use synchronous execution from the UI action, as requested by the user. Do not add progress indicators, progress popups or temporary busy-state input/Save/close guards for these short operations. Existing validation, error reporting, transaction rollback and explicit refresh-failure rules remain applicable. This decision does not change synchronization or first-use creation/attachment progress and cancellation flows. Expected short duration is a design assumption, not a measured performance guarantee.
+- Indentation uses an empty layout spacer in the first column, with width equal to min(IndentLevel, 8) multiplied by a shared indentation step. Only the hierarchy/name area shifts; the other columns stay aligned. A monospace font is not required. The exact step remains a layout choice; 16 units was an example, not an accepted fixed value. Confirmed by the requesting user, 2026-10-06.
+- If collapse removes the selected descendant from VisibleRows, transfer selection to the collapsed group. Preserve selection outside that subtree. Apply existing picker eligibility rules to the resulting selection.
+- Keep column headers visible during vertical scrolling, aligned with their row columns; headers do not invoke sorting. Use single-line row text with ellipsis on overflow and a tooltip containing the full text. Horizontal scrolling is not allowed. Configure column widths through a Columns popup with editable width values and Apply/Cancel buttons; do not resize columns by dragging their borders. Save applied widths locally per view, separately for main screens and selection popups, and restore them on reopening. Restore defaults resets the popup values to predefined column widths; Apply commits them and Cancel discards pending changes. Column widths are percentages of the available row width and must total 100%; preserve those proportions when the viewport changes. Prevent widths that hide essential row controls, including expanders, checkboxes and favorite stars. In version one all columns remain visible in their fixed order; Columns changes widths only. Enforce a minimum window/popup width so it cannot be resized below the width needed for usable columns. Exact minimum dimensions remain a layout detail. Names and descriptions are left-aligned; amounts and rates are right-aligned; stars and checkboxes are centered within their allotted space. The currency-name text in the Account tree is centered. Cap visual indentation at eight steps, using a fixed constant of 8. Rows deeper than level 8 use the same visual indentation as level 8. Preserve actual hierarchy depth, parent relationships and expand/collapse behavior; this is a display limit only.
+- Tree interaction and column/header decisions recorded in this document are settled; TQ-15 tracks remaining implementation integration. This choice does not authorize application implementation or change service scope boundaries.
+
 ### Boundary and proposal status
 
-The service catalog below is a logical API/BFF contract, not a deployment diagram. Local operations must work offline; listing them does not require HTTP or a cloud round trip. Paths, verbs, transport statuses, class names, layers and projects are not selected. No C# source, implementation tasks or tests are created by this document.
+The service catalog below is a logical API/BFF contract, not a deployment diagram. Local operations must work offline; listing them does not require HTTP or a cloud round trip. Unless explicitly confirmed elsewhere in this document, paths, verbs, transport statuses, class names, layers and projects remain unselected. No C# source, implementation tasks or tests are created by this document.
 
 All schema types, nullability, DTO directions, exposed fields and assignments are **proposed** unless explicitly stated as confirmed in this document. Business requiredness comes from BRD; it does not approve a particular serialization shape. Entity revisions and snapshot versions use confirmed signed 64-bit integers (`int64`). GUID identities for persistent business entities are confirmed; registration/operation identities and authentication-session representation remain proposed. Amounts and rounded BaseAmount use AmountPrecision; rates use RatePrecision. AmountPrecision/RatePrecision ranges and fixed SQLite scaling are confirmed below; calculation bounds follow the confirmed decimal/storage-limit policy below.
 
@@ -34,7 +207,7 @@ The requesting user confirmed that existing code names are the correct contract 
 
 PM-010 is named Report, replacing SavedReport; it still stores report instructions, not calculated results. DTO-013 is correspondingly named ReportInfo. Stable PM/DTO/OP IDs and report behavior remain unchanged.
 
-Currency has no Description property or corresponding DTO field. CurrencyRate.Description remains optional. This explicit user correction supersedes the Currency description wording in BRD 0.49 BR-009/BR-013 for this controlled TRD revision. BRD alignment remains outstanding before full-document approval; this request updates TRD only. Earlier clarification entries retain their historical terminology and are superseded by this decision where inconsistent.
+Currency has no Description property or corresponding DTO field. CurrencyRate.Description remains optional. The user reaffirmed this rule on 2026-10-08; BRD 0.218 BR-009/BR-013/BR-014 is aligned. Earlier clarification entries retain their historical terminology and are superseded by this decision where inconsistent.
 
 ### Subdomain ownership and current work scope — 2026-10-01
 
@@ -48,11 +221,26 @@ The user selected five subdomains, each with its own solution folder and Contrac
 | Synchronization | Change capture/transfer, conflicts, recovery, expiry and synchronization diagnostics. SVC-010/011. |
 | Administration | Multiple-dataset administration in the next version. Required version-one owner/registration persistence still belongs to setup/synchronization work. |
 
-Current sequence, explicitly requested by the user: finish the Business subdomain requirements and contract discussion first, then implement Business. Continue the other subdomains afterwards. Decisions affecting Business must be resolved even when their context crosses a boundary; this sequence does not remove other version-one requirements or claim full-document approval. The user's implementation instruction applies after the Business discussion is finished; no implementation is started by this documentation update.
+Current sequence, corrected by the user on 2026-10-08: first align the current persistent models, Business services, DAL and fresh-database SQL/seed scripts with confirmed BRD/TRD changes. ReportGroup and configuration naming are explicit prerequisites even though report workflows remain deferred. Then deliver the Business-only WinUI flow against an existing initialized Local database. Connect and complete the Business UI before resuming Administration, Synchronization, Reporting or Setup discussion/implementation. Preserve their recorded requirements as deferred. Reports, Synchronization, Settings and Help are unavailable in this increment. This documentation update does not start application implementation or approve the complete requirements package.
 
 Business reads configuration internally through IConfigOperation. Setup owns external configuration services and user-facing configuration writes. OP-065 and SVC-013 are retired; Business exposes no public configuration service. Business never writes configuration, including when deleting or combining the selected balancing account. Setup owns clearing or changing persisted BalancingAccountId and may expose a remote API. Business resolves configuration locally and returns an absent selection when the referenced account is missing or deleted, without changing the stored value or calling Setup to repair it. Synchronization applies synchronized System configuration.
 
-The frontend owns the unsaved balancing-entry action. Remaining Business discussion: missing/deleted identity and bulk-delete validation behavior; remaining applicable mutation retry/error rules. Resolve one decision at a time. Other-subdomain questions remain outside the current discussion unless Business depends on them.
+The frontend owns the unsaved balancing-entry action. Existing Business UI decisions are sufficient to proceed with the scoped flow; raise only concrete integration gaps or contradictions, not a new broad discovery round. Use stored configuration for Business behavior without implementing Setup editing. Package selection, scope-runner wiring, modal-window integration and refresh wiring are implementation tasks within confirmed behavior. Resolve actual contract gaps when encountered; do not treat deferred-domain questions as prerequisites for this increment.
+
+#### Open-editor account deletion protection — confirmed 2026-10-08
+
+The popup coordinator maintains a UI-only registry keyed by each open existing transaction/template editor. Its account-ID set follows the editor's current entries, including unsaved account selections, and is updated when entries or account selections change. Every UI account-delete action checks this registry before invoking the service; a referenced account cannot be deleted. Closing the editor, including Cancel, removes its registration. Existing service validation independently protects persisted references.
+
+New unsaved transaction/template editors do not register this protection: if an account is independently deleted, their affected entries are removed under the established rule. The registry stores identities only; it does not retain a service scope, DbContext or tracked entity, and creates no persistent lock.
+
+### Business increment integration and acceptance
+
+- Startup assumes an existing Local database with compatible schema, seed data and configuration. Start at the unfiltered newest-300 Ledger. First-use provisioning, migration and online authorization/synchronization flows are deferred.
+- WinUI calls existing Business service contracts in process. Create and dispose a fresh service/DbContext scope per completed logical call; editor state and returned data remain detached. No local WebAPI host is required.
+- Connect the Ledger and transaction/template actions, the five Business catalog trees and their nested pickers/editors, and currencies/rates. Reuse the confirmed table, modal, numeric, date/time, validation and refresh behavior.
+- Implement applicable accepted Business contract changes, including account-name generation reading AccountNameOrder, AccountNameSeparator and AccountNameAddCurrency, without pulling deferred Setup or Reporting functionality into this increment. Read configuration through the existing Business arrangement; do not restore retired OP-065/SVC-013.
+- Verify an end-to-end run on a prepared Local database: startup and Ledger load; transaction add/edit/save/cancel and persisted reload; account-filtered cumulative amount; catalog/picker independent saves and deletion guards; template use; currency/rate editing; orderly exit. Validate changed service contracts and persistence through appropriate existing tests as implementation proceeds.
+- Full-product handoff gaps remain recorded below. They are not automatically blockers for this increment; only gaps affecting its actual execution require resolution.
 
 ## Role and Use-Case Traceability
 
@@ -82,12 +270,12 @@ Each row is a compact manual-test scenario specification: main flow states the a
 | UC | Name / main flow and expected result | Alternative flows / expected result | API/BFF operations |
 | --- | --- | --- | --- |
 | UC-001-01 | Select startup mode: existing LocalDb opens; absent LocalDb shows creating mode. | Recovery pending blocks business access; existence check is not a full validation scan. | OP-001 |
-| UC-001-02 | Check master: enable Create only after confirmed absence. | Existing master or unknown result keeps Create disabled; connection error displayed. | OP-002 |
-| UC-001-03 | Create books: credentials/base currency, register device, five roots/base rate 1, create one base-currency rebalancing account in Account root and select it in System configuration, download local copy. | Missing credentials rejected; failed download means no normal access, Create disabled if master exists; manual Open retry. | OP-003, OP-004 |
+| UC-001-02 | Submit credentials with Continue, check Master and select attachment or creation fields. | Failed/unknown check never means absence. Lost creation response requires manual Retry check before another creation. | OP-002/003/004; Windows UI integration |
+| UC-001-03 | Absent Master: same-dialog explicit base currency and precisions 0–4/defaults 2/4, then Create; initialize six roots/balancing account and register/download. | Back before creation preserves values. Existing Master attaches; partial created-Master failure is preserved. Sixth root identity TQ-16. | OP-003/004; PM-001/011/012 |
 | UC-002-01 | Open existing local books without internet/sign-in. | Pending recovery/confirmed expiry follow their dedicated flows. | OP-001 |
-| UC-002-02 | Setup Open: authenticate existing owner, register and obtain complete LocalDb; remember authorization. | Invalid credentials or download failure shows error; retry manually, no bookkeeping without LocalDb. | OP-004 |
+| UC-002-02 | Existing-Master route after Continue authenticates/registers/downloads and remembers authorization. | Invalid credentials or failed/cancelled download returns Setup with values; retries manual; no business access without Local copy. | OP-004; Windows UI integration |
 | UC-002-03 | After reinstall, register a new local copy. | Old registration remains under normal 90-day expiry, not reused. | OP-004 |
-| UC-003-01 | Merge category groups: choose source/destination; move source elements/children, delete source, show updated tree. Same behavior applies to other group types. | Descendant destination/root source rejected; parent/ancestor/root destination permitted; incoming unique-name collisions repeatedly append `_1`. Post-merge highlighted selection is not prescribed by BRD. | OP-005, OP-007 |
+| UC-003-01 | Merge category groups: choose source/destination; move source elements/children, delete source, show updated tree. Same behavior applies to other group types. | Descendant destination/root source rejected; parent/ancestor/root destination permitted; incoming unique-name collisions repeatedly append `_1`. After a successful merge, select the destination group and scroll it into view, expanding its ancestor path as needed (BRD Main Navigation). | OP-005, OP-007 |
 | UC-003-02 | View a same-type tree including root and direct root elements. | Root not duplicated as its own child; three common columns, plus CurrencyName for the account tree. | OP-005, OP-009, OP-062 |
 | UC-003-03 | Create/edit non-root group; trim and validate Name/Description; save. | Blank/duplicate sibling name or root edit rejected; Description optional. | OP-005, OP-006 |
 | UC-003-04 | Move non-root group and display new hierarchy. | Cross-type/cycle move rejected; individual forbidden name collision rejected. | OP-005, OP-006 |
@@ -101,26 +289,26 @@ Each row is a compact manual-test scenario specification: main flow states the a
 | UC-004-06 | Create account with currency/group, optional classifications and generated or edited name. | Missing required values rejected; duplicate Account Name allowed; missing classification slots keep separators. | OP-009, OP-022, OP-025 |
 | UC-004-07 | Edit/move account or reclassify it; future reports use current classification. | Currency immutable after the first successful account save; classification changes do not rename account. | OP-009, OP-022 |
 | UC-004-08 | Delete unreferenced account. | Any transaction/template use still referenced blocks deletion even at zero balance. | OP-023 |
-| UC-004-09 | Restore Account Name using current Local format/classification names. | No bulk rename; all absent produces separator twice. Existing names untouched unless explicitly saved. | OP-025, OP-022 |
-| UC-005-01 | Enter balanced transaction with at least two accounts; save activates automatically. | Blank Amount is zero; repeated accounts/zero entries allowed; invalid time/rate/missing account rejected; fewer than two valid entries saves as Draft; overflow shows error without changing existing data. | OP-026, OP-027, OP-057–OP-060, OP-061 |
+| UC-004-09 | Restore Name from Local naming order/separator/current classifications and optional account-currency suffix. | Blank new Name uses default on Save; explicit Restore is one-time; existing/manual names do not auto-change. All-empty checked slash name //(UAH). CurrencyId input retained; AccountNameAddCurrency is read from LocalConfig, not passed by the caller. CurrencyId may be null when AccountNameAddCurrency is false; a valid currency is required when true. | OP-025/022; PM-012 |
+| UC-005-01 | Enter balanced transaction with at least two valid entries; save activates automatically. | Blank Amount is zero; repeated accounts/zero entries allowed; invalid time/rate/missing account rejected; fewer than two valid entries saves as Draft; overflow shows error without changing existing data. | OP-026, OP-027, OP-057–OP-060, OP-061 |
 | UC-005-02 | Save a new or existing transaction with zero/one valid entry or an unbalanced total as Draft; exclude from calculations and show a persistent Draft warning. | Every present entry requires a valid account, positive rate (base rate 1) and numeric amount, including zero. Date and numeric validation still apply; a previously Confirmed transaction may return to Draft. | OP-027 |
 | UC-005-03 | Edit and save under PM-006; after commit, read fresh complete data for displayed transaction IDs and refresh cumulative amounts. | Invalid data rejects without changes; Draft transitions follow PM-006. If the edited row no longer matches, remove it and warn without refilling the vacant place. Navigation performs a fresh capped query. The exact displayed-ID refresh contract remains TQ-05. | OP-026/027/057–060; refresh operation assignment unresolved |
 | UC-005-04 | Delete one transaction or all transactions matching a validated filter; recalculated totals omit deleted Confirmed transactions. | Validate filter criteria before mutation. No matches is success; a database failure rolls back all affected aggregates and sync flags and raises a critical exception. The five filter variants are defined by OP-064/066–069. | OP-028, OP-064/066–069 |
 | UC-005-05 | Duplicate transaction values with time now; review/save. | Cancel saves nothing; date change does not replace copied rates. | OP-029, OP-027 |
-| UC-005-06 | Restore applicable rate or calculate account balances on demand. | Base rate stays 1; changing date alone never rewrites stored rates. | OP-030, OP-031, OP-061 |
+| UC-005-06 | Restore applicable rate or calculate account balances on demand. | Base rate 1; changing date does not replace rates. Accounts UI is management-only; filtered Ledger displays last matching entry cumulative amount. Existing balance API retained. | OP-030/031/061 |
 | UC-006-01 | Create/edit empty, single-entry or unbalanced template with unique Name and optional Description; Description is visible and independently editable. | Every existing entry needs account; account currency was already fixed at account creation. | OP-009, OP-033 |
 | UC-006-02 | Apply template into transaction editor with applicable rates/Description. | Zero/single-entry or unbalanced results may save as Draft with a warning; every present entry must be valid. User may repair now, save for later, or cancel. | OP-034, OP-027 |
 | UC-006-03 | Create template from active transaction or draft, copying accounts/amounts/Description. | Target group/name must satisfy template rules. | OP-036, OP-033 |
 | UC-006-04 | Delete template through its normal lifecycle. | Uses the shared entity deletion rules and aggregate lifecycle; failures leave the entire operation unchanged. | OP-035 |
-| UC-007-01 | Select report classifications and run on-demand signed totals with dates/grouping. | Empty selection in any dimension produces empty result/warning; drafts excluded; mixed-currency columns obey BR-027. | OP-005, OP-009, OP-037 |
-| UC-007-02 | Check/uncheck groups and override descendants; partial groups display −. | Group toggle clears descendant editor overrides; no saved JSON rewrite until Save. | OP-005, OP-009, OP-037 |
-| UC-008-01 | Save report instructions/name; default `yyyy-MM-dd HH:mm:ss`; duplicate names allowed. | Empty/whitespace-only name rejected. | OP-039 |
+| UC-007-01 | Run saved report through period popup, then readonly signed result and optional CSV. | Persist dates only before calculation; From > To blocks Run. Date/group/currency rules BR-026/027; empty classification selection names warning; no drill-through. | OP-070/037; DTO-036/014 |
+| UC-007-02 | Choose classification checks in readonly full-tree popup with independent Unassigned/Root and partial/inherited descendants. | Root excludes Unassigned; search leaves checks; no favorites/catalog mutation. OK returns pending choices, Cancel keeps previous choices. | OP-005/009/037; Windows UI integration |
+| UC-008-01 | Save report Name/ReportGroup/Favorite/instructions; default yyyy-MM-dd HH:mm:ss; duplicates allowed. | Blank Name rejected; common group/picker/favorite rules apply. Group/favorite/order fields follow shared catalog conventions; projection alignment remains TQ-16. | OP-039; PM-001/010 |
 | UC-008-02 | Reopen saved report on actual hierarchy; apply explicit choices, even redundant after moves. | Ignore missing identities; reapply if they return; never rewrite saved JSON just by reading/running. | OP-038, OP-037 |
-| UC-008-03 | Rename/edit/resave report; recalculate minimal include/exclude IDs from current choices only on user save. | Changing hierarchy alone must not trigger this recalculation. | OP-038, OP-039 |
+| UC-008-03 | Full settings Save normalizes edited selection; period Run updates From/To alone. | Read/run/hierarchy and period save never normalize saved identities/overrides or change other settings. | OP-038/039/070 |
 | UC-008-04 | Delete saved instructions only. | Accounts/transactions untouched; calculated results were not persistent business data. | OP-040 |
-| UC-009-01 | Read/edit System or Local settings; System synchronizes, Local stays per copy. | Base currency/AmountPrecision/RatePrecision immutable after creation; display follows AmountPrecision/RatePrecision; local naming order six permutations/default Correspondent-Category-Project, separator `/`, one non-whitespace character; one sync trigger only. | OP-041, OP-042, OP-055, OP-056 |
-| UC-009-02 | Manual sync with remembered authorization on any connection. | Queue/wait message and editing block; Cancel allowed; authentication mechanism TQ-03. | OP-043–OP-047 |
-| UC-009-03 | Automatic on-start/on-exit sync starts only on Wi-Fi. | Wi-Fi-started transfer may continue over mobile; startup failure permits ordinary offline work except recovery; exit failure permits closure. | OP-043–OP-047 |
+| UC-009-01 | Staged Settings This device/Shared with Save/Cancel and unsaved navigation/exit prompt. | Immutable values readonly; balancing nullable/base-only; Add currency initially false; separator normalizes; failed Save retains entered/prior saved values. One Setup call commits both sections atomically under OP-072. | OP-071/072; Windows UI integration |
+| UC-009-02 | Manual Sync now/Retry recovery, modal stages/Cancel; close progress then auto-show latest summary for all outcomes. | Editing blocked while waiting/running/handling cancel; cancellation awaits service; recovery/expiry gates retained. | OP-043–050; Windows UI integration |
+| UC-009-03 | Automatic start/exit sync obeys connectivity/trigger rules and summary/navigation flow. | Startup access depends on recovery/expiry; successful exit may wait for correction/conflict summary; failed/canceled exit offers Retry/Exit/Cancel exit. | OP-043–050; Windows UI integration |
 | UC-009-04 | Resolve whole-item conflicts by priority, validity overriding; restore dependencies, deduplicate currencies and rename conflicts. | Unresolvable valid-result failure explains/logs; no weakened accounting/currency-immutability rules. No content-field merge; catalog ordering follows its separate contract. | OP-043, OP-045, OP-052 |
 | UC-009-05 | No-change sync renews registration without business transfer; any new entity with EditRevision null or any Content or Order bit means local changes exist. | Master changed means download even when local unchanged. | OP-043, OP-044, OP-047 |
 | UC-010-01 | Resolve uncertain operation outcome before replay/discard. | Unreachable retains pending state; business access blocked; never duplicate published batch. | OP-044, OP-048 |
@@ -128,8 +316,8 @@ Each row is a compact manual-test scenario specification: main flow states the a
 | UC-010-03 | Cancel recovery or lose communication. | Pending state/access block persists; published master never rolled back; expiry overrides. | OP-044, OP-045, OP-048 |
 | UC-011-01 | On confirmed 90-day expiry delete old copy/unsynced work and offer Download. | No viewing/export/preservation; preserve Local configuration; no automatic fresh download. | OP-044, OP-049 |
 | UC-011-02 | User selects Download for fresh registered local data. | Any connection allowed; download failure leaves no usable copy. | OP-049, OP-047 |
-| UC-012-01 | View latest session sync report with received change counts/conflicts/errors. | Omit zeros/uploads; new attempt replaces report; app close discards report. | OP-050 |
-| UC-012-02 | Write detailed failure logs in log folder; clean after 7 days. | No Share/Export capability selected; cleanup execution mechanism TQ-08. | OP-051, OP-052 |
+| UC-012-01 | Readonly latest-session sync summary of received counts/conflicts/corrections/errors and optional TXT Save to file. | Omit zeros/uploads; new attempt replaces result, closure discards it. Summary export differs from detailed diagnostic-log export. | OP-050; Windows UI integration |
+| UC-012-02 | Detailed failure logs with seven-day cleanup. | Diagnostic Share/Export unselected; confirmed TXT summary export remains allowed. Cleanup TQ-08. | OP-051/052 |
 
 ## Persistent Model Schemas
 
@@ -141,7 +329,7 @@ Confirmed identity for persistent business entities (PM-001–PM-010): `Id: uuid
 
 #### Favorite flags — confirmed 2026-09-28
 
-PM-001, PM-002, PM-003, PM-005 and PM-008 include required persisted IsFavorite: bool for each group, element or currency, defaulting to false on creation. Users can mark/unmark favorites on non-root groups, elements and currencies and filter by that flag in the first release. All five root groups have IsFavorite fixed to false; UI must not offer a favorite toggle for them, and save/sync validation must preserve this invariant regardless of conflict priority. Changing IsFavorite adds ModificationType.Content, preserves any Order bit, and uses the shared EditRevision content-conflict rules, including the same-Local priority exception. IsFavorite does not use the special Local-wins Order policy. Template favorites participate in whole-template content synchronization. No inheritance/cascade to descendants is selected. Favorites filtering retains the ancestor path to matching favorite groups/elements, including non-favorite parents and the root as needed. These ancestors are navigation context only, not favorite matches; no flags or sync metadata change merely because the path is displayed. Opening a favorite group does not bypass the active favorites filter: show only favorite descendants, plus non-favorite ancestor groups needed to reach them. Other non-favorite children remain hidden; favorite status is not inherited.
+PM-001, PM-002, PM-003, PM-005 and PM-008 include required persisted IsFavorite: bool for each group, element or currency, defaulting to false on creation. Reports use the same required persisted IsFavorite bool, default false, under BR-028/044 and the confirmed PM-010 contract. Users can mark/unmark favorites on non-root groups, elements and currencies and filter by that flag in the first release. All six root groups have IsFavorite fixed to false; UI must not offer a favorite toggle for them, and save/sync validation must preserve this invariant regardless of conflict priority. Changing IsFavorite adds ModificationType.Content, preserves any Order bit, and uses the shared EditRevision content-conflict rules, including the same-Local priority exception. IsFavorite does not use the special Local-wins Order policy. Template favorites participate in whole-template content synchronization. No inheritance/cascade to descendants is selected. Favorites filtering retains the ancestor path to matching favorite groups/elements, including non-favorite parents and the root as needed. These ancestors are navigation context only, not favorite matches; no flags or sync metadata change merely because the path is displayed. Opening a favorite group does not bypass the active favorites filter: show only favorite descendants, plus non-favorite ancestor groups needed to reach them. Other non-favorite children remain hidden; favorite status is not inherited.
 
 Catalog DTO projections/mutations expose IsFavorite and parent/group identities. Favorites filtering is the frontend responsibility: retain favorite rows and the ancestor paths needed to reach them, without changing stored flags. No Business filtering operation is required. Favorites filtering does not change persisted collection Order or the separate subgroup/element sequence rules.
 
@@ -164,13 +352,13 @@ Local flag rules (confirmed 2026-09-28; creation rule updated 2026-10-01):
 
 These flags are per entity, not per collection. TransactionEntry/TemplateEntry Position remains part of parent aggregate content: changing entry positions marks the parent Content, not independent entry Order flags. Edits to unordered tracked entities use Content only; creation uses None. IsModified is no longer stored; if a convenience indicator is needed, ModificationType != None indicates edits not yet captured in a batch, not new creations or all pending synchronization work.
 
-Confirmed change-detection rule (updated 2026-10-01): synchronization is pending when at least one durable outgoing batch exists OR any tracked entity has EditRevision null OR any tracked entity has ModificationType != None. EditRevision null identifies an entity awaiting batch capture even when ModificationType is None: a live row needs creation capture, while a row with DeleteRevision 0 needs local cleanup. Flags represent subsequent edits not yet captured in a batch; queued batches remain pending even when all entity flags are None. Content alone, Order alone, and Content | Order all qualify. Include pending ordering changes in synchronization even when no Content bits are set; an order-only edit cannot take the no-local-change path. Transfer only the applicable change semantics: an Order bit does not authorize overwriting content. Wire shape and detection implementation remain TQ-04/TQ-12. Normalization during accepted snapshot preparation is not a new local edit. Master prepares changes on a copy before publication. Local batch capture updates tracking metadata atomically before sending, as specified below; it does not imply Master acceptance. Separate order synchronization remains an explicit exception to previous whole-item wording; BRD alignment must be reviewed before full TRD approval, and BRD is unchanged here.
+Confirmed change-detection rule (updated 2026-10-01): synchronization is pending when at least one durable outgoing batch exists OR any tracked entity has EditRevision null OR any tracked entity has ModificationType != None. EditRevision null identifies an entity awaiting batch capture even when ModificationType is None: a live row needs creation capture, while a row with DeleteRevision 0 needs local cleanup. Flags represent subsequent edits not yet captured in a batch; queued batches remain pending even when all entity flags are None. Content alone, Order alone, and Content | Order all qualify. Include pending ordering changes in synchronization even when no Content bits are set; an order-only edit cannot take the no-local-change path. Transfer only the applicable change semantics: an Order bit does not authorize overwriting content. Wire shape and detection implementation remain TQ-04/TQ-12. Normalization during accepted snapshot preparation is not a new local edit. Master prepares changes on a copy before publication. Local batch capture updates tracking metadata atomically before sending, as specified below; it does not imply Master acceptance. Separate order synchronization remains an explicit exception to whole-content conflict resolution; BRD 0.218 BR-029 now records this previously accepted exception.
 
 #### Confirmed concrete-entity table layout — 2026-09-27
 
 Each concrete persistent business entity has its own table containing its applicable persistent fields, including inherited fields. Shared base models provide model reuse only; they have no tables or separate base rows. An entity is not split across base and derived tables, and no Kind discriminator combines distinct entity types into one table.
 
-PM-001 expands to five separate tables for AccountGroup, CategoryGroup, CorrespondentGroup, ProjectGroup and TemplateGroup. PM-002 expands to separate Category, Correspondent and Project tables. Account, Currency, CurrencyRate, Transaction, TransactionEntry, Template, TemplateEntry and Report likewise each have their own table. Names here identify entity types; exact physical table naming is not selected. TransactionEntry and TemplateEntry remain owned by their parent for synchronization even though they have separate tables; they do not gain independent sync fields.
+PM-001 includes ReportGroup as the sixth concrete group table under the same shared structure and rules as the other five. Update the initial schema and initial data for fresh databases; no conversion/backfill of existing development reports is required. PM-002 expands to separate Category, Correspondent and Project tables. Account, Currency, CurrencyRate, Transaction, TransactionEntry, Template, TemplateEntry and Report likewise each have their own table. Names here identify entity types; exact physical table naming is not selected. TransactionEntry and TemplateEntry remain owned by their parent for synchronization even though they have separate tables; they do not gain independent sync fields.
 
 This decision describes one table per concrete entity with its own complete field set, not joined base/derived table inheritance. Scalar storage details and ORM configuration remain outside this decision.
 
@@ -219,7 +407,7 @@ A failed or uncertain network attempt retains the saved batch; do not rebuild it
 
 For each newly accepted delta batch identified by SyncKey, Master allocates the next monotonically increasing int64 merge revision within that MasterDatasetKey. Several new batches in one HTTP request produce separate snapshots with consecutive Revisions in processing order; Local downloads only the final resulting snapshot. Replaying an already accepted SyncKey reuses its recorded outcome and revision; it neither allocates a new Revision, produces another snapshot nor reapplies changes. Every entity whose content changes in a batch receives that same revision. For example, with current merge revision 15, a batch creating A, editing B and deleting C assigns EditRevision 16 to all three; unchanged entities retain earlier values. A newly accepted batch with no content changes still produces its snapshot Revision, but changes no entity EditRevision.
 
-The accepted batch outcome records the association between its merge revision, LocalDatasetKey and SyncKey, scoped to MasterDatasetKey. Entity revision equality remains the basis for detecting stale content. These records must remain available while needed to resolve the source of a current entity EditRevision and to recognize retried SyncKeys. Exact storage, safe retention/compaction and allocation/publication atomicity remain TQ-04. The confirmed same-Local exception above uses this association; BRD priority wording requires alignment before full approval. No LastContentLocalDatasetKey property on every entity is required by this revision decision.
+The accepted batch outcome records the association between its merge revision, LocalDatasetKey and SyncKey, scoped to MasterDatasetKey. Entity revision equality remains the basis for detecting stale content. These records must remain available while needed to resolve the source of a current entity EditRevision and to recognize retried SyncKeys. Exact storage, safe retention/compaction and allocation/publication atomicity remain TQ-04. The confirmed same-Local exception above uses this association; BRD 0.218 BR-029 now records this previously accepted exception. No LastContentLocalDatasetKey property on every entity is required by this revision decision.
 
 #### Confirmed snapshot versions and deletion acknowledgement
 
@@ -238,7 +426,7 @@ Shared text-field semantics (confirmed 2026-09-28): Name is mandatory for named 
 
 #### Precision and user-requested balancing — confirmed 2026-09-28
 
-Base currency, AmountPrecision and RatePrecision are selected at dataset creation and stored in SystemConfiguration. They cannot be changed later through settings or synchronization. Amounts (including template amounts) use AmountPrecision; stored entry and currency-catalog rates use RatePrecision. Derived BaseAmount rounds Amount × Rate to AmountPrecision using midpoint-to-even, then transaction validation sums the rounded BaseAmounts. Display amounts and BaseAmount with AmountPrecision and rates with RatePrecision; there is no separate DisplayDecimalPlaces setting. SQLite stores persisted Amount and Rate values as signed 64-bit INTEGER scaled by 10,000, independent of the configured AmountPrecision/RatePrecision. Normalize input to its configured precision first, then multiply by 10,000 exactly and validate the integer range before storage. Read by dividing by 10,000 using decimal arithmetic. Example: Amount 12.34 with AmountPrecision=2 stores 123400; Rate 1.2345 with RatePrecision=4 stores 12345. Domain values and calculations remain decimal, not floating-point; BaseAmount remains derived and is not stored. The representable storage interval is -922337203685477.5808 through 922337203685477.5807, further restricted to the configured precision and positive-rate rule. This storage range does not guarantee products or totals fit. Confirmed calculation policy (2026-10-01): use C# decimal arithmetic for products, per-entry rounding and sums. Reject an operation if an input/conversion/intermediate product or total exceeds the supported decimal calculation range, or a normalized persisted Amount/Rate cannot fit the signed int64 scaled storage range. Do not wrap, clamp, switch to floating point or persist a partial result. Mutation failures leave existing data and synchronization flags unchanged; read calculations fail without returning misleading totals. Derived BaseAmount and aggregate totals are bounded by decimal calculations, not by the scaled storage interval unless they are subsequently used as a persisted Amount. No additional arbitrary business amount cap is imposed. Configured precision, midpoint-to-even rounding, positive-rate and base-rate rules still apply.
+Base currency, AmountPrecision and RatePrecision are selected at dataset creation and stored in SystemConfiguration. They cannot be changed later through settings or synchronization. AmountPrecision governs amount and BaseAmount calculation and display, including template amounts. RatePrecision governs rate precision for calculation and display, including stored entry and currency-catalog rates. Derived BaseAmount rounds Amount × Rate to AmountPrecision using midpoint-to-even, then transaction validation sums the rounded BaseAmounts. Display amounts and BaseAmount with AmountPrecision and rates with RatePrecision; there is no separate DisplayDecimalPlaces setting. SQLite stores persisted Amount and Rate values as signed 64-bit INTEGER scaled by 10,000, independent of the configured AmountPrecision/RatePrecision. Normalize input to its configured precision first, then multiply by 10,000 exactly and validate the integer range before storage. Read by dividing by 10,000 using decimal arithmetic. Example: Amount 12.34 with AmountPrecision=2 stores 123400; Rate 1.2345 with RatePrecision=4 stores 12345. Domain values and calculations remain decimal, not floating-point; BaseAmount remains derived and is not stored. The representable storage interval is -922337203685477.5808 through 922337203685477.5807, further restricted to the configured precision and positive-rate rule. This storage range does not guarantee products or totals fit. Confirmed calculation policy (2026-10-01): use C# decimal arithmetic for products, per-entry rounding and sums. Reject an operation if an input/conversion/intermediate product or total exceeds the supported decimal calculation range, or a normalized persisted Amount/Rate cannot fit the signed int64 scaled storage range. Do not wrap, clamp, switch to floating point or persist a partial result. Mutation failures leave existing data and synchronization flags unchanged; read calculations fail without returning misleading totals. Derived BaseAmount and aggregate totals are bounded by decimal calculations, not by the scaled storage interval unless they are subsequently used as a persisted Amount. No additional arbitrary business amount cap is imposed. Configured precision, midpoint-to-even rounding, positive-rate and base-rate rules still apply.
 
 For any nonzero current total, the editor offers Add balancing entry. On an explicit click, append an entry using the configured account whose currency is the base currency, Amount = -total, Rate = 1 and derived BaseAmount = -total. Recalculate the whole transaction and require exactly zero for confirmation; all other save rules still apply. No tolerance or maximum-difference threshold is imposed. The user can alternatively add this entry manually. The frontend calculates and appends this entry to the unsaved transaction, using the configured precision, midpoint-to-even rounding and balancing-account selection. No separate Business operation is required. The normal save action persists it after Business validates all entries and derives Draft or Confirmed state. Subsequent edits can create a new imbalance and must be revalidated. No entry is added silently.
 
@@ -246,7 +434,7 @@ The balancing-account selection is stored in synchronized SystemConfiguration (P
 
 ### PM-001 — Group
 
-Purpose: five same-type hierarchies, BR-006–BR-009. Confirmed model approach: AccountGroup, CategoryGroup, CorrespondentGroup, ProjectGroup and TemplateGroup are separate derived models sharing a common group base. Equal current field sets do not collapse them into one model with a Kind enum. PM-001 describes their shared contract, not an instantiable generic group record. Each model has parent/children of its own group type and elements of its corresponding element type. Shared identifier above. The confirmed concrete-entity table layout applies.
+Purpose: six same-type hierarchies, including Reports/ReportGroup, BR-006–BR-009/028. ReportGroup uses the same common group fields, relationships, ordering, favorites, validation and lifecycle as the other five group types, confirmed 2026-10-08. Confirmed model approach: AccountGroup, CategoryGroup, CorrespondentGroup, ProjectGroup, TemplateGroup and ReportGroup are separate derived models sharing a common group base. Equal current field sets do not collapse them into one model with a Kind enum. PM-001 describes their shared contract, not an instantiable generic group record. Each model has parent/children of its own group type and elements of its corresponding element type. Shared identifier above. The confirmed concrete-entity table layout applies.
 
 | Property | Canonical type | Nullability | Constraints / relationship | Source/status |
 | --- | --- | --- | --- | --- |
@@ -254,7 +442,7 @@ Purpose: five same-type hierarchies, BR-006–BR-009. Confirmed model approach: 
 | Name | string | Required | Trim/nonblank; sibling uniqueness; fixed root label | BR-006/008; proposal |
 | Description | string | Nullable | Optional; root immutability still applies | BR-009; confirmed |
 
-Confirmed root identities (2026-09-27): initialize exactly these five root groups when creating the business database. The IDs are hardcoded, never generated per device or per database, and remain identical across Master and Local copies. Each root has ParentId equal to its own Id and is excluded from its own Children. Existing root immutability rules remain binding. These persistent identity constants must not change for existing databases without migration.
+Retain the five confirmed root identities below. BRD 0.177 requires six initialization roots; ReportGroup now has its own fixed root identity recorded below and used by initialization constants and seed data. Do not reuse one of the five existing constants. The IDs are hardcoded, never generated per device or per database, and remain identical across Master and Local copies. Each root has ParentId equal to its own Id and is excluded from its own Children. Existing root immutability rules remain binding. These persistent identity constants must not change for existing databases without migration.
 
 | Root group | Fixed Id (GUID) |
 | --- | --- |
@@ -263,6 +451,7 @@ Confirmed root identities (2026-09-27): initialize exactly these five root group
 | CorrespondentGroup | 9C19A1FE-9C57-4703-9105-79075987EE45 |
 | ProjectGroup | 7C9385F6-28F2-4947-8B44-E81DD8D01949 |
 | TemplateGroup | B232A84F-47D8-426E-AA54-BA8771B8B6DE |
+| ReportGroup | 8FD28CC7-69B2-441C-A27B-C85F56DF0D44; fixed in RootsIds and initial seed data, identical on Master and Locals |
 
 Source values: [RootsIds.cs](../../backend/Business.Models/Constants/RootsIds.cs), confirmed by the requesting user. IsRoot is a derived boolean: true exactly when a group Id equals the fixed root Id for that group type. It is not a persistent field and is not independently editable or synchronized. DTO projections may expose this read-only derived value. An extension method is an implementation option, not a required technical contract.
 
@@ -343,13 +532,13 @@ Confirmed state representation (2026-09-27):
 
 - `Undefined = 0`: unset/uninitialized state, replacing the legacy name NoValid. It is not a valid persisted transaction state; a successful save must determine Draft or Confirmed under the rules below.
 
-- `Draft = 1`: transaction with fewer than two entries or a nonzero rounded base total, excluded from all accounting balances, totals and reports. Zero entries or one valid entry are permitted. Every present entry must have an existing account, valid positive rate (base rate 1) and numeric amount, including zero. Date and numeric validation remain mandatory. UI shows a persistent Draft warning. Both Add and Update may save Draft, including a previously Confirmed transaction; removing its accounting contribution is part of the saved state change. Draft relaxes entry count and balance only, not entry validity.
+- `Draft = 1`: transaction with fewer than two entries or a nonzero rounded base total, excluded from all accounting balances, totals and reports. Any number of entries, including zero, is permitted; Drafts have no separate entry-count limit. Every present entry must have an existing account, valid positive rate (base rate 1) and numeric amount, including zero. Date and numeric validation remain mandatory. UI shows a persistent Draft warning. Both Add and Update may save Draft, including a previously Confirmed transaction; removing its accounting contribution is part of the saved state change. Draft relaxes entry count and balance only, not entry validity.
 - `Planned = 2`: reserved for future valid transactions excluded from accumulated balances and reports. No first-release creation, selection or transition workflow is enabled for this state. This reservation does not add planned-transaction functionality to BRD scope.
 - `Confirmed = 3`: valid transaction included in balances and reports. This is the stored representation of BRD's active transaction. Saving a complete balanced transaction automatically produces Confirmed; saving fewer than two valid entries or an unbalanced edit returns it to Draft. Invalid entries, dates or numeric values are rejected in either state.
 
 Balance means the exact sum of per-entry rounded BaseAmount values is zero. Entry count is the number of entries, not an Amount value or a count of distinct accounts; repeated accounts remain permitted. Values 0, 1, 2 and 3 are explicit; no additional valid persisted state is selected by this decision.
 
-Shared Id/sync tracking. Owns 2+ PM-007 on any persisted save; entry mutation only through whole transaction. Lifecycle create/draft/activate/edit/delete with valid rules; cached account-currency cumulative amounts follow PM-007. Concurrency whole aggregate; sync tracking shared.
+Shared Id/sync tracking. Owns zero or more PM-007 entries. Drafts have no separate entry-count limit; every present entry must be valid, including a mandatory existing Account, valid rate and numeric amount. Confirmed transactions require at least two valid entries and an exactly balanced total. Entry mutation occurs only through the whole transaction. Lifecycle create/draft/activate/edit/delete with valid rules; cached account-currency cumulative amounts follow PM-007. Concurrency whole aggregate; sync tracking shared.
 
 ### PM-007 — TransactionEntry
 
@@ -433,14 +622,17 @@ Generated row Id; no entry ID in the mutation DTO. Aggregate edits replace all o
 
 ### PM-010 — Report
 
-Review scope decision (2026-09-30): the existing Id, Name and Json are sufficient for the current report model discussion; required shared synchronization metadata remains unchanged. Detailed reporting and the Json format, including any format-version field, will be discussed separately. No JSON format-version field is selected. This postpones reporting clarification, not the existing reporting feature requirements. Current work focuses on local editing and synchronization.
+BRD 0.177 extends Report to ReportGroup membership and favorites with saved instructions/period and readonly results/export. The earlier Id/Name/Json-only discussion limit is superseded. Report GroupId, IsFavorite and Order follow the same catalog conventions as the other catalogs, confirmed 2026-10-08. JSON serialization remains unresolved; no JSON version field is selected.
 
 | Property | Canonical type | Nullability | Constraint / relationship | Source/status |
 | --- | --- | --- | --- | --- |
 | Name | string | Required | Nonblank; default yyyy-MM-dd HH:mm:ss; duplicates allowed | BR-028; proposed |
 | Json | string | Required | JSON shape defined by DTO-012; instructions only, no result cache | BR-025/028 and user JSON direction; shape proposed |
+| GroupId | uuid | Required | One ReportGroup; root may contain reports | Confirmed 2026-10-08: same required group identity convention as other catalogs |
+| IsFavorite | bool | Required | Default false; ordinary content synchronization | Confirmed 2026-10-08: same required bool/default-false convention as other catalogs |
+| Order | int32 | Required | Shared separate zero-based catalog ordering and synchronization rules | Confirmed 2026-10-08: same ordering convention as other catalogs; initialize fresh data, no legacy-report migration |
 
-Shared Id/sync tracking. Referenced group/element identities are soft references, do not protect deletion. Read/run never normalizes persisted instructions; save recalculates minimal override lists from edited actual state. Missing identities retained until explicit save may remove obsolete references. Rename-only handling must preserve definition unless owner saves changed selection; exact mutation shape TQ-05. Concurrency/sync tracking shared.
+Shared Id/sync tracking. Referenced group/element identities are soft references, do not protect deletion. Read/run never normalizes saved classification instructions; full settings Save recalculates minimal override lists from edited actual state. A pre-run period save changes only From/To and preserves all other values and saved IDs/overrides. Missing identities retained until explicit save may remove obsolete references. Rename-only handling must preserve definition unless owner saves changed selection; exact mutation shape TQ-05. Concurrency/sync tracking shared.
 
 ### PM-011 — SystemConfiguration
 
@@ -468,19 +660,20 @@ Configuration entity references are ID-only: BaseCurrencyId and nullable Balanci
 | LocalDatasetKey | string | Required | Local copy identity generated with Guid.NewGuid().ToString() when registering a new Local copy; stored in LocalConfiguration and registered on Master. Preserve through synchronization database replacement; a fresh installation gets a new key. Not the configuration primary key. | BR-001/005; name, type, placement and lifecycle confirmed 2026-09-29 |
 | SnapshotRevision | int64 | Required; default 0 | Successfully installed snapshot Version; placement here proposed | Confirmed 2026-09-27 |
 | AccountNameOrder | enum | Required | Stored component order; AccountNameOrder values are defined in the confirmed enum table below: Undefined = 0 and six component permutations = 1–6. Default CorrespondentCategoryProject = 1. | BR-012; enum and property renamed, Undefined and numeric values confirmed 2026-09-30 |
-| DefaultAccountNameSeparator | string | Required | Stored separator; exactly one non-whitespace character; default /; Unicode counting TQ-01 | BR-012; stored setting/name confirmed 2026-09-29; type proposed |
+| AccountNameSeparator | string | Required | Stored separator; one non-whitespace character; UI empty/whitespace defaults to / on focus loss or Save; Unicode counting TQ-01 | BR-012; stored setting/name confirmed 2026-09-29; type proposed |
+| AccountNameAddCurrency | bool | Required | Local flag, default false, append selected account currency identifier | LocalConfig property name and bool type confirmed 2026-10-08; required with existing default false; BR-005/012 |
 | SyncTrigger | enum | Required | ManualOnly = 0, OnStart = 1, OnExit = 2; default ManualOnly | BR-034; names and numeric values confirmed 2026-09-30 |
 | ConflictPriority | enum | Required | Undefined = 0, Master = 1, Local = 2; default Local | User correction 2026-09-30 supersedes BR-029 default; names and numeric values confirmed 2026-09-30 |
 
-Confirmed account-name format (2026-09-29): derive the default format from stored AccountNameOrder and DefaultAccountNameSeparator; do not persist a separate DefaultAccountName format string.
+Confirmed account-name format (2026-09-29): derive the format from stored AccountNameOrder and AccountNameSeparator, with the Local Add currency behavior. Do not persist a separate format string. LocalConfig.AccountNameAddCurrency supplies the flag; all-empty checked slash format is //(UAH), unchecked is //.
 
-Default ConflictPriority is Local (user correction, 2026-09-30), matching the existing code. This changes only the initial preference; existing conflict-resolution and validity rules remain. BRD 0.49 BR-029 still states default Master and requires alignment before full approval.
+Default ConflictPriority is Local (user correction, 2026-09-30), matching the existing code. This changes only the initial preference; existing conflict-resolution and validity rules remain. The user reaffirmed Local as the default on 2026-10-08; BRD 0.218 BR-029 is aligned.
 
 Exactly one LocalConfig row per local copy. Local generates its Id once. Preserve the row and its identity through database replacement; never merge or synchronize it with Master configuration. No login/password assumed here. Lifecycle initialize/update locally. Local settings use the confirmed single-application editing scope; transaction integrity remains TQ-02 and auditing remains unresolved. Defaults/format constraints are confirmed business rules; physical columns are proposals.
 
 #### Confirmed model enums — 2026-09-30
 
-The requesting user confirmed the current Business.Models enums as the source for these names and numeric values. These are explicit stable assignments, not declaration-order assumptions. AccountNameOrder replaces DefaultAccountNameOrder as both the enum name and the Local configuration property name; DefaultAccountNameSeparator is unchanged. The corresponding DTO-015 property uses AccountNameOrder too. Undefined is an unset sentinel, not a seventh component permutation or a third conflict source. This confirmation does not enable the reserved Planned transaction workflow or change existing defaults.
+The requesting user confirmed the current Business.Models enums as the source for these names and numeric values. These are explicit stable assignments, not declaration-order assumptions. AccountNameOrder replaces DefaultAccountNameOrder as both the enum name and the Local configuration property name; The later 2026-10-08 naming decision uses AccountNameSeparator and AccountNameAddCurrency for the separator and currency flag; AccountNameOrder remains unchanged. The corresponding DTO-015 property uses AccountNameOrder too. Undefined is an unset sentinel, not a seventh component permutation or a third conflict source. This confirmation does not enable the reserved Planned transaction workflow or change existing defaults.
 
 | Enum | Names and numeric values | Usage / default |
 | --- | --- | --- |
@@ -538,6 +731,10 @@ Retain active/download-needed versions. Delete superseded versions only when no 
 
 Logs and session reports are not extra synchronized business tables. Logs are files in log folder, seven-day retention; latest sync report is session memory only (BR-043).
 
+Windows diagnostic logs: the application creates a Logs directory beside its executable, resolving it from the executable location rather than the process working directory. Write one UTF-8 text file per day named yyyy-MM-dd.log, with English technical messages and business text preserved in its original language. Use device-local calendar dates for daily filenames and local timestamps with their UTC offset inside entries. Retain today's log file and the previous six local calendar dates; remove older dated log files at application startup and once daily while the application remains open. Never log passwords, authentication tokens or authorization headers. Include operation names and error details, excluding those sensitive values.
+
+The first Windows version runs unpackaged from a writable folder, as confirmed by the requesting user, 2026-10-07. Target Windows 11 only initially; Windows 10 support is not required. Use the same .NET major version as the existing backend. Use stable Windows App SDK and CommunityToolkit.Mvvm releases with explicit package versions, excluding preview packages. Exact compatible version pins and minimum Windows 11 build remain to be selected. This permits the application-created Logs directory beside the executable. Do not use MSIX deployment for this first-version delivery. Distribute a ZIP containing the application folder; the user extracts it into a writable location and runs the executable. Bundle the .NET and Windows App SDK runtimes with the application so these runtimes do not require separate installation. Use ordinary managed .NET compilation without Native AOT, and publish an x64 application ZIP for the first Windows release, including matching native/runtime dependencies. Native ARM64 and 32-bit packages are not part of this initial delivery. Store the Windows application local SQLite database in a Data directory beside the executable. The release ZIP contains application files and runtimes, but no user database, logs or personal settings. Updates are manual in version one: close the app and replace application files while preserving data, logs and settings. Do not provide a built-in updater. Existing UI-preference storage under the Windows user profile remains unchanged. Database compatibility checks and automatic all-or-nothing supported migrations follow the confirmed migration rule; remaining supported migration mappings and synchronization coordination stay under TQ-06. This is a deployment requirement, not an application/project modification in this documentation turn.
+
 ## DTO Schemas
 
 Except for references to confirmed int64 snapshot-version/entity-revision semantics, DTO directions, operation assignments, fields, types and nullability below are **proposed**; business validation sources remain binding. DTOs are separate projections, not persistent records or permission to expose administrative/audit fields. No OP uses a PM as input/output. `None` means no payload, not no authorization.
@@ -553,15 +750,15 @@ Each property cell uses `name: canonical type`; the following column lists nulla
 | DTO-005 ElementParam / ElementInfo | ElementParam: GroupId: uuid; IsFavorite: bool; Name: string; Description: string<br>ElementInfo: Id: uuid; GroupId: uuid; GroupName: string; Name: string; Description: string; Order: int32; IsFavorite: bool | ElementParam: Required; Required; Required; Nullable<br>ElementInfo: Required; Required; Required; Required; Nullable; Required; Required | ElementParam is mutation input; identity is separate on Update. ElementInfo serves Category, Project and Correspondent reads. Group/name/description rules BR-008–010 apply. | OP-010–OP-012; tree reads use DTO-032 instead |
 | DTO-006 CurrencyParam / CurrencyInfo / AvailableCurrencyInfo | CurrencyParam: Code: string; Symbol: string; Name: string<br>CurrencyInfo: Id: uuid; Code: string; Name: string; Symbol: string; Order: int32; IsFavorite: bool<br>AvailableCurrencyInfo: Code: string; Name: string; Symbol: string | CurrencyParam: Required; Required; Required<br>CurrencyInfo: Required; Required; Required; Required; Required; Required<br>AvailableCurrencyInfo: Required; Required; Required | CurrencyParam is mutation input; Add also requires initialRate: decimal. CurrencyInfo is the saved-currency projection; AvailableCurrencyInfo is the regional catalog projection. Code is immutable on update. BR-013/014/017. | OP-014/015 via DTO-002, OP-016 |
 | DTO-007 CurrencyRateParam / CurrencyRateInfo | CurrencyRateParam: CurrencyId: uuid; Date: date; Rate: decimal; Description: string<br>CurrencyRateInfo: CurrencyId: uuid; Date: date; Rate: decimal; Description: string; IsInitial: bool | CurrencyRateParam: Required; Required; Required; Nullable<br>CurrencyRateInfo: Required; Required; Required; Nullable; Required | Currency/date select the upsert target. Description is optional; IsInitial is output-only and derived from the fixed initial date. Positive rounded rate and base rate 1 rules apply. BR-014/017/021. | OP-017, OP-019 via DTO-002 |
-| DTO-008 AccountParam / AccountInfo | AccountParam: CurrencyId: uuid; CategoryId: uuid; CorrespondentId: uuid; ProjectId: uuid; GroupId: uuid; IsFavorite: bool; Name: string; Description: string<br>AccountInfo: Id: uuid; GroupId: uuid; GroupName: string; Name: string; Description: string; Order: int32; IsFavorite: bool; CurrencyId: uuid; CurrencyName: string; CategoryId: uuid; CategoryName: string; CorrespondentId: uuid; CorrespondentName: string; ProjectId: uuid; ProjectName: string | AccountParam: Required; Nullable; Nullable; Nullable; Required; Required; Required; Nullable<br>AccountInfo: Required; Required; Required; Required; Nullable; Required; Required; Required; Required; Nullable; Nullable; Nullable; Nullable; Nullable; Nullable | AccountParam is mutation input; AccountInfo is editor output. Currency is immutable after first save. GetDefaultName instead takes three nullable classification IDs and returns string. BR-010–012. | OP-022,025; tree reads use DTO-032/033 instead |
+| DTO-008 AccountParam / AccountInfo | AccountParam: CurrencyId: uuid; CategoryId: uuid; CorrespondentId: uuid; ProjectId: uuid; GroupId: uuid; IsFavorite: bool; Name: string; Description: string<br>AccountInfo: Id: uuid; GroupId: uuid; GroupName: string; Name: string; Description: string; Order: int32; IsFavorite: bool; CurrencyId: uuid; CurrencyName: string; CategoryId: uuid; CategoryName: string; CorrespondentId: uuid; CorrespondentName: string; ProjectId: uuid; ProjectName: string | AccountParam: Required; Nullable; Nullable; Nullable; Required; Required; Required; Nullable<br>AccountInfo: Required; Required; Required; Required; Nullable; Required; Required; Required; Required; Nullable; Nullable; Nullable; Nullable; Nullable; Nullable | AccountParam is mutation input; AccountInfo is editor output. Currency is immutable after first save. GetDefaultName retains classification inputs/string output and adds CurrencyId; Business resolves the code and reads AccountNameAddCurrency from LocalConfig. No bool method argument. CurrencyId may be null when AccountNameAddCurrency is false; a valid currency is required when true. BR-010–012. | OP-022,025; tree reads use DTO-032/033 instead |
 | DTO-009 TransactionParam / TransactionInfo / TransactionEntryParam / TransactionEntryInfo / DuplicateTransactionInfo / ApplyTemplateInfo / ApplyTemplateEntryInfo | TransactionParam: DateTime: datetime; Description: string; Entries: array<TransactionEntryParam><br>TransactionInfo: Id: uuid; DateTime: datetime; State: TransactionState; Description: string; Entries: array<TransactionEntryInfo><br>TransactionEntryParam: AccountId: uuid; Amount: decimal; Rate: decimal<br>TransactionEntryInfo: AccountId: uuid; AccountName: string; CurrencyId: uuid; CurrencyName: string; Amount: decimal; CumulativeAmount: decimal; Rate: decimal<br>DuplicateTransactionInfo: DateTime: datetime; Description: string; Entries: array<TransactionEntryInfo><br>ApplyTemplateInfo: DateTime: datetime; Description: string; Entries: array<ApplyTemplateEntryInfo><br>ApplyTemplateEntryInfo: AccountId: uuid; Amount: decimal; Rate: decimal | TransactionParam: Required; Nullable; Required<br>TransactionInfo: Required; Required; Required; Nullable; Required<br>TransactionEntryParam: Required; Required; Required<br>TransactionEntryInfo: Required; Required; Required; Required; Required; Required; Required<br>DuplicateTransactionInfo: Required; Nullable; Required<br>ApplyTemplateInfo: Required; Nullable; Required<br>ApplyTemplateEntryInfo: Required; Required; Required | Input and output records are separate. Entry list order determines Position on save. No entry Id or Position input. BaseAmount is calculated, not an input field. State is output-only in TransactionInfo and omitted from TransactionParam. Business derives it on every Add/Update under PM-006: at least two valid entries and exact zero produce Confirmed; fewer entries or imbalance produce Draft. Every present entry remains valid; Confirmed-to-Draft is allowed. Duplicate/apply outputs prepare unsaved editor content. BR-015–021. | OP-026/057–060 via DTO-002, OP-027,029,034 |
 | DTO-010 MergeCommand / request | SourceId: uuid; DestinationId: uuid | Required; Required | Same derived group type in PM-001; type-specific operation selection remains TQ-05. Source/destination explicit; root source/descendant destination invalid. Equal source and destination IDs return immediately without exception or changes under the confirmed no-op rule. BR-007/008. | OP-007 |
 | DTO-011 TemplateParam / TemplateInfo / TemplateEntryParam / TemplateEntryInfo / FromTransactionInfo | TemplateParam: GroupId: uuid; IsFavorite: bool; Name: string; Description: string; Entries: array<TemplateEntryParam><br>TemplateInfo: Id: uuid; GroupId: uuid; GroupName: string; Name: string; Description: string; Order: int32; IsFavorite: bool; Entries: array<TemplateEntryInfo><br>TemplateEntryParam: AccountId: uuid; Amount: decimal<br>TemplateEntryInfo: AccountId: uuid; AccountName: string; CurrencyId: uuid; CurrencyName: string; Amount: decimal<br>FromTransactionInfo: Description: string; Entries: array<TemplateEntryInfo> | TemplateParam: Required; Required; Required; Nullable; Required<br>TemplateInfo: Required; Required; Required; Required; Nullable; Required; Required; Required<br>TemplateEntryParam: Required; Required<br>TemplateEntryInfo: Required; Required; Required; Required; Required<br>FromTransactionInfo: Nullable; Required | Input and output records are separate. Description is optional. Entries may be empty; list order determines Position on save. FromTransaction prepares unsaved template content. BR-022. | OP-033,036; tree reads use DTO-032 instead |
 | DTO-012 ReportDefinition / shared | Category: object; Project: object; Correspondent: object; From: date; To: date; CurrencyFirst: bool; GroupBy: enum | Required; Required; Required; Nullable; Nullable; Required; Required | Each dimension shape S below. GroupBy Category,Project,Correspondent,Day,Week,Month,Year. PM-010 JSON definition; BR-023–027. | OP-037; nested DTO-013 in OP-038/039 |
-| DTO-013 SaveReportDefinition / ReportInfo | SaveReportDefinition: Id: uuid; Name: string; Definition: ReportDefinition<br>ReportInfo: Id: uuid; Name: string; Definition: ReportDefinition | SaveReportDefinition: Nullable; Required; Required<br>ReportInfo: Required; Required; Required | SaveReportDefinition uses null Id for creation. ReportInfo is output. Definition uses DTO-012. Reading preserves selection intent; explicit save normalizes edited selection. BR-025/028. | OP-038 via DTO-002, OP-039 |
-| DTO-014 CalculationResult / response | Rows: array<object>; Warnings: array<string> | Required; Required | Each row shape R below; signed amounts; no transaction drill-through. For OP-031/061, each account result must include both the sum of entry Amount in account currency and the sum of per-entry rounded BaseAmount in base currency; both amounts confirmed 2026-10-01, AccountBalanceInfo is the balance projection. Balances/report preview only, not stored business data; BR-019/026/027. | OP-031,037,061 |
-| DTO-015 SaveLocalConfiguration / LocalConfigurationInfo / SaveSystemConfiguration / SystemConfigurationInfo | SaveLocalConfiguration: AccountNameOrder: AccountNameOrder; DefaultAccountNameSeparator: string; ConflictPriority: ConflictPriority; SyncTrigger: SyncTrigger<br>LocalConfigurationInfo: AccountNameOrder: AccountNameOrder; DefaultAccountNameSeparator: string; ConflictPriority: ConflictPriority; SyncTrigger: SyncTrigger<br>SaveSystemConfiguration: BalancingAccountId: uuid<br>SystemConfigurationInfo: BaseCurrencyId: uuid; AmountPrecision: int32; RatePrecision: int32; BalancingAccountId: uuid | SaveLocalConfiguration: Required; Required; Required; Required<br>LocalConfigurationInfo: Required; Required; Required; Required<br>SaveSystemConfiguration: Nullable<br>SystemConfigurationInfo: Required; Required; Required; Nullable | Local read/save records contain the four local settings and never synchronize. System read exposes immutable base currency and precisions; System save accepts only nullable BalancingAccountId. SaveConfiguration returns no payload. PM-011/012; BR-005/012/017/018. | OP-041,042,055,056 |
-| DTO-016 SetupRequest / request | Login: string; Password: string; BaseCurrencyCode: string; LocalDatasetKey: string; RequestId: uuid | Required; Required; Nullable; Required; Required | BR-003 required credentials; base code required only Create, not Open. Registration/request IDs proposed for retry; password transport/local retention TQ-03. | OP-003,004 |
+| DTO-013 SaveReportDefinition / ReportInfo | SaveReportDefinition: Id: uuid; Name: string; GroupId: uuid; IsFavorite: bool; Definition: ReportDefinition<br>ReportInfo: Id: uuid; Name: string; GroupId: uuid; IsFavorite: bool; Order: int32; Definition: ReportDefinition | SaveReportDefinition: Nullable; Required; Required; Required; Required<br>ReportInfo: Required; Required; Required; Required; Required; Required | SaveReportDefinition uses null Id for creation. ReportInfo is output. Definition uses DTO-012. Reading preserves selection intent; full settings Save normalizes edited selection, while OP-070 changes dates only. Group/favorite/read-order fields follow the confirmed shared catalog conventions. BR-025/028. | OP-038 via DTO-002, OP-039 |
+| DTO-014 CalculationResult / response | Rows: array<object>; Warnings: array<string> | Required; Required | For report calculation OP-037, Rows is one flat ordered list of row shape R, ready for display and CSV export; each row has an explicit Kind. Warnings is separate from Rows and never exported as CSV data rows. These report-result decisions were confirmed 2026-10-08. Signed amounts; no transaction drill-through. For OP-031/061, each account result must include both the sum of entry Amount in account currency and the sum of per-entry rounded BaseAmount in base currency; both amounts confirmed 2026-10-01, AccountBalanceInfo is the balance projection. Balances/report preview only, not stored business data; BR-019/026/027. | OP-031,037,061 |
+| DTO-015 SaveLocalConfiguration / LocalConfigurationInfo / SaveSystemConfiguration / SystemConfigurationInfo | SaveLocalConfiguration: AccountNameOrder: AccountNameOrder; AccountNameSeparator: string; AccountNameAddCurrency: bool; ConflictPriority: ConflictPriority; SyncTrigger: SyncTrigger<br>LocalConfigurationInfo: AccountNameOrder: AccountNameOrder; AccountNameSeparator: string; AccountNameAddCurrency: bool; ConflictPriority: ConflictPriority; SyncTrigger: SyncTrigger<br>SaveSystemConfiguration: BalancingAccountId: uuid<br>SystemConfigurationInfo: BaseCurrencyId: uuid; AmountPrecision: int32; RatePrecision: int32; BalancingAccountId: uuid | SaveLocalConfiguration: Required; Required; Required; Required; Required<br>LocalConfigurationInfo: Required; Required; Required; Required; Required<br>SaveSystemConfiguration: Nullable<br>SystemConfigurationInfo: Required; Required; Required; Nullable | The Local shape includes required bool AccountNameAddCurrency, default false, and never synchronizes; the flag is read by account-name generation from saved LocalConfig. System read exposes immutable base currency and precisions; System save accepts only nullable BalancingAccountId. SaveConfiguration returns no payload. PM-011/012; BR-005/012/017/018. | OP-041,042,055,056 |
+| DTO-016 SetupRequest / request | Login: string; Password: string; BaseCurrencyCode: string; LocalDatasetKey: string; RequestId: uuid | Required; Required; Nullable; Required; Required | BR-003 required credentials; base code and proposed precision fields are required only in the creation branch, not attachment; precision request extension remains TQ-16. Registration/request IDs proposed for retry; password transport/local retention TQ-03. | OP-003,004 |
 | DTO-017 SetupResult / response | MasterDatasetKey: string; LocalDatasetKey: string; AuthorizationHandle: string; Transfer: object | Required; Required; Required; Required | Owner dataset/registration, proposed opaque authorization handle, Transfer DTO-021; do not expose hash/Admin.db. BR-003/005. | OP-003,004 |
 | DTO-018 StatusResult / response | State: enum; MasterExists: bool; SyncKey: string; PublishedVersion: int64; InstalledVersion: int64; LastSuccessAt: datetime; Message: string | Required; Nullable; Nullable; Nullable; Nullable; Nullable; Nullable | State CreatingMode,OpenMode,MasterAbsent,MasterPresent,Waiting,Running,OutcomeUnknown,Published,Installed,Complete,Expired,Failed. Per-OP allowed subset TQ-04; ownership-scoped, no global directory listing. | OP-001,002,044,045,047,051,052 |
 | DTO-019 SyncRequest / request | SyncKey: string; LocalDatasetKey: string; KnownVersion: int64; Priority: enum; Trigger: enum; Changes: object | Required; Required; Nullable; Required; Required; Required | Priority Master,Local; Trigger Manual,OnStart,OnExit,Recovery. Changes closed wire shape unresolved TQ-04 (not PM exposure); do not activate this input shape until specified. BR-029/034/038. | OP-043 |
@@ -581,9 +778,9 @@ Each property cell uses `name: canonical type`; the following column lists nulla
 | DTO-032 ElementInfo / response | Id: uuid; GroupId: uuid; GroupName: string; Name: string; Description: string; Order: int32; IsFavorite: bool | Required; Required; Required; Required; Nullable; Required; Required | Shared lightweight element projection in Services/Trees, as in current code. Id/GroupId support selection and placement; Order controls sibling position. GroupName is auxiliary current-code metadata, not an extra tree column. | OP-009; base of DTO-033 |
 | DTO-033 AccountElementInfo / response | DTO-032 fields; CurrencyId: uuid; CurrencyName: string | Inherited; Required; Required | Account tree element extends ElementInfo. CurrencyName is the fourth visible column; CurrencyId is identity metadata. CategoryId, CorrespondentId and ProjectId are absent from this tree projection, so it cannot supply the full account editor. | OP-062 via DTO-034 |
 | DTO-034 AccountTreeInfo / response | Groups: array<DTO-031>; Elements: array<DTO-033> | Required; Required | Flat account tree with shared groups and account elements, including CurrencyName. Root appears once; groups have no account currency value. Separate stable collections, matching current code. | OP-062 |
-| DTO-035 ConfigurationInfo / output | BaseCurrencyId: uuid; BalancingAccountId: uuid; AmountPrecision: int32; RatePrecision: int32; AccountNameOrder: enum; DefaultAccountNameSeparator: string; ConflictPriority: enum; SyncTrigger: enum | Required; Nullable; Required; Required; Required; Required; Required; Required | One detached snapshot combining System and Local settings for Business operations. All C# properties are init-only. No persistent models, navigation objects, configuration row IDs, dataset keys or sync revisions. Enum meanings follow PM-012. Reading does not save. | OP-065 |
+| DTO-035 ConfigurationInfo / output | BaseCurrencyId: uuid; BalancingAccountId: uuid; AmountPrecision: int32; RatePrecision: int32; AccountNameOrder: enum; AccountNameSeparator: string; AccountNameAddCurrency: bool; ConflictPriority: enum; SyncTrigger: enum | Required; Nullable; Required; Required; Required; Required; Required; Required; Required | Existing flat detached snapshot combining System and Local settings, reused for Settings reads. AccountNameAddCurrency is included in the implementation together with AccountNameOrder and AccountNameSeparator. All C# properties are init-only. No persistent models, navigation objects, configuration row IDs, dataset keys or sync revisions. Enum meanings follow PM-012. Reading does not save. | Internal IConfigOperation; OP-071; configuration used by OP-025 |
 
-### Closed nested DTO objects (all proposed)
+### Nested DTO objects — decision status per field
 
 | Shape | Property | Canonical type | Nullability | Validation / mapping |
 | --- | --- | --- | --- | --- |
@@ -598,20 +795,55 @@ Each property cell uses `name: canonical type`; the following column lists nulla
 | S | IncludedElementIds | array<uuid> | Required | Explicit element inclusions |
 | S | ExcludedElementIds | array<uuid> | Required | Explicit element exclusions |
 | S | IncludeUnassigned | bool | Required | Explicit null-classification choice |
-| R calculation row | Key | string | Required | Proposed stable display/group identity; encoding TQ-05 |
+| R calculation row | Kind | enum | Required | Confirmed for OP-037: Data, CurrencyHeader, CurrencySubtotal, GrandTotal. Numeric enum assignments are not selected. |
 | R | Label | string | Required | Display caption |
 | R | CurrencyCode | string | Nullable | Own-currency column if applicable |
-| R | Amount | decimal | Nullable | Null where mixed-currency own amount invalid |
-| R | BaseAmount | decimal | Required | Signed net rounded-entry total |
-| R | Level | int32 | Required | Group hierarchy presentation; exact layout TQ-05 |
+| R | Amount | decimal | Nullable | Null for CurrencyHeader and wherever an own-currency amount is inapplicable under BR-027; otherwise the signed amount. Render/export null as an empty cell. |
+| R | BaseAmount | decimal | Nullable | Null for CurrencyHeader; required signed net rounded-entry total for Data, CurrencySubtotal and GrandTotal rows. Render/export header null as an empty cell, not zero. Confirmed 2026-10-08. |
 | C sync report count | EntityType | enum | Required | Group,Classification,Currency,Rate,Account,Transaction,Template,Report,SystemConfiguration |
 | C | Created | int32 | Required | Received local business changes; zero omitted in display |
 | C | Updated | int32 | Required | Same |
 | C | Deleted | int32 | Required | Same |
 
+Confirmed report-result contract (2026-10-08): OP-037 returns one flat row list in final display/export order. Data rows represent the grouped signed totals, not individual transactions. CurrencyHeader identifies a currency section, CurrencySubtotal its total, and GrandTotal the final total where required by BR-027. Existing rules determine which kinds appear; this does not create new subtotal/grouping levels or change mixed-currency totals. Warnings, including empty-classification-filter warnings, are separate from the row list and are not CSV data. An empty result has no synthetic No matching data row; existing header-only CSV behavior remains. UI and CSV consume the same ordered rows. These presentation kinds apply to report results, not AccountBalanceInfo from OP-031/061. Key and Level are removed by user confirmation: result rows are temporary/read-only and Kind supplies the presentation role. CurrencyHeader rows have Amount = null and BaseAmount = null. UI and CSV show empty numeric cells, not zero; this was confirmed 2026-10-08. Actual numeric zero totals retain the existing zero-total display rule. Existing numeric formatting rules remain unchanged.
+
 Local mutation DTOs have no expected-revision fields under the confirmed single-application editing scope; cross-device conflict detection continues to use the synchronization contract.
 
 Mutation inputs and read outputs are separate records. Operations must reject/ignore client-owned audit/derived values per a final TQ-02 contract. Response field exposure must be approved before implementation. DTO-019 Changes is deliberately unresolved rather than an arbitrary `object` schema claimed complete.
+
+### UI-driven DTO extensions and DTO-036 — ReportRunPeriod
+
+The following property names, directions, field exposures, types/nullability and operation assignments are proposals until confirmed. BRD behavior is confirmed; no persistent model is an operation payload.
+
+- DTO-013: include GroupId: uuid Required and IsFavorite: bool Required in save/read report shapes, and Order: int32 Required in reads, following the confirmed shared catalog conventions. Reordering uses the shared catalog action rather than changing Order through the editor. Existing Name/Definition remain; results are never persisted report data.
+- DTO-015: include AccountNameAddCurrency: bool Required in Local read/save shapes, with existing initialization default false. The setting is persisted in LocalConfig and is not synchronized. Migration mechanics remain TQ-06.
+- DTO-016: propose AmountPrecision: int32 Nullable and RatePrecision: int32 Nullable, conditionally required for creation with ranges/defaults from BR-017. Attachment cannot alter existing Master values. Auth/registration/retry payloads remain proposed.
+- DTO-035 retains the existing flat ConfigurationInfo POCO/record with mixed Local/System properties. Extend its Local settings with AccountNameAddCurrency: bool Required. OP-025 reads the saved flag through existing internal configuration access; the UI does not pass a bool to GetDefaultName. Reuse this flat read shape for OP-071; no nested Local/System result wrappers.
+- Confirmed 2026-10-08: Settings uses one Setup read (OP-071) returning Local and System settings and one Setup save (OP-072) persisting both sections in one database transaction. Both changes commit or neither does; the UI must not compose separately committing OP-042/056 calls. OP-071 reuses flat DTO-035 ConfigurationInfo. OP-072 accepts editable settings only; base currency and amount/rate precisions are excluded.
+- Corrected 2026-10-08: IAccountService.GetDefaultName adds CurrencyId alongside the three classification IDs and reads the saved LocalConfig.AccountNameAddCurrency flag through existing configuration access. No AddCurrency bool parameter. Business resolves the currency code and returns the generated string. CurrencyId is nullable but must identify an existing non-deleted currency when AccountNameAddCurrency is true; the suffix uses UAH/USD/EUR as in the confirmed examples.
+
+DTO-036: proposed Request for OP-070. Direction/operation assignment and every field below remain proposed.
+
+| Property | Canonical type | Nullability | Validation / mapping | Source / decision status |
+| --- | --- | --- | --- | --- |
+| ReportId | uuid | Required | Existing Report identity, not create | Shared identity convention; DTO shape/type/nullability/exposure proposed |
+| From | date | Nullable | Inclusive lower boundary; change only saved From | BR-026 optional concept confirmed; DTO type/nullability/exposure proposed |
+| To | date | Nullable | Inclusive upper boundary; reject From > To when both set | BR-026 optional concept confirmed; DTO type/nullability/exposure proposed |
+
+Authorization: ROLE-001/current local dataset under BR-001/002/039. Service validates independently of disabled UI Run. Side effects are saved dates only with ordinary report content tracking. One atomic date mutation and same-period no-op are proposals under existing local mutation rules. Calculation/export are separate non-mutating work. Missing-report/error/output details remain TQ-07/16.
+
+### Combined Settings operations — confirmed 2026-10-08
+
+Source: requesting user agreed to all three proposed Settings contracts. Settings reuses the existing flat configuration read object, saves editable Local/System values in one Setup call and one database transaction, and passes CurrencyId to IAccountService.GetDefaultName. The function reads AccountNameAddCurrency from LocalConfig. The correction supersedes the earlier explicit bool argument and proposed nested read result; BRD 0.218 records the corrected naming-setting source.
+
+| OP | Logical owner/action | Input and output | Authorization and effects |
+| --- | --- | --- | --- |
+| OP-071 | Setup: Read Settings | No selection identity; returns the existing flat ConfigurationInfo shape (DTO-035), mixing Local/System properties. Extend it with the Local flag; no nested section wrappers. | ROLE-001, own local dataset; local read, no login or writes. Existing Settings access during recovery question remains TQ-05. |
+| OP-072 | Setup: Save Settings | Receives editable Local/System settings in one call: account-name order, separator, AccountNameAddCurrency, conflict priority, sync trigger and nullable balancing account. BaseCurrencyId, AmountPrecision and RatePrecision are read-only and excluded from the save input. Exact request record name/return shape remains proposed. | ROLE-001; existing local editing gates and L/W validation/no-automatic-retry policy. Validate both sections; save Local and System changes and applicable System synchronization flags in one database transaction. Commit all or roll back all; Local settings remain outside synchronization. Failed save keeps the editor and entered values and leaves both saved sections unchanged. |
+
+One data-service scope covers the complete logical OP-072 call and its transaction; separate scopes/commits per section cannot implement this boundary. Existing immutable base currency/precision and balancing-account rules remain binding. OP-041/042/055/056 retain their existing section-specific meanings and stable IDs; this decision neither retires them nor permits the Settings screen to implement Save as two separately committed calls. No public Business configuration service is restored.
+
+OP-025 still only generates a name and never saves the account. It receives the three classification IDs and CurrencyId, resolves the currency code in Business, and reads saved Local naming order/separator/AccountNameAddCurrency. Existing internal IConfigOperation.GetConfiguration and flat ConfigurationInfo were observed during this documentation update; the new flag is a required extension, not a claim of implemented code. OP-071 is the Settings-facing contract and does not restore retired public Business OP-065. CurrencyId may be null with AccountNameAddCurrency false. With it true, a missing, unknown or deleted currency causes a validation failure; no name is returned and no data is changed. Disable Restore default name until a valid currency is selected. The ordinary account-save currency requirement is unchanged.
 
 ## API/BFF Service Contracts
 
@@ -651,9 +883,9 @@ For each operation the profile is its explicit authorization, transaction and id
 | OP | Service.operation | Profile | Input → output (proposed) | Validation/domain errors and observable effects / BRD source |
 | --- | --- | --- | --- | --- |
 | OP-001 | SVC-001.GetStartupState | D | None → DTO-018 | BR-002/039/041: mode from existence and pending/expiry state; no business data mutation. |
-| OP-002 | SVC-001.CheckMasterExists | S read | None → DTO-018 | BR-003: availability only; failed call means unknown, never absence; bootstrap information exposure TQ-03. |
-| OP-003 | SVC-001.CreateBooks | S | DTO-016 → DTO-017 | BR-003/004: require credentials/base currency; create owner/master/roots/base/config defaults, one base-currency rebalancing account in Account root and its System selection, and register; partial cloud success not undone on local download failure. |
-| OP-004 | SVC-001.OpenBooks | S | DTO-016 → DTO-017 | BR-001/003/005: authenticate/register/download; new registration after reinstall; repeated attempt identity TQ-04. |
+| OP-002 | SVC-001.CheckMasterExists | S read | Current proposed None → DTO-018; credential-scoped payload/exposure TQ-03/16 | Invoked after Continue for BR-003 routing: existence selects attachment, confirmed absence selects creation fields. Failure means unknown and prevents creation. Bootstrap/check-create races and identity enforcement remain TQ-03/04. |
+| OP-003 | SVC-001.CreateBooks | S | DTO-016 → DTO-017 (proposed) | Absent-Master branch: require credentials, explicit currency and precisions; initialize six roots/config/balancing account, register/download. Existing/uncertain Master prevents duplicate creation. Partial cloud success is preserved; retry attaches to created Master. Sixth root TQ-16; bootstrap/idempotency TQ-03/04. |
+| OP-004 | SVC-001.OpenBooks | S | DTO-016 → DTO-017 (proposed) | Existing-Master attachment starts automatically after Continue; authenticate before registration/download. Reinstallation creates a new registration. Failure/cancellation returns Setup preserving input; retry manual. No separate user Open choice. |
 | OP-005 | SVC-002.GetAllGroups | L/R | None → array<DTO-031> | Confirmed 2026-10-01: parameterless GetAllGroups in generic IGroupService, inherited by all five group services. Return a flat list of groups including the root once, with ParentId and Order for hierarchy and sibling ordering. Used for choosing parent/destination groups. Does not save. BR-006. |
 | OP-006 | SVC-002.SaveGroup | L/W | Add(GroupParam) → uuid; Update(groupId, GroupParam) → None; MoveToAnotherParent(groupId, toParentId) → None | BR-006–009: create/edit/move non-root; reject cycle/type/name violation; no root edit. |
 | OP-007 | SVC-002.MergeGroups | L/W | CombineGroups(toGroupId, fromGroupId) → None | BR-007/008: equal IDs return immediately without changes; otherwise move children/elements, suffix incoming conflicts, delete source; all merge changes and sync flags commit in one transaction or all roll back. |
@@ -672,21 +904,22 @@ For each operation the profile is its explicit authorization, transaction and id
 | OP-020 | SVC-004.DeleteRates | L/W | DTO-029 → None | Confirmed 2026-10-01: separate delete action removes all ordinary rates matching the currency/date range; always skip the initial rate, even when its date is included. Apply shared deletion tracking and one transaction per call; existing entry rates unchanged. Both endpoints are inclusive (FromDate <= Date <= ToDate); FromDate > ToDate throws a validation exception before changes; no commit occurs. |
 | OP-022 | SVC-005.SaveAccount | L/W | Add(AccountParam) → uuid; Update(entityId, AccountParam) → None | BR-008–012: required group/currency/name; Description optional; currency immutable after first successful account save; duplicate names allowed. |
 | OP-023 | SVC-005.DeleteAccount | L/W | DTO-003 → None | BR-011: reject any transaction/template reference. |
-| OP-025 | SVC-005.GetDefaultName | P | correspondentId: uuid?; categoryId: uuid?; projectId: uuid? → string | Confirmed 2026-10-01: single function in IAccountService for both creating an account and restoring its default name. Generate the name from supplied Correspondent/Category/Project selections, current classification names and current Local naming settings. Return the name without saving or calling AcceptChanges; persist only through account add/edit. BR-012: all classifications absent produces the separator twice. The input uses the three nullable classification IDs. |
+| OP-025 | SVC-005.GetDefaultName | P | Three nullable classification IDs plus CurrencyId → string; read AccountNameAddCurrency from LocalConfig; CurrencyId nullable; required/valid when saved AccountNameAddCurrency is true | BR-012 adds optional account-currency suffix, including base currency; missing slots keep separators. Blank new Name on Save and explicit Restore use this operation; no persistence/AcceptChanges. User corrected the flag source on 2026-10-08: CurrencyId is an input; AccountNameAddCurrency is read from LocalConfig, with no bool parameter. Exact currency is optional with the flag off and required/valid with it on. |
 | OP-026 | SVC-006.GetTransactions | L/R | date: date → capped array<TransactionInfo> plus exceeded-limit indication (wrapper unresolved) | Updated 2026-10-02: return the latest matching transactions through the selected date, with no additional identity filter; declaration alignment pending. Shared transaction-read rules below apply. BR-016–021. |
 | OP-027 | SVC-006.SaveTransaction | L/W | Add(TransactionParam) → uuid; Update(entityId, TransactionParam) → None | BR-015–021: aggregate validation, rounding, Confirmed/Draft policy from PM-006, account currency immutability. TransactionParam contains no State; Business derives Draft or Confirmed from the validated entry count and rounded base total on every save; parent changes, complete entry replacement and parent sync flags commit together; no partial aggregate save. After successful commit, the client refreshes the displayed identities without refilling under the list-refresh rule below; this does not change the save response shape. |
 | OP-028 | SVC-006.DeleteTransaction | L/W | DTO-003 → None | BR-019/032: remove calculation contribution, retain sync deletion evidence until eligible. Recalculate affected subsequent account cumulative amounts under PM-007 within the same database transaction; deletion and recalculation roll back together on failure. |
 | OP-029 | SVC-006.DuplicateTransaction | P | transactionId: uuid → DuplicateTransactionInfo | Confirmed 2026-10-01: ITransactionService.DuplicateTransaction(id) copies the source accounts, amounts, stored rates and description, preserving entry order, and sets DateTime to now. Return a new unsaved transaction for editing; do not modify the source, persist a duplicate or call AcceptChanges. Persist only when the user chooses Save through the normal transaction-add operation, with normal validation and fresh persistent identities. BR-020. |
 | OP-030 | SVC-004.GetRate (ICurrencyRateService) | P | accountId: uuid; date: date → decimal | Current code ownership aligned 2026-10-01: required account identity and device-local calendar date; latest currency rate on/before date, base currency returns 1. No stored entry mutation. BR-015. |
-| OP-031 | SVC-006.GetBalancesForAllAccounts | L/R | date: date → array<AccountBalanceInfo> | Confirmed 2026-10-01: needed in version 1 for the Accounts screen. Calculate each account balance on demand from Confirmed transactions through the end of the selected date; exclude Draft transactions. This is a cumulative balance, not movement within a From/To period. Read only; no AcceptChanges. Account-currency balances may use the PM-007 CumulativeAmount cache; base-currency balances remain calculated on demand. Owner confirmed as ITransactionService; date is required. Return balances for all accounts. Each account result includes both its account-currency balance (sum of entry Amount) and base-currency balance (sum of per-entry rounded BaseAmount using stored entry rates). This follows the established BaseAmount calculation; do not revalue the total using a current catalog rate. Both amounts are confirmed; exact DTO packaging remains proposed under TQ-05. BR-019. |
+| OP-031 | SVC-006.GetBalancesForAllAccounts | L/R | date: date → array<AccountBalanceInfo> | Balance-read capability confirmed 2026-10-01 is retained; BRD 0.177 supersedes Accounts-screen placement. Accounts UI manages accounts only; Ledger account filtering displays the confirmed cumulative amount. Calculate each account balance on demand from Confirmed transactions through the end of the selected date; exclude Draft transactions. This is a cumulative balance, not movement within a From/To period. Read only; no AcceptChanges. Account-currency balances may use the PM-007 CumulativeAmount cache; base-currency balances remain calculated on demand. Owner confirmed as ITransactionService; date is required. Return balances for all accounts. Each account result includes both its account-currency balance (sum of entry Amount) and base-currency balance (sum of per-entry rounded BaseAmount using stored entry rates). This follows the established BaseAmount calculation; do not revalue the total using a current catalog rate. Both amounts are confirmed; exact DTO packaging remains proposed under TQ-05. BR-019. |
 | OP-033 | SVC-007.SaveTemplate | L/W | Add(TemplateParam) → uuid; Update(entityId, TemplateParam) → None | BR-022: unique name/accounts, empty allowed; save visible optional Description independently of Name; preserve existing account currency immutability. Parent changes, complete entry replacement and parent sync flags commit together under the local action transaction rule. |
 | OP-034 | SVC-007.ApplyTemplate | P | templateId: uuid → ApplyTemplateInfo | Confirmed 2026-10-01: ITemplateService.ApplyTemplate(templateId) returns an unsaved transaction with the template accounts, amounts and description, preserving entry order. Set DateTime to now and obtain applicable rates for that date using the established currency-rate lookup rules. User edits, then saves through the normal transaction-add operation or cancels. Applying the template does not persist a transaction, modify the template or call AcceptChanges; Cancel makes no changes. Normal entry/date/numeric validation applies on Save. Zero/single-entry or unbalanced results save as Draft; at least two valid entries and exact balance are required only for Confirmed. BR-022. |
 | OP-035 | SVC-007.DeleteTemplate | L/W | DTO-003 → None | Confirmed shared deletion lifecycle: validate the target, delete the template aggregate under normal deletion/tracking rules, and commit atomically. Already-created transactions remain independent. Missing/deleted target throws under the shared rule; account currency immutability is preserved. |
 | OP-036 | SVC-007.FromTransaction | P | transactionId: uuid → FromTransactionInfo | Confirmed 2026-10-01: ITemplateService.FromTransaction(transactionId) returns an unsaved template copied from a Confirmed or Draft transaction: accounts, amounts and description, preserving entry order. User chooses the template name and group, then saves through the normal template-add operation (OP-033) or cancels. Preparation does not persist a template, modify the source transaction or call AcceptChanges; Cancel makes no changes. Normal template validation applies on Save. BR-022. |
-| OP-037 | SVC-008.Calculate | L/R | DTO-012 → DTO-014 | BR-023–027: current tree/classifications, read-only selection evaluation, empty-warning and currency grouping. |
+| OP-037 | SVC-008.Calculate | L/R | DTO-012 → DTO-014 | BR-023–027: current tree/classifications, read-only selection evaluation, empty-warning and currency grouping. Return the flat ordered rows with explicit kinds and separate warnings under DTO-014; display and CSV preserve that row order. |
 | OP-038 | SVC-008.GetDefinitions | L/R | None → array<ReportInfo> | BR-025/028: preserve JSON intent exactly on read. |
 | OP-039 | SVC-008.SaveDefinition | L/W | SaveReportDefinition → ReportInfo | BR-025/028: user save, name validation, recompute minimal override IDs for selection save; rename-only handling TQ-05. |
 | OP-040 | SVC-008.DeleteDefinition | L/W | DTO-003 → None | BR-028: only definition deleted; bookkeeping unchanged. |
+| OP-070 | SVC-008.SaveRunPeriod | L/W | DTO-036 → None (input/output proposed) | BR-026/028 requires a date-only existing-report mutation before Run: change From/To only, preserving Name/group/favorite/grouping and all saved classification IDs/overrides. ROLE-001/current local dataset and ordinary recovery/editing gates. Atomic update is proposed under the shared local-write rule; method/shape/errors/idempotency remain TQ-07/16. |
 | OP-041 | SVC-009.GetConfiguration | D read | None → LocalConfigurationInfo | Confirmed 2026-10-01: ILocalConfigService.GetConfiguration() returns the single Local configuration for the settings screen; no Id or other input parameter. Read only; no AcceptChanges. Local settings only; no business data access bypass. Local DTO fields are recorded in the current C# contract mapping. |
 | OP-042 | SVC-009.SaveConfiguration | L/W | SaveLocalConfiguration → None | Confirmed 2026-10-01: ILocalConfigService.SaveConfiguration(settings) updates the single Local configuration without an Id parameter. Validate settings before saving and commit the complete successful state-changing action with one AcceptChanges call, under the shared mutation/no-op rules. Preserve the existing LocalConfig identity. Local settings do not synchronize. BR-005/012/034; admission during recovery remains TQ-05; DTO fields are recorded in the current C# contract mapping. |
 | OP-043 | SVC-010.Synchronize | C | DTO-019 → DTO-021 | BR-029–038: queue, change detection, priority/validity, publication; no-change result may need status rather than transfer, unresolved TQ-04. |
@@ -737,6 +970,8 @@ Transaction and Template are aggregates. Their editor Update preserves the paren
 
 ### Current C# contract mapping (2026-10-01)
 
+This is dated contract evidence, not verification of current code. New UI-required extensions are proposed separately; no declarations/implementations have been changed or freshly validated in this revision.
+
 The following mapping lists the current C# input and output contracts. Business rules and stable requirement IDs are unchanged.
 
 - Base interfaces reside in `backend/Business.Contracts/Base/Services`. `IUpdateEntityService<in T>` replaces `IEntityService` and declares Add, Update and Delete. `IReadEntityService<T>` separately declares `Task<T> GetById(Guid id)`; T is invariant because Task<T> is invariant. Concrete service interfaces compose read, update and catalog capabilities. IGroupService and IElementService retain only their two entity-type parameters; no DTO parameter is propagated through them.
@@ -763,9 +998,9 @@ Confirmed selected-date navigation (2026-10-02): the user chooses an inclusive e
 
 Confirmed transaction-list refresh after editing (2026-10-02): after successful save and atomic cumulative maintenance, refresh complete TransactionInfo/TransactionEntryInfo data for the identities already displayed, including updated CumulativeAmount values. Retain the selected end date and active account/classification filter. Remove a displayed transaction that no longer matches and show a warning when the edited transaction falls outside the current selection; do not fetch replacement transactions. Thus, if one of 300 displayed transactions leaves, retain 299. Reorder retained rows under the current list order when their timestamps change; do not evict an otherwise matching retained row merely because a fresh top-300 query might rank a different identity ahead of it. Navigation starts a fresh capped query and can fill available places again. Refresh reads committed values and does not trigger cumulative recalculation. It uses complete fresh DTOs, not a specialized delta response. The implemented service method is RefreshTransactions(TransactionRefreshParam): Date, up to 300 TransactionIds and at most one optional AccountId/CategoryId/CorrespondentId/ProjectId filter. TransactionRefreshInfo returns fresh complete Transactions and RemovedTransactionIds. It queries only those identities and never refills. Database cumulative maintenance still covers all affected later account entries, including undisplayed ones. Add/Update response shapes remain unchanged; exact post-edit overflow-indicator behavior remains unresolved. This supersedes the earlier instruction to re-run the full capped filter and refill after editing.
 
-TemplateEntryInfo supplies AccountId, AccountName, CurrencyId, CurrencyName and Amount. TransactionEntryInfo also supplies Rate and CumulativeAmount. Confirmed 2026-10-02: expose CumulativeAmount as a non-nullable decimal in account-currency units in persisted transaction-entry read results, mapped from PM-007; do not expose the scaled database integer. This covers TransactionInfo entries returned by transaction reads and GetById. It is calculated output only and is absent from TransactionEntryParam and other save inputs. Template entries and aggregate AccountBalanceInfo do not acquire a per-entry cumulative field. DuplicateTransactionInfo already reuses TransactionEntryInfo, so its declaration also contains the field; an unsaved duplicate has no authoritative persisted cumulative balance and must not present the source balance as its own. Implementation choice (2026-10-03): unsaved duplicates return CumulativeAmount = 0; the value becomes authoritative only after persistence and recalculation. Reference names are display values; mutation parameter records carry identities and editable values, not commands to rename referenced entities. GetById uses the original identity; DuplicateTransaction and FromTransaction instead prepare unsaved copies. GetDefaultName uses three nullable classification IDs and returns a string; it does not require AccountParam or persist changes. Currency-rate editing continues to use currency/date upsert and has no independent GetById contract. Configuration singletons retain parameterless GetConfiguration rather than entity-ID reads.
+TemplateEntryInfo supplies AccountId, AccountName, CurrencyId, CurrencyName and Amount. TransactionEntryInfo also supplies Rate and CumulativeAmount. Confirmed 2026-10-02: expose CumulativeAmount as a non-nullable decimal in account-currency units in persisted transaction-entry read results, mapped from PM-007; do not expose the scaled database integer. This covers TransactionInfo entries returned by transaction reads and GetById. It is calculated output only and is absent from TransactionEntryParam and other save inputs. Template entries and aggregate AccountBalanceInfo do not acquire a per-entry cumulative field. DuplicateTransactionInfo already reuses TransactionEntryInfo, so its declaration also contains the field; an unsaved duplicate has no authoritative persisted cumulative balance and must not present the source balance as its own. Implementation choice (2026-10-03): unsaved duplicates return CumulativeAmount = 0; the value becomes authoritative only after persistence and recalculation. Reference names are display values; mutation parameter records carry identities and editable values, not commands to rename referenced entities. GetById uses the original identity; DuplicateTransaction and FromTransaction instead prepare unsaved copies. The recorded 2026-10-01 GetDefaultName used three nullable classification IDs/string output. CurrencyId input is retained; the later 2026-10-08 correction moves AccountNameAddCurrency to LocalConfig instead of a bool argument. CurrencyId may be null when AccountNameAddCurrency is false; a valid currency is required when true. It still does not persist changes. Currency-rate editing continues to use currency/date upsert and has no independent GetById contract. Configuration singletons retain parameterless GetConfiguration rather than entity-ID reads.
 
-LocalConfigurationInfo and SaveLocalConfiguration contain AccountNameOrder, DefaultAccountNameSeparator, ConflictPriority and SyncTrigger. SystemConfigurationInfo contains BaseCurrencyId, AmountPrecision, RatePrecision and nullable BalancingAccountId; SaveSystemConfiguration contains only nullable BalancingAccountId. SaveConfiguration returns Task with no response payload. Dataset keys, singleton Ids and sync revisions are not editable inputs. System precision/base currency remain immutable; Local settings remain outside sync.
+The recorded LocalConfigurationInfo and SaveLocalConfiguration have AccountNameOrder, AccountNameSeparator, ConflictPriority and SyncTrigger. Extend Local read/save and flat ConfigurationInfo with required bool AccountNameAddCurrency, default false, as confirmed 2026-10-08. SystemConfigurationInfo contains BaseCurrencyId, AmountPrecision, RatePrecision and nullable BalancingAccountId; SaveSystemConfiguration contains only nullable BalancingAccountId. SaveConfiguration returns Task with no response payload. Dataset keys, singleton Ids and sync revisions are not editable inputs. System precision/base currency remain immutable; Local settings remain outside sync.
 
 Verification snapshot: the whole solution builds with zero warnings/errors and 1,220 Local tests pass after the folder/record refactoring. These tests cover existing behavior; GetById and tree reads remain NotImplementedException stubs, so this is not evidence of completed read behavior. XML-comment cleanup remains deferred at the user's request. Device timezone comes from local execution; GetById throws a not-found exception for unknown/deleted identities; exact exception class/error mapping remains TQ-07; no rule is inferred from the absence of code.
 
@@ -793,6 +1028,9 @@ Names below describe domain outcomes, not approved machine codes or HTTP statuse
 | Invalid transaction | OP-027 | Missing/unknown entry account, invalid date/rate or invalid numeric value | Reject without changes in either state. Fewer than two valid entries or imbalance instead saves as Draft for both new and existing transactions. | BR-016–021 |
 | Empty report selection | OP-037 | Any dimension has no selected elements/unassigned | Empty result with warning, not unrestricted | BR-023 |
 | Missing report reference | OP-037/038 | Saved identity absent from actual tree | Ignore without rewriting definition; returning identity reactivates choice | BR-025 |
+| Invalid saved report JSON | OP-037/038 and report definition loading | Saved JSON cannot be read as a valid definition | Show error; preserve stored JSON; never substitute empty/default settings | BR-028; confirmed 2026-10-08 |
+| Report calculation failure after period save | OP-070 followed by OP-037 | Date save succeeded; subsequent calculation fails | Keep saved dates, show error and return to report list; no successful results popup | BR-028; confirmed 2026-10-08 |
+| Report CSV export failure | UI export of OP-037 results | Saving the generated table to the chosen file fails | Keep results popup and generated rows, show error, allow explicit save retry | BR-028; confirmed 2026-10-08 |
 | Cloud authorization failure | OP-003/004/043–049 | Invalid credentials/owner scope | Reject access; no other owner data returned; normal local opening still no login | BR-003/005 |
 | Setup partial success | OP-003/004 | Master created, local download failed | Create disabled; user retries Open manually; no normal use without LocalDb | BR-003 |
 | Waiting for master | OP-043/048 | Another sync active | Waiting message, no editing, cancellable unlimited healthy wait | BR-034/036 |
@@ -814,8 +1052,13 @@ All operations use ROLE-001 as business principal; application-triggered operati
 | OP-041/042/055/056 | ROLE-001 | Own Local/System settings; Local never synchronizes | BR-005 | Configuration access while recovery pending TQ-05 |
 | OP-043–049 | ROLE-001 | Owner dataset plus owned registration, operation and version; never trust IDs alone | BR-005/038–041 | Auth handle/expiration, upload/download authorization TQ-03/TQ-04 |
 | OP-050–052 | ROLE-001/application for owner | Session diagnostics/log folder; no remote log-sharing API | BR-043 | Secret redaction/file permissions TQ-08 |
+| OP-070 | ROLE-001 | Existing report in current local dataset; ordinary access/editing/recovery gates | BR-002/026/028/039 | Proposed DTO/transaction/errors TQ-07/16 |
 
-Only login/password requiredness is user-approved input policy. Do not impose invented length/complexity constraints. Password hashing algorithm, salt/work parameters, secure credential storage, session authorization and revocation are technical decisions TQ-03, not settled by “remember authorization”. Initial provisioning of a single-user endpoint must be protected; the exact bootstrap control is unresolved. Version-two password change/recovery is not introduced here.
+Login/password requiredness remains the approved credential-input policy; do not impose invented length/complexity constraints. Login matching is case-insensitive, so Gena and gena identify the same login. Remove leading and trailing spaces from the login before account lookup or creation. Passwords are case-sensitive and are not trimmed or otherwise normalized; preserve the entered password exactly. Existing required-field validation remains unchanged. Remember synchronization authorization through a server-issued token after successful authentication, without storing the password. Protect the retained token with Windows DPAPI scoped to the current Windows user. Store the protected token in a separate file under the Windows user profile, outside the database and UI settings JSON. If a saved token is missing or unreadable, request login when synchronization is attempted while retaining the existing Local registration and database; do not create a new Local copy. A network failure or unreachable Master does not constitute rejected authorization: retain the token and report the connection error. Configure the Master URL in a local configuration file; version one has no UI editor for that address. Read this URL at startup; configuration-file changes require an application restart. If the URL is missing or invalid, show a configuration error when synchronization is requested; existing local work remains available subject to the normal expiry/recovery rules. Require HTTPS for remote Master connections, allowing HTTP only for localhost development. Never send a saved token to a different Master address. Changing the Master address requires login again while preserving the local database and pending changes. After reauthorization to a different server address, verify that the server MasterDatasetKey matches the existing Local copy. A matching login alone does not permit merging into another dataset. This authorization applies to synchronization with Master, not ordinary local work or local schema migration; no local-login requirement is introduced in version one. Expired or rejected synchronization authorization prompts for login again while preserving the local database and pending changes. Each registered Local copy receives its own synchronization token; replacing one Local copy's authorization does not affect other devices. Generate a cryptographically random 256-bit token containing no login or business data. Master stores only its SHA-256 hash, associated with the owner and Local registration, rather than persisting the raw token. Successful reauthorization issues a new token and invalidates the previous token for that Local copy only. A synchronization token is valid for 90 days from issue, without sliding renewal on synchronization; after expiration request login at the next synchronization. Token expiration is separate from Local-copy expiry. Master UTC time is authoritative for token expiration, independent of the Local computer clock. Each token authorizes only its associated owner, Master dataset and Local registration; Master validates these associations on every synchronization request. Token text encoding and exact storage schema remain to be specified. Reauthorization shows the existing login as read-only and an empty password field, and must authenticate the same Master account. Canceling that login cancels synchronization without discarding local work; offline use continues only where the existing expiry/recovery rules permit it. Existing first-use cloud authentication and recovery/expiry admission rules remain unchanged. Use ASP.NET Core PasswordHasher on Master and persist its salted password-hash representation rather than the password. After successful login, replace an older hash when the hasher reports that rehashing is needed; the user password remains unchanged. Version one has no failed-login attempt limit, throttling cooldown or account lockout caused by repeated failed attempts. Do not implement the proposed count/window, per-login/IP scope or failure-counting rules in this version. Exact hasher version/work parameters, token encoding/storage schema, remaining revocation details and exact token filename/subdirectory remain TQ-03. Initial provisioning of a single-user endpoint must be protected; the exact bootstrap control is unresolved. Version-two password change/recovery is not introduced here.
+
+#### Current pre-production initialization scope — confirmed 2026-10-08
+
+The application is not in production. For these pre-release schema changes, including ReportGroup and new report/catalog fields, update the initial schema script and initial seed data and create databases from scratch. Do not implement a legacy-report conversion, assign groups to old development reports, or backfill their favorites/order. Include the sixth root and required fields/defaults directly in fresh initialization; optional sample data must follow the same schema. This documents the implementation approach and does not delete or recreate any database during requirements work. Previously agreed compatibility and migration rules remain requirements for later supported released schemas; the current change has no production upgrade path to support.
 
 ## Data and Integration Requirements
 
@@ -827,7 +1070,9 @@ Only login/password requiredness is user-approved input policy. Do not impose in
 6. **Recovery:** resolve prior SyncKey before duplicate upload or disposal; recover latest master; repeat lost receipt safely. 90-day confirmed expiry supersedes preservation/recovery. Expiry is evaluated by master, not guessed by local wall clock.
 7. **Cleanup:** obsolete published files removable only after download/dependency safety; publication outcomes outlive files as needed. No backup retention; backup/restore version two. Registration that never completed initial download needs explicit lifecycle policy TQ-04.
 8. **Catalog:** local system culture/region data from user's example. First value per code as enumerated; platform differences do not rewrite already saved Currency Name/Symbol unless user restores/edits or normal sync conflict rules apply.
-9. **Migration:** schema version representation, upgrade compatibility, supported client versions and rollback behavior TQ-06. Do not activate a snapshot the local client cannot safely use; this is a proposed design constraint, not a replacement for existence-only mode selection.
+9. **Migration — confirmed 2026-10-08:** store a database schema version and check compatibility before normal database use or accepting/activating a downloaded copy. If the database is newer than this application supports, show Please update the application, block use of that database and leave it unchanged. For an older database, automatically execute a provided supported migration when available; apply the migration completely or roll it back. If no supported migration exists, explain the incompatibility, block use and leave the database unchanged. Never activate an incompatible downloaded copy. These checks do not replace existence-only local setup mode selection. The schema version is an increasing integer, separate from the application version, changed only when database compatibility changes. Persist the new schema version in the same transaction as the migration; rollback restores the old version as well. Schema-only migrations preserve existing unsynchronized changes and their modification flags and do not mark every record as user-modified. In version one, Local and Master schema versions must match before exchanging business changes. On mismatch, stop synchronization, preserve unsynchronized work and explain which side needs updating; do not automatically downgrade either database. Only the Master service migrates the Master database; a Local application never directly upgrades it. Store the application schema version in SQLite PRAGMA user_version, the application-managed integer in the database header; no extra version table is required. SQLite does not run application migrations automatically. Treat version 0 in an existing database as unrecognized unless an explicit migration supports its known structure; never merely stamp it as current. Create a new database's current structure and set its user_version together before making it available for use. The first released database structure is schema version 1. When an upgrade spans multiple versions, apply the required migrations sequentially within one transaction for the full chain; any step failure rolls back the entire upgrade, including its version changes. On migration failure, show the source/target schema versions and a short error, log technical details subject to the existing sensitive-data exclusions, and do not retry automatically. Check and migrate an existing Local database at application startup before opening Ledger or initiating automatic synchronization. Master migrations and synchronization use the same per-dataset exclusive lock, preventing concurrent modification of that dataset. Migrate Master using a separate candidate copy; make the candidate active only after success, leaving the current Master copy unchanged on migration failure. After a Master service update, migrate each dataset on its first access before processing synchronization. A successful Master migration publishes a new snapshot version; existing published snapshots remain unchanged. Migration alone is not successful synchronization, does not renew Local expiry and does not clear Recovery required. Concrete supported migration mappings, publication primitives and coordination with already-pending synchronization recovery remain TQ-06. Reference: [SQLite user_version](https://www.sqlite.org/pragma.html#pragma_user_version).
+
+Confirmed migration scenario: after Local1 and Master have migrated, a non-expired Local2 may still contain an older schema and unsynchronized business changes. Update the Local2 application, migrate its own existing database at startup while preserving those changes and flags, then synchronize once schema versions match. Do not replace Local2 with a fresh Master copy before merging its pending changes. Local1 migrates only its own database; the updated Master service owns the Master migration. Existing expiry/recovery admission rules remain binding.
 10. **Precision:** SQLite mapping must preserve approved decimal semantics, including exact rounded zero test. Use confirmed int64 scale 10,000 for persisted Amount/Rate; apply the confirmed decimal calculation bounds and reject overflow without mutation; binary floating approximation is not permitted to relax BR-018. No fixed performance limits inferred from SQLite choice.
 11. **Report JSON:** evaluate persisted selection as-is against current tree. Explicit overrides survive moves, redundant state and missing IDs. Minimize only on explicit selection save. Report deletion deletes definition only; sync treats saved definition as business item.
 12. **Integration scope:** Azure first, Functions for setup, hardcoded prototype address. No bank import, AWS, browser/Apple work, multi-user administration or cloud backup implementation included.
@@ -856,18 +1101,21 @@ These questions identify concrete draft contract gaps. They do not reopen settle
 | --- | --- | --- | --- |
 | TQ-01 | Partly resolved: display follows AmountPrecision/RatePrecision and SQLite Amount/Rate storage is int64 scaled by 10,000. Resolved: decimal calculation bounds, checked scaled-int64 storage conversion and rejection of overflow without mutation; no extra arbitrary amount cap. Open: Unicode definition of one separator. Account-name format is derived from the two stored settings in PM-012. BaseAmount derivation is confirmed in PM-007; initial-rate date and derived IsInitial are confirmed in PM-004. | PM-003–009/012; DTO-006–011/014/015; OP-016–037 | Only separator character-count semantics remain open in this item; numeric limits and failure policy are settled. BRD scale/rounding rules remain binding. |
 | TQ-02 | Partly resolved: shared sync fields, entity revisions, configuration singleton identities and single-application local editing scope confirmed above; no local expected-revision token is required. Confirmed: separate UI actions call separate API operations, each persisting entity changes together with applicable sync flags; all rows affected by one reorder commit in one transaction or all roll back. Open: remaining identifier role/name alignment; local mutation deduplication is not promised: Add/Update/Delete failures are shown to the user and never automatically retried; user retries are explicit. Group, classification and account merges commit all dependent changes, source deletion and flags in one transaction; their multi-row boundary is confirmed. Each current state-changing local API action uses one AcceptChanges commit for its entire result; aggregate replacement and deletion boundaries are confirmed, including all affected rows and flags. | PM-001–012; L/W operations | Blocks schemas and mutation safety; never substitutes timestamps for sync outcomes. |
-| TQ-03 | Open: first-owner bootstrap, login case/normalization, password-hash parameters, remembered authorization/expiry, local secret storage, per-operation ownership enforcement. | PM-013; DTO-016–020/023; OP-002–004/043–049 | Blocks secure setup/cloud contract; no new password complexity rule. |
+| TQ-03 | Confirmed: sync-only remembered server-issued token, no saved password, current-user Windows DPAPI protection, reauthentication on expiration/rejection preserving local data, and no local login. Confirmed: independent per-Local tokens, same-Master reauthorization with read-only login and blank password, cancellation stops sync while retaining local work and existing offline admission rules. Open: first-owner bootstrap, exact culture-independent login comparison/normalization mapping, exact PasswordHasher version/work parameters, token encoding/storage schema, remaining revocation details, exact token filename/subdirectory and remaining operation-specific authorization mappings. | PM-013; DTO-016–020/023; OP-002–004/043–049 | Blocks secure setup/cloud contract; no new password complexity rule. |
 | TQ-04 | Open: Admin.db hosting/serialization, durable sync state machine, typed Changes DTO, no-change response, snapshot byte protocol, atomic publication/outcome and receipt persistence, writer wait/liveness, reader leases/cleanup, incomplete registration retry/expiry, null-revision identity collisions. Int64 snapshot versions and deletion acknowledgement thresholds confirmed above. | PM-014–016; DTO-018–023; OP-003/004/043–049 | Blocks complete sync contracts; combined conflicts must implement BR-029–033 or fail/report without invalid publication. |
-| TQ-05 | Tree contracts are settled as OP-005/009/062 and DTO-030–034. Separate editor reads are now declared through OP-063 and the code contract mapping below; implementations remain stubs.  Timezone source is resolved: local Business/Reporting use the device timezone; remote synchronization uses UTC, with no timezone parameter required. Configuration settings read/write fields are recorded in DTO-015/035; Business internal reads use IConfigOperation; Setup owns external configuration reads and writes. Proposal/open: setup creation details; type-specific DTO/service selection for derived group/element models (no Kind enum), final DTO read/write split, exact exceeded-limit response shape, equal-timestamp ID tie-break comparison/direction and selected-date month-end/leap-day shifts, displayed-ID refresh input/output and operation assignment, post-edit overflow-indicator behavior, report result grouping/selection-save versus rename, settings admission during recovery, ID remapping in reports. | DTO-001–015/026; OP-005–042 | Blocks exposed shapes/editor contracts; saved JSON preservation rules unchanged. |
-| TQ-06 | Open: schema version and upgrade/download compatibility, migration failure behavior. | All PMs; snapshot operations | Blocks safe compatible local installation; no implementation schema inferred. |
+| TQ-05 | Tree contracts are settled as OP-005/009/062 and DTO-030–034. Separate editor reads are now declared through OP-063 and the code contract mapping below; implementations remain stubs.  Timezone source is resolved: local Business/Reporting use the device timezone; remote synchronization uses UTC, with no timezone parameter required. Configuration settings read/write fields are recorded in DTO-015/035; Business internal reads use IConfigOperation; Setup owns external configuration reads and writes. Proposal/open: setup creation details; type-specific DTO/service selection for derived group/element models (no Kind enum), final DTO read/write split, exact exceeded-limit response shape, equal-timestamp ID tie-break comparison/direction and selected-date month-end/leap-day shifts, displayed-ID refresh input/output and operation assignment, post-edit overflow-indicator behavior, selection-save versus rename, settings admission during recovery, ID remapping in reports. | DTO-001–015/026; OP-005–042 | Blocks exposed shapes/editor contracts; saved JSON preservation rules unchanged. |
+| TQ-06 | Confirmed: persist/check schema version before database use or downloaded-copy activation; unsupported newer database blocks with update message and no mutation; older database uses an available supported automatic migration, completely applied or rolled back; missing migration blocks unchanged. Confirmed: increasing integer version independent of application version, version change atomic with migration, and preservation of pending data/flags without blanket modification marking. Confirmed: matching Local/Master schemas before exchanging business changes, mismatch stops sync while preserving pending work and explaining the required update, no automatic downgrades, Master migrations owned solely by Master service. Confirmed: SQLite user_version storage, existing version 0 requires an explicit known-structure migration, and new databases establish current structure/version together before use. Confirmed: initial released schema version 1, sequential multi-version migration chain in one transaction with full rollback on failure, and source/target error reporting with diagnostic logging and no automatic retry. Confirmed: Local migration at startup before Ledger/automatic synchronization, shared per-dataset exclusive lock for Master migrations/synchronization, and candidate-copy Master migration with activation only after success. Confirmed: Master migration on first dataset access after service update, new snapshot publication without rewriting existing snapshots, and no sync-success/expiry-renewal/recovery-clear effect from migration alone. Current pre-production schema changes use revised initial scripts/data and fresh databases; no legacy-development migration mapping is required. Future supported-version migration mappings, publication primitives and already-pending synchronization recovery coordination remain open. | All PMs; snapshot operations | Blocks safe compatible local installation; no implementation schema inferred. |
 | TQ-07 | Proposal/open: domain error DTO/code taxonomy and local/transport mappings; canceled/absent result representation. | All OPs | Observable BRD errors fixed; exact response contracts incomplete. |
-| TQ-08 | Open: log folder per platform, seven-day clock/cleanup trigger, diagnostic secret redaction and latest report counts after full replacement. | DTO-024/025; OP-050–052 | Blocks diagnostic details; no new Share/Export feature. |
-| TQ-09 | Open: minimum supported client/runtime versions and verification workload; only propose capacity/latency limits if needed. Transaction reads OP-026/057–060 use a required inclusive end date and a fixed result cap defined by an application constant initially set to 300 transactions, returning the latest matching transactions newest first with a deterministic Transaction.Id tie-breaker and an exceeded-limit warning (confirmed 2026-10-02). No offset/page-number pagination is introduced; the earlier unlimited-list interpretation is superseded. | NFR-001–005/SC-001–004 | Runtime/deployment constraints unresolved; no new business target. |
+| TQ-08 | Windows Logs beside executable, daily UTF-8 files and cleanup at startup/daily confirmed. First Windows release is unpackaged in a writable folder. Confirmed: local-date filenames, offset-bearing local entry timestamps, retention of today plus six prior calendar dates, and exclusion of passwords/tokens/authorization headers. Open: other-platform log locations and latest report counts after full replacement. | DTO-024/025; OP-050–052 | Blocks diagnostic details; no new Share/Export feature. |
+| TQ-09 | Confirmed: first Windows release runs unpackaged from a writable folder, delivered as ZIP with bundled .NET and Windows App SDK runtimes. Confirmed: ordinary managed .NET compilation without Native AOT, initial x64 package, executable-adjacent Data directory, release ZIP without user data and manual updates preserving data/logs/settings. Confirmed: Windows 11 only initially, same .NET major version as backend, stable explicitly pinned Windows App SDK/CommunityToolkit.Mvvm packages without previews. Open: exact compatible version pins/minimum Windows 11 build and verification workload; only propose capacity/latency limits if needed. Transaction reads OP-026/057–060 use a required inclusive end date and a fixed result cap defined by an application constant initially set to 300 transactions, returning the latest matching transactions newest first with a deterministic Transaction.Id tie-breaker and an exceeded-limit warning (confirmed 2026-10-02). No offset/page-number pagination is introduced; the earlier unlimited-list interpretation is superseded. | NFR-001–005/SC-001–004 | Runtime/deployment constraints unresolved; no new business target. |
 | TQ-10 | Template create/update/delete is confirmed under the shared Business lifecycle; entry collection replacement is the aggregate exception. Proposal to review: exact preview input/output requiredness; other invalid-input handling for OP-053/054; OP-020 is resolved for range validation: inclusive dates, initial rate excluded, and FromDate > ToDate throws a validation exception without changes. Self-merge is resolved for OP-007/053/054: equal IDs return immediately without exception or changes. Template CombineElements remains unsupported, with failure and no mutation. | UC-005-04; UC-006-04; OP-007/020/025/035/036/053/054/064/066–069 | These details are labeled proposals, not silent additions to BRD. Keep unsupported operations inactive until resolved. |
 | TQ-11 | Resolved 2026-09-27: int32 Position, consecutive 0..N-1 on saving edited collections; preserve accepted positions during whole-aggregate sync. Scope excludes catalog element/group ordering. | PM-007/009; DTO-009/011; OP-027/033 | Entry ordering and DTO order representation resolved: list/array order maps to Position on save, confirmed 2026-10-01. |
-| TQ-12 | Partly resolved: per-entity ModificationType flags, Local-wins flagged Order independent of content priority, int32 separate zero-based catalog sequences, normalization and GUID tie-breaks. Merged per-member Order values sort ascending with GUID tie-break, then normalize; changed intended placement is accepted. Canonical lowercase GUID strings with ordinal ascending comparison are confirmed. Order-only changes require synchronization, whether represented by uncaptured flags or a queued batch. Open: order transport and change-detection implementation. | PM-001/002/003/005/008; catalog DTOs and mutation/sync operations | Complete collection ordering protocol; review BRD alignment before approval. |
-| TQ-13 | Resolved 2026-09-28: favorites default false, roots permanently non-favorite, favorite changes synchronize as Content; filtering retains necessary ancestor paths and remains favorites-only inside favorite groups. | PM-001/002/003/005/008; catalog DTOs/mutations | Favorite behavior resolved; frontend owns filtering using IsFavorite and parent/group identities from tree DTOs. |
+| TQ-12 | Partly resolved: per-entity ModificationType flags, Local-wins flagged Order independent of content priority, int32 separate zero-based catalog sequences, normalization and GUID tie-breaks. Merged per-member Order values sort ascending with GUID tie-break, then normalize; changed intended placement is accepted. Canonical lowercase GUID strings with ordinal ascending comparison are confirmed. Order-only changes require synchronization, whether represented by uncaptured flags or a queued batch. Open: order transport and change-detection implementation. | PM-001/002/003/005/008; catalog DTOs and mutation/sync operations | Complete collection ordering protocol; BRD 0.218 BR-029 records the accepted independent ordering policy. |
+| TQ-13 | Favorite behavior confirmed: default false, six roots non-favorite, ordinary Content sync and ancestor-path filtering. Inline stars, failure restoration and filter/selection rules are in Windows UI integration. Report persistence/projections remain TQ-16. | PM-001/002/003/005/008/010; catalog DTOs/mutations | Behavior resolved; new report fields still proposed. |
 | TQ-14 | CumulativeAmount: cache scope, binary transaction ordering, atomic Add/Update/Delete maintenance, Confirmed deletion recalculation, zero Draft entry values, exclusion of Draft entries from cache lookups, recalculation on both Draft/Confirmed transitions and no synchronization flags from cache-only updates confirmed in PM-007. Atomic destination-account recalculation during account combination is confirmed in PM-005/OP-054. PM-007 confirms a complete local cumulative rebuild before a downloaded merged database becomes usable. Signed-int64 storage scaled by 10,000 and rejection of cumulative overflow with complete rollback are confirmed in PM-007. Exact binary GUID comparison is confirmed: unsigned lexicographic comparison of the 16 parameterless Guid.ToByteArray() bytes, identically in SQLite. Open: logical property type/nullability; stored values on retained deleted entries; Master cache representation and transfer exclusion; local rebuild orchestration and restart/recovery mechanics; higher-level maintenance method shapes, exact opening-balance DAL function declaration and absence representation, internal flush versus AcceptChanges semantics, exact command declarations and SQL. Opening-balance retrieval is confirmed: ICumulativeOperation calls the DAL lookup for the last live Confirmed entry strictly before the account/start boundary and passes the seed to ICumulativeAmountCommand; the DAL reports an absent predecessor and Business ICumulativeOperation converts absence to a zero seed. Service-owned transaction creation/commit/rollback through the unit of work in the same service function and the Service-to-Operation-to-Command call chain are confirmed; operations and commands have no transaction-context responsibilities. ICumulativeAmountCommand range/full-account variants, parameterized SQL execution and CumulativeAmountCommand placement in DataAccess.EntityFramework.SqLite are confirmed above. Initial affected-account/date-boundary and remaining merge proposals remain under discussion. | PM-007; OP-027/028/031/054/061/064/066–069; synchronization operations | Blocks complete cache lifecycle and implementation handoff; no CumulativeBaseAmount cache. |
+
+| TQ-15 | Confirmed Windows UI behavior includes MVVM/CommunityToolkit.Mvvm, modal coordinator, per-call service scopes, decimal editing, date/time rules, flattened ListView columns/tree interactions, local synchronous operations, editor account-reference guards and refresh behavior. Remaining SDK/package selection and wiring are implementation tasks. Identify a concrete conflicting or missing contract before requesting further clarification; settled flows are not reopened. | Business-only Windows increment; applicable read/mutation contracts | Track implementation integration; deferred-domain gaps do not block Business by default. |
+| TQ-16 | Open UI data/API changes: Reporting service/tree projection alignment; period-only OP-070/DTO-036; exact OP-072 request naming/return shape; window-state storage; creation precision DTO fields/check input; report JSON and remaining CSV/TXT formatting. Preserve retired SVC-013 and OP-021/024/032 IDs. The four-rule cleanup on 2026-10-08 aligns BRD/TRD on Local default priority, no Currency.Description, calculation/display precision and Draft entry count; those contradictions are closed. Other listed contract gaps remain open. | PM-001/010/012; DTO-013/015/016/035/036; OP-002/003/025/039/041/042/055/056/070 | Blocks extensions/full alignment/handoff; business behavior stays source-backed while shapes/mechanisms are proposed. |
 
 ## Complete Traceability Matrix
 
@@ -885,14 +1133,14 @@ Each approved BRD ROLE, BC, BR, FR, NFR and SC receives one row. `Partial` means
 | BR-002 | PM-011–PM-016; OP-001–OP-004/041–OP-049 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-003 | PM-011–PM-016; OP-001–OP-004/041–OP-049 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-004 | PM-011–PM-016; OP-001–OP-004/041–OP-049 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
-| BR-005 | PM-011–PM-016; OP-001–OP-004/041–OP-049 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
+| BR-005 | PM-011–PM-016; OP-001–OP-004/041–OP-049; OP-071/072 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-006 | PM-001/002; OP-005–OP-013 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-007 | PM-001/002; OP-005–OP-013 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-008 | PM-001/002; OP-005–OP-013 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-009 | PM-001/002/005/008; OP-005–OP-013/022/033 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-010 | PM-003–PM-005/012; OP-009, OP-014–OP-020, OP-022–OP-023, OP-025/030 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-011 | PM-003–PM-005/012; OP-009, OP-014–OP-020, OP-022–OP-023, OP-025/030 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
-| BR-012 | PM-003–PM-005/012; OP-009, OP-014–OP-020, OP-022–OP-023, OP-025/030 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
+| BR-012 | PM-003–PM-005/012; OP-009, OP-014–OP-020, OP-022–OP-023, OP-025/030; OP-071/072 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-013 | PM-003–PM-005/012; OP-009, OP-014–OP-020, OP-022–OP-023, OP-025/030 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-014 | PM-003–PM-005/012; OP-009, OP-014–OP-020, OP-022–OP-023, OP-025/030 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-015 | PM-003–PM-005/012; OP-009, OP-014–OP-020, OP-022–OP-023, OP-025/030 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
@@ -908,13 +1156,13 @@ Each approved BRD ROLE, BC, BR, FR, NFR and SC receives one row. `Partial` means
 | BR-025 | PM-010; DTO-012–DTO-014; OP-037–OP-040 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-026 | PM-010; DTO-012–DTO-014; OP-037–OP-040 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-027 | PM-010; DTO-012–DTO-014; OP-037–OP-040 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
-| BR-028 | PM-010; DTO-012–DTO-014; OP-037–OP-040 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
-| BR-029 | PM-011–PM-016; OP-041–OP-048; Data and Integration Requirements | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
+| BR-028 | PM-010; DTO-012–DTO-014; OP-037–OP-040/070 | Partial | UI and period-only mutation mapped; ReportGroup/projections and TQ-15/16 remain partial. |
+| BR-029 | PM-011–PM-016; OP-041–OP-048; Data and Integration Requirements; OP-071/072 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-030 | PM-011–PM-016; OP-041–OP-048; Data and Integration Requirements | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-031 | PM-011–PM-016; OP-041–OP-048; Data and Integration Requirements | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-032 | PM-011–PM-016; OP-041–OP-048; Data and Integration Requirements | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-033 | PM-011–PM-016; OP-041–OP-048; Data and Integration Requirements | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
-| BR-034 | PM-011–PM-016; OP-041–OP-048; Data and Integration Requirements | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
+| BR-034 | PM-011–PM-016; OP-041–OP-048; Data and Integration Requirements; OP-071/072 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-035 | PM-011–PM-016; OP-041–OP-048; Data and Integration Requirements | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-036 | PM-011–PM-016; OP-041–OP-048; Data and Integration Requirements | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-037 | PM-011–PM-016; OP-041–OP-048; Data and Integration Requirements | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
@@ -924,7 +1172,7 @@ Each approved BRD ROLE, BC, BR, FR, NFR and SC receives one row. `Partial` means
 | BR-041 | PM-014/015; OP-044/049; UC-011-01/02 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-042 | PM-014/015; OP-044/049; UC-011-01/02 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BR-043 | DTO-024/025; OP-050–OP-052 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
-| BR-044 | Shared favorite contract; PM-001/002/003/005/008; TQ-13 | Partial | Favorite behavior and content sync confirmed; DTO/operation contracts remain TQ-05. |
+| BR-044 | Shared favorites; PM-001/002/003/005/008/010; Windows UI integration; TQ-13/16 | Partial | Favorite behavior confirmed; report persistence/projection extension proposed. |
 | BC-001 | UC-001-01–UC-001-03; OP-001–OP-004 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BC-002 | UC-002-01–UC-002-03; OP-001/004 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BC-003 | UC-003-01–UC-003-06; OP-005–OP-013 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
@@ -932,8 +1180,8 @@ Each approved BRD ROLE, BC, BR, FR, NFR and SC receives one row. `Partial` means
 | BC-005 | UC-005-01–UC-005-06; OP-026–OP-031, OP-057–OP-060, OP-061, OP-064/066–069 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BC-006 | UC-006-01–UC-006-04; OP-009, OP-033–OP-036 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BC-007 | UC-007-01–UC-007-02; OP-037 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
-| BC-008 | UC-008-01–UC-008-04; OP-038–OP-040 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
-| BC-009 | UC-009-01–UC-009-05; OP-041–OP-047 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
+| BC-008 | UC-008-01–UC-008-04; OP-038–OP-040/070 | Partial | UI and period-only mutation mapped; ReportGroup/projections and TQ-15/16 remain partial. |
+| BC-009 | UC-009-01–UC-009-05; OP-041–OP-047; OP-071/072 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BC-010 | UC-010-01–UC-010-03; OP-044–OP-048 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BC-011 | UC-011-01–UC-011-02; OP-044/047/049 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | BC-012 | UC-012-01–UC-012-02; OP-050–OP-052 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
@@ -944,8 +1192,8 @@ Each approved BRD ROLE, BC, BR, FR, NFR and SC receives one row. `Partial` means
 | FR-005 | UC-005-01–UC-005-06; OP-026–OP-031, OP-057–OP-060, OP-061, OP-064/066–069 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | FR-006 | UC-006-01–UC-006-04; OP-009, OP-033–OP-036 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | FR-007 | UC-007-01–UC-007-02; OP-037 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
-| FR-008 | UC-008-01–UC-008-04; OP-038–OP-040 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
-| FR-009 | UC-009-01–UC-009-05; OP-041–OP-047 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
+| FR-008 | UC-008-01–UC-008-04; OP-038–OP-040/070 | Partial | UI and period-only mutation mapped; ReportGroup/projections and TQ-15/16 remain partial. |
+| FR-009 | UC-009-01–UC-009-05; OP-041–OP-047; OP-071/072 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | FR-010 | UC-010-01–UC-010-03; OP-044–OP-048 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | FR-011 | UC-011-01–UC-011-02; OP-044/047/049 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
 | FR-012 | UC-012-01–UC-012-02; OP-050–OP-052 | Partial | Behavior mapped; schema/operation proposals and applicable TQ items remain. |
@@ -957,14 +1205,80 @@ Each approved BRD ROLE, BC, BR, FR, NFR and SC receives one row. `Partial` means
 
 ## Development Handoff Readiness
 
-- **Not ready**. BRD 0.51 and TRD 0.123 are Draft; BRD 0.32 approval remains prior-baseline provenance only.
-- Blockers: TQ-01–TQ-10 and TQ-12. TQ-11 and TQ-13 are resolved. Proposed schemas/directions/exposed fields, concurrency, authentication, sync wire protocol and transport/error definitions remain incomplete.
+This assessment covers the complete product. The confirmed Business-only increment above proceeds independently of deferred-domain discovery; current documentation work does not start code implementation.
+
+- **Full-product handoff: Not ready**. BRD 0.218 and TRD 0.232 are Draft; prior full-version approval covers BRD 0.32 only. Current user authorizes draft alignment, not document promotion.
+- Blockers: TQ-01–TQ-10, TQ-12 and TQ-14–TQ-16. Entry-order and favorite behavior TQ-11/13 are resolved; new report favorite fields remain TQ-16. Proposed schemas/directions/exposed fields, concurrency, authentication, sync wire protocol and transport/error definitions remain incomplete.
 - DTO/PM boundary: persistent models are not operation inputs/outputs. DTO-019 Changes and snapshot streaming are explicitly unresolved and cannot be treated as implemented contracts.
 - Traceability: all 79 applicable BRD IDs enumerated (2 roles, 12 capabilities, 44 rules, 12 functional, 5 nonfunctional, 4 success criteria). One non-system approval role; 78 Partial; zero Covered. This is drafting coverage, not a passing contract review or development handoff.
 - Detailed use cases are concise scenario specifications linked to operations. Proposed additions and unresolved technical behavior remain visible instead of masquerading as complete manual test procedures.
 - Handoff requires approved BRD, approved TRD with material gaps closed, and passing review results. No implementation/code/test generation is authorized here.
 
 ## Clarification Log
+
+### 2026-10-08 — Backend alignment before WinUI
+
+User corrected the implementation sequence: persistent models, Business and DAL must first match current BRD/TRD, including ReportGroup, configuration property names and fresh-database SQL. Report/ReportGroup now have persistent models, mappings, repositories and a distinct seeded root. LocalConfig and related projections use AccountNameOrder, AccountNameSeparator and AccountNameAddCurrency; account-name generation reads the flag and accepts the optional currency identity, requiring a live currency when enabled. Fresh SQLite scripts include the new tables/fields and user_version = 1. Existing System precision, Local conflict default, Currency/Rate description distinction and valid Draft entry-count behavior already match the confirmed rules. Report calculation, report UI and other deferred subdomain workflows are not implemented by this alignment. Existing databases are not modified; use the fresh initialization scripts as previously agreed.
+
+
+### 2026-10-08 — Business-only increment and account-reference guards
+
+User accepted tracking current account references in open existing transaction/template editors, checking every UI account-delete path before the service call, and removing protection when the editor closes. Persisted-reference checks remain in the service. User then requested a complete Business UI flow using an existing Local database and postponement of all other subdomains, including Reports, Synchronization and Help. Existing decisions are preserved; only actual Business integration gaps require further discussion.
+
+
+### 2026-10-08 — Report failures
+
+User agreed to all three report failure proposals: invalid saved JSON produces an error without replacing saved settings; calculation failure after successful date saving keeps those dates and returns to the report list with an error; failed CSV export retains the results popup and allows retry.
+
+
+
+### 2026-10-08 — Blank currency-header numeric cells
+
+User agreed after the USD heading example: currency-header Amount and BaseAmount are null, displayed/exported as empty cells rather than 0.00. Numeric data/subtotal/grand-total rows keep their existing BR-027 amount rules. This closes the remaining question from the report-row pack.
+
+
+
+### 2026-10-08 — Remove report-result Key and Level
+
+User accepted questions 2 and 3: remove Level because Kind supplies the display role, and remove Key because results are temporary/read-only. User requested explanation of question 1 about numeric cells in currency-header rows; that question remains open.
+
+
+
+### 2026-10-08 — Flat report-result contract
+
+User agreed to all three proposals: one flat ordered row list shared by display/CSV; explicit Data, Currency header, Currency subtotal and Grand total row kinds; warnings returned separately so they do not become CSV rows. Recorded in DTO-014/R and OP-037. No business calculation, stored report definition or AccountBalanceInfo change is implied.
+
+
+
+### 2026-10-08 — Reports initialized from scratch
+
+User accepted ReportGroup and report catalog fields under the same conventions as the other five catalogs, then clarified that the application is not in production. Update initial scripts/data and create fresh databases; the proposed conversion of old reports into the root with default favorite/order is not required. Future released-schema compatibility rules are not removed by this pre-production decision.
+
+
+
+### 2026-10-08 — Account-name properties and currency validation
+
+Source: requesting user explicitly agreed to conditional CurrencyId validation and selected AccountNameOrder, AccountNameSeparator and AccountNameAddCurrency. The order name is unchanged; the other two names replace DefaultAccountNameSeparator and AddCurrencyToAccountName in current contracts. The saved LocalConfig bool controls the suffix. Empty currency is allowed for name generation with the flag off; flag on requires a valid currency, and Restore default name is disabled until it is chosen. Historical names below remain provenance.
+
+
+
+### 2026-10-08 — Flat Settings object and LocalConfig naming flag
+
+Source: user correction to the three-question pack. Reuse the existing flat POCO with mixed Local/System properties. Save only editable fields. Add required bool LocalConfig.AddCurrencyToAccountName with existing default false, and read it in GetDefaultName through existing configuration access instead of accepting a bool argument. CurrencyId conditional validation was not answered and remains open. No application source was changed.
+
+
+
+### 2026-10-08 — Settings service contracts
+
+The requesting user agreed to the three proposed contracts: one Setup call reads Local/System settings; one Setup call saves both in one database transaction; IAccountService.GetDefaultName receives CurrencyId and AddCurrency bool alongside classification IDs, and Business resolves the currency code. Recorded as OP-071/072 and the OP-025 extension. Exact DTO layout and conditional currency requiredness are not inferred.
+
+
+
+### 2026-10-08 — Four-rule consistency cleanup
+
+Source: requesting user explicitly confirmed the four rules and requested cleanup. Updated current precision, Currency scope, PM-006 cardinality, transaction scenario and source-alignment notes. Previously accepted ordering and same-Local conflict exceptions now align with BRD 0.213. Historical superseded discussion remains below. Checklists reviewing BRD 0.212/TRD 0.222 remain historical; no full re-review or handoff approval is claimed.
+
+
 
 ### 2026-09-27 — Entity revisions, snapshot versions and shared sync schema
 
@@ -2205,6 +2519,358 @@ Each approved BRD ROLE, BC, BR, FR, NFR and SC receives one row. `Partial` means
 - Updated shared reads, DTO-001, OP-026/057–060, UC-005-03, refresh behavior and TQ-05/09. Selected-date navigation replaces the earlier From/To list selection; filtered bulk deletion retains its separate range contract. Post-edit refresh preserves displayed membership except removals and never refills automatically. Retained rows receive fresh complete DTOs. Exact refresh contract and date-shift edge cases remain unresolved.
 - No code changed. TRD 0.141 becomes Draft 0.142; full-version approval and BRD alignment remain outstanding.
 
+### 2026-10-06 — Windows UI alignment started from BRD 0.175
+
+- User authorization: "Let's start TRD", following the completed UI discussion. Repository instructions authorize expanding TRD as requirements stabilize. Source is Draft BRD 0.175 and individual confirmations; no full-version approval is inferred.
+- TRD 0.159 becomes Draft 0.160. Replaced obsolete picker routing with five final modes across six catalogs and source-linked screen/service responsibilities. Aligned credentials-first Continue/Create/Back, Settings, reports, synchronization, Help and window behavior in existing use-case IDs.
+- ReportGroup/report favorites and Local Add currency are required concepts with new persistence/DTO fields explicitly proposed. Existing five root GUIDs remain; the sixth identity/migration is unresolved.
+- Recorded the missing selected currency in the documented OP-025 input and atomic Settings-save gap. Added distinct logical period-only mutation OP-070 with proposed DTO-036; it must preserve saved selection IDs and every non-date setting.
+- Added TQ-15/16 for Windows foundations, controls, data/API extensions and existing source inconsistencies. Retired IDs stay reserved. Historical code snapshots are not current implementation verification. Handoff remains Not ready.
+- Only TRD was edited. BRD, backend source, staged WinUI scaffold, SQL assets and tests are unchanged. No implementation or formal approval is claimed.
+
+### 2026-10-06 — MVVM accepted; dialog/coordinator explanation requested
+
+- Source: requesting user, this conversation: "OK. Agree with MVVM", following the comparison of WinUI XAML/code-behind and a separate ViewModel with Blazor component files.
+- Decision: adopt the MVVM pattern for Windows UI. Layout/bindings are the View; initialization/UI-specific events remain code-behind; separate ViewModels hold state/commands; authoritative rules/persistence stay in the in-process services.
+- Package/version remains proposed because acceptance names MVVM, not a specific library. The user requested technical questions one at a time and asks what a popup coordinator and ContentDialog mean; no dialog-hosting or DI-lifetime acceptance is inferred.
+- Affected items: Windows UI integration, UI foundations and TQ-15. No business requirement, DTO/model/operation, backend code or scaffold change.
+- TRD 0.160 becomes Draft 0.161; no full-document approval is inferred.
+
+### 2026-10-06 — Owned dialog windows and shared popup coordinator accepted
+
+- Exact question: "Agree with this approach?", after explaining one shared coordinator for the popup chain, owned WinUI windows for nested editors/pickers and ContentDialog for simple confirmations.
+- Accepted answer: "agree."
+- Source: requesting user, this conversation. Confirmed dialog hosting/coordination. A single coordinator manages opening, active-chain/routing checks, blocked parents and focus on closing. Each editor/picker keeps its own UI and ViewModel.
+- The user then asks whether service lifetime means singleton UI popups. This is a clarification request, not acceptance of per-action Business/DAL scopes or singleton popup registration. Scope lifetime and toolkit/package remain open; technical questions continue one at a time.
+- Affected items: Windows UI integration, UI foundations and TQ-15. No business/model/DTO/API or application-code changes.
+- TRD 0.161 becomes Draft 0.162; no full-document approval is inferred.
+
+### 2026-10-06 — Scoped Business/DAL graph with one scope per call
+
+- User's clarification: DAL reads are AsNoTracking but writes attach entities; a subsequent call can otherwise encounter an entity already tracked. DbContext has Scoped lifetime, created for the API call and disposed at its end; repositories and services must also be scoped.
+- Source: requesting user, this conversation. Confirmed existing scoped DbContext/repository/Business registrations and the call boundary. WinUI applies the equivalent explicit scope per logical service call, awaits it before disposal, and keeps only detached/materialized editor data between calls.
+- Preserve a shared context within one call, but never retain its tracked entities/context/scoped services into the next public UI service call. Popup lifetime and the single coordinator are independent; no singleton popup registration is inferred. Existing compatible Shared singleton helpers remain unchanged.
+- Updated UI foundations and TQ-15. The service-lifetime decision is settled; exact scope-runner wiring, toolkit/package and other UI technical gaps remain open.
+- TRD 0.162 becomes Draft 0.163. No full-document approval or application-code change is inferred.
+
+### 2026-10-06 — CommunityToolkit.Mvvm selected
+
+- Source: requesting user, this conversation: "yes. obviously. manual looks awful", after the manual INotifyPropertyChanged setter and CommunityToolkit.Mvvm ObservableObject/ObservableProperty comparison.
+- Decision: use CommunityToolkit.Mvvm for UI ViewModel notification/command infrastructure. WinUI examples use the documented generated partial-property form. Compatible package version remains undecided; no package installation or application-code change occurs in this turn.
+- Updated UI foundations/TQ-15 and recorded the next unaccepted proposal: reusable decimal-preserving amount/rate input. Numeric business rules and precision remain unchanged.
+- TRD 0.163 becomes Draft 0.164; no full-document approval is inferred.
+
+### 2026-10-06 — Reusable decimal input selected
+
+- Exact question: "We write the component once and reuse it in every amount/rate field. Agree with this approach?", after explaining that TextBox is built in, its decimal parsing/precision/validation behavior is application-owned, and NumberBox.Value is double.
+- Accepted answer: "agree".
+- Source: requesting user, this conversation. Use the reusable TextBox-based component for amount/rate input with direct decimal parsing, Windows regional separators and configured precision. Existing numeric business validation and empty-value rules remain binding.
+- Updated Windows UI integration, UI foundations and TQ-15. Control choice is settled; detailed editing/commit behavior and other control choices remain open. No BRD, model/DTO/API, application code or package changes.
+- TRD 0.164 becomes Draft 0.165; no full-document approval is inferred.
+
+### 2026-10-06 — Built-in date and minute-only time controls selected
+
+- User decision: "CalendarDatePicker - OK. TimePicker. Let's change requirements. Will use without seconds TimePicker is OK".
+- Source: requesting user, this conversation. Use built-in CalendarDatePicker and TimePicker, keeping the 24-hour clock and replacing transaction UI HH:mm:ss with HH:mm.
+- BRD 0.175 becomes Draft 0.176 to record the changed business display/input requirement. No custom seconds-capable time control is required. Existing UTC timestamp storage is not redefined, and existing seconds are not silently assigned a truncation policy; new/edited/unchanged time commit semantics remain TQ-15.
+- Updated Windows UI integration, date/time controls and TQ-15. Report default-name timestamps, numeric precision, service contracts and application code remain unchanged.
+- TRD 0.165 becomes Draft 0.166. No full-document approval or implementation authorization is inferred.
+
+### 2026-10-06 — Seconds-on-save rule accepted
+
+- Exact question: "Next: I propose seconds = 00 for new transactions or when time changes. If an existing transaction's time stays unchanged, preserve its stored seconds. Agree?"
+- Accepted answer: "agree".
+- Source: requesting user, this conversation. New/changed time saves seconds as 00; an unchanged existing time retains its stored seconds. The minute-only TimePicker must not make opening the editor or changing other fields count as a time change.
+- Updated date/time controls and removed the seconds policy from TQ-15's open items. BRD 0.176 becomes Draft 0.177. UTC storage, existing data, report default-name format and date-only semantics remain unchanged.
+- TRD 0.166 becomes Draft 0.167. No full-document approval, schema/API change or application-code change is inferred.
+
+### 2026-10-06 — Flattened ListView tree accepted; indentation pending
+
+- Source: user's TreeGrid.png and generic row-ViewModel proposal, followed by explicit agreement to visible collection binding, all-ancestor visibility with preserved expansion flags, nullable report check state and arrow-only expansion.
+- Selected a ListView-based flattened hierarchy with application-owned row templates and visibility projection. Recorded mutually exclusive group/element rows, identity/parent association, aligned columns and retained existing tree interactions.
+- User's item 3 says: "If we can make intention via monospace font, it's ok for me". Keep the exact indentation method open; do not infer approval of layout padding or a required monospace font.
+- Updated Windows UI integration and TQ-15; BRD 0.177 becomes Draft 0.178 for confirmed interaction behavior.
+- TRD 0.167 becomes Draft 0.168. No full-document approval, schema/API change or implementation completion is inferred.
+
+### 2026-10-06 — Layout spacer indentation confirmed
+
+- Requesting user accepted an empty first-column layout spacer sized as IndentLevel multiplied by a shared step. Normal fonts work; other columns retain their alignment. The illustrative 16-unit step is not a fixed requirement.
+- TRD 0.168 becomes Draft 0.169. No full-document approval or application implementation is inferred.
+
+### 2026-10-06 — Selection after collapse confirmed
+
+- Requesting user agreed: when collapsing a group hides the selected row, select that group; selection elsewhere stays unchanged.
+- Resume discussion in batches of three related questions at the user's request.
+- TRD 0.169 becomes Draft 0.170. No full-document approval or implementation completion is inferred.
+
+### 2026-10-06 — Tree/table headers and overflow confirmed
+
+- User accepted stationary column headers without sorting and single-line text with ellipsis/full-text tooltips. User rejected horizontal scrolling: users should make columns narrower.
+- Width-configuration details remain open; no automatic resizing policy is inferred.
+- TRD 0.170 becomes Draft 0.171. No full-document approval or implementation completion is inferred.
+
+### 2026-10-06 — Column setup and local preferences confirmed
+
+- User accepted all three proposals: Columns popup with editable widths and Apply/Cancel, local per-view width persistence separate for main screens and selection popups, and Restore defaults.
+- TRD 0.171 becomes Draft 0.172. No full-document approval or application implementation is inferred.
+
+### 2026-10-06 — Percentage column widths and limits confirmed
+
+- User accepted widths expressed as percentages totaling 100%, proportional resizing with the window, minimum widths protecting essential controls, and fixed column order with all columns visible in version one.
+- The minimum-viewport fallback is still open; no horizontal scrolling is introduced.
+- TRD 0.172 becomes Draft 0.173. No full-document approval or implementation completion is inferred.
+
+### 2026-10-06 — Minimum window width and cell alignment confirmed
+
+- User accepted the minimum usable window/popup width and the proposed text/control alignment, adding that the currency-name string in the Account tree must be centered.
+- User requested an explanation of the proposed deep-nesting indentation cap. It is not approved; finish this clarification before the next question batch.
+- TRD 0.173 becomes Draft 0.174. No full-document approval or implementation completion is inferred.
+
+### 2026-10-06 — Fixed eight-level visual indentation cap confirmed
+
+- User specified a constant limit of 8 indentation steps. Every deeper row is displayed at level-8 indentation; the underlying hierarchy is unchanged. This replaces the pending proposal for a width-dependent cap.
+- TRD 0.174 becomes Draft 0.175. No full-document approval or implementation completion is inferred.
+
+### 2026-10-06 — Tree arrow-key navigation confirmed
+
+- User accepted all three keyboard proposals: Up/Down moves through visible rows; Right expands or enters an expanded group; Left collapses or navigates to its parent, with no parent navigation at the root.
+- TRD 0.175 becomes Draft 0.176. No full-document approval or implementation completion is inferred.
+
+### 2026-10-06 — Tree activation and checkbox shortcuts confirmed
+
+- User accepted Enter matching double-click, Home/End selecting the first/last visible row, and Space toggling a report-tree checkbox with partial becoming fully checked.
+- TRD 0.176 becomes Draft 0.177. No full-document approval or implementation completion is inferred.
+
+### 2026-10-06 — Tree refresh and failure behavior confirmed
+
+- User accepted refresh on reactivation after saved catalog changes, retaining tree state subject to existing explicit reveal rules, and keeping old rows with Retry after refresh failure while disabling editing and selection confirmation. Cancel/Close remains available.
+- TRD 0.177 becomes Draft 0.178. No full-document approval or implementation completion is inferred.
+
+### 2026-10-06 — Synchronous ordinary local loading and saving confirmed
+
+- User rejected additional local loading UI and the proposed save-time busy controls, requesting synchronous execution because SQLite operations are expected to be fast. Do not infer removal of existing validation/error or refresh-failure rules; remote synchronization/setup keeps its distinct flows.
+- TRD 0.178 becomes Draft 0.179. No full-document approval or implementation completion is inferred.
+
+### 2026-10-06 — Decimal editing and validation boundaries confirmed
+
+- User accepted unfinished text during typing, validation/precision/rounding on focus loss or Save, and preserving invalid text with a field-level error while preventing Save until corrected.
+- TRD 0.179 becomes Draft 0.180. No full-document approval or implementation completion is inferred.
+
+### 2026-10-06 — Plain numeric editing and focus behavior confirmed
+
+- User accepted select-all on entering an amount/rate field and focusing the first invalid field on Save while preserving other entered values. User corrected editing to plain unformatted text, without regional formatting; formatting occurs after focus loss.
+- Editing decimal separator remains to be clarified before closing this question batch.
+- TRD 0.180 becomes Draft 0.181. No full-document approval or implementation completion is inferred.
+
+### 2026-10-06 — Dot decimal separator for editing confirmed
+
+- User chose a dot as the decimal separator in plain amount/rate editing text, independent of Windows regional settings. Regional display formatting still applies after leaving a valid field.
+- TRD 0.181 becomes Draft 0.182. No full-document approval or implementation completion is inferred.
+
+### 2026-10-06 — Numeric paste, keypad and syntax confirmed
+
+- User accepted plain dot-decimal paste with surrounding whitespace ignored and currency/grouping symbols rejected, numeric keypad decimal normalized to dot, and simple decimal numbers without expressions or scientific notation.
+- TRD 0.182 becomes Draft 0.183. No full-document approval or implementation completion is inferred.
+
+### 2026-10-06 — Popup placement, resizing and saved dimensions confirmed
+
+- User accepted all three proposals: center over parent within the monitor work area; resize tree pickers, transaction/template editors and report results while keeping simple forms fixed; remember dimensions locally by popup type and catalog/mode for tree pickers, reopening centered.
+- TRD 0.183 becomes Draft 0.184. No full-document approval or implementation completion is inferred.
+
+### 2026-10-06 — Main-window-only minimize and manual monitor adjustment
+
+- User rejected stack minimization/restoration and automatic accommodation for a smaller monitor. Only the main window has a minimize button; users close all popups before adjusting the main window. This supersedes the prior automatic work-area position adjustment.
+- User questioned the need for a taskbar. Clarify Windows taskbar terminology before selecting its application representation.
+- TRD 0.184 becomes Draft 0.185. No full-document approval or implementation completion is inferred.
+
+### 2026-10-06 — Main-window Windows taskbar icon confirmed
+
+- After clarification of Windows taskbar terminology, user accepted a normal taskbar icon for the main window and no separate popup icons. This does not introduce popup minimization or a stack-minimize command.
+- TRD 0.185 becomes Draft 0.186. No full-document approval or implementation completion is inferred.
+
+### 2026-10-06 — Local JSON UI preferences confirmed
+
+- User accepted local JSON storage under the Windows user profile without synchronization; save column widths on Apply, popup dimensions on closing, main-window geometry on exit; fall back to defaults for missing/invalid UI settings without affecting bookkeeping data.
+- TRD 0.186 becomes Draft 0.187. No full-document approval or implementation completion is inferred.
+
+### 2026-10-06 — Drag reorder, invalid-drop feedback and edge scrolling confirmed
+
+- User accepted sibling reordering with an insertion line, keeping separate group/element sequences; invalid destinations show a not-allowed cursor with no mutation; dragging near viewport edges scrolls the tree. Existing move/merge gestures and mode restrictions remain binding.
+- TRD 0.187 becomes Draft 0.188. No full-document approval or implementation completion is inferred.
+
+### 2026-10-07 — Favorites reordering allowed; placement specified
+
+- User rejected disabling reorder under Favorites only. Insert immediately after the preceding visible sibling in the full sequence, or first when dropped at the start. The stated initial Order of 1 needs reconciliation with the existing zero-based Order contract.
+- The other two questions in this batch, Escape canceling only a drag and retaining hover-expanded groups, remain unanswered; no approval is inferred.
+- TRD 0.188 becomes Draft 0.189. No full-document approval or implementation completion is inferred.
+
+### 2026-10-07 — Drag cancellation and start-position clarification
+
+- User answered yes to the first-position clarification, interpreted as retaining stored Order = 0 rather than changing numbering, and agreed to Escape canceling only the drag and preserving hover-expanded groups.
+- TRD 0.189 becomes Draft 0.190. No full-document approval or implementation completion is inferred.
+
+### 2026-10-07 — CSV structure and invariant values confirmed
+
+- User accepted comma-separated CSV with quoting of commas, quotes and line breaks, and numbers with a decimal dot/no thousands grouping/configured precision plus yyyy-MM-dd dates, independent of Windows settings.
+- User answered English to the UTF-8 with BOM proposal. Encoding and intended label language require clarification; no encoding approval is inferred.
+- Affects report CSV under BR-028, UC-007-01 and TQ-16. TRD 0.190 becomes Draft 0.191. No full-document approval or implementation completion is inferred.
+
+### 2026-10-07 — English technical text and original business language
+
+- User clarified that all technical information in reports, logs and similar outputs is English; business information is in the user language. Preserve stored business text without translation. This resolves the language question, not CSV byte encoding.
+- TRD 0.191 becomes Draft 0.192. No full-document approval or implementation completion is inferred.
+
+### 2026-10-07 — Report CSV UTF-8 with BOM confirmed
+
+- User answered totally agree to using UTF-8 with BOM for CSV exports so business text supports any language. Previously confirmed English technical labels and unmodified business text remain binding.
+- Affects report CSV under BR-028, UC-007-01 and TQ-16. TRD 0.192 becomes Draft 0.193. No full-document approval or implementation completion is inferred.
+
+### 2026-10-07 — Export layout, filename and summary encoding confirmed
+
+- User accepted all three proposals: CSV header first with the complete report table and no title/date-range preamble; suggested ReportName_yyyyMMdd_HHmmss.csv using export time with forbidden filename characters replaced and user override; synchronization summary TXT in UTF-8 with BOM containing the displayed summary.
+- Affects BR-028/043, UC-007-01, UC-012-01 and TQ-16. TRD 0.193 becomes Draft 0.194. No full-document approval or implementation completion is inferred.
+
+### 2026-10-07 — Empty exports, zero totals and report row ordering
+
+- User accepted all three proposals: empty results remain exportable as headers only; include groups with matching transactions even when totals cancel to zero, excluding groups with no matches; date groups chronological and classification groups in catalog tree order, with CSV retaining displayed order.
+- Affects BR-023/026/027/028 and UC-007-01. TRD 0.194 becomes Draft 0.195. No full-document approval or implementation completion is inferred.
+
+### 2026-10-07 — Report currency order, Unassigned and full paths
+
+- User accepted currency catalog order and Unassigned first when matching data exists, then accepted full classification paths after clarification that these appear in report result grouping labels and CSV, not catalog trees or editors.
+- Affects BR-026/027/028 and UC-007-01. TRD 0.195 becomes Draft 0.196. No full-document approval or implementation completion is inferred.
+
+### 2026-10-07 — Report sections, totals and negative amount presentation
+
+- User accepted currency headings followed by rows with no expand/collapse, bold currency subtotals after sections and grand total at the bottom under existing calculation rules, and minus signs for negative amounts rather than parentheses.
+- Affects BR-026/027/028 and UC-007-01. TRD 0.196 becomes Draft 0.197. No full-document approval or implementation completion is inferred.
+
+### 2026-10-07 — Executable-adjacent daily diagnostic logs
+
+- User accepted daily UTF-8 yyyy-MM-dd.log files and seven-day cleanup at startup and daily, correcting the location to an application-created Logs directory beside the executable.
+- File location is accepted; deployment compatibility with read-only MSIX installation directories needs clarification. No fallback or packaging change is inferred.
+- Affects BR-043, OP-051/052 and TQ-08/09. TRD 0.197 becomes Draft 0.198. No full-document approval or implementation completion is inferred.
+
+### 2026-10-07 — Unpackaged first Windows release confirmed
+
+- User accepted running the first Windows version unpackaged from a writable folder, resolving the executable-adjacent Logs location compatibility question. Runtime bundling and delivery format remain unselected.
+- Affects Windows deployment and TQ-08/09. TRD 0.198 becomes Draft 0.199. No full-document approval or implementation completion is inferred.
+
+### 2026-10-07 — Diagnostic log clock, retention boundary and secret exclusion
+
+- User accepted all three proposals: local-date filenames and local timestamps with UTC offsets; keep today plus the preceding six calendar dates; exclude passwords, authentication tokens and authorization headers while including operation names and error details.
+- Affects BR-043, OP-051/052 and TQ-08. TRD 0.199 becomes Draft 0.200. No full-document approval or implementation completion is inferred.
+
+### 2026-10-07 — ZIP delivery and bundled runtimes confirmed
+
+- User accepted ZIP application-folder delivery and bundled .NET/Windows App SDK runtimes. On the x64 proposal, user replied that this is .NET and compiled libraries will not be distributed; clarify managed compilation versus native dependency architecture before selecting a target.
+- Affects Windows deployment and TQ-09. TRD 0.200 becomes Draft 0.201. No full-document approval or implementation completion is inferred.
+
+### 2026-10-07 — Managed .NET compilation and initial x64 delivery
+
+- User agreed to ordinary .NET compilation without Native AOT and an x64 ZIP initially, after clarification of IL versus architecture-specific runtime/native dependencies.
+- Affects Windows deployment and TQ-09. TRD 0.201 becomes Draft 0.202. No full-document approval or implementation completion is inferred.
+
+### 2026-10-07 — Local database location and manual update delivery
+
+- User accepted all three proposals: local SQLite database under Data beside the executable; release ZIP excludes user databases/logs/personal settings; manual updates replace application files with the app closed while preserving data/logs/settings, without a version-one built-in updater.
+- Affects Windows deployment and TQ-09. Schema compatibility/migration remains TQ-06. TRD 0.202 becomes Draft 0.203. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — Database compatibility and automatic migration policy
+
+- User accepted all three proposals: stored schema version checked before opening/accepting a downloaded copy; unsupported newer schema shows Please update the application without changing the database; older schema uses a provided migration automatically, fully applied or rolled back, with no mutation when no migration is available.
+- Affects all persistent models, snapshot operations and TQ-06. Representation and synchronization upgrade coordination remain open. TRD 0.203 becomes Draft 0.204. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — Schema-version integer, atomicity and pending changes
+
+- User accepted all three proposals: an increasing schema-version integer separate from application version and changed only for compatibility changes; update that integer in the migration transaction; preserve pending changes and synchronization flags during schema-only migrations without marking all records modified.
+- Affects all persistent models, migration contract and TQ-06. Physical version storage and synchronization coordination remain open. TRD 0.204 becomes Draft 0.205. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — Schema compatibility at synchronization and Master ownership
+
+- User accepted all three proposals: matching Local/Master schema versions before exchanging business changes; mismatch stops synchronization with pending work preserved and an explanation of which side needs updating, without automatic downgrade; only the Master service migrates Master.
+- Affects migration/snapshot operations and TQ-06. TRD 0.205 becomes Draft 0.206. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — SQLite user_version and initial database handling
+
+- User conditionally accepted all three proposals if SQLite has built-in user_version. SQLite documentation confirms that application-managed header integer. Record its use, explicit known-structure migration for existing version-0 databases, and current structure/version creation together before new database use.
+- Affects migration contract and TQ-06. TRD 0.206 becomes Draft 0.207. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — Initial schema version and multi-step migration failures
+
+- User accepted version 1 for the first released schema, sequential migrations within one transaction for the entire upgrade chain, and source/target versions plus a short error with technical logging and no automatic retry on failure.
+- Affects migration contract and TQ-06. TRD 0.207 becomes Draft 0.208. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — Local startup and isolated Master migration
+
+- User accepted all three proposals: check/migrate Local before Ledger or startup sync; serialize Master migration with synchronization using the same per-dataset lock; migrate a candidate Master copy and activate it only after success, preserving the current copy on failure.
+- Affects migration/snapshot contracts and TQ-06. TRD 0.208 becomes Draft 0.209. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — Master upgrade trigger, snapshot version and sync status
+
+- User accepted migration on first dataset access after updating Master service, publication as a new snapshot with older snapshots unchanged, and no successful-sync/expiry-renewal/Recovery-required reset merely from migration.
+- Affects migration/snapshot contracts and TQ-06. TRD 0.209 becomes Draft 0.210. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — Non-expired Local2 upgrade with pending business changes
+
+- User confirmed the explained sequence: update Local2 application, migrate its existing local database preserving pending changes/flags, then synchronize with matching Master schema. Never replace it from Master before merging those changes. The explanation explicitly assumes Local2 is not expired and retains Master-service migration ownership.
+- Affects migration acceptance scenario and TQ-06. TRD 0.210 becomes Draft 0.211. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — Windows 11 and stable runtime/package policy
+
+- User answered No to needing Windows 10, Yes to using the backend .NET major version, and agreed to stable explicitly versioned Windows App SDK/CommunityToolkit.Mvvm packages without previews.
+- Affects Windows deployment and TQ-09/15. Exact compatible versions remain to be selected. TRD 0.211 becomes Draft 0.212. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — Sync-only remembered token authorization
+
+- User clarified that authorization is for synchronization, not local work, then accepted a server-issued remembered token without saving the password, current-user Windows DPAPI protection, and login again on expired/rejected authorization while preserving local data and pending changes.
+- Affects BR-005 and TQ-03. TRD 0.212 becomes Draft 0.213. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — Per-Local tokens and same-account reauthorization
+
+- User accepted all three proposals: independent authorization token per registered Local copy; read-only existing login and empty password for reauthorization to the same Master account; canceling login cancels sync but preserves local work and offline access subject to existing expiry/recovery rules.
+- Affects BR-005 and TQ-03. TRD 0.213 becomes Draft 0.214. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — Token file, missing-token recovery and network failures
+
+- User accepted a separate DPAPI-protected token file under the Windows user profile outside database/UI JSON, reauthentication for missing/unreadable tokens retaining the current Local registration/database, and keeping tokens on connection failures rather than treating those failures as rejected authorization.
+- Affects BR-005 and TQ-03. TRD 0.214 becomes Draft 0.215. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — Random token, hashed Master storage and replacement
+
+- User accepted all three proposals: cryptographically random 256-bit token with no login/business data; Master persists only its SHA-256 hash associated with owner and Local registration; successful reauthorization replaces and invalidates only that Local copy's previous token.
+- Affects authentication contracts and TQ-03. Token encoding, exact schema and lifetime remain open. TRD 0.215 becomes Draft 0.216. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — Token lifetime, authoritative clock and ownership scope
+
+- User accepted all three proposals: fixed 90-day token lifetime from issue without per-sync extension, Master UTC clock determines expiration, and every synchronization request checks token ownership of the owner/Master dataset/Local registration. Token lifetime is distinct from Local-copy expiry.
+- Affects BR-005 and TQ-03. TRD 0.216 becomes Draft 0.217. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — Login case/space rules and exact passwords
+
+- User accepted all three proposals: case-insensitive login matching; trim leading/trailing login spaces before account lookup/creation; case-sensitive password with no trimming or other normalization.
+- Affects BR-003/005 and TQ-03. TRD 0.217 becomes Draft 0.218. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — PasswordHasher, rehash after login and temporary throttling
+
+- User accepted ASP.NET Core PasswordHasher with salted hash storage, upgrading old hashes after successful verification when requested by the hasher without changing the password, and temporary throttling of repeated failed login attempts without permanent account lockout.
+- Affects BR-005 and TQ-03. Exact work factors and throttle policy remain open. TRD 0.218 becomes Draft 0.219. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — Login throttling removed from version one
+
+- User rejected all three throttle-detail questions, specifying no limit in the first version. This supersedes the earlier acceptance of temporary throttling; remove attempt limits, cooldowns and failed-attempt lockout from active version-one requirements. Accepted password hashing and rehash behavior remain unchanged.
+- Affects BR-005 and TQ-03. TRD 0.219 becomes Draft 0.220. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — Master endpoint configuration and token address boundary
+
+- User accepted all three proposals: local-file Master URL configuration without a UI editor, HTTPS for remote connections with HTTP only for localhost development, and reauthorization on address changes without sending the saved token to a different address or losing local data/pending changes.
+- Affects BR-005, cloud connection/authentication contracts and TQ-03. TRD 0.220 becomes Draft 0.221. No full-document approval or implementation completion is inferred.
+
+### 2026-10-08 — Endpoint reload, configuration errors and dataset identity
+
+- User accepted all three proposals: read Master URL at startup with restart required for file changes; missing/invalid URL reports a synchronization configuration error without blocking otherwise permitted local work; reauthorization at a different server must match the existing MasterDatasetKey, not merely the login.
+- Affects BR-005 and Master connection/authorization contracts. TRD 0.221 becomes Draft 0.222. No full-document approval or implementation completion is inferred.
+
 ## Approval
 
 - Current decision: **Not submitted**.
@@ -2212,7 +2878,7 @@ Each approved BRD ROLE, BC, BR, FR, NFR and SC receives one row. `Partial` means
 - Intended approver: requesting user.
 - Decision date: not applicable.
 - Scope: consolidated technical requirements, detailed use cases, proposed schemas and API/BFF contracts.
-- Next step: review this Draft 0.142 and settle technical choices in place. Do not reopen settled BRD questions. No TRD approval is inferred from the instruction to begin drafting.
+- Next step: implement the scoped Business UI flow against an existing Local database when implementation starts; discuss only concrete integration blockers. Other subdomains remain deferred.
 
 
 ### 2026-10-03 — Initial cumulative implementation and validation
@@ -2309,10 +2975,53 @@ Security, durable synchronization protocol, report serialization and other unres
 - Temporary content may be removed when no longer needed. Source code and maintained test projects remain in the backend solution and are not covered by these ignore rules.
 
 
-### 2026-10-03 — SQLite initialization and manual Web API testing
+### 2026-10-04 — SQLite and Web API configuration
 
-- All explicit EF model configuration now resides in SqLiteAppDbContext. AppDbContext retains entity sets and constructors; AppUnitOfWork had no model configuration. SQLite DI configures the provider, connection and foreign-key enforcement.
-- Committed 001-schema.sql, 002-initial-data.sql and 003-test-data.sql under backend/DataAccess.EntityFramework.SqLite/Assets. The schema is generated from the EF model. Initial DML creates five canonical roots, UAH plus rate 1, Rebalancing and singleton System/Local configuration with AmountPrecision=2 and RatePrecision=4. Optional sample data adds USD/rate, child groups, classifications, accounts, a template and confirmed balanced transactions with rebuilt cumulative values. Fixed dataset identities are for the local demo only.
-- Web API SqLiteConnectionString defaults to Assets/dehb.db, resolved against its content root. Explicit InitializeDatabase=true creates a new database; SeedTestData=true optionally adds sample data. Initialization is atomic and refuses an existing file. This local testing helper does not replace remote Setup or migrate existing databases.
-- SQL assets copy to build/publish output. Local database files and sidecars are ignored by Git. The startup guide and 124 route-specific request files are maintained in [docs/postman](../postman/README.md); these are durable examples, not ignored validation output.
-- Fixed console startup validation by resolving the scoped logging service from the HTTP request in the singleton exception handler. Verified real localhost API startup, all 38 GET examples, selected POST mutations, 400/404 error mapping and existing-file protection. All 2,312 tests passed, including schema/seed integration validation.
+This section records the user-confirmed first-version configuration and the current implementation. It supersedes the 2026-10-03 initialization notes, including the old connection key, automatic initialization flags, SQL asset copying and request-scoped logger lookup. It does not approve unresolved requirements elsewhere in this Draft.
+
+#### SQLite schema and manual initialization
+
+- All explicit EF model configuration resides in SqLiteAppDbContext. AppDbContext retains entity sets and constructors; AppUnitOfWork does not configure the model.
+- All 17 physical table names are singular, matching their entity names. EF mappings, raw SQL, foreign keys and indexes must agree. Quote SQL identifiers such as "Transaction", which is a SQL keyword.
+- Transaction.Id and TransactionEntry.TransactionId use BLOB storage based on Guid.ToByteArray(), preserving binary ordering. Other identifiers retain their configured text representation. Monetary values and rates use signed integers scaled by 10,000; AmountPrecision and RatePrecision govern calculation and display, independently of that fixed storage scale.
+- The user manually initializes and migrates databases for the first version. WebApi startup does not call SqliteDatabaseInitialization, EnsureCreated or EF migrations. Existing plural-table databases require an explicit manual migration or recreation; changing mappings does not rename existing tables.
+- Maintained SQL scripts are in backend/DataAccess.EntityFramework.SqLite/Assets: 001-schema.sql, 002-initial-data.sql and optional 003-test-data.sql. Apply schema and seed scripts in that order to an empty database, with foreign keys enabled. Use a transaction around manual initialization. These scripts are not repeatable migrations.
+- Initial data includes five canonical roots, UAH with initial rate 1, Rebalancing, SystemConfig and LocalConfig; AmountPrecision=2 and RatePrecision=4. Optional sample data adds USD/rate, child groups, classifications, accounts, a template and balanced confirmed transactions with cumulative amounts. Fixed dataset identities belong to the local demo.
+- SQL assets are maintained for manual execution; automatic copying to host build/publish output is no longer part of initialization. SqliteAssetsTests is an isolated schema/seed validation test, not application initialization. Its output-asset dependency currently needs alignment with manual asset handling; the latest broad test run excluded it.
+
+#### Connection configuration
+
+- WebApi reads ConnectionStrings:DehbSqLite through GetConnectionString("DehbSqLite") and passes the value to UseSqlite. The former top-level SqLiteConnectionString and ConnectionStrings:AppDb keys are superseded.
+- Supply a complete SQLite connection string, never just a file path. The current checked-in development value is:
+
+~~~json
+{
+  "ConnectionStrings": {
+    "DehbSqLite": "Data Source=bin/Debug/net10.0/Assets/dehb.db"
+  }
+}
+~~~
+
+- A relative Data Source is relative to the process working directory. The current DI code does not rebase it against the WebApi content root. For other launch locations, release builds or published deployments, configure the appropriate path or an absolute path.
+- Standard configuration overrides apply, including environment variable ConnectionStrings__DehbSqLite and command-line key ConnectionStrings:DehbSqLite. Development settings can override appsettings.json.
+- SQLite DI currently does not explicitly set Foreign Keys in the connection string; enforcement therefore follows provider/native defaults. Use Foreign Keys=True when explicit connection-level enforcement is required, and enable PRAGMA foreign_keys=ON in the manual SQL session before its transaction.
+- The operator supplies the initialized database at the configured path. Do not interpret successful process startup as proof that the schema exists or matches the model.
+
+#### Dependency injection and exception handling
+
+- DbContext uses scoped registration. DI creates it when first resolved and disposes it at the end of the request scope; it is not eagerly created for every HTTP request. Repositories, UOW, cumulative command, Business operations and services remain scoped. Services/adapters that depend on these objects must not capture them in singletons.
+- Service methods own transaction creation and commit through UOW. Request scope ownership does not make every request one database transaction. The established rollback behavior disposes the context; further database work then requires a new scope/context.
+- Shared singleton registrations: IDateTimeService, IDirectoryService, IFileService, IZipService, ITlsService, IXmlService, IJsonService, ILogService and IMessageService.
+- These implementations do not capture request-scoped dependencies. ZipService depends on singleton logging; TlsService uses AsyncLocal logical-flow storage; the in-process publisher uses IServiceScopeFactory and creates a scope per dispatch without retaining handlers. Singleton replacements must retain compatible dependencies and concurrency behavior.
+- ISharedContext remains scoped so scoped replacements remain possible. A singleton dependent such as ZipService still requires a singleton-compatible logger replacement.
+- AddExceptionHandler registers WebApiExceptionHandler as singleton. It constructor-injects singleton ILogService; request-time service lookup is no longer needed. The current NullLogService is a no-op, not a persistent logging sink.
+- Program registers problem details and exception handling. Known business exceptions are mapped to their configured HTTP status; unexpected errors return a generic 500 response.
+
+#### Console host and API clients
+
+- Run from backend/Dehb.WebApi with dotnet run --launch-profile http after manually preparing the database. The http launch profile listens on http://localhost:5290. The https profile uses https://localhost:7250 and http://localhost:5290. Both profiles select Development.
+- Program enables HTTPS redirection and exception handling, then maps endpoints. OpenAPI is mapped only in Development. Launch-profile ports are development settings, not fixed production endpoints.
+- HTTP JSON uses camelCase names, case-insensitive input property matching, no default-value omission and Populate object creation handling. Shared IJsonService is a separate serializer configuration; its converters do not automatically configure HTTP JSON.
+- The Dehb Postman collection is maintained at backend/Dehb.WebApi/Assets/Dehb.postman_collection.json, with service folders and function-named requests. Every URL uses {{host-name}}. Set that collection variable to the chosen API root including http:// or https:// and without a trailing slash.
+- Earlier initialization commands in manual-test notes that use InitializeDatabase or SeedTestData are superseded by this manual workflow.
+- Latest lifetime validation checked the production DI graph with scope validation enabled and singleton reuse across two scopes. The broad run passed 2,311 tests, excluding the SQL-assets test described above. This is historical validation evidence, not a guarantee for subsequent code changes.

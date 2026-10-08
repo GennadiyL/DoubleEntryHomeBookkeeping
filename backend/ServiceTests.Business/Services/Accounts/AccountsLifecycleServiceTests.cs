@@ -341,7 +341,7 @@ public sealed class AccountsLifecycleServiceTests
 	{
 		_local.AccountNameOrder = order;
 
-		string name = await _service.GetDefaultName(_correspondent.Id, _category.Id, _project.Id);
+		string name = await _service.GetDefaultName(_correspondent.Id, _category.Id, _project.Id, null);
 
 		Assert.That(name, Is.EqualTo(expected));
 		Assert.That(_account.Name, Is.EqualTo("Existing"));
@@ -358,7 +358,7 @@ public sealed class AccountsLifecycleServiceTests
 	public async Task GetDefaultName_AbsentSlots_RetainsSeparators(bool correspondent, bool category, bool project, string expected)
 	{
 		string name = await _service.GetDefaultName(correspondent ? _correspondent.Id : null,
-			category ? _category.Id : null, project ? _project.Id : null);
+			category ? _category.Id : null, project ? _project.Id : null, null);
 
 		Assert.That(name, Is.EqualTo(expected));
 		AssertNoWrites();
@@ -367,10 +367,10 @@ public sealed class AccountsLifecycleServiceTests
 	[Test]
 	public async Task GetDefaultName_UsesCurrentSeparatorAndRenamedClassifications()
 	{
-		_local.DefaultAccountNameSeparator = "|";
+		_local.AccountNameSeparator = "|";
 		_category.Name = "Renamed";
 
-		Assert.That(await _service.GetDefaultName(null, _category.Id, null), Is.EqualTo("|Renamed|"));
+		Assert.That(await _service.GetDefaultName(null, _category.Id, null, null), Is.EqualTo("|Renamed|"));
 
 		AssertNoWrites();
 	}
@@ -382,7 +382,7 @@ public sealed class AccountsLifecycleServiceTests
 		if (invalid) { _local.AccountNameOrder = AccountNameOrder.Undefined; }
 		else { _unitOfWork.LocalConfigRepo.GetAll().Returns(new List<LocalConfig>()); }
 
-		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.GetDefaultName(null, null, null));
+		Assert.ThrowsAsync<InvalidOperationException>(async () => await _service.GetDefaultName(null, null, null, null));
 
 		AssertNoWrites();
 	}
@@ -394,7 +394,7 @@ public sealed class AccountsLifecycleServiceTests
 		if (deleted) { _category.DeleteRevision = 0; }
 		else { _unitOfWork.CategoryRepo.GetById(_category.Id).Returns((Category?)null); }
 
-		Assert.ThrowsAsync<ElementNotFoundException>(async () => await _service.GetDefaultName(null, _category.Id, null));
+		Assert.ThrowsAsync<ElementNotFoundException>(async () => await _service.GetDefaultName(null, _category.Id, null, null));
 
 		AssertNoWrites();
 	}
@@ -480,7 +480,7 @@ public sealed class AccountsLifecycleServiceTests
 		CancellationToken token = cancellation.Token;
 
 		await _service.GetById(_account.Id, token);
-		await _service.GetDefaultName(_correspondent.Id, _category.Id, _project.Id, token);
+		await _service.GetDefaultName(_correspondent.Id, _category.Id, _project.Id, null, token);
 
 		await _repository.Received(1).GetById(_account.Id, token);
 		await _groupRepository.Received(1).GetById(_group.Id, token);

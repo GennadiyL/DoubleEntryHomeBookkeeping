@@ -427,7 +427,7 @@ internal sealed class AccountService : IAccountService
 		return entity;
 	}
 
-	public async Task<string> GetDefaultName(Guid? correspondentId, Guid? categoryId, Guid? projectId, CancellationToken cancellationToken = default)
+	public async Task<string> GetDefaultName(Guid? correspondentId, Guid? categoryId, Guid? projectId, Guid? currencyId, CancellationToken cancellationToken = default)
 	{
 		LocalConfig config = await _configOperation.GetLocalConfig(cancellationToken);
 
@@ -444,7 +444,21 @@ internal sealed class AccountService : IAccountService
 			AccountNameOrder.ProjectCategoryCorrespondent => [project?.Name ?? "", category?.Name ?? "", correspondent?.Name ?? ""],
 			_ => throw new InvalidOperationException("The account name order is invalid.")
 		};
-		return string.Join(config.DefaultAccountNameSeparator, names);
+		string name = string.Join(config.AccountNameSeparator, names);
+		if (!config.AccountNameAddCurrency)
+		{
+			return name;
+		}
+		if (!currencyId.HasValue || currencyId.Value == Guid.Empty)
+		{
+			throw new InvalidCurrencyException("A currency is required when the account name includes currency.");
+		}
+		Currency? currency = await _unitOfWork.CurrencyRepo.GetById(currencyId.Value, cancellationToken);
+		if (currency is null || currency.IsDeleted())
+		{
+			throw new CurrencyNotFoundException("The currency does not exist or is deleted.");
+		}
+		return $"{name}({currency.Code})";
 	}
 
 }

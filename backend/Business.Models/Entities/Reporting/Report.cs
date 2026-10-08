@@ -1,22 +1,18 @@
-using Business.Core.Entities;
-using Business.Models.Entities.Interfaces;
-using Business.Models.Enums;
+using Business.Models.Entities.Base;
 
 namespace Business.Models.Entities.Reporting;
 
 /// <summary>
-/// Represents a saved report definition independently of its display name.
-/// Name labels the report, and Json stores calculation instructions rather than results.
-/// Tracking fields support synchronization and deletion of the report definition.
-/// Services interpret referenced catalog identities and change instructions through explicit saves.
-/// Writable inherited identity supports creation and materialization of persistent state.
-/// The model carries data; business services implement validation and lifecycle operations.
+/// Stores saved report instructions within the report catalog hierarchy.
+/// Inherits stable identity, naming, order, favorites and content tracking.
+/// GroupId and Group identify the report's required owning group.
+/// Json preserves calculation instructions rather than calculated results.
+/// Report services interpret those instructions and validate explicit saves.
+/// Moving or renaming a report does not rewrite its instructions.
+/// The parameterless model supports disconnected reads and materialization.
+/// Calculation, export and user-interface behavior remain outside this model.
 /// </summary>
-public class Report : BaseEntity, ITrackedEntity
+public class Report : ElementEntity<ReportGroup, Report>
 {
-	public long? EditRevision { get; set; }
-	public long? DeleteRevision { get; set; }
-	public ModificationType ModificationType { get; set; }
-	public required string Name { get; set; }
-	public required string Json { get; set; }
+	public string Json { get; set; } = string.Empty;
 }

@@ -13,6 +13,9 @@ namespace Reporting.Contracts.Services.Reports;
 public record ReportInfo
 {
 	public Guid Id { get; set; }
+	public Guid GroupId { get; set; }
+	public int Order { get; set; }
+	public bool IsFavorite { get; set; }
 	public required string Name { get; set; }
 	public required ReportDefinition Definition { get; set; }
 }

@@ -20,7 +20,9 @@ public interface IAccountService :
 	/// <summary>
 	/// Generates an account name for creation or restoring the name in the account editor.
 	/// Uses current classification names and Local naming settings; absent slots retain separators.
+	/// Appends the currency code in parentheses when AccountNameAddCurrency is enabled.
+	/// Currency is required only for that suffix; no extra separator precedes it.
 	/// Returns the name without saving the account or calling AcceptChanges.
 	/// </summary>
-	public Task<string> GetDefaultName(Guid? correspondentId, Guid? categoryId, Guid? projectId, CancellationToken cancellationToken = default);
+	public Task<string> GetDefaultName(Guid? correspondentId, Guid? categoryId, Guid? projectId, Guid? currencyId, CancellationToken cancellationToken = default);
 }

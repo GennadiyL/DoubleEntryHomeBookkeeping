@@ -43,7 +43,6 @@ ScaffoldingReadMe.txt
 ~$*
 *~
 CodeCoverage/
-Anza/
 
 # MSBuild Binary and Structured Log
 *.binlog
@@ -61,3 +60,6 @@ nunit-*.xml
 /docs/validation/
 /docs/reviews/
 /docs/postman/
+/docs/sources/
+
+/docs/requirements/checklists/

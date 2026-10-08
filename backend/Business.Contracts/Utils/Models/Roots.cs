@@ -1,5 +1,6 @@
 using Business.Models.Constants;
 using Business.Models.Entities;
+using Business.Models.Entities.Reporting;
 using Business.Models.Entities.Interfaces;
 
 namespace Business.Contracts.Utils.Models;
@@ -17,6 +18,7 @@ public static class Roots
 	public static CategoryGroup CategoryGroup { get; } = CreateCategoryGroup();
 	public static CorrespondentGroup CorrespondentGroup { get; } = CreateCorrespondentGroup();
 	public static ProjectGroup ProjectGroup { get; } = CreateProjectGroup();
+	public static ReportGroup ReportGroup { get; } = CreateReportGroup();
 	public static TemplateGroup TemplateGroup { get; } = CreateTemplateGroup();
 
 	private static HashSet<Guid> RootIds { get; } =
@@ -26,7 +28,8 @@ public static class Roots
 		RootsIds.CategoryGroupId,
 		RootsIds.CorrespondentGroupId,
 		RootsIds.ProjectGroupId,
-		RootsIds.TemplateGroupId
+		RootsIds.TemplateGroupId,
+		RootsIds.ReportGroupId
 	};
 
 	private static AccountGroup CreateAccountGroup()
@@ -87,6 +90,19 @@ public static class Roots
 		{
 			Id = RootsIds.TemplateGroupId,
 			ParentId = RootsIds.TemplateGroupId,
+			Parent = null!,
+			Name = string.Empty
+		};
+		group.Parent = group;
+		return group;
+	}
+
+	private static ReportGroup CreateReportGroup()
+	{
+		ReportGroup group = new()
+		{
+			Id = RootsIds.ReportGroupId,
+			ParentId = RootsIds.ReportGroupId,
 			Parent = null!,
 			Name = string.Empty
 		};

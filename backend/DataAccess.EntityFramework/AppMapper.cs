@@ -20,6 +20,9 @@ using TemplateGroupEntity = Business.Models.Entities.TemplateGroup;
 using TransactionEntity = Business.Models.Entities.Transaction;
 using TransactionEntryEntity = Business.Models.Entities.TransactionEntry;
 
+using ReportEntity = Business.Models.Entities.Reporting.Report;
+using ReportGroupEntity = Business.Models.Entities.Reporting.ReportGroup;
+
 namespace DataAccess.EntityFramework;
 
 /// <summary>
@@ -93,6 +96,8 @@ internal class AppMapper : IMapper
 		CurrencyEntity value => Map(value),
 		CurrencyRateEntity value => Map(value),
 		ProjectEntity value => Map(value),
+		ReportEntity value => Map(value),
+		ReportGroupEntity value => Map(value),
 		ProjectGroupEntity value => Map(value),
 		SystemConfigEntity value => Map(value),
 		TemplateEntity value => Map(value),
@@ -115,6 +120,8 @@ internal class AppMapper : IMapper
 		Currency value => Map(value, cache),
 		CurrencyRate value => Map(value, cache),
 		Project value => Map(value, cache),
+		Report value => Map(value, cache),
+		ReportGroup value => Map(value, cache),
 		ProjectGroup value => Map(value, cache),
 		SystemConfig value => Map(value, cache),
 		Template value => Map(value, cache),
@@ -527,6 +534,86 @@ internal class AppMapper : IMapper
 		return mapped;
 	}
 
+	private static Report Map(ReportEntity value) => new()
+	{
+		Id = value.Id,
+		EditRevision = value.EditRevision,
+		DeleteRevision = value.DeleteRevision,
+		ModificationType = value.ModificationType,
+		Name = value.Name,
+		Description = value.Description,
+		Order = value.Order,
+		IsFavorite = value.IsFavorite,
+		Json = value.Json,
+		GroupId = value.GroupId
+	};
+
+	private static ReportEntity Map(Report value, Dictionary<IDalEntity, IBaseEntity> cache)
+	{
+		if (cache.TryGetValue(value, out IBaseEntity? existing))
+		{
+			return (ReportEntity)existing;
+		}
+
+		ReportEntity mapped = new()
+		{
+			Id = value.Id,
+			EditRevision = value.EditRevision,
+			DeleteRevision = value.DeleteRevision,
+			ModificationType = value.ModificationType,
+			Name = value.Name,
+			Description = value.Description,
+			Order = value.Order,
+			IsFavorite = value.IsFavorite,
+			Json = value.Json,
+			GroupId = value.GroupId,
+			Group = null!
+		};
+		cache.Add(value, mapped);
+		mapped.Group = value.Group is null ? null! : Map(value.Group, cache);
+		return mapped;
+	}
+
+	private static ReportGroup Map(ReportGroupEntity value) => new()
+	{
+		Id = value.Id,
+		EditRevision = value.EditRevision,
+		DeleteRevision = value.DeleteRevision,
+		ModificationType = value.ModificationType,
+		Name = value.Name,
+		Description = value.Description,
+		Order = value.Order,
+		IsFavorite = value.IsFavorite,
+		ParentId = value.ParentId
+	};
+
+	private static ReportGroupEntity Map(ReportGroup value, Dictionary<IDalEntity, IBaseEntity> cache)
+	{
+		if (cache.TryGetValue(value, out IBaseEntity? existing))
+		{
+			return (ReportGroupEntity)existing;
+		}
+
+		ReportGroupEntity mapped = new()
+		{
+			Id = value.Id,
+			EditRevision = value.EditRevision,
+			DeleteRevision = value.DeleteRevision,
+			ModificationType = value.ModificationType,
+			Name = value.Name,
+			Description = value.Description,
+			Order = value.Order,
+			IsFavorite = value.IsFavorite,
+			ParentId = value.ParentId,
+			Parent = null!
+		};
+		cache.Add(value, mapped);
+		mapped.Parent = value.Parent is null ? null! : Map(value.Parent, cache);
+		mapped.Children = [.. value.Children.Select(item => Map(item, cache))];
+		mapped.Elements = [.. value.Elements.Select(item => Map(item, cache))];
+		return mapped;
+	}
+
 	private static SystemConfig Map(SystemConfigEntity value) => new()
 	{
 		Id = value.Id,
@@ -748,7 +835,8 @@ internal class AppMapper : IMapper
 		Id = value.Id,
 		LocalDatasetKey = value.LocalDatasetKey,
 		AccountNameOrder = value.AccountNameOrder,
-		DefaultAccountNameSeparator = value.DefaultAccountNameSeparator,
+		AccountNameSeparator = value.AccountNameSeparator,
+		AccountNameAddCurrency = value.AccountNameAddCurrency,
 		ConflictPriority = value.ConflictPriority,
 		SyncTrigger = value.SyncTrigger,
 		SnapshotRevision = value.SnapshotRevision
@@ -766,7 +854,8 @@ internal class AppMapper : IMapper
 			Id = value.Id,
 			LocalDatasetKey = value.LocalDatasetKey,
 			AccountNameOrder = value.AccountNameOrder,
-			DefaultAccountNameSeparator = value.DefaultAccountNameSeparator,
+			AccountNameSeparator = value.AccountNameSeparator,
+			AccountNameAddCurrency = value.AccountNameAddCurrency,
 			ConflictPriority = value.ConflictPriority,
 			SyncTrigger = value.SyncTrigger,
 			SnapshotRevision = value.SnapshotRevision

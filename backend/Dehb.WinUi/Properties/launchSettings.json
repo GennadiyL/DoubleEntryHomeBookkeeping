@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Dehb.WinUi (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Dehb.WinUi (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

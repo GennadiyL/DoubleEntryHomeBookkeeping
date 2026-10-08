@@ -21,6 +21,10 @@ public interface IAppUnitOfWork : IUnitOfWork
 
 	public ICurrencyRateRepository CurrencyRateRepo { get; }
 
+	public IReportRepository ReportRepo { get; }
+
+	public IReportGroupRepository ReportGroupRepo { get; }
+
 	public IProjectRepository ProjectRepo { get; }
 
 	public IProjectGroupRepository ProjectGroupRepo { get; }

@@ -13,6 +13,8 @@ namespace Reporting.Contracts.Services.Reports;
 public record SaveReportDefinition
 {
 	public Guid? Id { get; set; }
+	public Guid GroupId { get; set; }
+	public bool IsFavorite { get; set; }
 	public required string Name { get; set; }
 	public required ReportDefinition Definition { get; set; }
 }

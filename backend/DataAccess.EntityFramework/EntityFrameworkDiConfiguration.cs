@@ -22,6 +22,8 @@ public static class EntityFrameworkDiConfiguration
 		services.AddScoped<ICurrencyRepository, CurrencyRepository>();
 		services.AddScoped<ICurrencyRateRepository, CurrencyRateRepository>();
 		services.AddScoped<IProjectRepository, ProjectRepository>();
+		services.AddScoped<IReportRepository, ReportRepository>();
+		services.AddScoped<IReportGroupRepository, ReportGroupRepository>();
 		services.AddScoped<IProjectGroupRepository, ProjectGroupRepository>();
 		services.AddScoped<ITemplateRepository, TemplateRepository>();
 		services.AddScoped<ITemplateEntryRepository, TemplateEntryRepository>();

@@ -21,6 +21,8 @@ public class AppDbContext : DbContext
 	internal DbSet<CorrespondentGroup> CorrespondentGroups { get; set; } = null!;
 	internal DbSet<Currency> Currencies { get; set; } = null!;
 	internal DbSet<CurrencyRate> CurrencyRates { get; set; } = null!;
+	internal DbSet<Report> Reports { get; set; } = null!;
+	internal DbSet<ReportGroup> ReportGroups { get; set; } = null!;
 	internal DbSet<Project> Projects { get; set; } = null!;
 	internal DbSet<ProjectGroup> ProjectGroups { get; set; } = null!;
 	internal DbSet<Template> Templates { get; set; } = null!;

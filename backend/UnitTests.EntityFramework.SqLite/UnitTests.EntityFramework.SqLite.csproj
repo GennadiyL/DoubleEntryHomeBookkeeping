@@ -18,4 +18,7 @@
     <ProjectReference Include="..\Shared.Impl\Shared.Impl.csproj" />
     <ProjectReference Include="..\Tests.Common\Tests.Common.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\DataAccess.EntityFramework.SqLite\Assets\*.sql" Link="SqlAssets\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

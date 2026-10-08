@@ -37,7 +37,8 @@ internal sealed class ConfigOperation : IConfigOperation
 			AmountPrecision = system.AmountPrecision,
 			RatePrecision = system.RatePrecision,
 			AccountNameOrder = local.AccountNameOrder,
-			DefaultAccountNameSeparator = local.DefaultAccountNameSeparator,
+			AccountNameSeparator = local.AccountNameSeparator,
+			AccountNameAddCurrency = local.AccountNameAddCurrency,
 			ConflictPriority = local.ConflictPriority,
 			SyncTrigger = local.SyncTrigger
 		};
@@ -87,7 +88,7 @@ internal sealed class ConfigOperation : IConfigOperation
 			throw new InvalidOperationException("The Local configuration singleton is missing or invalid.");
 		}
 		LocalConfig config = configurations.Single();
-		if (string.IsNullOrWhiteSpace(config.DefaultAccountNameSeparator) ||
+		if (string.IsNullOrWhiteSpace(config.AccountNameSeparator) ||
 			!Enum.IsDefined(config.AccountNameOrder) || config.AccountNameOrder == AccountNameOrder.Undefined ||
 			!Enum.IsDefined(config.ConflictPriority) || config.ConflictPriority == ConflictPriority.Undefined ||
 			!Enum.IsDefined(config.SyncTrigger))

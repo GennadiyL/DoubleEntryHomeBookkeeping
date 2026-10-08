@@ -1,4 +1,5 @@
 using Business.Impl.Operations.Config;
+using Business.Contracts.Services.Configs;
 using Business.Models.Entities;
 using Business.Models.Entities.Config;
 using Business.Models.Enums;
@@ -77,6 +78,22 @@ public sealed class ConfigOperationTests
 		}
 		unit.SystemConfigRepo.DidNotReceiveWithAnyArgs().Update(default!);
 		unit.SystemConfigRepo.DidNotReceiveWithAnyArgs().Add(default!);
+		await unit.DidNotReceiveWithAnyArgs().SaveChanges(default);
+	}
+	[Test]
+	public async Task CombinedRead_ContainsCurrentLocalNamingSettings()
+	{
+		IAppUnitOfWork unit = Substitute.For<IAppUnitOfWork>();
+		unit.SystemConfigRepo.GetAll().Returns(new List<SystemConfig> { new() { BaseCurrencyId = Guid.NewGuid() } });
+		LocalConfig local = new() { AccountNameSeparator = "|", AccountNameOrder = AccountNameOrder.ProjectCategoryCorrespondent, AccountNameAddCurrency = true };
+		unit.LocalConfigRepo.GetAll().Returns(new List<LocalConfig> { local });
+		ConfigOperation operation = new(unit);
+		ConfigurationInfo result = await operation.GetConfiguration();
+		Assert.That((result.AccountNameOrder, result.AccountNameSeparator, result.AccountNameAddCurrency),
+			Is.EqualTo((local.AccountNameOrder, "|", true)));
+		local.AccountNameAddCurrency = false;
+		Assert.That(result.AccountNameAddCurrency, Is.True);
+		Assert.That((await operation.GetConfiguration()).AccountNameAddCurrency, Is.False);
 		await unit.DidNotReceiveWithAnyArgs().SaveChanges(default);
 	}
 }

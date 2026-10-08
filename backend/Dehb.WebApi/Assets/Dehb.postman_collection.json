@@ -929,7 +929,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{host-name}}/accounts/get-default-name?correspondentId=00000000-0000-0000-0000-000000000021&categoryId=00000000-0000-0000-0000-000000000020&projectId=00000000-0000-0000-0000-000000000022",
+              "raw": "{{host-name}}/accounts/get-default-name?correspondentId=00000000-0000-0000-0000-000000000021&categoryId=00000000-0000-0000-0000-000000000020&projectId=00000000-0000-0000-0000-000000000022&currencyId=00000000-0000-0000-0000-000000000001",
               "host": [
                 "{{host-name}}"
               ],
@@ -949,6 +949,10 @@
                 {
                   "key": "projectId",
                   "value": "00000000-0000-0000-0000-000000000022"
+                },
+                {
+                  "key": "currencyId",
+                  "value": "00000000-0000-0000-0000-000000000001"
                 }
               ]
             }

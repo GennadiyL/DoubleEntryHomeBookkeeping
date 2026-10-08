@@ -20,6 +20,8 @@ internal class AppUnitOfWork : UnitOfWork<AppDbContext>, IAppUnitOfWork
 	public ICorrespondentGroupRepository CorrespondentGroupRepo => ServiceProvider.Value.GetRequiredService<ICorrespondentGroupRepository>();
 	public ICurrencyRepository CurrencyRepo => ServiceProvider.Value.GetRequiredService<ICurrencyRepository>();
 	public ICurrencyRateRepository CurrencyRateRepo => ServiceProvider.Value.GetRequiredService<ICurrencyRateRepository>();
+	public IReportRepository ReportRepo => ServiceProvider.Value.GetRequiredService<IReportRepository>();
+	public IReportGroupRepository ReportGroupRepo => ServiceProvider.Value.GetRequiredService<IReportGroupRepository>();
 	public IProjectRepository ProjectRepo => ServiceProvider.Value.GetRequiredService<IProjectRepository>();
 	public IProjectGroupRepository ProjectGroupRepo => ServiceProvider.Value.GetRequiredService<IProjectGroupRepository>();
 	public ITemplateRepository TemplateRepo => ServiceProvider.Value.GetRequiredService<ITemplateRepository>();

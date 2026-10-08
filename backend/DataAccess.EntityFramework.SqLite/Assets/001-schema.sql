@@ -63,7 +63,8 @@ CREATE TABLE "LocalConfig" (
     "ConflictPriority" INTEGER NOT NULL,
     "SyncTrigger" INTEGER NOT NULL,
     "SnapshotRevision" INTEGER NOT NULL,
-    "DefaultAccountNameSeparator" TEXT NOT NULL
+    "AccountNameSeparator" TEXT NOT NULL,
+    "AccountNameAddCurrency" INTEGER NOT NULL
 );
 
 
@@ -78,6 +79,19 @@ CREATE TABLE "ProjectGroup" (
     "IsFavorite" INTEGER NOT NULL,
     "ParentId" TEXT NOT NULL,
     CONSTRAINT "FK_ProjectGroup_ProjectGroup_ParentId" FOREIGN KEY ("ParentId") REFERENCES "ProjectGroup" ("Id") ON DELETE CASCADE
+);
+
+CREATE TABLE "ReportGroup" (
+    "Id" TEXT NOT NULL CONSTRAINT "PK_ReportGroup" PRIMARY KEY,
+    "EditRevision" INTEGER NULL,
+    "DeleteRevision" INTEGER NULL,
+    "ModificationType" INTEGER NOT NULL,
+    "Name" TEXT NOT NULL,
+    "Description" TEXT NULL,
+    "Order" INTEGER NOT NULL,
+    "IsFavorite" INTEGER NOT NULL,
+    "ParentId" TEXT NOT NULL,
+    CONSTRAINT "FK_ReportGroup_ReportGroup_ParentId" FOREIGN KEY ("ParentId") REFERENCES "ReportGroup" ("Id") ON DELETE CASCADE
 );
 
 
@@ -158,6 +172,20 @@ CREATE TABLE "Project" (
     "IsFavorite" INTEGER NOT NULL,
     "GroupId" TEXT NOT NULL,
     CONSTRAINT "FK_Project_ProjectGroup_GroupId" FOREIGN KEY ("GroupId") REFERENCES "ProjectGroup" ("Id") ON DELETE CASCADE
+);
+
+CREATE TABLE "Report" (
+    "Id" TEXT NOT NULL CONSTRAINT "PK_Report" PRIMARY KEY,
+    "EditRevision" INTEGER NULL,
+    "DeleteRevision" INTEGER NULL,
+    "ModificationType" INTEGER NOT NULL,
+    "Json" TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
+    "Description" TEXT NULL,
+    "Order" INTEGER NOT NULL,
+    "IsFavorite" INTEGER NOT NULL,
+    "GroupId" TEXT NOT NULL,
+    CONSTRAINT "FK_Report_ReportGroup_GroupId" FOREIGN KEY ("GroupId") REFERENCES "ReportGroup" ("Id") ON DELETE CASCADE
 );
 
 
@@ -301,3 +329,8 @@ CREATE INDEX "IX_TransactionEntry_AccountId_TransactionId_Position" ON "Transact
 
 CREATE INDEX "IX_TransactionEntry_TransactionId" ON "TransactionEntry" ("TransactionId");
 
+
+CREATE INDEX "IX_ReportGroup_ParentId" ON "ReportGroup" ("ParentId");
+CREATE INDEX "IX_Report_GroupId" ON "Report" ("GroupId");
+
+PRAGMA user_version = 1;

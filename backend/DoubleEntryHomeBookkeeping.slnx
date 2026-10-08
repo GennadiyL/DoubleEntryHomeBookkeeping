@@ -20,6 +20,10 @@
   </Folder>
   <Folder Name="/Infrastructure/">
     <Project Path="Dehb.WebApi/Dehb.WebApi.csproj" Id="ac1383b1-e2ce-4a58-a0a2-31917e110108" />
+    <Project Path="Dehb.WinUi/Dehb.WinUi.csproj" Id="706961b9-c3fd-48ef-8173-6148d3bfb86f">
+      <Platform Project="x64" />
+      <Deploy />
+    </Project>
   </Folder>
   <Folder Name="/Messaging/">
     <Project Path="Messaging.Contracts/Messaging.Contracts.csproj" />

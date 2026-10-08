@@ -32,6 +32,8 @@ public sealed class SqLiteAppDbContext : AppDbContext
 		modelBuilder.Entity<Currency>().ToTable(nameof(Currency));
 		modelBuilder.Entity<CurrencyRate>().ToTable(nameof(CurrencyRate));
 		modelBuilder.Entity<Project>().ToTable(nameof(Project));
+		modelBuilder.Entity<Report>().ToTable(nameof(Report));
+		modelBuilder.Entity<ReportGroup>().ToTable(nameof(ReportGroup));
 		modelBuilder.Entity<ProjectGroup>().ToTable(nameof(ProjectGroup));
 		modelBuilder.Entity<Template>().ToTable(nameof(Template));
 		modelBuilder.Entity<TemplateEntry>().ToTable(nameof(TemplateEntry));
