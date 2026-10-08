@@ -38,6 +38,10 @@
     <Project Path="Setup.Impl/Setup.Impl.csproj" />
   </Folder>
   <Folder Name="/Shared/">
+    <Project Path="WinUi.Controls/WinUi.Controls.csproj">
+      <Platform Project="x64" />
+      <Build Project="true" />
+    </Project>
     <Project Path="Shared.Contracts/Shared.Contracts.csproj" />
     <Project Path="Shared.Impl/Shared.Impl.csproj" />
   </Folder>
@@ -55,6 +59,10 @@
     <Project Path="ServiceTests.Business/ServiceTests.Business.csproj" />
   </Folder>
   <Folder Name="/Tests/UnitTests/">
+    <Project Path="UnitTests.WinUi.Controls/UnitTests.WinUi.Controls.csproj">
+      <Platform Project="x64" />
+      <Build Project="true" />
+    </Project>
     <Project Path="UnitTests.Business/UnitTests.Business.csproj" />
     <Project Path="UnitTests.EntityFramework.SqLite/UnitTests.EntityFramework.SqLite.csproj" />
   </Folder>
