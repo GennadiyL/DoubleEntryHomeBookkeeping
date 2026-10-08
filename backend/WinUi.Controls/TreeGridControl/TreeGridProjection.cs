@@ -17,10 +17,31 @@ namespace WinUi.Controls.TreeGridControl;
 internal sealed class TreeGridProjection
 {
 	private ObservableCollection<TreeGridNode>? _roots;
+	private int _updateDepth;
+	private bool _refreshPending;
 	private readonly HashSet<TreeGridNode> _observed = new();
 	public ObservableCollection<TreeGridNode> VisibleRows { get; } = new();
 	public event EventHandler? Changing;
 	public event EventHandler? Changed;
+
+	public void UpdateRows(Action update)
+	{
+		ArgumentNullException.ThrowIfNull(update);
+		_updateDepth++;
+		try
+		{
+			update();
+		}
+		finally
+		{
+			_updateDepth--;
+			if (_updateDepth == 0 && _refreshPending)
+			{
+				_refreshPending = false;
+				Refresh();
+			}
+		}
+	}
 
 	public void Attach(ObservableCollection<TreeGridNode> roots)
 	{
@@ -57,6 +78,11 @@ internal sealed class TreeGridProjection
 
 	private void Refresh()
 	{
+		if (_updateDepth != 0)
+		{
+			_refreshPending = true;
+			return;
+		}
 		if (_roots is null)
 		{
 			return;
@@ -102,6 +128,14 @@ internal sealed class TreeGridProjection
 			_observed.Add(node);
 		}
 		Changing?.Invoke(this, EventArgs.Empty);
+		HashSet<TreeGridNode> visibleNodes = new(visible);
+		for (int i = VisibleRows.Count - 1; i >= 0; i--)
+		{
+			if (!visibleNodes.Contains(VisibleRows[i]))
+			{
+				VisibleRows.RemoveAt(i);
+			}
+		}
 		for (int i = 0; i < visible.Count; i++)
 		{
 			if (i < VisibleRows.Count && ReferenceEquals(VisibleRows[i], visible[i]))
@@ -117,10 +151,6 @@ internal sealed class TreeGridProjection
 			{
 				VisibleRows.Insert(i, visible[i]);
 			}
-		}
-		while (VisibleRows.Count > visible.Count)
-		{
-			VisibleRows.RemoveAt(VisibleRows.Count - 1);
 		}
 		Changed?.Invoke(this, EventArgs.Empty);
 	}

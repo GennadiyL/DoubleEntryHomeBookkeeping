@@ -103,6 +103,73 @@ public sealed class TreeGridProjectionTests
 		projection.Detach();
 	}
 
+	[TestCase(true)]
+	[TestCase(false)]
+	public void MergeManyChildren_RefreshesOnce(bool sourceExpanded)
+	{
+		TreeGridNode source = new() { IsGroup = true, IsExpanded = sourceExpanded };
+		TreeGridNode target = new() { IsGroup = true, IsExpanded = true };
+		TreeGridNode root = new() { IsGroup = true, IsExpanded = true, Children = { source, target } };
+		TreeGridNode[] children = Enumerable.Range(1, 200).Select(i => new TreeGridNode { Name = $"Account {i}" }).ToArray();
+		foreach (TreeGridNode child in children)
+		{
+			source.Children.Add(child);
+		}
+		TreeGridProjection projection = new();
+		projection.Attach(new ObservableCollection<TreeGridNode> { root });
+		int refreshes = 0;
+		int rowChanges = 0;
+		projection.Changed += (_, _) => refreshes++;
+		projection.VisibleRows.CollectionChanged += (_, _) => rowChanges++;
+
+		projection.UpdateRows(() =>
+		{
+			foreach (TreeGridNode child in children)
+			{
+				source.Children.Remove(child);
+				target.Children.Add(child);
+			}
+			root.Children.Remove(source);
+		});
+
+		TestContext.Out.WriteLine($"Refreshes: {refreshes}; row changes: {rowChanges}");
+		Assert.Multiple(() =>
+		{
+			Assert.That(refreshes, Is.EqualTo(1));
+			Assert.That(rowChanges, Is.LessThanOrEqualTo(children.Length + 1));
+			Assert.That(projection.VisibleRows, Is.EqualTo(new[] { root, target }.Concat(children)));
+			Assert.That(children.All(child => ReferenceEquals(child.Parent, target) && child.Depth == 2), Is.True);
+		});
+		projection.Detach();
+	}
+
+	[Test]
+	public void UpdateRows_WhenNestedUpdateThrows_RefreshesAndResumesObservation()
+	{
+		TreeGridNode root = new() { IsGroup = true, IsExpanded = true };
+		TreeGridNode first = new();
+		TreeGridNode second = new();
+		TreeGridProjection projection = new();
+		projection.Attach(new ObservableCollection<TreeGridNode> { root });
+		int refreshes = 0;
+		projection.Changed += (_, _) => refreshes++;
+
+		Assert.Throws<InvalidOperationException>(() => projection.UpdateRows(() =>
+		{
+			root.Children.Add(first);
+			projection.UpdateRows(() => root.Children.Add(second));
+			Assert.That(refreshes, Is.Zero);
+			throw new InvalidOperationException("Host update failed.");
+		}));
+
+		Assert.That(refreshes, Is.EqualTo(1));
+		Assert.That(projection.VisibleRows, Is.EqualTo(new[] { root, first, second }));
+		root.Children.Remove(first);
+		Assert.That(refreshes, Is.EqualTo(2));
+		Assert.That(projection.VisibleRows, Is.EqualTo(new[] { root, second }));
+		projection.Detach();
+	}
+
 	[Test]
 	public void InvalidHierarchy_RejectsCyclesSharedNodesAndLeafChildren()
 	{

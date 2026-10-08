@@ -23,6 +23,8 @@ public sealed partial class TreeGridRowPresenter : UserControl
 {
 	private readonly SolidColorBrush _selectionBorderBrush = new(Windows.UI.Color.FromArgb(255, 96, 96, 96));
 	private TreeGrid? _owner;
+	private bool _pressedOnControl;
+	private TreeGrid? _dragOwner;
 	private TreeGridNode? _node;
 	private Button? _expander;
 	private TextBlock? _expanderGlyph;
@@ -35,6 +37,23 @@ public sealed partial class TreeGridRowPresenter : UserControl
 	{
 		HorizontalContentAlignment = HorizontalAlignment.Stretch;
 		IsTabStop = false;
+		CanDrag = true;
+		AddHandler(PointerPressedEvent, new PointerEventHandler(OnDragPointerPressed), true);
+		DragStarting += (_, e) =>
+		{
+			if (_pressedOnControl || _node is null || _owner is null)
+			{
+				e.Cancel = true;
+				return;
+			}
+			_dragOwner = _owner;
+			_dragOwner.BeginDrag(_node, e);
+		};
+		DropCompleted += (_, _) =>
+		{
+			_dragOwner?.EndDrag();
+			_dragOwner = null;
+		};
 		Loaded += OnLoaded;
 		Unloaded += OnUnloaded;
 		DataContextChanged += (_, _) => BindNode();
@@ -191,6 +210,21 @@ public sealed partial class TreeGridRowPresenter : UserControl
 			_selectionOutline.Visibility = _node is not null && ReferenceEquals(_owner?.SelectedNode, _node)
 				? Visibility.Visible
 				: Visibility.Collapsed;
+		}
+	}
+
+	private void OnDragPointerPressed(object sender, PointerRoutedEventArgs e)
+	{
+		_pressedOnControl = false;
+		DependencyObject? source = e.OriginalSource as DependencyObject;
+		while (source is not null && source != this)
+		{
+			if (source is ButtonBase or TextBox or PasswordBox or ComboBox or Slider)
+			{
+				_pressedOnControl = true;
+				break;
+			}
+			source = VisualTreeHelper.GetParent(source);
 		}
 	}
 

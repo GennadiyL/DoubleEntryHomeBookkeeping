@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using System.Collections.ObjectModel;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -64,6 +66,78 @@ public sealed partial class MainWindow : Window
 	private void OnStarChanged(object? sender, TreeGridNode node) => StatusText.Text = $"{node.Name}: star {(node.IsStarred ? "on" : "off")}";
 	private void OnCheckStateChanged(object? sender, TreeGridNode node) => StatusText.Text = $"{node.Name}: {(node.IsChecked == true ? "checked" : "unchecked")}";
 
+	private void OnDropValidating(object? sender, TreeGridDropValidationEventArgs e)
+	{
+		TreeGridDropRequest request = e.Request;
+		if (request.Operation == TreeGridDropOperation.Move
+			&& request.DestinationParent.Children.Any(child => child.IsGroup == request.Source.IsGroup
+				&& string.Equals(child.Name, request.Source.Name, StringComparison.OrdinalIgnoreCase)
+				&& (child.IsGroup || Equals(child.Data, request.Source.Data))))
+		{
+			e.Cancel = true;
+			e.Reason = "A matching name already exists in this group.";
+		}
+	}
+
+	private async void OnDropRequested(object? sender, TreeGridDropRequest request)
+	{
+		try
+		{
+			if (request.Operation == TreeGridDropOperation.Merge)
+			{
+				ContentDialog confirmation = new()
+				{
+					XamlRoot = CatalogTree.XamlRoot,
+					Title = "Merge groups",
+					Content = $"Move all items from '{request.Source.Name}' into '{request.Target.Name}' and remove the source group?",
+					PrimaryButtonText = "Merge", CloseButtonText = "Cancel",
+					DefaultButton = ContentDialogButton.Close
+				};
+				if (await confirmation.ShowAsync() != ContentDialogResult.Primary)
+				{
+					return;
+				}
+			}
+			CatalogTree.UpdateRows(() => ApplyDemoDrop(request));
+			CatalogTree.RevealNode(request.Operation == TreeGridDropOperation.Merge ? request.Target : request.Source);
+			StatusText.Text = $"{request.Operation}: {request.Source.Name} → {request.DestinationParent.Name} (sample data)";
+		}
+		catch (Exception exception)
+		{
+			StatusText.Text = $"Drop failed: {exception.Message}";
+		}
+	}
+
+	private static void ApplyDemoDrop(TreeGridDropRequest request)
+	{
+		TreeGridNode sourceParent = request.Source.Parent!;
+		if (request.Operation == TreeGridDropOperation.Merge)
+		{
+			foreach (TreeGridNode child in request.Source.Children.ToArray())
+			{
+				while (request.Target.Children.Any(existing => string.Equals(existing.Name, child.Name, StringComparison.OrdinalIgnoreCase)))
+				{
+					child.Name += "_1";
+				}
+				request.Source.Children.Remove(child);
+				InsertDemoNode(request.Target, child, request.Target.Children.Count(existing => existing.IsGroup == child.IsGroup));
+			}
+			sourceParent.Children.Remove(request.Source);
+			return;
+		}
+		sourceParent.Children.Remove(request.Source);
+		InsertDemoNode(request.DestinationParent, request.Source, request.InsertIndex);
+	}
+
+	private static void InsertDemoNode(TreeGridNode parent, TreeGridNode node, int index)
+	{
+		TreeGridNode[] siblings = parent.Children.Where(child => child.IsGroup == node.IsGroup).ToArray();
+		int collectionIndex = index < siblings.Length ? parent.Children.IndexOf(siblings[index])
+			: siblings.Length > 0 ? parent.Children.IndexOf(siblings[^1]) + 1
+			: node.IsGroup ? 0 : parent.Children.Count;
+		parent.Children.Insert(collectionIndex, node);
+	}
+
 	private static ObservableCollection<TreeGridNode> CreateAccounts()
 	{
 		TreeGridNode root = new() { Name = "Accounts", IsGroup = true, IsExpanded = true };
@@ -81,7 +155,7 @@ public sealed partial class MainWindow : Window
 		{
 			many.Children.Add(new TreeGridNode { Name = $"Sample account {i:000}", Data = "UAH" });
 		}
-		root.Children.Add(many);
+		root.Children.Insert(2, many);
 		return new ObservableCollection<TreeGridNode> { root };
 	}
 

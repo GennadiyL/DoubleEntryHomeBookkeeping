@@ -10,7 +10,7 @@
         </Grid.RowDefinitions>
         <Grid x:Name="HeaderGrid" Margin="8,0,28,0" Height="36" />
         <ListView x:Name="RowsList" Grid.Row="1" SelectionMode="Single"
-                  HorizontalContentAlignment="Stretch"
+                  HorizontalContentAlignment="Stretch" AllowDrop="True" DragOver="OnRowsDragOver" DragLeave="OnRowsDragLeave" Drop="OnRowsDrop"
                   ScrollViewer.HorizontalScrollMode="Disabled"
                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                   ScrollViewer.VerticalScrollBarVisibility="Visible"
@@ -54,5 +54,8 @@
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
+        <Border x:Name="DropMarker" Grid.Row="1" VerticalAlignment="Top"
+                BorderBrush="{ThemeResource SystemControlHighlightAccentBrush}" BorderThickness="2"
+                IsHitTestVisible="False" Visibility="Collapsed" />
     </Grid>
 </UserControl>
