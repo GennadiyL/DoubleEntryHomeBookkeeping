@@ -171,6 +171,62 @@ public sealed class TreeGridProjectionTests
 	}
 
 	[Test]
+	public void StarFilter_KeepsAncestorsAndHiddenState_AndTracksStarChanges()
+	{
+		TreeGridNode hidden = new() { Name = "Hidden", IsChecked = true };
+		TreeGridNode starred = new() { Name = "Starred", IsStarred = true };
+		TreeGridNode group = new() { IsGroup = true, Children = { hidden, starred } };
+		TreeGridNode root = new() { IsGroup = true, IsExpanded = true, Children = { group } };
+		TreeGridProjection projection = new();
+		projection.Attach(new ObservableCollection<TreeGridNode> { root });
+		projection.StarredOnly = true;
+
+		Assert.That(projection.VisibleRows, Is.EqualTo(new[] { root, group }));
+		group.IsExpanded = true;
+		Assert.That(projection.VisibleRows, Is.EqualTo(new[] { root, group, starred }));
+		Assert.That(hidden.Parent, Is.SameAs(group));
+		Assert.That(hidden.IsChecked, Is.True);
+		hidden.IsStarred = true;
+		Assert.That(projection.VisibleRows, Is.EqualTo(new[] { root, group, hidden, starred }));
+		starred.IsStarred = false;
+		Assert.That(projection.VisibleRows, Is.EqualTo(new[] { root, group, hidden }));
+		hidden.IsStarred = false;
+		Assert.That(projection.VisibleRows, Is.Empty);
+		group.IsStarred = true;
+		Assert.That(projection.VisibleRows, Is.EqualTo(new[] { root, group }));
+		projection.StarredOnly = false;
+		Assert.That(projection.VisibleRows, Is.EqualTo(new[] { root, group, hidden, starred }));
+		Assert.That(group.IsExpanded, Is.True);
+		projection.Detach();
+	}
+
+	[Test]
+	public void StarFilter_ReorderAndCheck_UseCompleteChildren()
+	{
+		TreeGridNode first = new() { IsStarred = true };
+		TreeGridNode hidden = new();
+		TreeGridNode last = new() { IsStarred = true };
+		TreeGridNode root = new() { IsGroup = true, IsExpanded = true, Children = { first, hidden, last } };
+		TreeGridProjection projection = new();
+		projection.Attach(new ObservableCollection<TreeGridNode> { root });
+		projection.StarredOnly = true;
+
+		TreeGridDropRequest? request = TreeGridDropPlanner.Create(last, first, TreeGridDropPosition.After, false, false, projection.VisibleRows);
+		Assert.That(request, Is.Not.Null);
+		Assert.That(request!.InsertIndex, Is.EqualTo(1));
+		TreeGridCheckState.Toggle(root);
+		Assert.That(hidden.IsChecked, Is.True);
+		projection.UpdateRows(() =>
+		{
+			root.Children.Remove(last);
+			root.Children.Insert(request.InsertIndex, last);
+		});
+		projection.StarredOnly = false;
+		Assert.That(projection.VisibleRows, Is.EqualTo(new[] { root, first, last, hidden }));
+		projection.Detach();
+	}
+
+	[Test]
 	public void InvalidHierarchy_RejectsCyclesSharedNodesAndLeafChildren()
 	{
 		TreeGridProjection projection = new();

@@ -30,6 +30,28 @@ ancestor. Actual depth is retained; visual indentation is capped at eight.
 ListView provides virtualization and Up/Down navigation; the control adds
 Left/Right, Home/End, Enter and checkbox Space handling.
 
+## Search
+
+Search names with Next/Previous, or press Enter in the search box for Next.
+Matching is case-insensitive and checks any part of group and element names
+throughout ItemsSource, including collapsed branches. Navigation starts after
+(or before) the current selection and wraps; with no selection it starts at the
+first/last match. Blank searches are disabled. Typing alone does not navigate.
+A match expands its ancestors and scrolls into view without activating the row
+or changing stars or checkboxes. No matches keeps selection and shows a message.
+Search reads current names and hierarchy on every request; it does not filter.
+
+StarredOnly (off by default) shows starred rows and their ancestor paths, while
+keeping all nodes in the model. Expansion still applies. Star changes update the
+view immediately; starred groups do not include unstarred descendants automatically.
+Disabling the filter restores the previous whole-tree selection when it still exists.
+Typing a nonblank search or invoking Next/Previous clears StarredOnly first.
+
+IsSearchEnabled defaults to true. Hosts can set it to false to disable the text
+box and navigation, including FindNext/FindPrevious calls. Star filtering does
+not disable search. Search covers the supplied applicable tree;
+groups-only hosts must supply their groups-only hierarchy.
+
 ## Drag and drop
 
 AllowDragDrop and AllowMerge both default to false. The main-window demo enables
@@ -75,14 +97,14 @@ validation and rollback/error presentation.
 ## Current scope
 
 This is a control demonstration, not the completed Business editing UI.
-Database integration, modal editors, search, favorites filtering,
+Database integration, modal editors,
 the column-width popup and saved view settings remain later work.
 DecimalBox, Reporting, Synchronization and Help are not implemented here.
 
 ## Verification
 
 - Debug/x64 application build.
-- Twenty-seven local NUnit cases cover hierarchy projection, checkbox propagation
+- Thirty-four local NUnit cases cover hierarchy projection, checkbox propagation
   and drag/drop planning, including hidden siblings, no-op drops and merge permissions.
   Large-merge regressions cover expanded/collapsed sources and batched-update recovery.
 - Tests target .NET 8, matching the WinUI host. On the development VM, which only

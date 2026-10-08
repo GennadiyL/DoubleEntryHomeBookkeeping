@@ -6,10 +6,30 @@
     <Grid RowSpacing="4">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <Grid x:Name="HeaderGrid" Margin="8,0,28,0" Height="36" />
-        <ListView x:Name="RowsList" Grid.Row="1" SelectionMode="Single"
+        <CheckBox x:Name="StarFilter" Content="Starred only" Margin="8,0,28,0" Click="OnStarFilterClick" />
+        <Grid Grid.Row="1" x:Name="SearchPanel" Margin="8,0,28,0" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="SearchBox" PlaceholderText="Search names"
+                     AutomationProperties.Name="Search names"
+                     TextChanged="OnSearchTextChanged" KeyDown="OnSearchKeyDown" />
+            <TextBlock x:Name="SearchStatus" Grid.Column="1" VerticalAlignment="Center"
+                       AutomationProperties.LiveSetting="Polite" />
+            <Button x:Name="PreviousSearchButton" Grid.Column="2" Content="Previous"
+                    IsEnabled="False" Click="OnPreviousSearchClick" />
+            <Button x:Name="NextSearchButton" Grid.Column="3" Content="Next"
+                    IsEnabled="False" Click="OnNextSearchClick" />
+        </Grid>
+        <Grid Grid.Row="2" x:Name="HeaderGrid" Margin="8,0,28,0" Height="36" />
+        <ListView x:Name="RowsList" Grid.Row="3" SelectionMode="Single"
                   HorizontalContentAlignment="Stretch" AllowDrop="True" DragOver="OnRowsDragOver" DragLeave="OnRowsDragLeave" Drop="OnRowsDrop"
                   ScrollViewer.HorizontalScrollMode="Disabled"
                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -54,7 +74,7 @@
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
-        <Border x:Name="DropMarker" Grid.Row="1" VerticalAlignment="Top"
+        <Border x:Name="DropMarker" Grid.Row="3" VerticalAlignment="Top"
                 BorderBrush="{ThemeResource SystemControlHighlightAccentBrush}" BorderThickness="2"
                 IsHitTestVisible="False" Visibility="Collapsed" />
     </Grid>

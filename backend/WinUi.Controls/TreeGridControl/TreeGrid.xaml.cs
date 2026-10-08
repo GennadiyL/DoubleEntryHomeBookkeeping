@@ -38,6 +38,14 @@ public sealed partial class TreeGrid : UserControl
 	public static readonly DependencyProperty AllowMergeProperty = DependencyProperty.Register(
 		nameof(AllowMerge), typeof(bool), typeof(TreeGrid), new PropertyMetadata(false));
 
+	public static readonly DependencyProperty IsSearchEnabledProperty = DependencyProperty.Register(
+		nameof(IsSearchEnabled), typeof(bool), typeof(TreeGrid), new PropertyMetadata(true, OnSearchEnabledChanged));
+
+	public static readonly DependencyProperty StarredOnlyProperty = DependencyProperty.Register(
+		nameof(StarredOnly), typeof(bool), typeof(TreeGrid), new PropertyMetadata(false, OnStarredOnlyChanged));
+	private TreeGridNode? _selectionBeforeFilter;
+	public bool StarredOnly { get => (bool)GetValue(StarredOnlyProperty); set => SetValue(StarredOnlyProperty, value); }
+
 	private readonly DispatcherTimer _dragTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
 	private readonly Stopwatch _hoverWatch = new();
 	private TreeGridNode? _dragSource;
@@ -53,6 +61,7 @@ public sealed partial class TreeGrid : UserControl
 	private bool _attached;
 	private TreeGridNode? _selectionBeforeRefresh;
 
+	public bool IsSearchEnabled { get => (bool)GetValue(IsSearchEnabledProperty); set => SetValue(IsSearchEnabledProperty, value); }
 	public bool AllowDragDrop { get => (bool)GetValue(AllowDragDropProperty); set => SetValue(AllowDragDropProperty, value); }
 	public bool AllowMerge { get => (bool)GetValue(AllowMergeProperty); set => SetValue(AllowMergeProperty, value); }
 	public event EventHandler<TreeGridDropValidationEventArgs>? DropValidating;
@@ -88,6 +97,10 @@ public sealed partial class TreeGrid : UserControl
 		_projection.Changed += (_, _) =>
 		{
 			TreeGridNode? selection = _selectionBeforeRefresh;
+			if (StarredOnly && (selection is null || !_projection.Includes(selection)))
+			{
+				selection = _projection.VisibleRows.FirstOrDefault();
+			}
 			while (selection is not null && !_projection.VisibleRows.Contains(selection))
 			{
 				selection = selection.Parent;
@@ -111,14 +124,92 @@ public sealed partial class TreeGrid : UserControl
 		RefreshLayout();
 	}
 
+	private void OnStarFilterClick(object sender, RoutedEventArgs e) => StarredOnly = StarFilter.IsChecked == true;
+
+	private static void OnStarredOnlyChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
+	{
+		TreeGrid tree = (TreeGrid)sender;
+		tree.EndDrag();
+		tree.StarFilter.IsChecked = tree.StarredOnly;
+		tree.SearchStatus.Text = string.Empty;
+		if (tree.StarredOnly)
+		{
+			tree._selectionBeforeFilter = tree.SelectedNode;
+		}
+		tree._projection.StarredOnly = tree.StarredOnly;
+		if (!tree.StarredOnly && tree._selectionBeforeFilter is TreeGridNode previous && tree._projection.Includes(previous))
+		{
+			tree.RevealNode(previous);
+		}
+	}
+
+	private static void OnSearchEnabledChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
+	{
+		TreeGrid tree = (TreeGrid)sender;
+		tree.RefreshSearchControls();
+	}
+
+	private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
+	{
+		if (StarredOnly && !string.IsNullOrWhiteSpace(SearchBox.Text))
+		{
+			StarredOnly = false;
+		}
+		RefreshSearchControls();
+	}
+
+	private void RefreshSearchControls()
+	{
+		if (NextSearchButton is null || PreviousSearchButton is null || SearchStatus is null)
+		{
+			return;
+		}
+		SearchBox.IsEnabled = IsSearchEnabled;
+		NextSearchButton.IsEnabled = PreviousSearchButton.IsEnabled = IsSearchEnabled && !string.IsNullOrWhiteSpace(SearchBox.Text);
+		SearchStatus.Text = string.Empty;
+	}
+
+	private void OnNextSearchClick(object sender, RoutedEventArgs e) => FindNext();
+	private void OnPreviousSearchClick(object sender, RoutedEventArgs e) => FindPrevious();
+
+	private void OnSearchKeyDown(object sender, KeyRoutedEventArgs e)
+	{
+		if (e.Key == VirtualKey.Enter)
+		{
+			FindNext();
+			e.Handled = true;
+		}
+	}
+
+	public void FindNext() => FindMatch(false);
+	public void FindPrevious() => FindMatch(true);
+
+	private void FindMatch(bool previous)
+	{
+		if (!IsSearchEnabled || string.IsNullOrWhiteSpace(SearchBox.Text))
+		{
+			return;
+		}
+		StarredOnly = false;
+		TreeGridNode? match = TreeGridSearch.Find(ItemsSource, SelectedNode, SearchBox.Text, previous);
+		SearchStatus.Text = match is null ? "No matches" : string.Empty;
+		if (match is not null)
+		{
+			RevealNode(match);
+		}
+	}
+
 	public void UpdateRows(Action update) => _projection.UpdateRows(update);
 
 	public void RevealNode(TreeGridNode node)
 	{
-		for (TreeGridNode? parent = node.Parent; parent is not null; parent = parent.Parent)
+		UpdateRows(() =>
 		{
-			parent.IsExpanded = true;
-		}
+			for (TreeGridNode? parent = node.Parent; parent is not null; parent = parent.Parent)
+			{
+				parent.IsExpanded = true;
+			}
+		});
 		SelectAndReveal(node);
 	}
 
@@ -361,6 +452,8 @@ public sealed partial class TreeGrid : UserControl
 	{
 		TreeGrid tree = (TreeGrid)sender;
 		tree.EndDrag();
+		tree.SearchStatus.Text = string.Empty;
+		tree._selectionBeforeFilter = null;
 		if (tree._attached)
 		{
 			tree._projection.Attach(tree.ItemsSource);
@@ -443,9 +536,9 @@ public sealed partial class TreeGrid : UserControl
 				{
 					node.IsExpanded = true;
 				}
-				else if (node.Children.Count > 0)
+				else if (node.Children.FirstOrDefault(_projection.VisibleRows.Contains) is TreeGridNode child)
 				{
-					SelectAndReveal(node.Children[0]);
+					SelectAndReveal(child);
 				}
 				break;
 			case VirtualKey.Left:

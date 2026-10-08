@@ -19,10 +19,28 @@ internal sealed class TreeGridProjection
 	private ObservableCollection<TreeGridNode>? _roots;
 	private int _updateDepth;
 	private bool _refreshPending;
+	private bool _starredOnly;
+	private readonly HashSet<TreeGridNode> _filterNodes = new();
 	private readonly HashSet<TreeGridNode> _observed = new();
 	public ObservableCollection<TreeGridNode> VisibleRows { get; } = new();
 	public event EventHandler? Changing;
 	public event EventHandler? Changed;
+
+	public bool StarredOnly
+	{
+		get => _starredOnly;
+		set
+		{
+			if (_starredOnly == value)
+			{
+				return;
+			}
+			_starredOnly = value;
+			Refresh();
+		}
+	}
+
+	public bool Includes(TreeGridNode node) => _observed.Contains(node) && (!StarredOnly || _filterNodes.Contains(node));
 
 	public void UpdateRows(Action update)
 	{
@@ -70,7 +88,8 @@ internal sealed class TreeGridProjection
 
 	private void OnNodeChanged(object? sender, PropertyChangedEventArgs e)
 	{
-		if (e.PropertyName is nameof(TreeGridNode.IsExpanded) or nameof(TreeGridNode.IsGroup))
+		if (e.PropertyName is nameof(TreeGridNode.IsExpanded) or nameof(TreeGridNode.IsGroup)
+			|| (StarredOnly && e.PropertyName == nameof(TreeGridNode.IsStarred)))
 		{
 			Refresh();
 		}
@@ -114,6 +133,19 @@ internal sealed class TreeGridProjection
 			{
 				pending.Push((item.Node.Children[i], item.Node, item.Depth + 1, item.Visible && item.Node.IsExpanded));
 			}
+		}
+		_filterNodes.Clear();
+		if (StarredOnly)
+		{
+			foreach (TreeGridNode starred in visited.Where(node => node.IsStarred))
+			{
+				TreeGridNode? node = starred;
+				while (node is not null && _filterNodes.Add(node))
+				{
+					node = node.Parent;
+				}
+			}
+			visible.RemoveAll(node => !_filterNodes.Contains(node));
 		}
 		foreach (TreeGridNode node in _observed.Except(visited).ToArray())
 		{

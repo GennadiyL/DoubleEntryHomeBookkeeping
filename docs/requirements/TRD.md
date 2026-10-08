@@ -170,6 +170,8 @@ References: [Microsoft CalendarDatePicker](https://learn.microsoft.com/en-us/win
 
 #### Flattened ListView tree — confirmed foundation
 
+- Star filtering retains starred rows and required ancestor paths without removing hidden nodes from the underlying tree. Search stays enabled; entering nonblank search text or invoking Next/Previous clears the star filter and searches the whole applicable tree. This supersedes the earlier search-disable rule.
+
 Source: requesting user's row-ViewModel proposal and confirmations, 2026-10-06. Visual reference: [TreeGrid.png](../sources/TreeGrid/TreeGrid.png). The reference establishes a combined hierarchy with aligned data columns and no connector lines; its task-specific columns do not replace the bookkeeping catalogs' defined columns.
 
 - Use a reusable ListView-based flattened tree. Each row uses a common column layout, with an indented name/expander area in the first column. Keep the other column boundaries aligned. Native TreeView and third-party TreeGrid components are not selected for this approach.
