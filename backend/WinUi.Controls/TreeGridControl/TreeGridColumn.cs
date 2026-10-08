@@ -4,7 +4,7 @@ namespace WinUi.Controls.TreeGridControl;
 
 /// <summary>
 /// Describes an additional data column between the hierarchy and star cells.
-/// Width is a positive proportional weight shared by the header and every row.
+/// Percentage widths are configured through the owning TreeGrid.
 /// BindingPath is resolved against the TreeGridNode, including its Data property.
 /// An optional cell template receives that same node as its content.
 /// Column definitions are replaced through the Columns collection when changed.
@@ -16,6 +16,5 @@ public sealed record TreeGridColumn
 {
 	public string Header { get; set; } = string.Empty;
 	public string BindingPath { get; set; } = string.Empty;
-	public double Width { get; set; } = 2;
 	public DataTemplate? CellTemplate { get; set; }
 }

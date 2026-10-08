@@ -4,6 +4,8 @@ using Windows.ApplicationModel.DataTransfer;
 using Windows.ApplicationModel.DataTransfer.DragDrop;
 using Windows.Foundation;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Input;
+using Windows.UI.Core;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
@@ -59,6 +61,9 @@ public sealed partial class TreeGrid : UserControl
 	private readonly TreeGridProjection _projection = new();
 	private bool _changingProjection;
 	private bool _attached;
+	private MenuFlyout? _contextMenu;
+	private double[]? _columnWidths;
+	public event EventHandler<TreeGridColumnWidthsEventArgs>? ColumnWidthsApplying;
 	private TreeGridNode? _selectionBeforeRefresh;
 
 	public bool IsSearchEnabled { get => (bool)GetValue(IsSearchEnabledProperty); set => SetValue(IsSearchEnabledProperty, value); }
@@ -77,6 +82,7 @@ public sealed partial class TreeGrid : UserControl
 	public string NameHeader { get => (string)GetValue(NameHeaderProperty); set => SetValue(NameHeaderProperty, value); }
 	public ObservableCollection<TreeGridColumn> Columns { get; } = new();
 	public event EventHandler<TreeGridNode>? RowActivated;
+	public event EventHandler<TreeGridContextMenuEventArgs>? ContextMenuRequested;
 	public event EventHandler<TreeGridNode>? StarChanged;
 	public event EventHandler<TreeGridNode>? CheckStateChanged;
 	public event EventHandler<TreeGridNode?>? SelectedNodeChanged;
@@ -88,7 +94,11 @@ public sealed partial class TreeGrid : UserControl
 		_dragTimer.Tick += OnDragTimerTick;
 		RowsList.ItemsSource = _projection.VisibleRows;
 		ItemsSource = new ObservableCollection<TreeGridNode>();
-		Columns.CollectionChanged += (_, _) => RefreshLayout();
+		Columns.CollectionChanged += (_, _) =>
+		{
+			_columnWidths = null;
+			RefreshLayout();
+		};
 		_projection.Changing += (_, _) =>
 		{
 			_selectionBeforeRefresh = SelectedNode;
@@ -118,6 +128,7 @@ public sealed partial class TreeGrid : UserControl
 		Unloaded += (_, _) =>
 		{
 			_attached = false;
+			_contextMenu?.Hide();
 			_projection.Detach();
 			EndDrag();
 		};
@@ -406,19 +417,58 @@ public sealed partial class TreeGrid : UserControl
 		return null;
 	}
 
+	public IReadOnlyList<double> ColumnWidths => Array.AsReadOnly(GetColumnWidths().ToArray());
+
+	private double[] GetColumnWidths() => _columnWidths ??= TreeGridColumnWidths.Defaults(Columns.Count + 2);
+
+	public void SetColumnWidths(IEnumerable<double> widths)
+	{
+		double[] values = widths.ToArray();
+		string? error = TreeGridColumnWidths.Validate(values, Columns.Count + 2);
+		if (error is not null)
+		{
+			throw new ArgumentException(error, nameof(widths));
+		}
+		_columnWidths = values;
+		RefreshLayout();
+	}
+
+	private async void OnColumnsClick(object sender, RoutedEventArgs e)
+	{
+		string[] headers = new[] { NameHeader }.Concat(Columns.Select(column => column.Header)).Append("Star").ToArray();
+		TreeGridColumnsDialog dialog = new(headers, GetColumnWidths().ToArray(), values =>
+		{
+			try
+			{
+				TreeGridColumnWidthsEventArgs request = new(values);
+				ColumnWidthsApplying?.Invoke(this, request);
+				if (!string.IsNullOrEmpty(request.ErrorMessage))
+				{
+					return request.ErrorMessage;
+				}
+				SetColumnWidths(values);
+				return null;
+			}
+			catch (Exception exception)
+			{
+				return $"Could not apply widths: {exception.Message}";
+			}
+		}) { XamlRoot = XamlRoot };
+		await dialog.ShowAsync();
+	}
+
 	internal void ConfigureColumns(Grid grid)
 	{
 		grid.ColumnDefinitions.Clear();
-		grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(7, GridUnitType.Star), MinWidth = 280 });
-		foreach (TreeGridColumn column in Columns)
+		double[] widths = GetColumnWidths();
+		for (int i = 0; i < widths.Length; i++)
 		{
-			if (!double.IsFinite(column.Width) || column.Width <= 0)
+			grid.ColumnDefinitions.Add(new ColumnDefinition
 			{
-				throw new InvalidOperationException("Column width must be finite and positive.");
-			}
-			grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(column.Width, GridUnitType.Star), MinWidth = 60 });
+				Width = new GridLength(widths[i], GridUnitType.Star),
+				MinWidth = TreeGridColumnWidths.MinimumPixels(i, widths.Length)
+			});
 		}
-		grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) });
 	}
 
 	internal void SelectFromPointer(TreeGridNode node)
@@ -483,7 +533,7 @@ public sealed partial class TreeGrid : UserControl
 			AddHeader(Columns[i].Header, i + 1, HorizontalAlignment.Center, 14);
 		}
 		AddHeader("★", Columns.Count + 1, HorizontalAlignment.Center, 24);
-		MinWidth = 352 + Columns.Count * 60;
+		MinWidth = TreeGridColumnWidths.MinimumRowWidth(Columns.Count + 2) + 36;
 		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 
@@ -508,6 +558,57 @@ public sealed partial class TreeGrid : UserControl
 		}
 	}
 
+	private void OnRowsContextRequested(UIElement sender, ContextRequestedEventArgs e)
+	{
+		DependencyObject? source = e.OriginalSource as DependencyObject;
+		while (source is not null && source is not ListViewItem && source != RowsList)
+		{
+			if (source is TextBox or PasswordBox or ComboBox or Slider)
+			{
+				return;
+			}
+			source = VisualTreeHelper.GetParent(source);
+		}
+		if (source is not ListViewItem container || container.Content is not TreeGridNode node)
+		{
+			return;
+		}
+		bool fromPointer = e.TryGetPosition(container, out Point position);
+		ShowRowContextMenu(node, container, fromPointer ? position : null);
+		e.Handled = true;
+	}
+
+	private void OnRowsContextCanceled(UIElement sender, RoutedEventArgs e) => _contextMenu?.Hide();
+
+	private void ShowRowContextMenu(TreeGridNode node, ListViewItem container, Point? position)
+	{
+		_contextMenu?.Hide();
+		SelectedNode = node;
+		container.Focus(position.HasValue ? FocusState.Pointer : FocusState.Keyboard);
+		TreeGridContextMenuEventArgs request = new(node);
+		ContextMenuRequested?.Invoke(this, request);
+		if (request.Menu.Items.Count == 0)
+		{
+			return;
+		}
+		_contextMenu = request.Menu;
+		request.Menu.Closed += (_, _) =>
+		{
+			if (ReferenceEquals(_contextMenu, request.Menu))
+			{
+				_contextMenu = null;
+			}
+		};
+		if (position is Point point)
+		{
+			request.Menu.ShowAt(container, point);
+		}
+		else
+		{
+			request.Menu.ShowAt(container);
+		}
+	}
+
 	private void OnRowsPreviewKeyDown(object sender, KeyRoutedEventArgs e)
 	{
 		if (_dragSource is not null && e.Key == VirtualKey.Escape)
@@ -527,6 +628,16 @@ public sealed partial class TreeGrid : UserControl
 		}
 		if (SelectedNode is not TreeGridNode node || _projection.VisibleRows.Count == 0)
 		{
+			return;
+		}
+		if (e.Key == VirtualKey.Application || (e.Key == VirtualKey.F10
+			&& (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift) & CoreVirtualKeyStates.Down) != 0))
+		{
+			if (RowsList.ContainerFromItem(node) is ListViewItem container)
+			{
+				ShowRowContextMenu(node, container, null);
+			}
+			e.Handled = true;
 			return;
 		}
 		switch (e.Key)

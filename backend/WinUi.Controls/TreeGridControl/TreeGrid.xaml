@@ -10,7 +10,10 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <CheckBox x:Name="StarFilter" Content="Starred only" Margin="8,0,28,0" Click="OnStarFilterClick" />
+        <Grid Margin="8,0,28,0">
+            <CheckBox x:Name="StarFilter" Content="Starred only" Click="OnStarFilterClick" />
+            <Button Content="Columns" HorizontalAlignment="Right" Click="OnColumnsClick" />
+        </Grid>
         <Grid Grid.Row="1" x:Name="SearchPanel" Margin="8,0,28,0" ColumnSpacing="8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -34,7 +37,8 @@
                   ScrollViewer.HorizontalScrollMode="Disabled"
                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                   ScrollViewer.VerticalScrollBarVisibility="Visible"
-                  SelectionChanged="OnSelectionChanged" PreviewKeyDown="OnRowsPreviewKeyDown">
+                  SelectionChanged="OnSelectionChanged" PreviewKeyDown="OnRowsPreviewKeyDown"
+                  ContextRequested="OnRowsContextRequested" ContextCanceled="OnRowsContextCanceled">
             <ListView.Resources>
                 <Style TargetType="ScrollViewer" BasedOn="{StaticResource DefaultScrollViewerStyle}">
                     <Setter Property="Template">

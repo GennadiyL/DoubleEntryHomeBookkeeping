@@ -19,12 +19,25 @@ namespace Dehb.WinUi;
 /// </summary>
 public sealed partial class MainWindow : Window
 {
+	private readonly ColumnWidthSettings _columnSettings = new();
+	private string ColumnSettingsKey => CatalogSelector.SelectedIndex == 0 ? "Accounts.Main" : "Correspondents.Main";
 	private readonly ObservableCollection<TreeGridNode> _accounts = CreateAccounts();
 	private readonly ObservableCollection<TreeGridNode> _correspondents = CreateCorrespondents();
 
 	public MainWindow()
 	{
 		InitializeComponent();
+		AppWindow.Changed += (_, e) =>
+		{
+			if (e.DidSizeChange && Content is FrameworkElement { XamlRoot: not null } root)
+			{
+				int minimumWidth = (int)Math.Ceiling(Math.Max(640, CatalogTree.MinWidth + 64) * root.XamlRoot.RasterizationScale);
+				if (AppWindow.ClientSize.Width < minimumWidth)
+				{
+					AppWindow.ResizeClient(new Windows.Graphics.SizeInt32(minimumWidth, AppWindow.ClientSize.Height));
+				}
+			}
+		};
 		AppWindow.Resize(new Windows.Graphics.SizeInt32(1000, 720));
 		ShowCatalog();
 	}
@@ -44,13 +57,37 @@ public sealed partial class MainWindow : Window
 		if (CatalogSelector.SelectedIndex == 0)
 		{
 			CatalogTree.NameHeader = "Account";
-			CatalogTree.Columns.Add(new TreeGridColumn { Header = "Currency", BindingPath = "Data", Width = 2 });
+			CatalogTree.Columns.Add(new TreeGridColumn { Header = "Currency", BindingPath = "Data" });
 			CatalogTree.ItemsSource = _accounts;
 		}
 		else
 		{
 			CatalogTree.NameHeader = "Correspondent";
 			CatalogTree.ItemsSource = _correspondents;
+		}
+		try
+		{
+			double[]? widths = _columnSettings.Load(ColumnSettingsKey);
+			if (widths is not null)
+			{
+				CatalogTree.SetColumnWidths(widths);
+			}
+		}
+		catch (Exception exception)
+		{
+			StatusText.Text = $"Could not load column settings: {exception.Message}";
+		}
+	}
+
+	private void OnColumnWidthsApplying(object? sender, TreeGridColumnWidthsEventArgs e)
+	{
+		try
+		{
+			_columnSettings.Save(ColumnSettingsKey, e.Widths.ToArray());
+		}
+		catch (Exception exception)
+		{
+			e.ErrorMessage = $"Could not save column settings: {exception.Message}";
 		}
 	}
 
@@ -65,6 +102,27 @@ public sealed partial class MainWindow : Window
 	private void OnRowActivated(object? sender, TreeGridNode node) => StatusText.Text = $"Activated: {node.Name}";
 	private void OnStarChanged(object? sender, TreeGridNode node) => StatusText.Text = $"{node.Name}: star {(node.IsStarred ? "on" : "off")}";
 	private void OnCheckStateChanged(object? sender, TreeGridNode node) => StatusText.Text = $"{node.Name}: {(node.IsChecked == true ? "checked" : "unchecked")}";
+
+	private void OnContextMenuRequested(object? sender, TreeGridContextMenuEventArgs e)
+	{
+		TreeGridNode node = e.Node;
+		MenuFlyoutItem activate = new() { Text = "Activate (demo)" };
+		activate.Click += (_, _) => OnRowActivated(CatalogTree, node);
+		e.Menu.Items.Add(activate);
+		if (node.IsGroup)
+		{
+			MenuFlyoutItem expand = new() { Text = node.IsExpanded ? "Collapse" : "Expand" };
+			expand.Click += (_, _) => node.IsExpanded = !node.IsExpanded;
+			e.Menu.Items.Add(expand);
+		}
+		MenuFlyoutItem star = new() { Text = node.IsStarred ? "Remove star" : "Add star" };
+		star.Click += (_, _) =>
+		{
+			node.IsStarred = !node.IsStarred;
+			OnStarChanged(CatalogTree, node);
+		};
+		e.Menu.Items.Add(star);
+	}
 
 	private void OnDropValidating(object? sender, TreeGridDropValidationEventArgs e)
 	{

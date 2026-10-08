@@ -30,7 +30,7 @@
             <ToggleSwitch Grid.Column="1" Header="Checkboxes" Toggled="OnCheckboxesToggled" VerticalAlignment="Bottom" />
         </Grid>
         <Border Grid.Row="2" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="8">
-            <controls:TreeGrid x:Name="CatalogTree" AllowDragDrop="True" AllowMerge="True" DropValidating="OnDropValidating" DropRequested="OnDropRequested" RowActivated="OnRowActivated" StarChanged="OnStarChanged" CheckStateChanged="OnCheckStateChanged" />
+            <controls:TreeGrid x:Name="CatalogTree" AllowDragDrop="True" AllowMerge="True" DropValidating="OnDropValidating" DropRequested="OnDropRequested" ColumnWidthsApplying="OnColumnWidthsApplying" ContextMenuRequested="OnContextMenuRequested" RowActivated="OnRowActivated" StarChanged="OnStarChanged" CheckStateChanged="OnCheckStateChanged" />
         </Border>
         <TextBlock x:Name="StatusText" Grid.Row="3" Text="Select a row. Use arrows to navigate; double-click or Enter to activate." TextWrapping="Wrap" />
     </Grid>

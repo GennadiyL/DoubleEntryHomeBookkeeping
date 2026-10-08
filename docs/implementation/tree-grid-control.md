@@ -13,7 +13,7 @@ Double-click/Enter reports activation in the footer; no editor is opened yet.
 - TreeGrid.ItemsSource: observable root nodes; populate each node's Children.
 - TreeGridNode: Name, IsGroup, Data, IsExpanded, IsStarred, nullable IsChecked.
 - TreeGrid.Columns: extra columns between Name and Star, with Header,
-  BindingPath, proportional Width and optional CellTemplate. Bindings and cell
+  BindingPath and optional CellTemplate. Bindings and cell
   templates receive the node; Data can contain an application view model.
   Replace a column in the collection to apply changed column settings.
 - TreeGrid.ShowCheckboxes: changes visibility without clearing state.
@@ -51,6 +51,61 @@ IsSearchEnabled defaults to true. Hosts can set it to false to disable the text
 box and navigation, including FindNext/FindPrevious calls. Star filtering does
 not disable search. Search covers the supplied applicable tree;
 groups-only hosts must supply their groups-only hierarchy.
+
+## Column widths
+
+Columns opens a dialog for Name, data columns and Star, in their fixed order.
+Enter percentages with up to two decimal places. If the total differs from 100%,
+Apply sets the main column to 100 minus the other columns and updates its field.
+An out-of-range result keeps the dialog open with an error. Apply validates
+minimum usable widths before changing the layout. Cancel leaves it unchanged;
+Restore defaults only changes pending dialog values until Apply is clicked.
+The same percentages drive header and row sizing as the viewport changes.
+
+ColumnWidths returns the current percentages. SetColumnWidths restores validated
+values without raising a save event. Replacing the Columns collection resets
+widths to defaults; restore settings after configuring columns. The former
+TreeGridColumn.Width weight is replaced by this complete percentage layout.
+
+ColumnWidthsApplying lets the host save before the new layout is committed.
+Set ErrorMessage on failure to retain the old widths and keep the dialog open.
+The demo stores Accounts.Main and Correspondents.Main separately under
+%LOCALAPPDATA%/DoubleEntryHomeBookkeeping/column-widths.json. Future pickers must
+use their own keys. Settings errors are shown, and no database writes occur.
+
+## DecimalBox
+
+WinUi.Controls.DecimalBoxControl.DecimalBox contains a TextBox and inline spin buttons and exposes
+nullable decimal Value, Precision (0–28, default 2), property-change notifications,
+and TryCommit(). Value is the last successfully committed value; call TryCommit
+before saving and apply any required-value or domain range checks in the host.
+The Columns dialog uses Precision = 2 for every width field.
+Spin buttons remain visible; holding a button repeats the step. Up/Down keys
+also spin. Step is exactly 10^-Precision (precision 4 gives 0.0001). Empty input
+starts from zero. Invalid input, overflow and inexact steps do not change the
+value. IsReadOnly disables editing and both buttons. Focus forwards to the editor.
+
+While focused, text is plain dot-decimal without grouping; entry selects the full
+value. The numeric keypad decimal key inserts a dot. Input accepts only ASCII digits, dot, minus and plus; other characters are
+rejected for typing and paste. Unfinished numeric text remains editable. Focus loss and TryCommit parse decimal directly and round
+midpoint-to-even to Precision. Valid unfocused values use regional formatting.
+Invalid text remains with a field description; Apply focuses the first invalid
+field. Empty input commits null. Regional display formatting bypasses the input filter.
+Grouped input, symbols, exponents, expressions,
+overflow and values not exactly representable as decimal are rejected.
+
+## Context menus
+
+Right-click selects the row before ContextMenuRequested is raised. The host
+receives TreeGridContextMenuEventArgs.Node and a fresh MenuFlyout in Menu.
+Populate Menu.Items synchronously with host-owned labels, enabled states and
+command handlers. Empty menus are not shown. The control supplies no business
+commands. The menu key and Shift+F10 use the selected, focused tree row; text
+editors retain their own menus. Context cancellation and unloading close the menu.
+
+The sample host supplies Activate (demo), Expand/Collapse for groups, and
+Add/Remove star. Catalog editors, deletion, moves and merge commands remain host
+integration work. These demo commands do not save to the database.
 
 ## Drag and drop
 
@@ -98,13 +153,13 @@ validation and rollback/error presentation.
 
 This is a control demonstration, not the completed Business editing UI.
 Database integration, modal editors,
-the column-width popup and saved view settings remain later work.
-DecimalBox, Reporting, Synchronization and Help are not implemented here.
+other saved view settings remain later work.
+Reporting, Synchronization and Help are not implemented here.
 
 ## Verification
 
 - Debug/x64 application build.
-- Thirty-four local NUnit cases cover hierarchy projection, checkbox propagation
+- Eighty-four local NUnit cases cover hierarchy projection, checkbox propagation
   and drag/drop planning, including hidden siblings, no-op drops and merge permissions.
   Large-merge regressions cover expanded/collapsed sources and batched-update recovery.
 - Tests target .NET 8, matching the WinUI host. On the development VM, which only
