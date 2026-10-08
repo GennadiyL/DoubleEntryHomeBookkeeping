@@ -18,6 +18,9 @@
       <None Update="Assets">
         <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       </None>
+      <None Update="Assets\dehb.db">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>
