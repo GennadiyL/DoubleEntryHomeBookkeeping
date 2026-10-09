@@ -26,11 +26,10 @@ public sealed class CurrenciesUpdateServiceTests : CurrenciesServiceTestsBase
 	[Test]
 	public async Task Update_ChangesOnlyMetadataAndContentTracking()
 	{
-		Param.Code = " gbp ";
 		Currency.ModificationType = ModificationType.Order;
 		Currency.IsFavorite = true;
 		await Service.Update(Currency.Id, Param);
-		Assert.That((Currency.Code, Currency.Name, Currency.Symbol), Is.EqualTo(("GBP", "Euro", "EUR")));
+		Assert.That((Currency.Code, Currency.Name, Currency.Symbol, Currency.EnglishName), Is.EqualTo(("GBP", "Euro", "GBP", "Catalog GBP")));
 		Assert.That((Currency.Order, Currency.IsFavorite, Currency.EditRevision), Is.EqualTo((1, true, (long?)7)));
 		Assert.That(Currency.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
 		Unit.CurrencyRateRepo.DidNotReceiveWithAnyArgs().Update(default!);
@@ -38,9 +37,13 @@ public sealed class CurrenciesUpdateServiceTests : CurrenciesServiceTestsBase
 		await Unit.Received(1).SaveChanges();
 	}
 
-	[Test]
-	public void Update_RejectsCodeChangeWithoutMutation()
+	[TestCase(null)]
+	[TestCase("")]
+	[TestCase(" ")]
+	[TestCase("1234567")]
+	public void Update_RejectsInvalidNameWithoutMutation(string? name)
 	{
+		Param.Name = name!;
 		Assert.ThrowsAsync<InvalidCurrencyException>(async () => await Service.Update(Currency.Id, Param));
 		Assert.That(Currency.Name, Is.EqualTo("GBP"));
 		Assert.That(Currency.ModificationType, Is.EqualTo(ModificationType.None));
@@ -59,9 +62,18 @@ public sealed class CurrenciesUpdateServiceTests : CurrenciesServiceTestsBase
 	[Test]
 	public async Task Update_AllowsBaseCurrencyMetadataEditing()
 	{
-		Param.Code = BaseCurrency.Code;
 		await Service.Update(BaseCurrency.Id, Param);
 		Assert.That(BaseCurrency.Name, Is.EqualTo("Euro"));
 		Assert.That(Config.BaseCurrencyId, Is.EqualTo(BaseCurrency.Id));
+	}
+
+	[TestCase("X")]
+	[TestCase("123456")]
+	[TestCase("  USD  ")]
+	public async Task Update_AcceptsNameBoundaries(string name)
+	{
+		Param.Name = name;
+		await Service.Update(Currency.Id, Param);
+		Assert.That(Currency.Name, Is.EqualTo(name.Trim()));
 	}
 }

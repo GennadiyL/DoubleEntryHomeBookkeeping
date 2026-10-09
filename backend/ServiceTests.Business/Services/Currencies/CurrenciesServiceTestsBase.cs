@@ -52,7 +52,7 @@ public abstract class CurrenciesServiceTestsBase
 		_provider = services.BuildServiceProvider(true);
 		_scope = _provider.CreateScope();
 		Service = _scope.ServiceProvider.GetRequiredService<ICurrencyService>();
-		Param = new CurrencyParam { Code = " eur ", Name = "  Euro  ", Symbol = " EUR " };
+		Param = new CurrencyParam { Name = "  Euro  " };
 	}
 
 	[TearDown]
@@ -64,7 +64,7 @@ public abstract class CurrenciesServiceTestsBase
 
 	protected Currency AddCurrency(string code, int order)
 	{
-		Currency currency = new() { Id = Guid.NewGuid(), Code = code, Name = code, Symbol = code, Order = order, EditRevision = 7 };
+		Currency currency = new() { Id = Guid.NewGuid(), Code = code, EnglishName = "Catalog " + code, Name = code, Symbol = code, Order = order, EditRevision = 7 };
 		Currencies.Add(currency);
 		Unit.CurrencyRepo.GetById(currency.Id, Arg.Any<CancellationToken>()).Returns(currency);
 		return currency;

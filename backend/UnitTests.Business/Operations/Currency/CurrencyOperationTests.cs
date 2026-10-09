@@ -24,8 +24,11 @@ public sealed class CurrencyOperationTests
 		List<CurrencyProfile> profiles = operation.GetListOfAvailableCurrencyData();
 		Assert.That(profiles, Is.Not.Empty);
 		Assert.That(profiles.Select(profile => profile.Code), Is.Unique);
+		Assert.That(profiles.All(profile => profile.Code.Length == 3
+			&& profile.Code.All(character => character is >= 'A' and <= 'Z')
+			&& profile.Code != "XXX" && !string.IsNullOrWhiteSpace(profile.EnglishName)), Is.True);
 		CurrencyProfile usd = profiles.Single(profile => profile.Code == "USD");
-		Assert.That(usd.Name, Is.Not.Empty);
+		Assert.That(usd.EnglishName, Is.Not.Empty);
 		Assert.That(usd.Symbol, Is.Not.Empty);
 		Assert.That(operation.GetCurrencyData(" usd "), Is.EqualTo(usd));
 		Assert.That(operation.TryGetCurrencyData(" UsD ", out CurrencyProfile found), Is.True);
@@ -36,6 +39,8 @@ public sealed class CurrencyOperationTests
 	[TestCase("")]
 	[TestCase(" ")]
 	[TestCase("NOT-A-CURRENCY")]
+	[TestCase("¤¤")]
+	[TestCase("XXX")]
 	public void Lookup_RejectsInvalidCodeWithMessageAndTryReturnsFalse(string? code)
 	{
 		CurrencyOperation operation = new();

@@ -37,7 +37,7 @@ public abstract class CurrencyRatesServiceTestsBase
 	public void SetUp()
 	{
 		Unit = Substitute.For<IAppUnitOfWork>();
-		Currency = new Currency { Id = Guid.NewGuid(), Code = "EUR", Name = "Euro", Symbol = "EUR" };
+		Currency = new Currency { Id = Guid.NewGuid(), EnglishName = "Euro", Code = "EUR", Name = "Euro", Symbol = "EUR" };
 		Account = new Account { Id = Guid.NewGuid(), Name = "Cash", CurrencyId = Currency.Id, Currency = Currency };
 		Config = new SystemConfig { Id = Guid.NewGuid(), BaseCurrencyId = Guid.NewGuid(), RatePrecision = 4 };
 		Unit.CurrencyRepo.GetById(Currency.Id, Arg.Any<CancellationToken>()).Returns(Currency);

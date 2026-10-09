@@ -13,6 +13,6 @@ namespace Business.Contracts.Services.Currencies;
 public record AvailableCurrencyInfo
 {
 	public string Code { get; set; } = string.Empty;
-	public string Name { get; set; } = string.Empty;
+	public string EnglishName { get; set; } = string.Empty;
 	public string Symbol { get; set; } = string.Empty;
 }

@@ -18,14 +18,14 @@ public interface ICurrencyService :
 	IReadEntityService<CurrencyInfo>
 {
 	/// <summary>
-	/// Creates a currency and its protected initial fallback rate for the currency catalog.
+	/// Creates a currency from catalog metadata, with Name equal to Code, and its initial fallback rate.
 	/// Rejects duplicate ISO codes and validates the initial rate using configured precision.
 	/// Initializes new tracked rows with null revisions and None modification flags.
 	/// Currency, initial rate and tracking commit together, and the new currency identity is returned.
 	/// </summary>
-	public Task<Guid> Add(CurrencyParam param, decimal initialRate, CancellationToken cancellationToken = default);
+	public Task<Guid> Add(string code, decimal initialRate, CancellationToken cancellationToken = default);
 	/// <summary>
-	/// Saves currency-editor metadata while preserving the currency identity and immutable ISO code.
+	/// Saves a trimmed Name of one to six characters, preserving Code, Symbol and EnglishName.
 	/// Unknown or deleted targets throw not-found without saving changes.
 	/// Adds Content while preserving existing Order flags and the received edit revision.
 	/// Metadata and tracking commit together; stored transaction rates remain unchanged.

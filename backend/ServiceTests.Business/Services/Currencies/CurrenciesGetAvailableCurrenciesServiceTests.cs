@@ -29,7 +29,7 @@ public sealed class CurrenciesGetAvailableCurrenciesServiceTests : CurrenciesSer
 		Unit.ClearReceivedCalls();
 		List<AvailableCurrencyInfo> infos = await Service.GetAvailableCurrencies();
 		Assert.That(infos.Select(info => info.Code), Is.Unique);
-		Assert.That(infos.Single(info => info.Code == "USD").Name, Is.Not.Empty);
+		Assert.That(infos.Single(info => info.Code == "USD").EnglishName, Is.Not.Empty);
 		Assert.That(infos.Single(info => info.Code == "EUR").Symbol, Is.Not.Empty);
 		Assert.That(Unit.ReceivedCalls(), Is.Empty);
 		AssertNoWrites();

@@ -6,7 +6,7 @@ namespace Business.Models.Entities;
 
 /// <summary>
 /// Represents a currency available within a bookkeeping dataset.
-/// Stores its unique immutable ISO code, editable name and editable symbol.
+/// Stores its unique immutable ISO code, editable short name and immutable catalog metadata.
 /// Accounts and System configuration reference its identity.
 /// Each currency has exactly one protected initial fallback rate plus ordinary dated rates.
 /// The dataset base currency and currencies used by accounts cannot be deleted.
@@ -21,6 +21,7 @@ public class Currency : BaseEntity, ITrackedEntity, IFavoriteEntity, IOrderedEnt
 	public ModificationType ModificationType { get; set; }
 	public required string Code { get; set; }
 	public required string Symbol { get; set; }
+	public required string EnglishName { get; set; }
 	public required string Name { get; set; }
 	public bool IsFavorite { get; set; }
 	public int Order { get; set; }

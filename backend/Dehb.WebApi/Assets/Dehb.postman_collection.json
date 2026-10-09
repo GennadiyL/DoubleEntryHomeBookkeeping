@@ -752,7 +752,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\r\n  \"initialRate\": 45.5,\r\n  \"code\": \"EUR\",\r\n  \"symbol\": \"\\u20AC\",\r\n  \"name\": \"Postman example\"\r\n}",
+              "raw": "{\r\n  \"initialRate\": 45.5,\r\n  \"code\": \"EUR\"\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -785,7 +785,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000007\",\r\n  \"code\": \"USD\",\r\n  \"symbol\": \"$\",\r\n  \"name\": \"Updated example\"\r\n}",
+              "raw": "{\r\n  \"entityId\": \"00000000-0000-0000-0000-000000000007\",\r\n  \"name\": \"Dollar\"\r\n}",
               "options": {
                 "raw": {
                   "language": "json"

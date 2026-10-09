@@ -107,6 +107,68 @@ public sealed class CatalogSchemaTests
 	}
 
 	[Test]
+	public async Task Currency_RoundTripsCatalogMetadataAndNameOnlyUpdate()
+	{
+		Guid id;
+		string englishName;
+		string symbol;
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			ICurrencyService service = scope.ServiceProvider.GetRequiredService<ICurrencyService>();
+			var profile = (await service.GetAvailableCurrencies()).Single(item => item.Code == "EUR");
+			englishName = profile.EnglishName;
+			symbol = profile.Symbol;
+			id = await service.Add("EUR", 40m);
+		}
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			ICurrencyService service = scope.ServiceProvider.GetRequiredService<ICurrencyService>();
+			var currency = await service.GetById(id);
+			Assert.That((currency.Code, currency.Name, currency.EnglishName, currency.Symbol), Is.EqualTo(("EUR", "EUR", englishName, symbol)));
+			await service.Update(id, new Business.Contracts.Services.Currencies.CurrencyParam { Name = "Euro" });
+		}
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			ICurrencyService service = scope.ServiceProvider.GetRequiredService<ICurrencyService>();
+			var currency = await service.GetById(id);
+			Assert.That((currency.Code, currency.Name, currency.EnglishName, currency.Symbol), Is.EqualTo(("EUR", "Euro", englishName, symbol)));
+			var rates = await scope.ServiceProvider.GetRequiredService<ICurrencyRateService>().GetRates(id);
+			Assert.That(rates.Single().Rate, Is.EqualTo(40m));
+		}
+	}
+
+	[Test]
+	public async Task Currency_AddDeleteAdd_PreservesDeletedRecordAndCreatesNewInitialRate()
+	{
+		Guid deletedId;
+		Guid newId;
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			deletedId = await scope.ServiceProvider.GetRequiredService<ICurrencyService>().Add("EUR", 40m);
+		}
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			await scope.ServiceProvider.GetRequiredService<ICurrencyService>().Delete(deletedId);
+		}
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			newId = await scope.ServiceProvider.GetRequiredService<ICurrencyService>().Add("EUR", 54.2654m);
+		}
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			ICurrencyService service = scope.ServiceProvider.GetRequiredService<ICurrencyService>();
+			Assert.That(newId, Is.Not.EqualTo(deletedId));
+			Assert.That((await service.GetAllCurrencies()).Single(currency => currency.Code == "EUR").Id, Is.EqualTo(newId));
+			IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+			Assert.That((await unit.CurrencyRepo.GetById(deletedId))!.DeleteRevision, Is.EqualTo(0));
+			var rates = await scope.ServiceProvider.GetRequiredService<ICurrencyRateService>().GetRates(newId);
+			Assert.That(rates.Single().Rate, Is.EqualTo(54.2654m));
+			Assert.That(rates.Single().IsInitial, Is.True);
+			Assert.ThrowsAsync<Business.Models.Exceptions.InvalidCurrencyException>(async () => await service.Add("EUR", 1m));
+		}
+	}
+
+	[Test]
 	public async Task Reports_RoundTripHierarchyAndUpdateInSeparateScope()
 	{
 		Guid groupId = Guid.NewGuid();

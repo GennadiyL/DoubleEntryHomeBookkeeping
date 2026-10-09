@@ -38,12 +38,11 @@ internal sealed class CurrencyService : ICurrencyService
 		_currencyOperation = currencyOperation;
 	}
 
-	public async Task<Guid> Add(CurrencyParam param, decimal initialRate, CancellationToken cancellationToken = default)
+	public async Task<Guid> Add(string code, decimal initialRate, CancellationToken cancellationToken = default)
 	{
-		ValidateMetadata(param);
-		CurrencyProfile profile = _currencyOperation.GetCurrencyData(param.Code);
+		CurrencyProfile profile = _currencyOperation.GetCurrencyData(code);
 		ICollection<Currency> currencies = await _unitOfWork.CurrencyRepo.GetAll(cancellationToken);
-		if (currencies.Any(currency => string.Equals(currency.Code, profile.Code, StringComparison.OrdinalIgnoreCase)))
+		if (currencies.Any(currency => !currency.IsDeleted() && string.Equals(currency.Code, profile.Code, StringComparison.OrdinalIgnoreCase)))
 		{
 			throw new InvalidCurrencyException("A currency with this ISO code already exists.");
 		}
@@ -60,7 +59,7 @@ internal sealed class CurrencyService : ICurrencyService
 		}
 		Currency currency = new()
 		{
-			Id = Guid.NewGuid(), Code = profile.Code, Name = param.Name.Trim(), Symbol = param.Symbol.Trim(),
+			Id = Guid.NewGuid(), Code = profile.Code, Name = profile.Code, Symbol = profile.Symbol, EnglishName = profile.EnglishName,
 			Order = maxOrder + 1, IsFavorite = false,
 			EditRevision = null, DeleteRevision = null, ModificationType = ModificationType.None
 		};
@@ -81,12 +80,7 @@ internal sealed class CurrencyService : ICurrencyService
 	{
 		Currency currency = await GetActiveCurrency(currencyId, cancellationToken);
 		ValidateMetadata(param);
-		if (!string.Equals(currency.Code, param.Code.Trim(), StringComparison.OrdinalIgnoreCase))
-		{
-			throw new InvalidCurrencyException("The ISO code of a saved currency cannot be changed.");
-		}
 		currency.Name = param.Name.Trim();
-		currency.Symbol = param.Symbol.Trim();
 		currency.SetEditedContent();
 		_unitOfWork.CurrencyRepo.Update(currency);
 		await _unitOfWork.SaveChanges(cancellationToken);
@@ -185,7 +179,7 @@ internal sealed class CurrencyService : ICurrencyService
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		List<AvailableCurrencyInfo> result = [.. _currencyOperation.GetListOfAvailableCurrencyData()
-			.Select(profile => new AvailableCurrencyInfo { Code = profile.Code, Name = profile.Name, Symbol = profile.Symbol })];
+			.Select(profile => new AvailableCurrencyInfo { Code = profile.Code, EnglishName = profile.EnglishName, Symbol = profile.Symbol })];
 		return Task.FromResult(result);
 	}
 
@@ -201,19 +195,15 @@ internal sealed class CurrencyService : ICurrencyService
 
 	private static void ValidateMetadata(CurrencyParam param)
 	{
-		if (param is null || string.IsNullOrWhiteSpace(param.Name) || string.IsNullOrWhiteSpace(param.Symbol))
+		if (param is null || string.IsNullOrWhiteSpace(param.Name) || param.Name.Trim().Length > 6)
 		{
-			throw new InvalidCurrencyException("A currency name and symbol are required.");
-		}
-		if (string.IsNullOrWhiteSpace(param.Code))
-		{
-			throw new InvalidCurrencyCodeException("A currency ISO code is required.");
+			throw new InvalidCurrencyException("Currency Name must contain 1 to 6 characters.");
 		}
 	}
 
 	private static CurrencyInfo GetInfo(Currency currency) => new()
 	{
-		Id = currency.Id, Code = currency.Code, Name = currency.Name, Symbol = currency.Symbol,
+		Id = currency.Id, Code = currency.Code, Name = currency.Name, Symbol = currency.Symbol, EnglishName = currency.EnglishName,
 		Order = currency.Order, IsFavorite = currency.IsFavorite
 	};
 }

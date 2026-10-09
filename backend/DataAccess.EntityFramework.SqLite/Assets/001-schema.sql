@@ -49,6 +49,7 @@ CREATE TABLE "Currency" (
     "DeleteRevision" INTEGER NULL,
     "ModificationType" INTEGER NOT NULL,
     "Code" TEXT NOT NULL,
+    "EnglishName" TEXT NOT NULL,
     "Symbol" TEXT NOT NULL,
     "Name" TEXT NOT NULL,
     "IsFavorite" INTEGER NOT NULL,

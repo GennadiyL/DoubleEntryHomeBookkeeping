@@ -16,12 +16,17 @@ namespace Business.Impl.Operations.Currency;
 internal sealed class CurrencyOperation : ICurrencyOperation
 {
 	public List<CurrencyProfile> GetListOfAvailableCurrencyData() =>
-		[.. GetRegionInfos().DistinctBy(region => region.ISOCurrencySymbol, StringComparer.OrdinalIgnoreCase)
+		[.. GetRegionInfos()
+			.Where(region => region.ISOCurrencySymbol.Length == 3
+				&& region.ISOCurrencySymbol.All(character => character is >= 'A' and <= 'Z')
+				&& region.ISOCurrencySymbol != "XXX"
+				&& !string.IsNullOrWhiteSpace(region.CurrencyEnglishName))
+			.DistinctBy(region => region.ISOCurrencySymbol, StringComparer.OrdinalIgnoreCase)
 			.Select(region => new CurrencyProfile
 			{
 				Code = region.ISOCurrencySymbol,
 				Symbol = region.CurrencySymbol,
-				Name = region.CurrencyEnglishName
+				EnglishName = region.CurrencyEnglishName
 			})];
 
 	public CurrencyProfile GetCurrencyData(string isoCode)

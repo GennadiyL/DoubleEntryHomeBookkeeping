@@ -69,7 +69,7 @@ public abstract class TemplatesServiceTestsBase
 		Template = AddSibling("Existing", 0);
 		Template.EditRevision = 7;
 		Template.Description = "Description";
-		Currency = new Currency { Id = Guid.NewGuid(), Name = "Dollar", Code = "USD", Symbol = "$" };
+		Currency = new Currency { Id = Guid.NewGuid(), Name = "Dollar", EnglishName = "US Dollar", Code = "USD", Symbol = "$" };
 		Account = new Account { Id = Guid.NewGuid(), Name = "Cash", CurrencyId = Currency.Id, Currency = Currency };
 		UnitOfWork.AccountRepo.GetById(Account.Id, Arg.Any<CancellationToken>()).Returns(Account);
 		UnitOfWork.CurrencyRepo.GetById(Currency.Id, Arg.Any<CancellationToken>()).Returns(Currency);

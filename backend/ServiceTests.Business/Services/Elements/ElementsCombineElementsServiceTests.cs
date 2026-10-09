@@ -312,7 +312,7 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 	private Account AddAccount(bool deleted)
 	{
 		AccountGroup group = new() { Id = Guid.NewGuid() };
-		Currency currency = new() { Id = Guid.NewGuid(), Code = "USD", Symbol = "$", Name = "US Dollar" };
+		Currency currency = new() { Id = Guid.NewGuid(), EnglishName = "US Dollar", Code = "USD", Symbol = "$", Name = "US Dollar" };
 		Account account = new()
 		{
 			Id = Guid.NewGuid(), Name = "Account", Description = "Description", Order = 6,

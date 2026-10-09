@@ -41,7 +41,7 @@ public sealed class AccountsUpdateServiceTests
 		_unitOfWork = Substitute.For<IAppUnitOfWork>();
 		_currencyRepository = Substitute.For<ICurrencyRepository>();
 		_unitOfWork.CurrencyRepo.Returns(_currencyRepository);
-		_currency = new Currency { Id = Guid.NewGuid(), Code = "USD", Symbol = "$", Name = "US Dollar" };
+		_currency = new Currency { Id = Guid.NewGuid(), EnglishName = "US Dollar", Code = "USD", Symbol = "$", Name = "US Dollar" };
 		_currencyRepository.GetById(_currency.Id, CancellationToken.None).Returns(_currency);
 		_unitOfWork.AccountRepo.Returns(_repository);
 		_unitOfWork.AccountGroupRepo.Returns(_groupRepository);
@@ -404,7 +404,7 @@ public sealed class AccountsUpdateServiceTests
 
 	private Currency NewCurrency()
 	{
-		Currency currency = new() { Id = Guid.NewGuid(), Code = "EUR", Symbol = "€", Name = "Euro" };
+		Currency currency = new() { Id = Guid.NewGuid(), EnglishName = "Euro", Code = "EUR", Symbol = "€", Name = "Euro" };
 		_param.CurrencyId = currency.Id;
 		_currencyRepository.GetById(currency.Id, CancellationToken.None).Returns(currency);
 		return currency;

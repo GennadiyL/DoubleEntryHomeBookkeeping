@@ -10,9 +10,9 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <Grid Margin="8,0,28,0">
+        <Grid x:Name="ToolbarGrid" Margin="8,0,28,0">
             <CheckBox x:Name="StarFilter" Content="Starred only" Click="OnStarFilterClick" />
-            <Button Content="Columns" HorizontalAlignment="Right" Click="OnColumnsClick" />
+            <Button x:Name="ColumnsButton" Content="Columns" HorizontalAlignment="Right" Click="OnColumnsClick" />
         </Grid>
         <Grid Grid.Row="1" x:Name="SearchPanel" Margin="8,0,28,0" ColumnSpacing="8">
             <Grid.ColumnDefinitions>
@@ -44,15 +44,17 @@
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="ScrollViewer">
-                                <Grid Background="{TemplateBinding Background}" ColumnSpacing="4">
+                                <Grid Background="{TemplateBinding Background}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <ScrollContentPresenter x:Name="ScrollContentPresenter"
                                                             ContentTemplate="{TemplateBinding ContentTemplate}"
                                                             Margin="{TemplateBinding Padding}" />
                                     <ScrollBar x:Name="VerticalScrollBar" Grid.Column="1"
+                                               Width="16" Margin="4,0,0,0"
+                                               Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"
                                                Orientation="Vertical" IndicatorMode="MouseIndicator"
                                                IsTabStop="False"
                                                Maximum="{TemplateBinding ScrollableHeight}"

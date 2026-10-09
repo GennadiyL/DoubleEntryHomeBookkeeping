@@ -25,7 +25,7 @@ internal static class CurrenciesEndpoint
 		Results.Ok(await service.GetAvailableCurrencies(cancellationToken));
 
 	public static async Task<IResult> AddHandler(AddCurrencyParam param, ICurrencyService service, CancellationToken cancellationToken = default) =>
-		Results.Ok(await service.Add(param, param.InitialRate, cancellationToken));
+		Results.Ok(await service.Add(param.Code, param.InitialRate, cancellationToken));
 
 	public static async Task<IResult> UpdateHandler(UpdateCurrencyParam param, ICurrencyService service, CancellationToken cancellationToken = default)
 	{

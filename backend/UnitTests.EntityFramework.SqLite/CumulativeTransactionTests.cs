@@ -66,7 +66,7 @@ public sealed class CumulativeTransactionTests
 		_unitOfWork = _scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
 		_service = _scope.ServiceProvider.GetRequiredService<ITransactionService>();
 		_cumulative = _scope.ServiceProvider.GetRequiredService<ICumulativeService>();
-		Currency currency = new() { Id = Guid.NewGuid(), Code = "EUR", Name = "Euro", Symbol = "€" };
+		Currency currency = new() { Id = Guid.NewGuid(), EnglishName = "Euro", Code = "EUR", Name = "Euro", Symbol = "€" };
 		AccountGroup group = new() { Id = Guid.NewGuid(), Name = "Accounts" };
 		group.ParentId = group.Id;
 		group.Parent = group;

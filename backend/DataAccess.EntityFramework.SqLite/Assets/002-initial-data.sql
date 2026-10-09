@@ -1,7 +1,7 @@
 -- UAH base currency; six fixed roots; Rebalancing; singleton settings.
 -- AmountPrecision=2, RatePrecision=4. Integers are scaled by 10,000.
 -- Local demo dataset identities: do not use these fixed dataset keys for independent production books.
-INSERT INTO "Currency" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Code", "Symbol", "Name", "IsFavorite", "Order") VALUES ('E5667D57-1F4E-4026-8A43-D720A3CF9ED0', 0, NULL, 0, 'UAH', '₴', 'Ukrainian Hryvnia', 0, 0);
+INSERT INTO "Currency" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Code", "Symbol", "EnglishName", "Name", "IsFavorite", "Order") VALUES ('E5667D57-1F4E-4026-8A43-D720A3CF9ED0', 0, NULL, 0, 'UAH', '₴', 'Ukrainian Hryvnia', 'UAH', 0, 0);
 INSERT INTO "AccountGroup" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Name", "Description", "Order", "IsFavorite", "ParentId") VALUES ('22D0BBCC-37EC-4AF4-B5C7-9CAF34FEC1E9', 0, NULL, 0, 'Account', NULL, 0, 0, '22D0BBCC-37EC-4AF4-B5C7-9CAF34FEC1E9');
 INSERT INTO "CategoryGroup" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Name", "Description", "Order", "IsFavorite", "ParentId") VALUES ('CDB033F6-8686-4222-B33F-66B5A3BF2948', 0, NULL, 0, 'Category', NULL, 0, 0, 'CDB033F6-8686-4222-B33F-66B5A3BF2948');
 INSERT INTO "CorrespondentGroup" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Name", "Description", "Order", "IsFavorite", "ParentId") VALUES ('9C19A1FE-9C57-4703-9105-79075987EE45', 0, NULL, 0, 'Correspondent', NULL, 0, 0, '9C19A1FE-9C57-4703-9105-79075987EE45');

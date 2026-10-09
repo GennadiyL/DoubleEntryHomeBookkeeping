@@ -31,12 +31,14 @@ public sealed class CurrenciesAddServiceTests : CurrenciesServiceTestsBase
 		Unit.CurrencyRepo.When(repo => repo.Add(Arg.Any<Currency>())).Do(call => saved = call.Arg<Currency>());
 		Unit.CurrencyRateRepo.When(repo => repo.Add(Arg.Any<CurrencyRate>())).Do(call => initial = call.Arg<CurrencyRate>());
 
-		Guid id = await Service.Add(Param, 1.23445m);
+		Guid id = await Service.Add(" eur ", 1.23445m);
 
 		Assert.That(saved, Is.Not.Null);
 		Assert.That(saved!.Id, Is.EqualTo(id).And.Not.EqualTo(Guid.Empty));
-		Assert.That((saved.Code, saved.Name, saved.Symbol, saved.Order, saved.IsFavorite), Is.EqualTo(("EUR", "Euro", "EUR", 2, false)));
+		Assert.That((saved.Code, saved.Name, saved.Order, saved.IsFavorite), Is.EqualTo(("EUR", "EUR", 2, false)));
 		Assert.That((saved.EditRevision, saved.DeleteRevision, saved.ModificationType), Is.EqualTo(((long?)null, (long?)null, ModificationType.None)));
+		AvailableCurrencyInfo profile = (await Service.GetAvailableCurrencies()).Single(item => item.Code == "EUR");
+		Assert.That((saved.EnglishName, saved.Symbol), Is.EqualTo((profile.EnglishName, profile.Symbol)));
 		Assert.That(initial, Is.Not.Null);
 		Assert.That(initial!.Id, Is.Not.EqualTo(Guid.Empty).And.Not.EqualTo(id));
 		Assert.That(initial.Currency, Is.SameAs(saved));
@@ -56,7 +58,7 @@ public sealed class CurrenciesAddServiceTests : CurrenciesServiceTestsBase
 	public async Task Add_UsesConfiguredRatePrecision(int precision)
 	{
 		Config.RatePrecision = precision;
-		await Service.Add(Param, 1.23456m);
+		await Service.Add(" eur ", 1.23456m);
 		Unit.CurrencyRateRepo.Received(1).Add(Arg.Is<CurrencyRate>(rate =>
 			rate.Rate == Math.Round(1.23456m, precision, MidpointRounding.ToEven)));
 	}
@@ -68,25 +70,41 @@ public sealed class CurrenciesAddServiceTests : CurrenciesServiceTestsBase
 	[TestCase("79228162514264337593543950335")]
 	public void Add_RejectsInvalidRateBeforeWrites(string value)
 	{
-		Assert.ThrowsAsync<InvalidCurrencyException>(async () => await Service.Add(Param, decimal.Parse(value, CultureInfo.InvariantCulture)));
+		Assert.ThrowsAsync<InvalidCurrencyException>(async () => await Service.Add(" eur ", decimal.Parse(value, CultureInfo.InvariantCulture)));
 		AssertNoWrites();
 	}
 
 	[Test]
 	public async Task Add_AcceptsMaximumStorageRate()
 	{
-		await Service.Add(Param, AppValues.MaxDecimal);
+		await Service.Add(" eur ", AppValues.MaxDecimal);
 		Unit.CurrencyRateRepo.Received(1).Add(Arg.Is<CurrencyRate>(rate => rate.Rate == AppValues.MaxDecimal));
 	}
 
-	[TestCase(false)]
-	[TestCase(true)]
-	public void Add_RejectsDuplicateCodeIncludingDeletedCurrency(bool deleted)
+	[Test]
+	public void Add_RejectsDuplicateActiveCode()
 	{
-		Param.Code = " gBp ";
-		if (deleted) { Currency.DeleteRevision = 0; }
-		Assert.ThrowsAsync<InvalidCurrencyException>(async () => await Service.Add(Param, 1m));
+		Assert.ThrowsAsync<InvalidCurrencyException>(async () => await Service.Add(" gBp ", 1m));
 		AssertNoWrites();
+	}
+
+	[TestCase(0L)]
+	[TestCase(9L)]
+	public async Task Add_AllowsDeletedCodeWithoutChangingDeletedRecord(long deleteRevision)
+	{
+		Currency.DeleteRevision = deleteRevision;
+		Currency? saved = null;
+		Unit.CurrencyRepo.When(repo => repo.Add(Arg.Any<Currency>())).Do(call => saved = call.Arg<Currency>());
+
+		Guid id = await Service.Add(" gBp ", 1.25m);
+
+		Assert.That(id, Is.Not.EqualTo(Currency.Id));
+		Assert.That(saved, Is.Not.Null);
+		Assert.That((saved!.Code, saved.Name, saved.DeleteRevision, saved.Order), Is.EqualTo(("GBP", "GBP", (long?)null, 1)));
+		Assert.That(Currency.DeleteRevision, Is.EqualTo(deleteRevision));
+		Unit.CurrencyRepo.DidNotReceiveWithAnyArgs().Update(default!);
+		Unit.CurrencyRateRepo.Received(1).Add(Arg.Is<CurrencyRate>(rate => rate.CurrencyId == id && rate.Rate == 1.25m));
+		await Unit.Received(1).SaveChanges();
 	}
 
 	[TestCase(null)]
@@ -95,18 +113,8 @@ public sealed class CurrenciesAddServiceTests : CurrenciesServiceTestsBase
 	[TestCase("INVALID")]
 	public void Add_RejectsUnavailableCode(string? code)
 	{
-		Param.Code = code!;
-		Assert.ThrowsAsync<InvalidCurrencyCodeException>(async () => await Service.Add(Param, 1m));
-		AssertNoWrites();
-	}
 
-	[TestCase(true)]
-	[TestCase(false)]
-	public void Add_RejectsBlankMetadata(bool name)
-	{
-		if (name) { Param.Name = " "; }
-		else { Param.Symbol = " "; }
-		Assert.ThrowsAsync<InvalidCurrencyException>(async () => await Service.Add(Param, 1m));
+		Assert.ThrowsAsync<InvalidCurrencyCodeException>(async () => await Service.Add(code!, 1m));
 		AssertNoWrites();
 	}
 
@@ -115,7 +123,7 @@ public sealed class CurrenciesAddServiceTests : CurrenciesServiceTestsBase
 	{
 		Currencies.Clear();
 		AddCurrency("JPY", int.MaxValue).DeleteRevision = 0;
-		await Service.Add(Param, 1m);
+		await Service.Add(" eur ", 1m);
 		Unit.CurrencyRepo.Received(1).Add(Arg.Is<Currency>(currency => currency.Order == 0));
 	}
 
@@ -123,7 +131,7 @@ public sealed class CurrenciesAddServiceTests : CurrenciesServiceTestsBase
 	public void Add_RejectsOrderOverflow()
 	{
 		Currency.Order = int.MaxValue;
-		Assert.ThrowsAsync<InvalidCurrencyException>(async () => await Service.Add(Param, 1m));
+		Assert.ThrowsAsync<InvalidCurrencyException>(async () => await Service.Add(" eur ", 1m));
 		AssertNoWrites();
 	}
 
@@ -131,7 +139,7 @@ public sealed class CurrenciesAddServiceTests : CurrenciesServiceTestsBase
 	public async Task Add_ForwardsCancellation()
 	{
 		using CancellationTokenSource source = new();
-		await Service.Add(Param, 1m, source.Token);
+		await Service.Add(" eur ", 1m, source.Token);
 		await Unit.CurrencyRepo.Received(1).GetAll(source.Token);
 		await Unit.SystemConfigRepo.Received(1).GetAll(source.Token);
 		await Unit.Received(1).SaveChanges(source.Token);

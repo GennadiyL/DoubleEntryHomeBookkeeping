@@ -41,6 +41,8 @@ internal class Currency : IDalEntity
 		set;
 	} = string.Empty;
 
+	public string EnglishName { get; set; } = string.Empty;
+
 	public string Name
 	{
 		get;

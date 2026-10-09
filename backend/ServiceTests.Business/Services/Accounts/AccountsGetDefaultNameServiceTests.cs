@@ -39,7 +39,7 @@ public sealed class AccountsGetDefaultNameServiceTests
 	{
 		_unit = Substitute.For<IAppUnitOfWork>();
 		_config = new LocalConfig { AccountNameAddCurrency = true };
-		_currency = new Currency { Id = Guid.NewGuid(), Code = "UAH", Name = "Hryvnia", Symbol = "₴" };
+		_currency = new Currency { Id = Guid.NewGuid(), EnglishName = "Ukrainian Hryvnia", Code = "UAH", Name = "Hryvnia", Symbol = "₴" };
 		_unit.LocalConfigRepo.GetAll(Arg.Any<CancellationToken>()).Returns(new List<LocalConfig> { _config });
 		_unit.CurrencyRepo.GetById(_currency.Id, Arg.Any<CancellationToken>()).Returns(_currency);
 		ServiceCollection services = new();

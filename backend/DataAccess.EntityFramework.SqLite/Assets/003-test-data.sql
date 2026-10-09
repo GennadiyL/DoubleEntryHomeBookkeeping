@@ -1,7 +1,7 @@
 -- Optional sample data. Apply once, after 001 and 002.
 -- Cash balance 874.50 UAH; groceries 125.50 UAH; Rebalancing -1000.00 UAH.
 -- Transaction IDs use Guid.ToByteArray BLOB format. Cache values already rebuilt.
-INSERT INTO "Currency" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Code", "Symbol", "Name", "IsFavorite", "Order") VALUES ('00000000-0000-0000-0000-000000000007', NULL, NULL, 0, 'USD', '$', 'US Dollar', 0, 1);
+INSERT INTO "Currency" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Code", "Symbol", "EnglishName", "Name", "IsFavorite", "Order") VALUES ('00000000-0000-0000-0000-000000000007', NULL, NULL, 0, 'USD', '$', 'US Dollar', 'USD', 0, 1);
 INSERT INTO "AccountGroup" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Name", "Description", "Order", "IsFavorite", "ParentId") VALUES ('00000000-0000-0000-0000-000000000101', NULL, NULL, 0, 'Daily', NULL, 0, 0, '22D0BBCC-37EC-4AF4-B5C7-9CAF34FEC1E9');
 INSERT INTO "CategoryGroup" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Name", "Description", "Order", "IsFavorite", "ParentId") VALUES ('00000000-0000-0000-0000-000000000102', NULL, NULL, 0, 'Daily', NULL, 0, 0, 'CDB033F6-8686-4222-B33F-66B5A3BF2948');
 INSERT INTO "CorrespondentGroup" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Name", "Description", "Order", "IsFavorite", "ParentId") VALUES ('00000000-0000-0000-0000-000000000103', NULL, NULL, 0, 'Daily', NULL, 0, 0, '9C19A1FE-9C57-4703-9105-79075987EE45');

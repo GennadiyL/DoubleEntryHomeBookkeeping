@@ -391,6 +391,7 @@ internal class AppMapper : IMapper
 		ModificationType = value.ModificationType,
 		Code = value.Code,
 		Symbol = value.Symbol,
+		EnglishName = value.EnglishName,
 		Name = value.Name,
 		IsFavorite = value.IsFavorite,
 		Order = value.Order
@@ -411,6 +412,7 @@ internal class AppMapper : IMapper
 			ModificationType = value.ModificationType,
 			Code = value.Code,
 			Symbol = value.Symbol,
+			EnglishName = value.EnglishName,
 			Name = value.Name,
 			IsFavorite = value.IsFavorite,
 			Order = value.Order
