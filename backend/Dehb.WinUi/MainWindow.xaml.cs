@@ -1,233 +1,180 @@
-using System;
-using System.Linq;
-using System.Collections.ObjectModel;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using WinUi.Controls.TreeGridControl;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using System.Xml.Linq;
 
 namespace Dehb.WinUi;
 
-/// <summary>
-/// Hosts the first interactive catalog TreeGrid demonstration.
-/// Accounts include a currency column; correspondents use the common layout.
-/// Sample hierarchies are kept separately when switching catalog views.
-/// Expansion, star and checkbox values remain attached to their rows.
-/// User actions update a status message so control behavior can be checked.
-/// This temporary host does not read or modify the Local database.
-/// Business editors and persistence will be connected in a later increment.
-/// The window owns its sample data for the duration of the session.
-/// </summary>
-public sealed partial class MainWindow : Window
+public sealed partial class MainWindow : IDisposable
 {
-	private readonly ColumnWidthSettings _columnSettings = new();
-	private string ColumnSettingsKey => CatalogSelector.SelectedIndex == 0 ? "Accounts.Main" : "Correspondents.Main";
-	private readonly ObservableCollection<TreeGridNode> _accounts = CreateAccounts();
-	private readonly ObservableCollection<TreeGridNode> _correspondents = CreateCorrespondents();
-
+	private readonly Dictionary<string, (Button Button, Image Icon)> _navigation = new();
+	private UiSession? _session;
+	private readonly Dictionary<string, FrameworkElement> _screens = new();
+	private readonly ContentControl _screen = new() { HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
+	private readonly TextBlock _error = Ui.Text("");
 	public MainWindow()
 	{
 		InitializeComponent();
-		AppWindow.Changed += (_, e) =>
+		WindowPlacement.Attach(this);
+		Start();
+		Closed += (_, _) => Dispose();
+	}
+	public void ActivateTop() => (_session?.Coordinator.Top(this) ?? this).Activate();
+	public void Dispose() { _session?.Dispose(); _session = null; GC.SuppressFinalize(this); }
+	private void Start()
+	{
+		Dispose();
+		if (_error.Parent is Panel previousParent)
 		{
-			if (e.DidSizeChange && Content is FrameworkElement { XamlRoot: not null } root)
+			previousParent.Children.Remove(_error);
+		}
+
+		try
+		{
+			_session = new();
+			Root.ColumnDefinitions.Clear();
+			Root.Children.Clear();
+			Root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(280) });
+			Root.ColumnDefinitions.Add(new ColumnDefinition());
+			_navigation.Clear();
+			StackPanel navigation = new() { Spacing = 5 };
+			AddSidebarHeading(navigation, "Daily work", false);
+			AddSidebarItem(navigation, "Ledger", true, () => { Show("Ledger"); return Task.CompletedTask; });
+			AddSidebarItem(navigation, "Reports", false, () => Task.CompletedTask);
+			AddSidebarHeading(navigation, "Catalogs", true);
+			foreach (string catalog in new[] { "Accounts", "Correspondents", "Categories", "Projects", "Templates", "Currencies" })
 			{
-				int minimumWidth = (int)Math.Ceiling(Math.Max(640, CatalogTree.MinWidth + 64) * root.XamlRoot.RasterizationScale);
-				if (AppWindow.ClientSize.Width < minimumWidth)
-				{
-					AppWindow.ResizeClient(new Windows.Graphics.SizeInt32(minimumWidth, AppWindow.ClientSize.Height));
-				}
+				AddSidebarItem(navigation, catalog, true, () => { Show(catalog); return Task.CompletedTask; });
 			}
+			AddSidebarHeading(navigation, "Application", true);
+			AddSidebarItem(navigation, "Synchronization", false, () => Task.CompletedTask);
+			AddSidebarItem(navigation, "Settings", false, () => Task.CompletedTask);
+			AddSidebarItem(navigation, "Help", true, async () =>
+			{
+				EditorWindow help = new(this, _session.Coordinator, "Help", "Help");
+				help.Fields.Children.Add(new Button { Content = "User guide", IsEnabled = false });
+				help.Fields.Children.Add(Ui.Text("Double Entry Home Bookkeeping\n" + typeof(App).Assembly.GetName().Version));
+				help.Commands.Children.Add(Ui.Button("Close", help.Close, help.Error));
+				await help.Show();
+			});
+			AddSidebarItem(navigation, "Exit", true, () => { Close(); return Task.CompletedTask; });
+			navigation.Children.Add(_error);
+			Root.Children.Add(new Border
+			{
+				Background = (Brush)Root.Resources["SidebarBackground"],
+				Padding = new Thickness(16, 24, 16, 24),
+				Child = new ScrollViewer { Content = navigation, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }
+			});
+			_screen.Margin = new Thickness(20, 16, 16, 16);
+			Grid.SetColumn(_screen, 1);
+			Root.Children.Add(_screen);
+			Show("Ledger");
+		}
+		catch (Exception e)
+		{
+			Root.Children.Clear();
+			_error.Text = "Cannot open Local database: " + e.Message;
+			StackPanel failure = new() { Spacing = 12 };
+			failure.Children.Add(_error);
+			failure.Children.Add(Ui.Button("Retry", Start, _error));
+			Root.Children.Add(failure);
+		}
+	}
+	private void AddSidebarHeading(StackPanel navigation, string text, bool separate)
+	{
+		navigation.Children.Add(new TextBlock
+		{
+			Text = text, FontSize = 15, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+			Foreground = (Brush)Root.Resources["SidebarHeading"], Margin = new Thickness(4, separate ? 20 : 0, 0, 6)
+		});
+	}
+
+	private void AddSidebarItem(StackPanel navigation, string name, bool enabled, Func<Task> action)
+	{
+		Image icon = new()
+		{
+			Width = 24, Height = 24, Stretch = Stretch.Uniform,
+			Source = new SvgImageSource(new Uri($"ms-appx:///Assets/Icons/{name.ToLowerInvariant()}-{(enabled ? "enabled" : "disabled")}.svg"))
 		};
-		AppWindow.Resize(new Windows.Graphics.SizeInt32(1000, 720));
-		ShowCatalog();
+		Grid content = new() { ColumnSpacing = 16 };
+		content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
+		content.ColumnDefinitions.Add(new ColumnDefinition());
+		content.Children.Add(icon);
+		TextBlock label = new() { Text = name, FontSize = 17, VerticalAlignment = VerticalAlignment.Center };
+		Grid.SetColumn(label, 1);
+		content.Children.Add(label);
+		Button button = Ui.AsyncButton(name, action, _error);
+		button.Style = (Style)Root.Resources["SidebarButtonStyle"];
+		button.Content = content;
+		button.IsEnabled = enabled;
+		button.Foreground = (Brush)Root.Resources[enabled ? "SidebarText" : "SidebarMuted"];
+		Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, name);
+		_navigation.Add(name, (button, icon));
+		navigation.Children.Add(button);
 	}
 
-	private void OnCatalogChanged(object sender, SelectionChangedEventArgs e)
+	private async void SelectSidebarItem(string name)
 	{
-		if (CatalogTree is not null)
+		foreach (var item in _navigation)
 		{
-			ShowCatalog();
+			bool selected = item.Key == name;
+			item.Value.Button.Background = selected ? (Brush)Root.Resources["SidebarSelection"] : null;
+			item.Value.Button.Foreground = (Brush)Root.Resources[selected ? "SidebarSelectedText" : item.Value.Button.IsEnabled ? "SidebarText" : "SidebarMuted"];
+			item.Value.Icon.Source = new SvgImageSource(new Uri($"ms-appx:///Assets/Icons/{item.Key.ToLowerInvariant()}-{(item.Value.Button.IsEnabled ? "enabled" : "disabled")}.svg"));
 		}
-	}
-
-	private void ShowCatalog()
-	{
-		CatalogTree.SelectedNode = null;
-		CatalogTree.Columns.Clear();
-		if (CatalogSelector.SelectedIndex == 0)
-		{
-			CatalogTree.NameHeader = "Account";
-			CatalogTree.Columns.Add(new TreeGridColumn { Header = "Currency", BindingPath = "Data" });
-			CatalogTree.ItemsSource = _accounts;
-		}
-		else
-		{
-			CatalogTree.NameHeader = "Correspondent";
-			CatalogTree.ItemsSource = _correspondents;
-		}
+		Image selectedIcon = _navigation[name].Icon;
+		SvgImageSource selectedSource = new();
+		selectedIcon.Source = selectedSource;
 		try
 		{
-			double[]? widths = _columnSettings.Load(ColumnSettingsKey);
-			if (widths is not null)
+			string path = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Icons", name.ToLowerInvariant() + "-enabled.svg");
+			XDocument svg = XDocument.Load(path);
+			svg.Root!.SetAttributeValue("stroke", "#FFFFFF");
+			using MemoryStream stream = new(System.Text.Encoding.UTF8.GetBytes(svg.ToString()));
+			SvgImageSourceLoadStatus status = await selectedSource.SetSourceAsync(stream.AsRandomAccessStream());
+			if (status != SvgImageSourceLoadStatus.Success)
 			{
-				CatalogTree.SetColumnWidths(widths);
+				throw new InvalidDataException("Could not load the selected sidebar icon.");
 			}
 		}
 		catch (Exception exception)
 		{
-			StatusText.Text = $"Could not load column settings: {exception.Message}";
-		}
-	}
-
-	private void OnColumnWidthsApplying(object? sender, TreeGridColumnWidthsEventArgs e)
-	{
-		try
-		{
-			_columnSettings.Save(ColumnSettingsKey, e.Widths.ToArray());
-		}
-		catch (Exception exception)
-		{
-			e.ErrorMessage = $"Could not save column settings: {exception.Message}";
-		}
-	}
-
-	private void OnCheckboxesToggled(object sender, RoutedEventArgs e)
-	{
-		if (CatalogTree is not null)
-		{
-			CatalogTree.ShowCheckboxes = ((ToggleSwitch)sender).IsOn;
-		}
-	}
-
-	private void OnRowActivated(object? sender, TreeGridNode node) => StatusText.Text = $"Activated: {node.Name}";
-	private void OnStarChanged(object? sender, TreeGridNode node) => StatusText.Text = $"{node.Name}: star {(node.IsStarred ? "on" : "off")}";
-	private void OnCheckStateChanged(object? sender, TreeGridNode node) => StatusText.Text = $"{node.Name}: {(node.IsChecked == true ? "checked" : "unchecked")}";
-
-	private void OnContextMenuRequested(object? sender, TreeGridContextMenuEventArgs e)
-	{
-		TreeGridNode node = e.Node;
-		MenuFlyoutItem activate = new() { Text = "Activate (demo)" };
-		activate.Click += (_, _) => OnRowActivated(CatalogTree, node);
-		e.Menu.Items.Add(activate);
-		if (node.IsGroup)
-		{
-			MenuFlyoutItem expand = new() { Text = node.IsExpanded ? "Collapse" : "Expand" };
-			expand.Click += (_, _) => node.IsExpanded = !node.IsExpanded;
-			e.Menu.Items.Add(expand);
-		}
-		MenuFlyoutItem star = new() { Text = node.IsStarred ? "Remove star" : "Add star" };
-		star.Click += (_, _) =>
-		{
-			node.IsStarred = !node.IsStarred;
-			OnStarChanged(CatalogTree, node);
-		};
-		e.Menu.Items.Add(star);
-	}
-
-	private void OnDropValidating(object? sender, TreeGridDropValidationEventArgs e)
-	{
-		TreeGridDropRequest request = e.Request;
-		if (request.Operation == TreeGridDropOperation.Move
-			&& request.DestinationParent.Children.Any(child => child.IsGroup == request.Source.IsGroup
-				&& string.Equals(child.Name, request.Source.Name, StringComparison.OrdinalIgnoreCase)
-				&& (child.IsGroup || Equals(child.Data, request.Source.Data))))
-		{
-			e.Cancel = true;
-			e.Reason = "A matching name already exists in this group.";
-		}
-	}
-
-	private async void OnDropRequested(object? sender, TreeGridDropRequest request)
-	{
-		try
-		{
-			if (request.Operation == TreeGridDropOperation.Merge)
+			_error.Text = exception.Message;
+			if (ReferenceEquals(selectedIcon.Source, selectedSource))
 			{
-				ContentDialog confirmation = new()
-				{
-					XamlRoot = CatalogTree.XamlRoot,
-					Title = "Merge groups",
-					Content = $"Move all items from '{request.Source.Name}' into '{request.Target.Name}' and remove the source group?",
-					PrimaryButtonText = "Merge", CloseButtonText = "Cancel",
-					DefaultButton = ContentDialogButton.Close
-				};
-				if (await confirmation.ShowAsync() != ContentDialogResult.Primary)
-				{
-					return;
-				}
+				selectedIcon.Source = new SvgImageSource(new Uri($"ms-appx:///Assets/Icons/{name.ToLowerInvariant()}-enabled.svg"));
 			}
-			CatalogTree.UpdateRows(() => ApplyDemoDrop(request));
-			CatalogTree.RevealNode(request.Operation == TreeGridDropOperation.Merge ? request.Target : request.Source);
-			StatusText.Text = $"{request.Operation}: {request.Source.Name} → {request.DestinationParent.Name} (sample data)";
-		}
-		catch (Exception exception)
-		{
-			StatusText.Text = $"Drop failed: {exception.Message}";
 		}
 	}
 
-	private static void ApplyDemoDrop(TreeGridDropRequest request)
+	private void Show(string name)
 	{
-		TreeGridNode sourceParent = request.Source.Parent!;
-		if (request.Operation == TreeGridDropOperation.Merge)
+		if (_session is null)
 		{
-			foreach (TreeGridNode child in request.Source.Children.ToArray())
-			{
-				while (request.Target.Children.Any(existing => string.Equals(existing.Name, child.Name, StringComparison.OrdinalIgnoreCase)))
-				{
-					child.Name += "_1";
-				}
-				request.Source.Children.Remove(child);
-				InsertDemoNode(request.Target, child, request.Target.Children.Count(existing => existing.IsGroup == child.IsGroup));
-			}
-			sourceParent.Children.Remove(request.Source);
 			return;
 		}
-		sourceParent.Children.Remove(request.Source);
-		InsertDemoNode(request.DestinationParent, request.Source, request.InsertIndex);
-	}
 
-	private static void InsertDemoNode(TreeGridNode parent, TreeGridNode node, int index)
-	{
-		TreeGridNode[] siblings = parent.Children.Where(child => child.IsGroup == node.IsGroup).ToArray();
-		int collectionIndex = index < siblings.Length ? parent.Children.IndexOf(siblings[index])
-			: siblings.Length > 0 ? parent.Children.IndexOf(siblings[^1]) + 1
-			: node.IsGroup ? 0 : parent.Children.Count;
-		parent.Children.Insert(collectionIndex, node);
-	}
-
-	private static ObservableCollection<TreeGridNode> CreateAccounts()
-	{
-		TreeGridNode root = new() { Name = "Accounts", IsGroup = true, IsExpanded = true };
-		TreeGridNode daily = new() { Name = "Daily", IsGroup = true, IsExpanded = true };
-		daily.Children.Add(new TreeGridNode { Name = "Cash", Data = "UAH", IsStarred = true });
-		daily.Children.Add(new TreeGridNode { Name = "Cash", Data = "USD" });
-		daily.Children.Add(new TreeGridNode { Name = "Groceries", Data = "UAH", IsStarred = true });
-		TreeGridNode savings = new() { Name = "Savings", IsGroup = true };
-		savings.Children.Add(new TreeGridNode { Name = "Emergency fund", Data = "EUR" });
-		root.Children.Add(daily);
-		root.Children.Add(savings);
-		root.Children.Add(new TreeGridNode { Name = "Rebalancing", Data = "UAH" });
-		TreeGridNode many = new() { Name = "More accounts", IsGroup = true };
-		for (int i = 1; i <= 200; i++)
+		_session.Coordinator.DockedCatalog = name;
+		if (!_screens.TryGetValue(name, out FrameworkElement? view))
 		{
-			many.Children.Add(new TreeGridNode { Name = $"Sample account {i:000}", Data = "UAH" });
+			view = name == "Ledger" ? new LedgerView(_session, this) : name == "Currencies" ? new CurrencyView(_session, this) : new CatalogView(_session, this, name, false, false, false);
+			_screens[name] = view;
 		}
-		root.Children.Insert(2, many);
-		return new ObservableCollection<TreeGridNode> { root };
-	}
+		else if (view is CatalogView catalog)
+		{
+			catalog.Reload(null, false);
+		}
+		else if (view is LedgerView ledger)
+		{
+			ledger.Refresh(null);
+		}
+		else if (view is CurrencyView currencies)
+		{
+			currencies.Reload();
+		}
 
-	private static ObservableCollection<TreeGridNode> CreateCorrespondents()
-	{
-		TreeGridNode root = new() { Name = "Correspondents", IsGroup = true, IsExpanded = true };
-		TreeGridNode shops = new() { Name = "Shops", IsGroup = true, IsExpanded = true, IsChecked = null };
-		shops.Children.Add(new TreeGridNode { Name = "Supermarket", IsStarred = true, IsChecked = true });
-		shops.Children.Add(new TreeGridNode { Name = "Local bakery" });
-		TreeGridNode services = new() { Name = "Services", IsGroup = true };
-		services.Children.Add(new TreeGridNode { Name = "Internet provider" });
-		services.Children.Add(new TreeGridNode { Name = "A correspondent with a long name to check trimming and the full-name tooltip" });
-		root.Children.Add(shops);
-		root.Children.Add(services);
-		return new ObservableCollection<TreeGridNode> { root };
+		_screen.Content = view;
+		SelectSidebarItem(name);
 	}
 }

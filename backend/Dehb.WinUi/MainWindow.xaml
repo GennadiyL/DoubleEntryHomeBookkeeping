@@ -1,37 +1,56 @@
-<Window
-    x:Class="Dehb.WinUi.MainWindow"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:controls="using:WinUi.Controls.TreeGridControl"
-    Title="Double Entry Home Bookkeeping">
-    <Window.SystemBackdrop>
-        <MicaBackdrop />
-    </Window.SystemBackdrop>
-    <Grid Padding="24" RowSpacing="16" MinWidth="640">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-        <StackPanel Spacing="4">
-            <TextBlock Text="Catalogs" Style="{StaticResource TitleTextBlockStyle}" />
-            <TextBlock Text="Sample data · changes stay in this window" Opacity="0.65" />
-        </StackPanel>
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <ComboBox x:Name="CatalogSelector" Header="Catalog" Width="220" SelectedIndex="0" SelectionChanged="OnCatalogChanged">
-                <ComboBoxItem Content="Accounts" />
-                <ComboBoxItem Content="Correspondents" />
-            </ComboBox>
-            <ToggleSwitch Grid.Column="1" Header="Checkboxes" Toggled="OnCheckboxesToggled" VerticalAlignment="Bottom" />
-        </Grid>
-        <Border Grid.Row="2" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="8">
-            <controls:TreeGrid x:Name="CatalogTree" AllowDragDrop="True" AllowMerge="True" DropValidating="OnDropValidating" DropRequested="OnDropRequested" ColumnWidthsApplying="OnColumnWidthsApplying" ContextMenuRequested="OnContextMenuRequested" RowActivated="OnRowActivated" StarChanged="OnStarChanged" CheckStateChanged="OnCheckStateChanged" />
-        </Border>
-        <TextBlock x:Name="StatusText" Grid.Row="3" Text="Select a row. Use arrows to navigate; double-click or Enter to activate." TextWrapping="Wrap" />
-    </Grid>
+<Window x:Class="Dehb.WinUi.MainWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="Double Entry Home Bookkeeping">
+ <Window.SystemBackdrop><MicaBackdrop /></Window.SystemBackdrop>
+ <Grid x:Name="Root">
+  <Grid.Resources>
+   <SolidColorBrush x:Key="SidebarText" Color="#092B60" />
+   <SolidColorBrush x:Key="SidebarMuted" Color="#899FBE" />
+   <SolidColorBrush x:Key="SidebarHeading" Color="#58739C" />
+   <SolidColorBrush x:Key="SidebarSelectedText" Color="White" />
+   <LinearGradientBrush x:Key="SidebarBackground" StartPoint="0,0" EndPoint="1,1">
+    <GradientStop Color="#F3F7FE" Offset="0" />
+    <GradientStop Color="#E7F1FF" Offset="1" />
+   </LinearGradientBrush>
+   <LinearGradientBrush x:Key="SidebarSelection" StartPoint="0,0" EndPoint="1,0">
+    <GradientStop Color="#1255E7" Offset="0" />
+    <GradientStop Color="#4D82F6" Offset="1" />
+   </LinearGradientBrush>
+   <Style x:Key="SidebarButtonStyle" TargetType="Button">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Height" Value="44" />
+    <Setter Property="Padding" Value="14,0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+     <Setter.Value>
+      <ControlTemplate TargetType="Button">
+       <Grid>
+        <VisualStateManager.VisualStateGroups>
+         <VisualStateGroup x:Name="CommonStates">
+          <VisualState x:Name="Normal" />
+          <VisualState x:Name="PointerOver">
+           <VisualState.Setters><Setter Target="Hover.Opacity" Value="0.06" /></VisualState.Setters>
+          </VisualState>
+          <VisualState x:Name="Pressed">
+           <VisualState.Setters><Setter Target="Hover.Opacity" Value="0.12" /></VisualState.Setters>
+          </VisualState>
+          <VisualState x:Name="Disabled" />
+         </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+        <Border Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" />
+        <Border x:Name="Hover" Background="#0054CA" Opacity="0" CornerRadius="{TemplateBinding CornerRadius}" />
+        <ContentPresenter Content="{TemplateBinding Content}" Padding="{TemplateBinding Padding}"
+         Foreground="{TemplateBinding Foreground}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" />
+       </Grid>
+      </ControlTemplate>
+     </Setter.Value>
+    </Setter>
+   </Style>
+  </Grid.Resources>
+ </Grid>
 </Window>

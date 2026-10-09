@@ -176,6 +176,7 @@ public sealed partial class TreeGrid : UserControl
 			return;
 		}
 		SearchBox.IsEnabled = IsSearchEnabled;
+		((FrameworkElement)SearchBox.Parent).Visibility = IsSearchEnabled ? Visibility.Visible : Visibility.Collapsed;
 		NextSearchButton.IsEnabled = PreviousSearchButton.IsEnabled = IsSearchEnabled && !string.IsNullOrWhiteSpace(SearchBox.Text);
 		SearchStatus.Text = string.Empty;
 	}
@@ -488,8 +489,16 @@ public sealed partial class TreeGrid : UserControl
 
 	internal void ToggleStar(TreeGridNode node)
 	{
-		node.IsStarred = !node.IsStarred;
-		StarChanged?.Invoke(this, node);
+		if (!node.CanEditStar)
+		{
+			return;
+		}
+
+		UpdateRows(() =>
+		{
+			node.IsStarred = !node.IsStarred;
+			StarChanged?.Invoke(this, node);
+		});
 	}
 
 	internal void ToggleCheck(TreeGridNode node)

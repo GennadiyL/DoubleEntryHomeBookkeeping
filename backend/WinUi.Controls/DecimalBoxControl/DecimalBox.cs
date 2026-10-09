@@ -130,7 +130,11 @@ public sealed partial class DecimalBox : UserControl, INotifyPropertyChanged
 		_editor.TextChanged += (_, _) => _error.Text = string.Empty;
 		_editor.PreviewKeyDown += (_, e) =>
 		{
-			if (IsReadOnly) return;
+			if (IsReadOnly)
+			{
+				return;
+			}
+
 			if (e.Key == VirtualKey.Decimal)
 			{
 				int position = _editor.SelectionStart;
@@ -165,7 +169,11 @@ public sealed partial class DecimalBox : UserControl, INotifyPropertyChanged
 
 	private void Spin(bool increase)
 	{
-		if (IsReadOnly || !TryCommit()) return;
+		if (IsReadOnly || !TryCommit())
+		{
+			return;
+		}
+
 		if (!DecimalBoxNumber.TryStep(Value ?? 0, Precision, increase, out decimal next))
 		{
 			_error.Text = "This value cannot be stepped exactly at the selected precision.";
@@ -177,7 +185,11 @@ public sealed partial class DecimalBox : UserControl, INotifyPropertyChanged
 
 	public bool TryCommit()
 	{
-		if (_displayText is not null && Text == _displayText) return true;
+		if (_displayText is not null && Text == _displayText)
+		{
+			return true;
+		}
+
 		if (!DecimalBoxNumber.TryParse(Text, Precision, out decimal? value))
 		{
 			_error.Text = "Enter a decimal number using a dot, without grouping or symbols.";

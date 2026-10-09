@@ -160,6 +160,33 @@ WinUI NumberBox.Value is double, so its numeric value is not the authoritative e
 - While editing amount/rate text, allow unfinished values such as a minus sign or a number ending with the decimal separator without immediately reporting an error. Validate on focus loss and on Save. Apply configured precision and the existing rounding rule at those boundaries, not after every keystroke. If validation fails, preserve the entered text, show an error beside that field and prevent saving until corrected. Existing empty-value and caller-specific amount/rate rules remain binding.
 - On entering an amount/rate field, select its entire value for replacement and use plain, unformatted editing text without thousands grouping or regional formatting. Apply display formatting after focus leaves a valid field. Use a dot as the decimal separator while editing, regardless of Windows regional settings; for example, edit 1234.56 and format it regionally only after focus loss. Pasted input uses the same plain dot-decimal format: ignore surrounding whitespace, but reject currency symbols and thousands separators under the existing field-validation rules. The numeric keypad decimal key inserts a dot regardless of Windows settings. Accept simple decimal numbers only; calculator expressions and scientific notation are unsupported. If Save encounters invalid input, focus the first invalid field and preserve the other entered values.
 
+#### DecimalBox precision — confirmed
+
+Confirmed by the requesting user, 2026-10-09: the reusable control is `WinUi.Controls.DecimalBoxControl.DecimalBox`, located in `backend/WinUi.Controls/DecimalBoxControl`.
+
+- Set `Precision` in C# or XAML. It specifies fractional decimal places, accepts integers from 0 through 28, and defaults to 2. Out-of-range assignments are rejected.
+- The always-visible inline spin buttons use an exact decimal step of `10^-Precision`: precision 0 gives 1, precision 2 gives 0.01, and precision 4 gives 0.0001.
+- Round valid input with midpoint-to-even on focus loss or an explicit `TryCommit()`, rather than after each keystroke. Hosts call `TryCommit()` before saving.
+- Assigning `Value` rounds it to the current precision. Changing `Precision` rounds the current committed value immediately and updates the spin step.
+- `Value` is nullable `decimal`; caller-specific required-value and range validation remain separate. The control's 0–28 precision range does not change the permitted business AmountPrecision/RatePrecision configuration ranges.
+- The Columns dialog sets `Precision = 2` for all width fields, including Currency.
+
+C# configuration:
+
+```csharp
+new DecimalBox
+{
+    Precision = 4,
+    Value = 10m
+};
+```
+
+XAML configuration, with `controls` mapped to `using:WinUi.Controls.DecimalBoxControl`:
+
+```xml
+<controls:DecimalBox Precision="4" />
+```
+
 #### Date/time controls — confirmed
 
 Confirmed by the requesting user, 2026-10-06: use built-in CalendarDatePicker for calendar dates and built-in TimePicker for transaction time. Transaction time display/input is 24-hour HH:mm without seconds; this replaces the earlier seconds-capable custom input proposal and HH:mm:ss UI requirement in BRD. Configure the TimePicker clock as 24HourClock.

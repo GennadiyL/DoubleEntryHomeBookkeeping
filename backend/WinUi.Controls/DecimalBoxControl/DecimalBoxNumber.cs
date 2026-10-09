@@ -62,7 +62,11 @@ internal static partial class DecimalBoxNumber
 		try
 		{
 			decimal next = checked(value + delta);
-			if (next - value != delta) return false;
+			if (next - value != delta)
+			{
+				return false;
+			}
+
 			result = next;
 			return true;
 		}

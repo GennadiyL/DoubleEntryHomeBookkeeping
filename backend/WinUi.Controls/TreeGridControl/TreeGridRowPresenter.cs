@@ -198,6 +198,7 @@ public sealed partial class TreeGridRowPresenter : UserControl
 		_check.Visibility = _owner.ShowCheckboxes ? Visibility.Visible : Visibility.Collapsed;
 		_check.IsChecked = _node.IsChecked;
 		AutomationProperties.SetName(_check, "Check " + _node.Name);
+		_star.IsEnabled = _node.CanEditStar;
 		_star.Content = _node.IsStarred ? "★" : "☆";
 		AutomationProperties.SetName(_star, (_node.IsStarred ? "Remove star " : "Add star ") + _node.Name);
 		ToolTipService.SetToolTip(_star, _node.IsStarred ? "Remove star" : "Add star");

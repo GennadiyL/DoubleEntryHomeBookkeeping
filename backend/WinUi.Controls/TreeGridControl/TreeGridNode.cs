@@ -19,6 +19,7 @@ public sealed partial class TreeGridNode : INotifyPropertyChanged
 	private string _name = string.Empty;
 	private bool _isExpanded;
 	private bool _isStarred;
+	private bool _canEditStar = true;
 	private bool? _isChecked = false;
 	private int _depth;
 	private bool _isGroup;
@@ -28,6 +29,7 @@ public sealed partial class TreeGridNode : INotifyPropertyChanged
 	public bool IsGroup { get => _isGroup; set => SetField(ref _isGroup, value); }
 	public object? Data { get => _data; set => SetField(ref _data, value); }
 	public bool IsExpanded { get => _isExpanded; set => SetField(ref _isExpanded, value); }
+	public bool CanEditStar { get => _canEditStar; set => SetField(ref _canEditStar, value); }
 	public bool IsStarred { get => _isStarred; set => SetField(ref _isStarred, value); }
 	public bool? IsChecked { get => _isChecked; set => SetField(ref _isChecked, value); }
 	public int Depth { get => _depth; internal set => SetField(ref _depth, value); }

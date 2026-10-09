@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>Dehb.WinUi</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -11,11 +11,12 @@
     <UseWinUI>true</UseWinUI>
     <WinUISDKReferences>false</WinUISDKReferences>
     <EnableMsixTooling>true</EnableMsixTooling>
-    <Nullable>enable</Nullable>
+    <Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><WindowsPackageType>None</WindowsPackageType>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="Assets\Icons\*.svg" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Assets\SplashScreen.scale-200.png" />
     <Content Include="Assets\LockScreenLogo.scale-200.png" />
     <Content Include="Assets\Square150x150Logo.scale-200.png" />
@@ -61,4 +62,16 @@
   <ItemGroup>
     <ProjectReference Include="..\WinUi.Controls\WinUi.Controls.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Business.Impl\Business.Impl.csproj" />
+    <ProjectReference Include="..\DataAccess.EntityFramework.SqLite\DataAccess.EntityFramework.SqLite.csproj" />
+    <ProjectReference Include="..\Shared.Impl\Shared.Impl.csproj" />
+    <ProjectReference Include="..\Messaging.InProcessBus\Messaging.InProcessBus.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.12" />
+    <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="CopyInitialDatabase" AfterTargets="Build">
+    <MakeDir Directories="$(OutDir)Assets" />
+    <Copy SourceFiles="..\DataAccess.EntityFramework.SqLite\Assets\dehb.db" DestinationFiles="$(OutDir)Assets\dehb.db" Condition="!Exists('$(OutDir)Assets\dehb.db')" />
+  </Target>
 </Project>
