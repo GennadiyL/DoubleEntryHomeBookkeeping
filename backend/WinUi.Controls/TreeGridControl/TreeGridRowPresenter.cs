@@ -117,19 +117,19 @@ public sealed partial class TreeGridRowPresenter : UserControl
 			Content = null;
 			return;
 		}
-		Grid row = new() { MinHeight = 28, Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent) };
+		Grid row = new() { Height = _owner.RowHeight, MinHeight = _owner.RowHeight, Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent) };
 		_owner.ConfigureColumns(row);
 		_nameArea = new Grid { VerticalAlignment = VerticalAlignment.Center };
 		_nameArea.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 		_nameArea.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 		_nameArea.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-		_expander = new Button { Width = 28, Height = 24, MinHeight = 0, Padding = new Thickness(0), Background = null, BorderThickness = new Thickness(0) };
+		_expander = new Button { Width = 28, Height = Math.Min(24, _owner.RowHeight), MinHeight = 0, Padding = new Thickness(0), Background = null, BorderThickness = new Thickness(0) };
 		_expanderGlyph = new TextBlock();
 		_expander.Content = _expanderGlyph;
 		_expander.Click += (_, _) => _node.IsExpanded = !_node.IsExpanded;
 		_expander.DoubleTapped += StopDoubleTap;
 		_nameArea.Children.Add(_expander);
-		_check = new CheckBox { MinWidth = 0, MinHeight = 0, Height = 24, Padding = new Thickness(0), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 8, 0), IsThreeState = true };
+		_check = new CheckBox { MinWidth = 0, MinHeight = 0, Height = Math.Min(24, _owner.RowHeight), Padding = new Thickness(0), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 8, 0), IsThreeState = true };
 		_check.Click += (_, _) =>
 		{
 			_owner.ToggleCheck(_node);
@@ -152,13 +152,13 @@ public sealed partial class TreeGridRowPresenter : UserControl
 			Grid.SetColumn(cell, i + 1);
 			row.Children.Add(cell);
 		}
-		_star = new Button { Width = 20, MinWidth = 0, Height = 24, MinHeight = 0, FontSize = 16, VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(0), Background = null, BorderThickness = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Center };
+		_star = new Button { Width = 20, MinWidth = 0, Height = Math.Min(24, _owner.RowHeight), MinHeight = 0, FontSize = 16, VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(0), Background = null, BorderThickness = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Center };
 		_star.Click += (_, _) => _owner.ToggleStar(_node);
 		_star.DoubleTapped += StopDoubleTap;
 		Grid.SetColumn(_star, _owner.Columns.Count + 1);
 		row.Children.Add(_star);
 		_selectionOutline = new Border { BorderThickness = new Thickness(1), IsHitTestVisible = false };
-		_selectionOutline.BorderBrush = _selectionBorderBrush;
+		_selectionOutline.BorderBrush = _owner.SelectionBorderBrush ?? _selectionBorderBrush;
 		Grid.SetColumnSpan(_selectionOutline, _owner.Columns.Count + 2);
 		row.Children.Add(_selectionOutline);
 		Content = row;

@@ -1,7 +1,10 @@
+using Dehb.WinUi.Common;
+using Dehb.WinUi.Dialogs;
+using Dehb.WinUi.Hosting;
 using Microsoft.UI.Xaml.Controls;
 using Business.Contracts.Services.Trees;
 
-namespace Dehb.WinUi;
+namespace Dehb.WinUi.Catalogs;
 
 internal sealed partial class ReferenceField : UserControl
 {

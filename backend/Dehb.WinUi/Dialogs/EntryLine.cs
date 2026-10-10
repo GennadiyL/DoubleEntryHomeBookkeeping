@@ -1,3 +1,5 @@
+using Dehb.WinUi.Common;
+using Dehb.WinUi.Hosting;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Accounts;
 using Business.Contracts.Services.Transactions;
@@ -5,7 +7,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using WinUi.Controls.DecimalBoxControl;
 
-namespace Dehb.WinUi;
+namespace Dehb.WinUi.Dialogs;
 
 internal sealed class EntryLine
 {

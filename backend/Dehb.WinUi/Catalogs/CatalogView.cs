@@ -1,3 +1,6 @@
+using Dehb.WinUi.Common;
+using Dehb.WinUi.Hosting;
+using Dehb.WinUi.UiSettingsTypes;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Trees;
 using Business.Contracts.Services.Accounts;
@@ -6,7 +9,7 @@ using Microsoft.UI.Xaml.Controls;
 using System.Collections.ObjectModel;
 using WinUi.Controls.TreeGridControl;
 
-namespace Dehb.WinUi;
+namespace Dehb.WinUi.Catalogs;
 
 internal sealed partial class CatalogView : UserControl
 {
@@ -21,7 +24,7 @@ internal sealed partial class CatalogView : UserControl
 	private readonly Dictionary<Guid, TreeGridNode> _nodes = new();
 	private readonly ColumnWidthSettings _widths = new();
 	private TreeGridNode? _combineSource;
-	public TreeGrid Tree { get; } = new();
+	public TreeGrid Tree { get; } = new() { FontSize = Ui.FontSize, RowHeight = Ui.RowHeight, SelectionBorderBrush = Ui.SelectionBorder };
 	public bool Ready { get; private set; }
 	public event Action<TreeGridNode>? Accepted;
 
@@ -121,7 +124,7 @@ internal sealed partial class CatalogView : UserControl
 		};
 		Tree.ContextMenuRequested += (_, e) =>
 		{
-			foreach (Button button in _commands.Children.OfType<Button>().Where(b => b.Content?.ToString() != "Retry"))
+			foreach (Button button in _commands.Children.OfType<Button>().Where(b => b.Content?.ToString() != "Refresh"))
 			{
 				MenuFlyoutItem item = new() { Text = button.Content.ToString(), IsEnabled = button.IsEnabled };
 				item.Click += (_, _) => new Microsoft.UI.Xaml.Automation.Peers.ButtonAutomationPeer(button).Invoke();
@@ -247,7 +250,7 @@ internal sealed partial class CatalogView : UserControl
 	private void Commands()
 	{
 		_commands.Children.Clear();
-		_commands.Children.Add(Ui.Button("Retry", () => Reload(null, false), _error));
+		_commands.Children.Add(Ui.Button("Refresh", () => Reload(null, false), _error));
 		if (_combineSource is { } source)
 		{
 			Button combine = Ui.AsyncButton("Combine into selected", async () =>

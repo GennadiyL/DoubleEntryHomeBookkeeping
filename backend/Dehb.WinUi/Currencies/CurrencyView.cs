@@ -1,19 +1,26 @@
+using Dehb.WinUi.Common;
+using Dehb.WinUi.Dialogs;
+using Dehb.WinUi.Hosting;
+using Dehb.WinUi.UiSettingsTypes;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Currencies;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Automation;
 using System.Collections.ObjectModel;
 using WinUi.Controls.DecimalBoxControl;
 using WinUi.Controls.TreeGridControl;
 
-namespace Dehb.WinUi;
+namespace Dehb.WinUi.Currencies;
 
 internal sealed partial class CurrencyView : UserControl
 {
 	private readonly UiSession _session;
 	private readonly Window _owner;
-	private readonly TreeGrid _currencies = new() { NameHeader = "Code", IsSearchEnabled = false };
+	private readonly double[] _rateColumnWidths;
+	private readonly TreeGrid _currencies = new() { NameHeader = "Code", IsSearchEnabled = false, FontSize = Ui.FontSize, RowHeight = Ui.RowHeight, SelectionBorderBrush = Ui.SelectionBorder };
 	private readonly ListView _rates = new() { SelectionMode = ListViewSelectionMode.Single, Padding = new Thickness(0) };
 	private readonly TextBlock _error = Ui.Text("");
 	private readonly StackPanel _commands = Ui.Row();
@@ -22,6 +29,8 @@ internal sealed partial class CurrencyView : UserControl
 	{
 		_session = session;
 		_owner = owner;
+		UiSettings settings = ((App)Application.Current).UiSettings;
+		_rateColumnWidths = [settings.Rates.Columns["date"], settings.Rates.Columns["rate"], settings.Rates.Columns["description"]];
 		Ui.StretchRows(_rates);
 		_rates.Resources[typeof(ScrollViewer)] = (Style)Application.Current.Resources["PersistentListScrollViewerStyle"];
 		ScrollViewer.SetVerticalScrollBarVisibility(_rates, ScrollBarVisibility.Visible);
@@ -29,8 +38,6 @@ internal sealed partial class CurrencyView : UserControl
 		rateRowStyle.Setters.Add(new Setter(UIElement.UseSystemFocusVisualsProperty, false));
 		rateRowStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
 		rateRowStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
-		rateRowStyle.Setters.Add(new Setter(FrameworkElement.MinHeightProperty, 28d));
-		rateRowStyle.Setters.Add(new Setter(FrameworkElement.HeightProperty, 28d));
 		_rates.ItemContainerStyle = rateRowStyle;
 		_rates.SelectionChanged += (_, e) =>
 		{
@@ -55,7 +62,7 @@ internal sealed partial class CurrencyView : UserControl
 		grid.Children.Add(_error);
 		Grid.SetRow(_currencies, 2);
 		grid.Children.Add(_currencies);
-		Grid ratePanel = new() { RowSpacing = 8, Width = 620, HorizontalAlignment = HorizontalAlignment.Left };
+		Grid ratePanel = new() { RowSpacing = 8, Width = _rateColumnWidths.Sum() + 20, HorizontalAlignment = HorizontalAlignment.Left };
 		ratePanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 		ratePanel.RowDefinitions.Add(new RowDefinition());
 		ratePanel.Children.Add(RateRow("Date", "Rate", "Description"));
@@ -66,7 +73,7 @@ internal sealed partial class CurrencyView : UserControl
 		Content = grid;
 		_currencies.Columns.Add(new TreeGridColumn { Header = "Name", BindingPath = "Data.Name" });
 		_currencies.Columns.Add(new TreeGridColumn { Header = "Symbol", BindingPath = "Data.Symbol" });
-		_currencies.SetFixedColumnWidths([120, 120, 80, 80]);
+		_currencies.SetFixedColumnWidths([settings.Currencies.Columns["code"], settings.Currencies.Columns["name"], settings.Currencies.Columns["symbol"], settings.Currencies.Columns["star"]]);
 		_currencies.SelectedNodeChanged += (_, _) => LoadRates();
 		_currencies.RowActivated += async (_, _) => await EditCurrency(Selected);
 		_currencies.StarChanged += (_, node) =>
@@ -80,7 +87,7 @@ internal sealed partial class CurrencyView : UserControl
 				await EditRate(rate);
 			}
 		} catch (Exception e) { _error.Text = e.Message; } };
-		_commands.Children.Add(Ui.Button("Retry", Reload, _error));
+		_commands.Children.Add(Ui.Button("Refresh", Reload, _error));
 		_commands.Children.Add(Ui.AsyncButton("Add currency", () => EditCurrency(null), _error));
 		_commands.Children.Add(Ui.AsyncButton("Edit currency", async () => { if (Selected is { } selected)
 			{
@@ -97,14 +104,46 @@ internal sealed partial class CurrencyView : UserControl
 			session.Host.Call<ICurrencyService>(s => s.Delete(selected.Id));
 			Reload();
 		}, _error));
-		_commands.Children.Add(Ui.AsyncButton("Add rate", () => EditRate(null), _error));
-		_commands.Children.Add(Ui.AsyncButton("Edit rate", async () => { if ((_rates.SelectedItem as FrameworkElement)?.Tag is CurrencyRateInfo rate)
+		_commands.Children.Add(Ui.AsyncButton("Add currency rate", () => EditRate(null), _error));
+		_commands.Children.Add(Ui.AsyncButton("Edit currency rate", async () => { if ((_rates.SelectedItem as FrameworkElement)?.Tag is CurrencyRateInfo rate)
 			{
 				await EditRate(rate);
 			}
 		}, _error));
-		_commands.Children.Add(Ui.AsyncButton("Delete rates", DeleteRates, _error));
+		_commands.Children.Add(Ui.AsyncButton("Delete currency rates", DeleteRates, _error));
+		ConfigureToolbar();
 		Reload();
+	}
+	private void ConfigureToolbar()
+	{
+		string[] icons = ["refresh", "add-currency", "edit-currency", "delete-currency", "add-rate", "edit-rate", "delete-rates"];
+		Button[] buttons = _commands.Children.OfType<Button>().ToArray();
+		for (int i = 0; i < buttons.Length; i++)
+		{
+			Button button = buttons[i];
+			string label = (string)button.Content;
+			SvgImageSource enabled = new(new Uri($"ms-appx:///Assets/Icons/{icons[i]}-enabled.svg"));
+			SvgImageSource disabled = new(new Uri($"ms-appx:///Assets/Icons/{icons[i]}-disabled.svg"));
+			Image icon = new() { Width = 24, Height = 24, Stretch = Stretch.Uniform, Source = button.IsEnabled ? enabled : disabled };
+			button.Width = button.Height = 40;
+			button.MinWidth = button.MinHeight = 40;
+			button.Padding = new Thickness(6);
+			button.HorizontalContentAlignment = HorizontalAlignment.Center;
+			button.VerticalContentAlignment = VerticalAlignment.Center;
+			button.Content = icon;
+			ToolTipService.SetToolTip(button, label);
+			AutomationProperties.SetName(button, label);
+			button.RegisterPropertyChangedCallback(IsEnabledProperty, (_, _) => icon.Source = button.IsEnabled ? enabled : disabled);
+		}
+		foreach (int index in new[] { 1, 5 })
+		{
+			_commands.Children.Insert(index, new Border
+			{
+				Width = 1, Height = 28, Margin = new Thickness(4, 0, 4, 0),
+				VerticalAlignment = VerticalAlignment.Center,
+				Background = (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"]
+			});
+		}
 	}
 	public void Reload()
 	{
@@ -150,7 +189,7 @@ internal sealed partial class CurrencyView : UserControl
 				Border outline = new()
 				{
 					BorderThickness = new Thickness(1),
-					BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 96, 96, 96)),
+					BorderBrush = Ui.SelectionBorder,
 					IsHitTestVisible = false,
 					Visibility = Visibility.Collapsed
 				};
@@ -162,12 +201,13 @@ internal sealed partial class CurrencyView : UserControl
 		}
 		catch (Exception e) { SetRateActions(false); _error.Text = "Rate refresh failed. " + e.Message; }
 	}
-	private static Grid RateRow(string date, string rate, string description)
+	private Grid RateRow(string date, string rate, string description)
 	{
-		Grid row = new() { Width = 600, Height = 28, HorizontalAlignment = HorizontalAlignment.Left };
-		row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
-		row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
-		row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(360) });
+		Grid row = new() { Width = _rateColumnWidths.Sum(), Height = Ui.RowHeight, HorizontalAlignment = HorizontalAlignment.Left };
+		foreach (double width in _rateColumnWidths)
+		{
+			row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(width) });
+		}
 		string[] values = [date, rate, description];
 		for (int i = 0; i < values.Length; i++)
 		{
@@ -181,7 +221,6 @@ internal sealed partial class CurrencyView : UserControl
 		try
 		{
 			EditorWindow window = new(_owner, _session.Coordinator, "Currencies.Editor", old is null ? "Add currency" : "Edit currency", new Windows.Graphics.SizeInt32(372, old is null ? 400 : 280));
-			((Grid)window.Content).Background = (Microsoft.UI.Xaml.Media.Brush)((FrameworkElement)_owner.Content).Resources["SidebarBackground"];
 			if (old is null)
 			{
 				List<AvailableCurrencyInfo> available = _session.Host.Call<ICurrencyService, List<AvailableCurrencyInfo>>(s => s.GetAvailableCurrencies());

@@ -9,10 +9,6 @@
    <SolidColorBrush x:Key="SidebarMuted" Color="#899FBE" />
    <SolidColorBrush x:Key="SidebarHeading" Color="#58739C" />
    <SolidColorBrush x:Key="SidebarSelectedText" Color="White" />
-   <LinearGradientBrush x:Key="SidebarBackground" StartPoint="0,0" EndPoint="1,1">
-    <GradientStop Color="#F3F7FE" Offset="0" />
-    <GradientStop Color="#E7F1FF" Offset="1" />
-   </LinearGradientBrush>
    <LinearGradientBrush x:Key="SidebarSelection" StartPoint="0,0" EndPoint="1,0">
     <GradientStop Color="#1255E7" Offset="0" />
     <GradientStop Color="#4D82F6" Offset="1" />
@@ -20,7 +16,6 @@
    <Style x:Key="SidebarButtonStyle" TargetType="Button">
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    <Setter Property="Height" Value="44" />
     <Setter Property="Padding" Value="14,0" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />

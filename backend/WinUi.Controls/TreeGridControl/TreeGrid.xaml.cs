@@ -26,6 +26,14 @@ namespace WinUi.Controls.TreeGridControl;
 /// </summary>
 public sealed partial class TreeGrid : UserControl
 {
+	public static readonly DependencyProperty SelectionBorderBrushProperty = DependencyProperty.Register(
+		nameof(SelectionBorderBrush), typeof(Brush), typeof(TreeGrid), new PropertyMetadata(null, OnLayoutPropertyChanged));
+	public Brush? SelectionBorderBrush { get => (Brush?)GetValue(SelectionBorderBrushProperty); set => SetValue(SelectionBorderBrushProperty, value); }
+
+	public static readonly DependencyProperty RowHeightProperty = DependencyProperty.Register(
+		nameof(RowHeight), typeof(double), typeof(TreeGrid), new PropertyMetadata(28d, OnLayoutPropertyChanged));
+	public double RowHeight { get => (double)GetValue(RowHeightProperty); set => SetValue(RowHeightProperty, value); }
+
 	public static readonly DependencyProperty ItemsSourceProperty = DependencyProperty.Register(
 		nameof(ItemsSource), typeof(ObservableCollection<TreeGridNode>), typeof(TreeGrid), new PropertyMetadata(null, OnItemsSourceChanged));
 	public static readonly DependencyProperty ShowCheckboxesProperty = DependencyProperty.Register(
@@ -98,6 +106,7 @@ public sealed partial class TreeGrid : UserControl
 		_fixedRowStyle = new Style(typeof(ListViewItem)) { BasedOn = _defaultRowStyle };
 		_fixedRowStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
 		_fixedRowStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+		RegisterPropertyChangedCallback(FontSizeProperty, (_, _) => RefreshLayout());
 		_dragTimer.Tick += OnDragTimerTick;
 		RowsList.ItemsSource = _projection.VisibleRows;
 		ItemsSource = new ObservableCollection<TreeGridNode>();
@@ -566,22 +575,25 @@ public sealed partial class TreeGrid : UserControl
 		}
 		ConfigureColumns(HeaderGrid);
 		HeaderGrid.Children.Clear();
-		AddHeader(NameHeader, 0, HorizontalAlignment.Left, 14);
+		AddHeader(NameHeader, 0, HorizontalAlignment.Left, FontSize);
 		for (int i = 0; i < Columns.Count; i++)
 		{
-			AddHeader(Columns[i].Header, i + 1, HorizontalAlignment.Center, 14);
+			AddHeader(Columns[i].Header, i + 1, HorizontalAlignment.Center, FontSize);
 		}
 		AddHeader("★", Columns.Count + 1, HorizontalAlignment.Center, 24);
 		ColumnsButton.Visibility = _fixedColumnWidths is null ? Visibility.Visible : Visibility.Collapsed;
 		bool fixedColumns = _fixedColumnWidths is not null;
 		HeaderGrid.Margin = ToolbarGrid.Margin = fixedColumns ? new Thickness(0, 0, 20, 0) : new Thickness(8, 0, 28, 0);
-		RowsList.ItemContainerStyle = fixedColumns ? _fixedRowStyle : _defaultRowStyle;
+		Style rowStyle = new(typeof(ListViewItem)) { BasedOn = fixedColumns ? _fixedRowStyle : _defaultRowStyle };
+		rowStyle.Setters.Add(new Setter(FrameworkElement.HeightProperty, RowHeight));
+		rowStyle.Setters.Add(new Setter(FrameworkElement.MinHeightProperty, RowHeight));
+		RowsList.ItemContainerStyle = rowStyle;
 		ScrollViewer.SetVerticalScrollBarVisibility(RowsList, ScrollBarVisibility.Visible);
 		MinWidth = fixedColumns ? _fixedColumnWidths!.Sum() + 20 : TreeGridColumnWidths.MinimumRowWidth(Columns.Count + 2) + 36;
 		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 
-	private void AddHeader(string text, int column, HorizontalAlignment alignment, int fontSize)
+	private void AddHeader(string text, int column, HorizontalAlignment alignment, double fontSize)
 	{
 		TextBlock header = new()
 		{

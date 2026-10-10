@@ -1,3 +1,5 @@
+using Dehb.WinUi.Common;
+using Dehb.WinUi.Hosting;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Accounts;
 using Business.Contracts.Services.Templates;
@@ -6,7 +8,7 @@ using Business.Models.Enums;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace Dehb.WinUi;
+namespace Dehb.WinUi.Ledger;
 
 internal sealed partial class LedgerView : UserControl
 {
@@ -76,7 +78,7 @@ internal sealed partial class LedgerView : UserControl
 	private void Actions()
 	{
 		_actions.Children.Clear();
-		_actions.Children.Add(Ui.Button("Retry", Reload, _error));
+		_actions.Children.Add(Ui.Button("Refresh", Reload, _error));
 		_actions.Children.Add(Ui.AsyncButton("Add", async () => { Guid? saved = await _session.EditTransaction(_owner, null, _accountId, null); Refresh(saved); }, _error));
 		Button edit = Ui.AsyncButton("Edit", Edit, _error);
 		edit.IsEnabled = Selected is not null;
@@ -237,7 +239,7 @@ internal sealed partial class LedgerView : UserControl
 
 		for (int i = 0; i < values.Length; i++)
 		{
-			TextBlock text = new() { Text = values[i], TextTrimming = TextTrimming.CharacterEllipsis, TextAlignment = i is 2 or 3 ? TextAlignment.Right : TextAlignment.Left };
+			TextBlock text = new() { Text = values[i], VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, TextAlignment = i is 2 or 3 ? TextAlignment.Right : TextAlignment.Left };
 			ToolTipService.SetToolTip(text, values[i]);
 			Grid.SetColumn(text, i);
 			grid.Children.Add(text);

@@ -1,10 +1,12 @@
+using Dehb.WinUi.Common;
+using Dehb.WinUi.WindowManagement;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System.Runtime.InteropServices;
 using Windows.Graphics;
 
-namespace Dehb.WinUi;
+namespace Dehb.WinUi.Dialogs;
 
 internal sealed partial class EditorWindow : Window
 {
@@ -29,7 +31,7 @@ internal sealed partial class EditorWindow : Window
 		_owner = owner;
 		_coordinator = coordinator;
 		Title = title;
-		Grid grid = new() { Padding = new Thickness(fixedSize.HasValue ? 16 : 20), RowSpacing = 12 };
+		Grid grid = new() { Background = Ui.Background, Padding = new Thickness(fixedSize.HasValue ? 16 : 20), RowSpacing = 12 };
 		grid.RowDefinitions.Add(new RowDefinition());
 		grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 		grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });

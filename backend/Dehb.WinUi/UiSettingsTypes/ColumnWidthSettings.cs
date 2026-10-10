@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
-namespace Dehb.WinUi;
+namespace Dehb.WinUi.UiSettingsTypes;
 
 /// <summary>
 /// Stores this host's column preferences in the current Windows profile.

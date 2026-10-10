@@ -1,3 +1,10 @@
+using Dehb.WinUi.Catalogs;
+using Dehb.WinUi.Common;
+using Dehb.WinUi.Currencies;
+using Dehb.WinUi.Dialogs;
+using Dehb.WinUi.Hosting;
+using Dehb.WinUi.Ledger;
+using Dehb.WinUi.WindowManagement;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -16,7 +23,9 @@ public sealed partial class MainWindow : IDisposable
 	public MainWindow()
 	{
 		InitializeComponent();
-		WindowPlacement.Attach(this);
+		Root.Background = Ui.Background;
+		Root.Resources["SidebarBackground"] = new SolidColorBrush(Ui.ParseColor(((App)Application.Current).UiSettings.MainWindow.SideBarBackColor));
+		WindowPlacement.Attach(this, ((App)Application.Current).UiSettings.MainWindow);
 		Start();
 		Closed += (_, _) => Dispose();
 	}
@@ -85,7 +94,7 @@ public sealed partial class MainWindow : IDisposable
 	{
 		navigation.Children.Add(new TextBlock
 		{
-			Text = text, FontSize = 15, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+			Text = text, FontSize = ((App)Application.Current).UiSettings.MainWindow.SideBarFontSize, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
 			Foreground = (Brush)Root.Resources["SidebarHeading"], Margin = new Thickness(4, separate ? 20 : 0, 0, 6)
 		});
 	}
@@ -101,11 +110,13 @@ public sealed partial class MainWindow : IDisposable
 		content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
 		content.ColumnDefinitions.Add(new ColumnDefinition());
 		content.Children.Add(icon);
-		TextBlock label = new() { Text = name, FontSize = 17, VerticalAlignment = VerticalAlignment.Center };
+		TextBlock label = new() { Text = name, FontSize = ((App)Application.Current).UiSettings.MainWindow.SideBarFontSize, VerticalAlignment = VerticalAlignment.Center };
 		Grid.SetColumn(label, 1);
 		content.Children.Add(label);
 		Button button = Ui.AsyncButton(name, action, _error);
 		button.Style = (Style)Root.Resources["SidebarButtonStyle"];
+		button.Height = ((App)Application.Current).UiSettings.MainWindow.SideBarItemHeight;
+		button.FontSize = ((App)Application.Current).UiSettings.MainWindow.SideBarFontSize;
 		button.Content = content;
 		button.IsEnabled = enabled;
 		button.Foreground = (Brush)Root.Resources[enabled ? "SidebarText" : "SidebarMuted"];

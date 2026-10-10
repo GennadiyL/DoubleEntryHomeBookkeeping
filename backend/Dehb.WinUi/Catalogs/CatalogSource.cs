@@ -1,10 +1,11 @@
+using Dehb.WinUi.Hosting;
 using Business.Contracts.Base.Services;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Trees;
 using Business.Models.Entities;
 using Business.Models.Entities.Interfaces;
 
-namespace Dehb.WinUi;
+namespace Dehb.WinUi.Catalogs;
 
 internal sealed class CatalogSource
 {

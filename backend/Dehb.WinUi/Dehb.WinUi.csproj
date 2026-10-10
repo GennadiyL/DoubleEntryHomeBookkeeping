@@ -68,10 +68,17 @@
     <ProjectReference Include="..\Shared.Impl\Shared.Impl.csproj" />
     <ProjectReference Include="..\Messaging.InProcessBus\Messaging.InProcessBus.csproj" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.12" />
+    <Content Include="UiSettingsTypes\uisettings.default.json" TargetPath="uisettings.default.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <Target Name="CopyInitialDatabase" AfterTargets="Build">
     <MakeDir Directories="$(OutDir)Assets" />
     <Copy SourceFiles="..\DataAccess.EntityFramework.SqLite\Assets\dehb.db" DestinationFiles="$(OutDir)Assets\dehb.db" Condition="!Exists('$(OutDir)Assets\dehb.db')" />
+  </Target>
+  <Target Name="CopyUiSettingsToOutput" AfterTargets="Build">
+    <Copy SourceFiles="UiSettingsTypes\uisettings.json" DestinationFiles="$(OutDir)uisettings.json" Condition="!Exists('$(OutDir)uisettings.json')" />
+  </Target>
+  <Target Name="CopyUiSettingsToPublish" AfterTargets="Publish">
+    <Copy SourceFiles="UiSettingsTypes\uisettings.json" DestinationFiles="$(PublishDir)uisettings.json" Condition="!Exists('$(PublishDir)uisettings.json')" />
   </Target>
 </Project>

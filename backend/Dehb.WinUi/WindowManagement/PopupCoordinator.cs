@@ -2,7 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System.Runtime.InteropServices;
 
-namespace Dehb.WinUi;
+namespace Dehb.WinUi.WindowManagement;
 
 internal sealed class PopupCoordinator
 {

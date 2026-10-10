@@ -1,3 +1,7 @@
+using Dehb.WinUi.Catalogs;
+using Dehb.WinUi.Common;
+using Dehb.WinUi.Dialogs;
+using Dehb.WinUi.WindowManagement;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Accounts;
 using Business.Contracts.Services.Currencies;
@@ -6,7 +10,7 @@ using Business.Models.Entities.Config;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace Dehb.WinUi;
+namespace Dehb.WinUi.Hosting;
 
 internal sealed partial class UiSession : IDisposable
 {

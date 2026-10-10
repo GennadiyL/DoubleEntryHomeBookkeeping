@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "mainWindow": {
+    "sideBarBackColor": "#BDD3FA",
+    "sideBarFontSize": 17,
+    "sideBarItemHeight": 40,
+    "minWidth": 1400,
+    "minHeight": 800
+  },
+  "appearance": {
+    "fontSize": 14,
+    "rowHeight": 28,
+    "backgroundStartColor": "#F3F7FE",
+    "backgroundEndColor": "#E7F1FF",
+    "selectionBorderColor": "#606060"
+  },
+  "currencies": {
+    "columns": {
+      "code": 120,
+      "name": 120,
+      "symbol": 80,
+      "star": 80
+    }
+  },
+  "rates": {
+    "columns": {
+      "date": 120,
+      "rate": 120,
+      "description": 360
+    }
+  }
+}
