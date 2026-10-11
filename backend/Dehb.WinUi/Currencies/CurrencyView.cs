@@ -20,7 +20,7 @@ internal sealed partial class CurrencyView : UserControl
 	private readonly UiSession _session;
 	private readonly Window _owner;
 	private readonly double[] _rateColumnWidths;
-	private readonly TreeGrid _currencies = new() { NameHeader = "Code", IsSearchEnabled = false, FontSize = Ui.FontSize, RowHeight = Ui.RowHeight, SelectionBorderBrush = Ui.SelectionBorder };
+	private readonly TreeGrid _currencies = new() { NameHeader = "Code", IsSearchEnabled = false, FontSize = Ui.FontSize, RowHeight = Ui.RowHeight, SelectionBorderBrush = Ui.SelectionBorder, DialogCancelButtonStyle = Ui.DialogButtonStyle };
 	private readonly ListView _rates = new() { SelectionMode = ListViewSelectionMode.Single, Padding = new Thickness(0) };
 	private readonly TextBlock _error = Ui.Text("");
 	private readonly StackPanel _commands = Ui.Row();
@@ -30,7 +30,7 @@ internal sealed partial class CurrencyView : UserControl
 		_session = session;
 		_owner = owner;
 		UiSettings settings = ((App)Application.Current).UiSettings;
-		_rateColumnWidths = [settings.Rates.Columns["date"], settings.Rates.Columns["rate"], settings.Rates.Columns["description"]];
+		_rateColumnWidths = [settings.CurrencyRateGrid.Columns["date"], settings.CurrencyRateGrid.Columns["rate"], settings.CurrencyRateGrid.Columns["description"]];
 		Ui.StretchRows(_rates);
 		_rates.Resources[typeof(ScrollViewer)] = (Style)Application.Current.Resources["PersistentListScrollViewerStyle"];
 		ScrollViewer.SetVerticalScrollBarVisibility(_rates, ScrollBarVisibility.Visible);
@@ -65,7 +65,7 @@ internal sealed partial class CurrencyView : UserControl
 		Grid ratePanel = new() { RowSpacing = 8, Width = _rateColumnWidths.Sum() + 20, HorizontalAlignment = HorizontalAlignment.Left };
 		ratePanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 		ratePanel.RowDefinitions.Add(new RowDefinition());
-		ratePanel.Children.Add(RateRow("Date", "Rate", "Description"));
+		ratePanel.Children.Add(RateRow("Date", "Rate", "Description", true));
 		Grid.SetRow(_rates, 1); ratePanel.Children.Add(_rates);
 		Grid.SetRow(ratePanel, 2);
 		Grid.SetColumn(ratePanel, 1);
@@ -73,7 +73,7 @@ internal sealed partial class CurrencyView : UserControl
 		Content = grid;
 		_currencies.Columns.Add(new TreeGridColumn { Header = "Name", BindingPath = "Data.Name" });
 		_currencies.Columns.Add(new TreeGridColumn { Header = "Symbol", BindingPath = "Data.Symbol" });
-		_currencies.SetFixedColumnWidths([settings.Currencies.Columns["code"], settings.Currencies.Columns["name"], settings.Currencies.Columns["symbol"], settings.Currencies.Columns["star"]]);
+		_currencies.SetFixedColumnWidths([settings.CurrencyGrid.Columns["code"], settings.CurrencyGrid.Columns["name"], settings.CurrencyGrid.Columns["symbol"], settings.CurrencyGrid.Columns["star"]]);
 		_currencies.SelectedNodeChanged += (_, _) => LoadRates();
 		_currencies.RowActivated += async (_, _) => await EditCurrency(Selected);
 		_currencies.StarChanged += (_, node) =>
@@ -96,7 +96,7 @@ internal sealed partial class CurrencyView : UserControl
 		}, _error));
 		_commands.Children.Add(Ui.AsyncButton("Delete currency", async () =>
 		{
-			if (Selected is not { } selected || !await Ui.Confirm(owner, "Delete " + selected.Code + "?"))
+			if (Selected is not { } selected || selected.Id == _session.Settings.BaseCurrencyId || !await Ui.Confirm(owner, "Delete " + selected.Code + "?"))
 			{
 				return;
 			}
@@ -150,7 +150,7 @@ internal sealed partial class CurrencyView : UserControl
 		try
 		{
 			Guid? id = Selected?.Id;
-			_currencies.ItemsSource = new ObservableCollection<TreeGridNode>(_session.Currencies().OrderBy(c => c.Order).Select(c => new TreeGridNode { Name = c.Code, Data = c, IsStarred = c.IsFavorite }));
+			_currencies.ItemsSource = new ObservableCollection<TreeGridNode>(_session.Currencies().OrderBy(c => c.Order).Select(c => new TreeGridNode { Name = c.Id == _session.Settings.BaseCurrencyId ? $"{c.Code} (✦)" : c.Code, Data = c, IsStarred = c.IsFavorite }));
 			_currencies.SelectedNode = _currencies.ItemsSource.FirstOrDefault(n => ((CurrencyInfo)n.Data!).Id == id) ?? _currencies.ItemsSource.FirstOrDefault();
 			_error.Text = "";
 			_currencies.IsEnabled = true;
@@ -170,9 +170,14 @@ internal sealed partial class CurrencyView : UserControl
 	private void SetRateActions(bool enabled)
 	{
 		_rates.IsEnabled = enabled;
+		bool canModify = Selected is { } selected && selected.Id != _session.Settings.BaseCurrencyId;
+		if (_commands.Children.OfType<Button>().ElementAtOrDefault(3) is Button deleteCurrency)
+		{
+			deleteCurrency.IsEnabled = canModify;
+		}
 		foreach (Button button in _commands.Children.OfType<Button>().Skip(4))
 		{
-			button.IsEnabled = enabled;
+			button.IsEnabled = enabled && canModify;
 		}
 	}
 	private void LoadRates()
@@ -201,7 +206,7 @@ internal sealed partial class CurrencyView : UserControl
 		}
 		catch (Exception e) { SetRateActions(false); _error.Text = "Rate refresh failed. " + e.Message; }
 	}
-	private Grid RateRow(string date, string rate, string description)
+	private Grid RateRow(string date, string rate, string description, bool header = false)
 	{
 		Grid row = new() { Width = _rateColumnWidths.Sum(), Height = Ui.RowHeight, HorizontalAlignment = HorizontalAlignment.Left };
 		foreach (double width in _rateColumnWidths)
@@ -211,7 +216,7 @@ internal sealed partial class CurrencyView : UserControl
 		string[] values = [date, rate, description];
 		for (int i = 0; i < values.Length; i++)
 		{
-			TextBlock cell = new() { Text = values[i], Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, TextAlignment = i == 1 ? TextAlignment.Right : TextAlignment.Left };
+			TextBlock cell = new() { Text = values[i], Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, TextAlignment = header ? TextAlignment.Center : i == 1 ? TextAlignment.Right : TextAlignment.Left };
 			ToolTipService.SetToolTip(cell, values[i]); Grid.SetColumn(cell, i); row.Children.Add(cell);
 		}
 		return row;
@@ -220,12 +225,14 @@ internal sealed partial class CurrencyView : UserControl
 	{
 		try
 		{
-			EditorWindow window = new(_owner, _session.Coordinator, "Currencies.Editor", old is null ? "Add currency" : "Edit currency", new Windows.Graphics.SizeInt32(372, old is null ? 400 : 280));
+			UiSettings settings = ((App)Application.Current).UiSettings;
+			UiEditorPopupSettings popup = old is null ? settings.AddCurrencyEditor : settings.EditCurrencyEditor;
+			EditorWindow window = new(_owner, _session.Coordinator, "Currencies.Editor", old is null ? "Add currency" : "Edit currency", new Windows.Graphics.SizeInt32(popup.Width, popup.Height));
 			if (old is null)
 			{
 				List<AvailableCurrencyInfo> available = _session.Host.Call<ICurrencyService, List<AvailableCurrencyInfo>>(s => s.GetAvailableCurrencies());
 				HashSet<string> existingCodes = _session.Currencies().Select(c => c.Code).ToHashSet();
-				ComboBox code = new() { Header = "Currency", DisplayMemberPath = "EnglishName", Width = 320, HorizontalAlignment = HorizontalAlignment.Left, ItemsSource = available.Where(c => !existingCodes.Contains(c.Code)).OrderBy(c => c.EnglishName, StringComparer.OrdinalIgnoreCase).ToList() };
+				ComboBox code = new() { DisplayMemberPath = "EnglishName", MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Stretch, ItemsSource = available.Where(c => !existingCodes.Contains(c.Code)).OrderBy(c => c.EnglishName, StringComparer.OrdinalIgnoreCase).ToList() };
 				StackPanel metadata = new() { Spacing = 16, Margin = new Thickness(0, 8, 0, 8) };
 				TextBlock isoCode = Ui.Text("Code:");
 				TextBlock englishName = Ui.Text("English Name:");
@@ -233,7 +240,7 @@ internal sealed partial class CurrencyView : UserControl
 				metadata.Children.Add(isoCode);
 				metadata.Children.Add(englishName);
 				metadata.Children.Add(symbol);
-				DecimalBox initialRate = new() { Header = "Initial rate", Width = 320, HorizontalAlignment = HorizontalAlignment.Left, Precision = _session.Settings.RatePrecision, Value = null };
+				DecimalBox initialRate = new() { MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Stretch, Precision = _session.Settings.RatePrecision, Value = null };
 				code.SelectionChanged += (_, _) =>
 				{
 					if (code.SelectedItem is AvailableCurrencyInfo info)
@@ -244,9 +251,9 @@ internal sealed partial class CurrencyView : UserControl
 						ToolTipService.SetToolTip(code, info.EnglishName);
 					}
 				};
-				window.Fields.Children.Add(code);
+				window.Fields.Children.Add(Ui.EditorField("Currency", code));
 				window.Fields.Children.Add(metadata);
-				window.Fields.Children.Add(initialRate);
+				window.Fields.Children.Add(Ui.EditorField("Initial rate", initialRate));
 				window.IsDirty = () => code.SelectedItem is not null || !string.IsNullOrWhiteSpace(initialRate.Text);
 				window.SaveButton(() =>
 				{
@@ -256,8 +263,8 @@ internal sealed partial class CurrencyView : UserControl
 			}
 			else
 			{
-				TextBox name = new() { Header = "Name (1–6 characters)", Text = old.Name, MaxLength = 6, Width = 320, HorizontalAlignment = HorizontalAlignment.Left };
-				window.Fields.Children.Add(name);
+				TextBox name = new() { Text = old.Name, MaxLength = 6, MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Stretch };
+				window.Fields.Children.Add(Ui.EditorField("Name (1–6 characters)", name));
 				window.IsDirty = () => name.Text != old.Name;
 				window.SaveButton(() => _session.Host.Call<ICurrencyService>(service => service.Update(old.Id, new CurrencyParam { Name = name.Text })));
 			}
@@ -268,23 +275,25 @@ internal sealed partial class CurrencyView : UserControl
 	}
 	private async Task EditRate(CurrencyRateInfo? old)
 	{
-		if (Selected is not { } currency)
+		if (Selected is not { } currency || currency.Id == _session.Settings.BaseCurrencyId)
 		{
 			return;
 		}
 
-		EditorWindow window = new(_owner, _session.Coordinator, "Currencies.Rate", "Rate: " + currency.Code);
-		CalendarDatePicker date = new() { Date = new DateTimeOffset((old?.Date ?? DateOnly.FromDateTime(DateTime.Today)).ToDateTime(TimeOnly.MinValue)), IsEnabled = old is null };
-		DecimalBox rate = new() { Header = "Rate", Precision = _session.Settings.RatePrecision, Value = old?.Rate, IsReadOnly = currency.Id == _session.Settings.BaseCurrencyId };
+		UiSettings settings = ((App)Application.Current).UiSettings;
+		UiEditorPopupSettings popup = old is null ? settings.AddCurrencyRateEditor : settings.EditCurrencyRateEditor;
+		EditorWindow window = new(_owner, _session.Coordinator, "Currencies.Rate", "Rate: " + currency.Code, new Windows.Graphics.SizeInt32(popup.Width, popup.Height));
+		CalendarDatePicker date = new() { MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Stretch, Date = new DateTimeOffset((old?.Date ?? DateOnly.FromDateTime(DateTime.Today)).ToDateTime(TimeOnly.MinValue)), IsEnabled = old is null };
+		DecimalBox rate = new() { Precision = _session.Settings.RatePrecision, Value = old?.Rate, IsReadOnly = currency.Id == _session.Settings.BaseCurrencyId };
 		if (currency.Id == _session.Settings.BaseCurrencyId)
 		{
 			rate.Value = 1m;
 		}
 
-		TextBox description = new() { Header = "Description", Text = old?.Description ?? "" };
-		window.Fields.Children.Add(old?.IsInitial == true ? Ui.Text("Initial") : date);
-		window.Fields.Children.Add(rate);
-		window.Fields.Children.Add(description);
+		TextBox description = new() { Text = old?.Description ?? "" };
+		window.Fields.Children.Add(old?.IsInitial == true ? Ui.EditorField("Date", Ui.Text("Initial")) : Ui.EditorField("Date", date));
+		window.Fields.Children.Add(Ui.EditorField("Rate", rate));
+		window.Fields.Children.Add(Ui.EditorField("Description", description));
 		string Snapshot() => $"{date.Date}|{rate.Text}|{description.Text}";
 		string initial = Snapshot();
 		window.IsDirty = () => Snapshot() != initial;
@@ -298,14 +307,16 @@ internal sealed partial class CurrencyView : UserControl
 	}
 	private async Task DeleteRates()
 	{
-		if (Selected is not { } currency)
+		if (Selected is not { } currency || currency.Id == _session.Settings.BaseCurrencyId)
 		{
 			return;
 		}
 
-		EditorWindow window = new(_owner, _session.Coordinator, "Currencies.DeleteRates", "Delete rates: " + currency.Code);
-		CalendarDatePicker from = new() { Header = "From", Date = DateTimeOffset.Now }, to = new() { Header = "To", Date = DateTimeOffset.Now };
-		window.Fields.Children.Add(Ui.Row(from, to));
+		UiEditorPopupSettings popup = ((App)Application.Current).UiSettings.DeleteCurrencyRateEditor;
+		EditorWindow window = new(_owner, _session.Coordinator, "Currencies.DeleteRates", "Delete rates: " + currency.Code, new Windows.Graphics.SizeInt32(popup.Width, popup.Height));
+		CalendarDatePicker from = new() { MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Stretch, Date = DateTimeOffset.Now }, to = new() { MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Stretch, Date = DateTimeOffset.Now };
+		window.Fields.Children.Add(Ui.EditorField("From", from));
+		window.Fields.Children.Add(Ui.EditorField("To", to));
 		window.SaveButton(() => _session.Host.Call<ICurrencyRateService>(s => s.Delete(currency.Id,
 			DateOnly.FromDateTime(from.Date?.DateTime ?? throw new InvalidOperationException("Choose From.")), DateOnly.FromDateTime(to.Date?.DateTime ?? throw new InvalidOperationException("Choose To.")))));
 		await window.Show();

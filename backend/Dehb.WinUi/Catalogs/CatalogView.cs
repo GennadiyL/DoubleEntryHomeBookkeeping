@@ -6,6 +6,9 @@ using Business.Contracts.Services.Trees;
 using Business.Contracts.Services.Accounts;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using System.Collections.ObjectModel;
 using WinUi.Controls.TreeGridControl;
 
@@ -24,7 +27,7 @@ internal sealed partial class CatalogView : UserControl
 	private readonly Dictionary<Guid, TreeGridNode> _nodes = new();
 	private readonly ColumnWidthSettings _widths = new();
 	private TreeGridNode? _combineSource;
-	public TreeGrid Tree { get; } = new() { FontSize = Ui.FontSize, RowHeight = Ui.RowHeight, SelectionBorderBrush = Ui.SelectionBorder };
+	public TreeGrid Tree { get; } = new() { FontSize = Ui.FontSize, RowHeight = Ui.RowHeight, SelectionBorderBrush = Ui.SelectionBorder, DialogCancelButtonStyle = Ui.DialogButtonStyle };
 	public bool Ready { get; private set; }
 	public event Action<TreeGridNode>? Accepted;
 
@@ -47,7 +50,7 @@ internal sealed partial class CatalogView : UserControl
 		layout.Children.Add(Tree);
 		Content = layout;
 		Tree.NameHeader = catalog;
-		Tree.Columns.Add(new TreeGridColumn { Header = "Description", BindingPath = "Data.Description" });
+		Tree.Columns.Add(new TreeGridColumn { Header = "Description", BindingPath = "Data.Description", TextAlignment = catalog == "Accounts" ? TextAlignment.Left : TextAlignment.Center });
 		if (catalog == "Accounts" && !groupsOnly)
 		{
 			Tree.Columns.Add(new TreeGridColumn { Header = "Currency", BindingPath = "Data.CurrencyName" });
@@ -124,30 +127,40 @@ internal sealed partial class CatalogView : UserControl
 		};
 		Tree.ContextMenuRequested += (_, e) =>
 		{
-			foreach (Button button in _commands.Children.OfType<Button>().Where(b => b.Content?.ToString() != "Refresh"))
+			foreach (Button button in _commands.Children.OfType<Button>().Where(b => CommandLabel(b) != "Refresh"))
 			{
-				MenuFlyoutItem item = new() { Text = button.Content.ToString(), IsEnabled = button.IsEnabled };
+				MenuFlyoutItem item = new() { Text = CommandLabel(button), IsEnabled = button.IsEnabled };
 				item.Click += (_, _) => new Microsoft.UI.Xaml.Automation.Peers.ButtonAutomationPeer(button).Invoke();
 				e.Menu.Items.Add(item);
 			}
 		};
-		string key = catalog + (picker ? groupsOnly ? ".Groups" : ".Picker" : ".Main");
-		Tree.ColumnWidthsApplying += (_, e) =>
+		if (catalog == "Accounts")
 		{
+			Dictionary<string, double> columns = ((App)Application.Current).UiSettings.AccountTreeGrid.Columns;
+			Tree.SetFixedColumnWidths(groupsOnly
+				? [columns["main"], columns["description"], columns["star"]]
+				: [columns["main"], columns["description"], columns["currency"], columns["star"]]);
+		}
+		else
+		{
+			string key = catalog + (picker ? groupsOnly ? ".Groups" : ".Picker" : ".Main");
+			Tree.ColumnWidthsApplying += (_, e) =>
+			{
+				try
+				{
+					_widths.Save(key, e.Widths.ToArray());
+				}
+				catch (Exception ex) { e.ErrorMessage = ex.Message; }
+			};
 			try
 			{
-				_widths.Save(key, e.Widths.ToArray());
+				if (_widths.Load(key) is { } widths)
+				{
+					Tree.SetColumnWidths(widths);
+				}
 			}
-			catch (Exception ex) { e.ErrorMessage = ex.Message; }
-		};
-		try
-		{
-			if (_widths.Load(key) is { } widths)
-			{
-				Tree.SetColumnWidths(widths);
-			}
+			catch (Exception e) { _error.Text = e.Message; }
 		}
-		catch (Exception e) { _error.Text = e.Message; }
 
 		Reload(null, false);
 	}
@@ -190,7 +203,7 @@ internal sealed partial class CatalogView : UserControl
 					node.CanEditStar = !_readOnly && !group.IsRoot;
 					node.IsGroup = true;
 					node.Data = group;
-					node.Name = group.Name + (_groupsOnly ? $" ({data.Elements.Count(e => e.GroupId == group.Id)})" : "");
+					node.Name = (group.IsRoot ? _source.Name : group.Name) + (_groupsOnly ? $" ({data.Elements.Count(e => e.GroupId == group.Id)})" : "");
 					node.IsStarred = group.IsFavorite;
 					node.Children.Clear();
 				}
@@ -283,11 +296,13 @@ internal sealed partial class CatalogView : UserControl
 				_combineSource = null;
 				Commands();
 			}, _error));
+			ConfigureToolbar();
 			return;
 		}
 
 		if (_readOnly)
 		{
+			ConfigureToolbar();
 			return;
 		}
 
@@ -382,6 +397,59 @@ internal sealed partial class CatalogView : UserControl
 			{
 				button.IsEnabled = false;
 			}
+		}
+		ConfigureToolbar();
+	}
+
+	private static string CommandLabel(Button button)
+	{
+		string label = AutomationProperties.GetName(button);
+		return string.IsNullOrEmpty(label) ? button.Content?.ToString() ?? "" : label;
+	}
+
+	private void ConfigureToolbar()
+	{
+		if (_source.Name is not ("Accounts" or "Correspondents" or "Categories" or "Projects" or "Templates"))
+		{
+			return;
+		}
+		Button[] buttons = _commands.Children.OfType<Button>().ToArray();
+		foreach (Button button in buttons)
+		{
+			string label = CommandLabel(button);
+			string iconName = label switch
+			{
+				"Refresh" => "refresh",
+				"Add group" => "add-group",
+				"Add" => "add",
+				"Edit" => "edit",
+				"Delete" => "delete",
+				"Move" => "move",
+				"Merge" or "Combine into selected" => "merge",
+				"Cancel combination" => "cancel",
+				_ => throw new InvalidOperationException("Unknown catalog command: " + label)
+			};
+			if (label is "Add group" or "Move" or "Combine into selected")
+			{
+				_commands.Children.Insert(_commands.Children.IndexOf(button), new Border
+				{
+					Width = 1, Height = 28, Margin = new Thickness(4, 0, 4, 0),
+					VerticalAlignment = VerticalAlignment.Center,
+					Background = (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"]
+				});
+			}
+			SvgImageSource enabled = new(new Uri($"ms-appx:///Assets/Icons/{iconName}-enabled.svg"));
+			SvgImageSource disabled = new(new Uri($"ms-appx:///Assets/Icons/{iconName}-disabled.svg"));
+			Image icon = new() { Width = 24, Height = 24, Stretch = Stretch.Uniform, Source = button.IsEnabled ? enabled : disabled };
+			button.Width = button.Height = 40;
+			button.MinWidth = button.MinHeight = 40;
+			button.Padding = new Thickness(6);
+			button.HorizontalContentAlignment = HorizontalAlignment.Center;
+			button.VerticalContentAlignment = VerticalAlignment.Center;
+			button.Content = icon;
+			ToolTipService.SetToolTip(button, label);
+			AutomationProperties.SetName(button, label);
+			button.RegisterPropertyChangedCallback(IsEnabledProperty, (_, _) => icon.Source = button.IsEnabled ? enabled : disabled);
 		}
 	}
 

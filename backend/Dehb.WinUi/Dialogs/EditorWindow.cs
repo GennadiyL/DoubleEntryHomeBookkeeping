@@ -31,7 +31,7 @@ internal sealed partial class EditorWindow : Window
 		_owner = owner;
 		_coordinator = coordinator;
 		Title = title;
-		Grid grid = new() { Background = Ui.Background, Padding = new Thickness(fixedSize.HasValue ? 16 : 20), RowSpacing = 12 };
+		Grid grid = new() { Background = Ui.Background, Padding = fixedSize.HasValue ? new Thickness(24, 16, 24, 16) : new Thickness(20), RowSpacing = 12 };
 		grid.RowDefinitions.Add(new RowDefinition());
 		grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 		grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -131,8 +131,8 @@ internal sealed partial class EditorWindow : Window
 	public void Finish(bool saved) { _saved = saved; _closing = true; Close(); }
 	public void SaveButton(Action save)
 	{
-		Commands.Children.Add(Ui.Button("Save", () => { save(); Finish(true); }, Error));
-		Commands.Children.Add(Ui.Button("Cancel", Close, Error));
+		Commands.Children.Add(Ui.DialogButton("Save", () => { save(); Finish(true); }, Error));
+		Commands.Children.Add(Ui.DialogButton("Cancel", Close, Error));
 	}
 	[LibraryImport("user32.dll")]
 	private static partial uint GetDpiForWindow(IntPtr handle);

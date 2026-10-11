@@ -149,6 +149,10 @@ public sealed partial class TreeGridRowPresenter : UserControl
 			FrameworkElement cell = column.CellTemplate is null
 				? CreateText(column.BindingPath, HorizontalAlignment.Stretch)
 				: new ContentControl { Content = _node, ContentTemplate = column.CellTemplate, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+			if (cell is TextBlock text)
+			{
+				text.TextAlignment = column.TextAlignment;
+			}
 			Grid.SetColumn(cell, i + 1);
 			row.Children.Add(cell);
 		}

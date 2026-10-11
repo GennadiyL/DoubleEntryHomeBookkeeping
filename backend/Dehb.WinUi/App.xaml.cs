@@ -21,7 +21,7 @@ public partial class App : Application
 		}
 		try
 		{
-			UiSettings = Dehb.WinUi.UiSettingsTypes.UiSettings.Load(Path.Combine(AppContext.BaseDirectory, "uisettings.json"));
+			UiSettings = UiSettingsLoader.Load(Path.Combine(AppContext.BaseDirectory, "uisettings.json"));
 		}
 		catch (InvalidDataException exception)
 		{

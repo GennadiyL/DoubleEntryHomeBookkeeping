@@ -44,6 +44,29 @@ internal static class Ui
 		}
 	}
 
+	public static Style DialogButtonStyle
+	{
+		get
+		{
+			Style style = new(typeof(Button));
+			style.Setters.Add(new Setter(FrameworkElement.WidthProperty, ((App)Application.Current).UiSettings.Appearance.ButtonWidth));
+			style.Setters.Add(new Setter(FrameworkElement.HeightProperty, ((App)Application.Current).UiSettings.Appearance.ButtonHeight));
+			style.Setters.Add(new Setter(FrameworkElement.MinWidthProperty, 0d));
+			style.Setters.Add(new Setter(FrameworkElement.MinHeightProperty, 0d));
+			style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(4, 0, 4, 0)));
+			style.Setters.Add(new Setter(Control.FontSizeProperty, FontSize));
+			style.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
+			style.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+			return style;
+		}
+	}
+	public static Button DialogButton(string label, Action action, TextBlock error)
+	{
+		Button button = Button(label, action, error);
+		button.Style = DialogButtonStyle;
+		return button;
+	}
+
 	public static Button Button(string label, Action action, TextBlock error)
 	{
 		Button button = new() { Content = label };
@@ -56,6 +79,17 @@ internal static class Ui
 		button.Click += async (_, _) => { try { error.Text = ""; await action(); } catch (Exception e) { error.Text = e.Message; } };
 		return button;
 	}
+	public static StackPanel EditorField(string label, FrameworkElement editor)
+	{
+		TextBlock heading = new() { Text = label };
+		Microsoft.UI.Xaml.Automation.AutomationProperties.SetLabeledBy(editor, heading);
+		Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(editor, label);
+		StackPanel field = new() { Spacing = 12 };
+		field.Children.Add(heading);
+		field.Children.Add(editor);
+		return field;
+	}
+
 	public static StackPanel Row(params UIElement[] elements)
 	{
 		StackPanel panel = new() { Orientation = Orientation.Horizontal, Spacing = 8 };

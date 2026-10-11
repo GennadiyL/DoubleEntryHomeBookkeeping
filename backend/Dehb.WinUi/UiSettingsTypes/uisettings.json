@@ -8,13 +8,43 @@
     "minHeight": 800
   },
   "appearance": {
+    "buttonWidth": 64,
+    "buttonHeight": 32,
     "fontSize": 14,
     "rowHeight": 28,
     "backgroundStartColor": "#F3F7FE",
     "backgroundEndColor": "#E7F1FF",
     "selectionBorderColor": "#606060"
   },
-  "currencies": {
+  "addCurrencyEditor": {
+    "width": 360,
+    "height": 400
+  },
+  "editCurrencyEditor": {
+    "width": 360,
+    "height": 256
+  },
+  "addCurrencyRateEditor": {
+    "width": 360,
+    "height": 400
+  },
+  "editCurrencyRateEditor": {
+    "width": 360,
+    "height": 400
+  },
+  "deleteCurrencyRateEditor": {
+    "width": 360,
+    "height": 300
+  },
+  "accountTreeGrid": {
+    "columns": {
+      "main": 480,
+      "description": 448,
+      "currency": 64,
+      "star": 48
+    }
+  },
+  "currencyGrid": {
     "columns": {
       "code": 120,
       "name": 120,
@@ -22,7 +52,7 @@
       "star": 80
     }
   },
-  "rates": {
+  "currencyRateGrid": {
     "columns": {
       "date": 120,
       "rate": 120,

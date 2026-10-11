@@ -48,7 +48,7 @@ internal sealed partial class UiSession : IDisposable
 		view.Tree.SelectedNodeChanged += (_, _) => Update();
 		view.Accepted += node => { if (eligible(CatalogView.Id(node))) { result = CatalogView.Id(node); window.Finish(true); } };
 		window.Commands.Children.Add(accept);
-		window.Commands.Children.Add(Ui.Button("Cancel", window.Close, window.Error));
+		window.Commands.Children.Add(Ui.DialogButton("Cancel", window.Close, window.Error));
 		view.Reload(current, false);
 		Update();
 		await window.Show();

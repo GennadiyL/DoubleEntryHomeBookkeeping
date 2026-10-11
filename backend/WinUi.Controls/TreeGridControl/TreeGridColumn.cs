@@ -16,5 +16,6 @@ public sealed record TreeGridColumn
 {
 	public string Header { get; set; } = string.Empty;
 	public string BindingPath { get; set; } = string.Empty;
+	public TextAlignment TextAlignment { get; set; } = TextAlignment.Center;
 	public DataTemplate? CellTemplate { get; set; }
 }

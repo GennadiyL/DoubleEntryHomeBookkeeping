@@ -22,7 +22,7 @@ public sealed partial class DecimalBox : UserControl, INotifyPropertyChanged
 {
 	private readonly TextBox _editor = new() { BorderThickness = new Thickness(0), TextAlignment = TextAlignment.Right };
 	private readonly ContentPresenter _header = new();
-	private readonly TextBlock _error = new() { TextWrapping = TextWrapping.Wrap };
+	private readonly TextBlock _error = new() { TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed };
 	private readonly RepeatButton _increase;
 	private readonly RepeatButton _decrease;
 	private decimal? _value;
@@ -127,7 +127,7 @@ public sealed partial class DecimalBox : UserControl, INotifyPropertyChanged
 			TryCommit();
 		};
 		_editor.BeforeTextChanging += (_, e) => e.Cancel = !_formattingText && !DecimalBoxNumber.IsAllowedInput(e.NewText);
-		_editor.TextChanged += (_, _) => _error.Text = string.Empty;
+		_editor.TextChanged += (_, _) => SetError(string.Empty);
 		_editor.PreviewKeyDown += (_, e) =>
 		{
 			if (IsReadOnly)
@@ -148,6 +148,12 @@ public sealed partial class DecimalBox : UserControl, INotifyPropertyChanged
 				e.Handled = true;
 			}
 		};
+	}
+
+	private void SetError(string message)
+	{
+		_error.Text = message;
+		_error.Visibility = string.IsNullOrEmpty(message) ? Visibility.Collapsed : Visibility.Visible;
 	}
 
 	public new bool Focus(FocusState value) => _editor.Focus(value);
@@ -176,7 +182,7 @@ public sealed partial class DecimalBox : UserControl, INotifyPropertyChanged
 
 		if (!DecimalBoxNumber.TryStep(Value ?? 0, Precision, increase, out decimal next))
 		{
-			_error.Text = "This value cannot be stepped exactly at the selected precision.";
+			SetError("This value cannot be stepped exactly at the selected precision.");
 			return;
 		}
 		Value = next;
@@ -192,7 +198,7 @@ public sealed partial class DecimalBox : UserControl, INotifyPropertyChanged
 
 		if (!DecimalBoxNumber.TryParse(Text, Precision, out decimal? value))
 		{
-			_error.Text = "Enter a decimal number using a dot, without grouping or symbols.";
+			SetError("Enter a decimal number using a dot, without grouping or symbols.");
 			return false;
 		}
 		SetCommittedValue(value);
@@ -211,7 +217,7 @@ public sealed partial class DecimalBox : UserControl, INotifyPropertyChanged
 
 	private void ShowValue()
 	{
-		_error.Text = string.Empty;
+		SetError(string.Empty);
 		_formattingText = true;
 		try
 		{

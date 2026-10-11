@@ -12,6 +12,8 @@ namespace Dehb.WinUi.UiSettingsTypes;
 /// </summary>
 public sealed class UiAppearanceSettings
 {
+	public required double ButtonWidth { get; init; }
+	public required double ButtonHeight { get; init; }
 	public required double FontSize { get; init; }
 	public required double RowHeight { get; init; }
 	public required string BackgroundStartColor { get; init; }

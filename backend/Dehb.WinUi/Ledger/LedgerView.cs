@@ -58,7 +58,7 @@ internal sealed partial class LedgerView : UserControl
 		layout.Children.Add(_notice);
 		Grid.SetRow(_error, 3);
 		layout.Children.Add(_error);
-		_header = Row(Headers, false);
+		_header = Row(Headers, false, true);
 		Grid.SetRow(_header, 4);
 		layout.Children.Add(_header);
 		Grid.SetRow(_list, 5);
@@ -229,7 +229,7 @@ internal sealed partial class LedgerView : UserControl
 		_error.Text = "";
 		Actions();
 	}
-	private static Grid Row(string[] values, bool cumulative)
+	private static Grid Row(string[] values, bool cumulative, bool header = false)
 	{
 		Grid grid = new() { ColumnSpacing = 12, HorizontalAlignment = HorizontalAlignment.Stretch, MinWidth = 760 };
 		foreach (double width in new[] { 2.0, 3, 1.3, cumulative ? 1.5 : 0, 0.8 })
@@ -239,7 +239,7 @@ internal sealed partial class LedgerView : UserControl
 
 		for (int i = 0; i < values.Length; i++)
 		{
-			TextBlock text = new() { Text = values[i], VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, TextAlignment = i is 2 or 3 ? TextAlignment.Right : TextAlignment.Left };
+			TextBlock text = new() { Text = values[i], VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, TextAlignment = header ? TextAlignment.Center : i is 2 or 3 ? TextAlignment.Right : TextAlignment.Left };
 			ToolTipService.SetToolTip(text, values[i]);
 			Grid.SetColumn(text, i);
 			grid.Children.Add(text);

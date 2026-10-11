@@ -91,6 +91,7 @@ public sealed partial class TreeGrid : UserControl
 	public bool ShowCheckboxes { get => (bool)GetValue(ShowCheckboxesProperty); set => SetValue(ShowCheckboxesProperty, value); }
 	public TreeGridNode? SelectedNode { get => (TreeGridNode?)GetValue(SelectedNodeProperty); set => SetValue(SelectedNodeProperty, value); }
 	public string NameHeader { get => (string)GetValue(NameHeaderProperty); set => SetValue(NameHeaderProperty, value); }
+	public Style? DialogCancelButtonStyle { get; set; }
 	public ObservableCollection<TreeGridColumn> Columns { get; } = new();
 	public event EventHandler<TreeGridNode>? RowActivated;
 	public event EventHandler<TreeGridContextMenuEventArgs>? ContextMenuRequested;
@@ -494,6 +495,10 @@ public sealed partial class TreeGrid : UserControl
 				return $"Could not apply widths: {exception.Message}";
 			}
 		}) { XamlRoot = XamlRoot };
+		if (DialogCancelButtonStyle is not null)
+		{
+			dialog.CloseButtonStyle = DialogCancelButtonStyle;
+		}
 		await dialog.ShowAsync();
 	}
 
@@ -575,7 +580,7 @@ public sealed partial class TreeGrid : UserControl
 		}
 		ConfigureColumns(HeaderGrid);
 		HeaderGrid.Children.Clear();
-		AddHeader(NameHeader, 0, HorizontalAlignment.Left, FontSize);
+		AddHeader(NameHeader, 0, HorizontalAlignment.Center, FontSize);
 		for (int i = 0; i < Columns.Count; i++)
 		{
 			AddHeader(Columns[i].Header, i + 1, HorizontalAlignment.Center, FontSize);
