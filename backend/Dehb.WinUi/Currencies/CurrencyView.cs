@@ -281,7 +281,7 @@ internal sealed partial class CurrencyView : UserControl
 		}
 
 		UiSettings settings = ((App)Application.Current).UiSettings;
-		UiEditorPopupSettings popup = old is null ? settings.AddCurrencyRateEditor : settings.EditCurrencyRateEditor;
+		UiEditorPopupSettings popup = settings.CurrencyRateEditor;
 		EditorWindow window = new(_owner, _session.Coordinator, "Currencies.Rate", "Rate: " + currency.Code, new Windows.Graphics.SizeInt32(popup.Width, popup.Height));
 		CalendarDatePicker date = new() { MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Stretch, Date = new DateTimeOffset((old?.Date ?? DateOnly.FromDateTime(DateTime.Today)).ToDateTime(TimeOnly.MinValue)), IsEnabled = old is null };
 		DecimalBox rate = new() { Precision = _session.Settings.RatePrecision, Value = old?.Rate, IsReadOnly = currency.Id == _session.Settings.BaseCurrencyId };

@@ -4,6 +4,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System.Runtime.InteropServices;
+using System.ComponentModel;
 using Windows.Graphics;
 
 namespace Dehb.WinUi.Dialogs;
@@ -19,6 +20,7 @@ internal sealed partial class EditorWindow : Window
 	public StackPanel Fields { get; } = new() { Spacing = 12 };
 	public TextBlock Error { get; } = new() { TextWrapping = TextWrapping.Wrap };
 	public StackPanel Commands { get; } = new() { Orientation = Orientation.Horizontal, Spacing = 8 };
+	public StackPanel RightCommands { get; } = new() { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
 	public Func<bool> IsDirty { get; set; } = () => false;
 	public Action? BeforeClose { get; set; }
 	public EditorWindow(Window owner, PopupCoordinator coordinator, string key, string title, SizeInt32? fixedSize = null)
@@ -31,6 +33,7 @@ internal sealed partial class EditorWindow : Window
 		_owner = owner;
 		_coordinator = coordinator;
 		Title = title;
+		SetOwner(owner);
 		Grid grid = new() { Background = Ui.Background, Padding = fixedSize.HasValue ? new Thickness(24, 16, 24, 16) : new Thickness(20), RowSpacing = 12 };
 		grid.RowDefinitions.Add(new RowDefinition());
 		grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -45,8 +48,14 @@ internal sealed partial class EditorWindow : Window
 		}
 		Grid.SetRow(Error, 1);
 		grid.Children.Add(Error);
-		Grid.SetRow(Commands, 2);
-		grid.Children.Add(Commands);
+		Grid footer = new() { ColumnSpacing = 8 };
+		footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+		footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+		footer.Children.Add(Commands);
+		Grid.SetColumn(RightCommands, 1);
+		footer.Children.Add(RightCommands);
+		Grid.SetRow(footer, 2);
+		grid.Children.Add(footer);
 		Content = grid;
 		if (fixedSize is { } dialogSize)
 		{
@@ -134,6 +143,27 @@ internal sealed partial class EditorWindow : Window
 		Commands.Children.Add(Ui.DialogButton("Save", () => { save(); Finish(true); }, Error));
 		Commands.Children.Add(Ui.DialogButton("Cancel", Close, Error));
 	}
+	private void SetOwner(Window owner)
+	{
+		IntPtr handle = WinRT.Interop.WindowNative.GetWindowHandle(this);
+		IntPtr ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
+		IntPtr previousOwner = IntPtr.Size == 8
+			? SetWindowLongPtr(handle, -8, ownerHandle)
+			: new IntPtr(SetWindowLong(handle, -8, ownerHandle.ToInt32()));
+		int error = Marshal.GetLastPInvokeError();
+		if (previousOwner == IntPtr.Zero && error != 0)
+		{
+			Close();
+			throw new Win32Exception(error, "Cannot assign the editor window owner.");
+		}
+	}
+
+	[LibraryImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
+	private static partial IntPtr SetWindowLongPtr(IntPtr handle, int index, IntPtr value);
+
+	[LibraryImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
+	private static partial int SetWindowLong(IntPtr handle, int index, int value);
+
 	[LibraryImport("user32.dll")]
 	private static partial uint GetDpiForWindow(IntPtr handle);
 

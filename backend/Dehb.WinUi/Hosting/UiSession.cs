@@ -71,11 +71,19 @@ internal sealed partial class UiSession : IDisposable
 
 		ElementInfo? oldElement = !group && id.HasValue ? tree.Elements.Single(e => e.Id == id) : null;
 		AccountInfo? account = !group && catalog == "Accounts" && id.HasValue ? Host.Call<IAccountService, AccountInfo>(s => s.GetById(id.Value)) : null;
-		EditorWindow window = new(owner, Coordinator, catalog + (group ? ".GroupEditor" : ".ElementEditor"), (id.HasValue ? "Edit " : "Add ") + (group ? "group" : catalog));
+		bool fixedEditor = group || catalog is "Accounts" or "Correspondents" or "Categories" or "Projects";
+		Windows.Graphics.SizeInt32? fixedSize = null;
+		if (fixedEditor)
+		{
+			var settings = ((App)Application.Current).UiSettings;
+			var popup = group ? settings.GroupEditor : catalog == "Accounts" ? settings.AccountEditor : settings.ElementEditor;
+			fixedSize = new Windows.Graphics.SizeInt32(popup.Width, popup.Height);
+		}
+		EditorWindow window = new(owner, Coordinator, catalog + (group ? ".GroupEditor" : ".ElementEditor"), (id.HasValue ? "Edit " : "Add ") + (group ? "group" : catalog), fixedSize);
 		TextBox name = new() { Header = "Name", Text = oldGroup?.Name ?? oldElement?.Name ?? "" };
 		TextBox description = new() { Header = "Description", Text = oldGroup?.Description ?? oldElement?.Description ?? "" };
 		CheckBox favorite = new() { Content = "Favorite", IsChecked = oldGroup?.IsFavorite ?? oldElement?.IsFavorite ?? false };
-		ReferenceField destination = new(this, window, catalog, true, false, oldGroup?.ParentId ?? oldElement?.GroupId ?? parent ?? tree.Groups.Single(g => g.IsRoot).Id, group);
+		ReferenceField destination = new(this, window, catalog, true, false, oldGroup?.ParentId ?? oldElement?.GroupId ?? parent ?? tree.Groups.Single(g => g.IsRoot).Id, group, fixedEditor);
 		if (group && id.HasValue)
 		{
 			destination.Eligible = candidate =>
@@ -100,27 +108,38 @@ internal sealed partial class UiSession : IDisposable
 			};
 		}
 
-		window.Fields.Children.Add(name);
-		window.Fields.Children.Add(Ui.Text(group ? "Parent" : "Group"));
-		window.Fields.Children.Add(destination);
-		window.Fields.Children.Add(description);
+		if (fixedEditor)
+		{
+			name.Header = null;
+			description.Header = null;
+			window.Fields.Children.Add(Ui.EditorField("Name", name));
+			window.Fields.Children.Add(Ui.EditorField(group ? "Parent" : "Group", destination));
+			window.Fields.Children.Add(Ui.EditorField("Description", description));
+		}
+		else
+		{
+			window.Fields.Children.Add(name);
+			window.Fields.Children.Add(Ui.Text("Group"));
+			window.Fields.Children.Add(destination);
+			window.Fields.Children.Add(description);
+		}
 		window.Fields.Children.Add(favorite);
 		ReferenceField? correspondent = null, category = null, project = null;
 		ComboBox? currency = null;
 		if (!group && catalog == "Accounts")
 		{
-			currency = new() { Header = "Currency", ItemsSource = Currencies(), DisplayMemberPath = "Code", SelectedValuePath = "Id", SelectedValue = account?.CurrencyId, IsEnabled = !id.HasValue };
-			correspondent = new(this, window, "Correspondents", false, true, account?.CorrespondentId, false);
-			category = new(this, window, "Categories", false, true, account?.CategoryId, false);
-			project = new(this, window, "Projects", false, true, account?.ProjectId, false);
-			window.Fields.Children.Add(currency);
-			window.Fields.Children.Add(Ui.Text("Correspondent"));
-			window.Fields.Children.Add(correspondent);
-			window.Fields.Children.Add(Ui.Text("Category"));
-			window.Fields.Children.Add(category);
-			window.Fields.Children.Add(Ui.Text("Project"));
-			window.Fields.Children.Add(project);
-			window.Fields.Children.Add(Ui.Button("Restore name", () => name.Text = Host.Call<IAccountService, string>(s => s.GetDefaultName(correspondent.Id, category.Id, project.Id, currency.SelectedValue as Guid?)), window.Error));
+			currency = new() { HorizontalAlignment = HorizontalAlignment.Stretch, MinWidth = 0, ItemsSource = Currencies(), DisplayMemberPath = "Code", SelectedValuePath = "Id", SelectedValue = account?.CurrencyId, IsEnabled = !id.HasValue };
+			correspondent = new(this, window, "Correspondents", false, true, account?.CorrespondentId, false, true);
+			category = new(this, window, "Categories", false, true, account?.CategoryId, false, true);
+			project = new(this, window, "Projects", false, true, account?.ProjectId, false, true);
+			window.Fields.Children.Add(Ui.EditorField("Currency", currency));
+			window.Fields.Children.Add(Ui.EditorField("Correspondent", correspondent));
+			window.Fields.Children.Add(Ui.EditorField("Category", category));
+			window.Fields.Children.Add(Ui.EditorField("Project", project));
+			Button restoreName = Ui.DialogButton("Restore name", () => name.Text = Host.Call<IAccountService, string>(s => s.GetDefaultName(correspondent.Id, category.Id, project.Id, currency.SelectedValue as Guid?)), window.Error);
+			restoreName.Width = double.NaN;
+			restoreName.Padding = new Thickness(12, 0, 12, 0);
+			window.RightCommands.Children.Add(restoreName);
 		}
 		string Snapshot() => System.Text.Json.JsonSerializer.Serialize(new
 		{
@@ -145,7 +164,26 @@ internal sealed partial class UiSession : IDisposable
 			Guid groupId = destination.Id ?? throw new InvalidOperationException("Choose a group.");
 			if (group)
 			{
-				result = source.SaveGroup(id, new GroupParam { Name = name.Text, ParentId = groupId, Description = description.Text, IsFavorite = favorite.IsChecked == true });
+				GroupParam changes = new() { Name = name.Text, ParentId = groupId, Description = description.Text, IsFavorite = favorite.IsChecked == true };
+				if (oldGroup is null)
+				{
+					result = source.SaveGroup(null, changes);
+				}
+				else
+				{
+					if (groupId != oldGroup.ParentId)
+					{
+						source.Move(true, oldGroup.Id, groupId);
+						oldGroup.ParentId = groupId;
+						result = oldGroup.Id;
+					}
+					if (changes.Name != oldGroup.Name || changes.Description != (oldGroup.Description ?? "") ||
+						changes.IsFavorite != oldGroup.IsFavorite)
+					{
+						result = source.SaveGroup(oldGroup.Id, changes);
+					}
+					result = oldGroup.Id;
+				}
 			}
 			else if (catalog == "Accounts")
 			{
@@ -175,7 +213,26 @@ internal sealed partial class UiSession : IDisposable
 			}
 			else
 			{
-				result = source.SaveElement(id, new ElementParam { Name = name.Text, GroupId = groupId, Description = description.Text, IsFavorite = favorite.IsChecked == true });
+				ElementParam changes = new() { Name = name.Text, GroupId = groupId, Description = description.Text, IsFavorite = favorite.IsChecked == true };
+				if (oldElement is null)
+				{
+					result = source.SaveElement(null, changes);
+				}
+				else
+				{
+					if (groupId != oldElement.GroupId)
+					{
+						source.Move(false, oldElement.Id, groupId);
+						oldElement.GroupId = groupId;
+						result = oldElement.Id;
+					}
+					if (changes.Name != oldElement.Name || changes.Description != (oldElement.Description ?? "") ||
+						changes.IsFavorite != oldElement.IsFavorite)
+					{
+						result = source.SaveElement(oldElement.Id, changes);
+					}
+					result = oldElement.Id;
+				}
 			}
 		});
 		await window.Show();

@@ -10,6 +10,8 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Automation;
 using Windows.System;
 
 namespace WinUi.Controls.TreeGridControl;
@@ -156,6 +158,28 @@ public sealed partial class TreeGrid : UserControl
 		};
 		RefreshLayout();
 		RefreshSearchControls();
+	}
+
+	public void SetSearchIcons(Uri previousEnabled, Uri previousDisabled, Uri nextEnabled, Uri nextDisabled)
+	{
+		ConfigureSearchButton(PreviousSearchButton, "Previous", previousEnabled, previousDisabled);
+		ConfigureSearchButton(NextSearchButton, "Next", nextEnabled, nextDisabled);
+	}
+
+	private static void ConfigureSearchButton(Button button, string label, Uri enabledUri, Uri disabledUri)
+	{
+		SvgImageSource enabled = new(enabledUri);
+		SvgImageSource disabled = new(disabledUri);
+		Image icon = new() { Width = 24, Height = 24, Stretch = Stretch.Uniform, Source = button.IsEnabled ? enabled : disabled };
+		button.Width = button.Height = 40;
+		button.MinWidth = button.MinHeight = 40;
+		button.Padding = new Thickness(6);
+		button.HorizontalContentAlignment = HorizontalAlignment.Center;
+		button.VerticalContentAlignment = VerticalAlignment.Center;
+		button.Content = icon;
+		ToolTipService.SetToolTip(button, label);
+		AutomationProperties.SetName(button, label);
+		button.RegisterPropertyChangedCallback(IsEnabledProperty, (_, _) => icon.Source = button.IsEnabled ? enabled : disabled);
 	}
 
 	private void OnStarFilterClick(object sender, RoutedEventArgs e) => StarredOnly = StarFilter.IsChecked == true;
@@ -588,7 +612,7 @@ public sealed partial class TreeGrid : UserControl
 		AddHeader("★", Columns.Count + 1, HorizontalAlignment.Center, 24);
 		ColumnsButton.Visibility = _fixedColumnWidths is null ? Visibility.Visible : Visibility.Collapsed;
 		bool fixedColumns = _fixedColumnWidths is not null;
-		HeaderGrid.Margin = ToolbarGrid.Margin = fixedColumns ? new Thickness(0, 0, 20, 0) : new Thickness(8, 0, 28, 0);
+		HeaderGrid.Margin = ToolbarGrid.Margin = SearchPanel.Margin = fixedColumns ? new Thickness(0, 0, 20, 0) : new Thickness(8, 0, 28, 0);
 		Style rowStyle = new(typeof(ListViewItem)) { BasedOn = fixedColumns ? _fixedRowStyle : _defaultRowStyle };
 		rowStyle.Setters.Add(new Setter(FrameworkElement.HeightProperty, RowHeight));
 		rowStyle.Setters.Add(new Setter(FrameworkElement.MinHeightProperty, RowHeight));

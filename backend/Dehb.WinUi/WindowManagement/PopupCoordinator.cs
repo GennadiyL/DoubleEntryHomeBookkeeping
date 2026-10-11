@@ -19,7 +19,26 @@ internal sealed class PopupCoordinator
 			throw new InvalidOperationException("Account is used by an open editor.");
 		}
 	}
-	public void Push(string key, Window window) => _windows.Add((key, window));
-	public void Pop(Window window) => _windows.RemoveAll(item => item.Window == window);
+	public void Push(string key, Window window)
+	{
+		_windows.Add((key, window));
+		window.Activated += OnWindowActivated;
+	}
+	private void OnWindowActivated(object sender, WindowActivatedEventArgs args)
+	{
+		if (args.WindowActivationState != WindowActivationState.Deactivated && sender is Window window)
+		{
+			Window top = Top(window);
+			if (!ReferenceEquals(top, window))
+			{
+				top.Activate();
+			}
+		}
+	}
+	public void Pop(Window window)
+	{
+		window.Activated -= OnWindowActivated;
+		_windows.RemoveAll(item => item.Window == window);
+	}
 	public Window Top(Window main) => _windows.LastOrDefault().Window ?? main;
 }

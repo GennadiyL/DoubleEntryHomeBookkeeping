@@ -58,7 +58,7 @@ public static class UiSettingsLoader
 		ValidateColor(settings.MainWindow.SideBarBackColor, "mainWindow.sideBarBackColor");
 		ValidateSize(settings.MainWindow.SideBarFontSize, "mainWindow.sideBarFontSize");
 		ValidateSize(settings.MainWindow.SideBarItemHeight, "mainWindow.sideBarItemHeight");
-		ValidateSize(settings.MainWindow.MinWidth, "mainWindow.minWidth");
+		ValidateSize(settings.MainWindow.Width, "mainWindow.width");
 		ValidateSize(settings.MainWindow.MinHeight, "mainWindow.minHeight");
 		ValidateSize(settings.Appearance.FontSize, "appearance.fontSize");
 		ValidateSize(settings.Appearance.RowHeight, "appearance.rowHeight");
@@ -69,11 +69,14 @@ public static class UiSettingsLoader
 		ValidateColor(settings.Appearance.BackgroundStartColor, "appearance.backgroundStartColor");
 		ValidateColor(settings.Appearance.BackgroundEndColor, "appearance.backgroundEndColor");
 		ValidateColor(settings.Appearance.SelectionBorderColor, "appearance.selectionBorderColor");
+		ValidatePopup(settings.AccountEditor, "accountEditor");
+		ValidatePopup(settings.ElementEditor, "elementEditor");
+		ValidatePopup(settings.GroupEditor, "groupEditor");
 		ValidatePopup(settings.AddCurrencyEditor, "addCurrencyEditor");
 		ValidatePopup(settings.EditCurrencyEditor, "editCurrencyEditor");
-		ValidatePopup(settings.AddCurrencyRateEditor, "addCurrencyRateEditor");
-		ValidatePopup(settings.EditCurrencyRateEditor, "editCurrencyRateEditor");
+		ValidatePopup(settings.CurrencyRateEditor, "currencyRateEditor");
 		ValidatePopup(settings.DeleteCurrencyRateEditor, "deleteCurrencyRateEditor");
+		ValidateColumns(settings.CatalogTreeGrid, "catalogTreeGrid", ["main", "description", "star"]);
 		ValidateColumns(settings.AccountTreeGrid, "accountTreeGrid", ["main", "description", "currency", "star"]);
 		ValidateColumns(settings.CurrencyGrid, "currencyGrid", ["code", "name", "symbol", "star"]);
 		ValidateColumns(settings.CurrencyRateGrid, "currencyRateGrid", ["date", "rate", "description"]);

@@ -4,7 +4,7 @@
     "sideBarBackColor": "#BDD3FA",
     "sideBarFontSize": 17,
     "sideBarItemHeight": 40,
-    "minWidth": 1400,
+    "width": 1400,
     "minHeight": 800
   },
   "appearance": {
@@ -16,6 +16,18 @@
     "backgroundEndColor": "#E7F1FF",
     "selectionBorderColor": "#606060"
   },
+  "groupEditor": {
+    "width": 520,
+    "height": 400
+  },
+  "elementEditor": {
+    "width": 520,
+    "height": 400
+  },
+  "accountEditor": {
+    "width": 520,
+    "height": 720
+  },
   "addCurrencyEditor": {
     "width": 360,
     "height": 400
@@ -24,17 +36,20 @@
     "width": 360,
     "height": 256
   },
-  "addCurrencyRateEditor": {
-    "width": 360,
-    "height": 400
-  },
-  "editCurrencyRateEditor": {
+  "currencyRateEditor": {
     "width": 360,
     "height": 400
   },
   "deleteCurrencyRateEditor": {
     "width": 360,
     "height": 300
+  },
+  "catalogTreeGrid": {
+    "columns": {
+      "main": 480,
+      "description": 512,
+      "star": 48
+    }
   },
   "accountTreeGrid": {
     "columns": {

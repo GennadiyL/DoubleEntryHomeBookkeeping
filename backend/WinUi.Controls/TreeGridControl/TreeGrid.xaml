@@ -11,7 +11,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Grid x:Name="ToolbarGrid" Margin="8,0,28,0">
-            <CheckBox x:Name="StarFilter" Content="Starred only" Click="OnStarFilterClick" />
+            <CheckBox x:Name="StarFilter" Content="Starred only" VerticalAlignment="Center" VerticalContentAlignment="Center" Click="OnStarFilterClick" />
             <Button x:Name="ColumnsButton" Content="Columns" HorizontalAlignment="Right" Click="OnColumnsClick" />
         </Grid>
         <Grid Grid.Row="1" x:Name="SearchPanel" Margin="8,0,28,0" ColumnSpacing="8">
@@ -22,7 +22,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBox x:Name="SearchBox" PlaceholderText="Search names"
-                     AutomationProperties.Name="Search names"
+                     AutomationProperties.Name="Search names" VerticalAlignment="Center" VerticalContentAlignment="Center"
                      TextChanged="OnSearchTextChanged" KeyDown="OnSearchKeyDown" />
             <TextBlock x:Name="SearchStatus" Grid.Column="1" VerticalAlignment="Center"
                        AutomationProperties.LiveSetting="Polite" />

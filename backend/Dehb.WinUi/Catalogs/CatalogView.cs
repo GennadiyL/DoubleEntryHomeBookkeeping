@@ -25,7 +25,6 @@ internal sealed partial class CatalogView : UserControl
 	private readonly TextBlock _error = Ui.Text("");
 	private readonly StackPanel _commands = Ui.Row();
 	private readonly Dictionary<Guid, TreeGridNode> _nodes = new();
-	private readonly ColumnWidthSettings _widths = new();
 	private TreeGridNode? _combineSource;
 	public TreeGrid Tree { get; } = new() { FontSize = Ui.FontSize, RowHeight = Ui.RowHeight, SelectionBorderBrush = Ui.SelectionBorder, DialogCancelButtonStyle = Ui.DialogButtonStyle };
 	public bool Ready { get; private set; }
@@ -50,6 +49,11 @@ internal sealed partial class CatalogView : UserControl
 		layout.Children.Add(Tree);
 		Content = layout;
 		Tree.NameHeader = catalog;
+		Tree.SetSearchIcons(
+			new Uri("ms-appx:///Assets/Icons/previous-enabled.svg"),
+			new Uri("ms-appx:///Assets/Icons/previous-disabled.svg"),
+			new Uri("ms-appx:///Assets/Icons/next-enabled.svg"),
+			new Uri("ms-appx:///Assets/Icons/next-disabled.svg"));
 		Tree.Columns.Add(new TreeGridColumn { Header = "Description", BindingPath = "Data.Description", TextAlignment = catalog == "Accounts" ? TextAlignment.Left : TextAlignment.Center });
 		if (catalog == "Accounts" && !groupsOnly)
 		{
@@ -143,23 +147,8 @@ internal sealed partial class CatalogView : UserControl
 		}
 		else
 		{
-			string key = catalog + (picker ? groupsOnly ? ".Groups" : ".Picker" : ".Main");
-			Tree.ColumnWidthsApplying += (_, e) =>
-			{
-				try
-				{
-					_widths.Save(key, e.Widths.ToArray());
-				}
-				catch (Exception ex) { e.ErrorMessage = ex.Message; }
-			};
-			try
-			{
-				if (_widths.Load(key) is { } widths)
-				{
-					Tree.SetColumnWidths(widths);
-				}
-			}
-			catch (Exception e) { _error.Text = e.Message; }
+			Dictionary<string, double> columns = ((App)Application.Current).UiSettings.CatalogTreeGrid.Columns;
+			Tree.SetFixedColumnWidths([columns["main"], columns["description"], columns["star"]]);
 		}
 
 		Reload(null, false);

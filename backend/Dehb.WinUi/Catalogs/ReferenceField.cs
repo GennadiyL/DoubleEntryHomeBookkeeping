@@ -2,6 +2,8 @@ using Dehb.WinUi.Common;
 using Dehb.WinUi.Dialogs;
 using Dehb.WinUi.Hosting;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Business.Contracts.Services.Trees;
 
 namespace Dehb.WinUi.Catalogs;
@@ -12,9 +14,10 @@ internal sealed partial class ReferenceField : UserControl
 	private readonly string _catalog;
 	private readonly bool _groups;
 	private readonly Button _pick;
+	private readonly TextBox? _display;
 	public Guid? Id { get; private set; }
 	public Func<Guid, bool> Eligible { get; set; } = _ => true;
-	public ReferenceField(UiSession session, EditorWindow owner, string catalog, bool groups, bool optional, Guid? id, bool readOnlyGroups)
+	public ReferenceField(UiSession session, EditorWindow owner, string catalog, bool groups, bool optional, Guid? id, bool readOnlyGroups, bool textBoxPicker = false)
 	{
 		_session = session;
 		_catalog = catalog;
@@ -31,26 +34,80 @@ internal sealed partial class ReferenceField : UserControl
 			Refresh();
 		}, owner.Error);
 		StackPanel row = Ui.Row(_pick);
+		Button? clear = null;
 		if (optional)
 		{
-			row.Children.Add(Ui.Button("×", () => { Id = null; Refresh(); }, owner.Error));
+			clear = Ui.Button("Ã—", () => { Id = null; Refresh(); }, owner.Error);
+			row.Children.Add(clear);
 		}
 
-		Content = row;
+		if (textBoxPicker)
+		{
+			HorizontalContentAlignment = HorizontalAlignment.Stretch;
+			_display = new TextBox { IsReadOnly = true, MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Stretch };
+			AutomationProperties.SetName(_display, "Selected " + catalog);
+			row.Children.Clear();
+			_pick.Content = "...";
+			ToolTipService.SetToolTip(_pick, "Choose " + catalog);
+			AutomationProperties.SetName(_pick, "Choose " + catalog);
+			Grid picker = new() { ColumnSpacing = 8 };
+			picker.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+			picker.Children.Add(_display);
+			if (clear is not null)
+			{
+				clear.Content = "x";
+				ToolTipService.SetToolTip(clear, "Clear selection");
+				AutomationProperties.SetName(clear, "Clear selection");
+				picker.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+				Grid.SetColumn(clear, 1);
+				picker.Children.Add(clear);
+			}
+			picker.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+			Grid.SetColumn(_pick, picker.ColumnDefinitions.Count - 1);
+			picker.Children.Add(_pick);
+			foreach (Button button in picker.Children.OfType<Button>())
+			{
+				button.MinWidth = button.MinHeight = 0;
+				button.Padding = new Thickness(0);
+				button.VerticalAlignment = VerticalAlignment.Center;
+				button.HorizontalContentAlignment = HorizontalAlignment.Center;
+				button.VerticalContentAlignment = VerticalAlignment.Center;
+				_display.SizeChanged += (_, args) => button.Width = button.Height = args.NewSize.Height;
+			}
+			Content = picker;
+		}
+		else
+		{
+			Content = row;
+		}
 		owner.Activated += (_, _) => { try { Refresh(); } catch (Exception e) { owner.Error.Text = e.Message; } };
 		Refresh();
 	}
 	public void Refresh()
 	{
 		if (Id is null)
-		{ _pick.Content = "Select " + _catalog; return; }
+		{ SetDisplayName(null); return; }
 		TreeInfo tree = CatalogSource.For(_session.Host, _catalog).Read();
-		string? name = _groups ? tree.Groups.SingleOrDefault(g => g.Id == Id)?.Name : tree.Elements.SingleOrDefault(e => e.Id == Id)?.Name;
+		GroupInfo? selectedGroup = _groups ? tree.Groups.SingleOrDefault(g => g.Id == Id) : null;
+		string? name = _groups ? selectedGroup is { IsRoot: true } ? _catalog : selectedGroup?.Name : tree.Elements.SingleOrDefault(e => e.Id == Id)?.Name;
 		if (name is null)
 		{
 			Id = null;
 		}
 
-		_pick.Content = name ?? "Select " + _catalog;
+		SetDisplayName(name);
+	}
+	private void SetDisplayName(string? name)
+	{
+		if (_display is not null)
+		{
+			_display.Text = name ?? "";
+			_display.PlaceholderText = "Select " + _catalog;
+			ToolTipService.SetToolTip(_display, name ?? "");
+		}
+		else
+		{
+			_pick.Content = name ?? "Select " + _catalog;
+		}
 	}
 }

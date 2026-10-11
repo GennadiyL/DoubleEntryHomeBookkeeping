@@ -27,6 +27,14 @@ public sealed partial class MainWindow : IDisposable
 		Root.Resources["SidebarBackground"] = new SolidColorBrush(Ui.ParseColor(((App)Application.Current).UiSettings.MainWindow.SideBarBackColor));
 		WindowPlacement.Attach(this, ((App)Application.Current).UiSettings.MainWindow);
 		Start();
+		Activated += (_, args) =>
+		{
+			if (args.WindowActivationState != WindowActivationState.Deactivated &&
+				_session?.Coordinator.Top(this) is Window popup && !ReferenceEquals(popup, this))
+			{
+				popup.Activate();
+			}
+		};
 		Closed += (_, _) => Dispose();
 	}
 	public void ActivateTop() => (_session?.Coordinator.Top(this) ?? this).Activate();

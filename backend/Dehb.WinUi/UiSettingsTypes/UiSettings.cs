@@ -15,12 +15,15 @@ public sealed class UiSettings
 	public required int Version { get; init; }
 	public required UiMainWindowSettings MainWindow { get; init; }
 	public required UiAppearanceSettings Appearance { get; init; }
+	public required UiGridSettings CatalogTreeGrid { get; init; }
 	public required UiGridSettings AccountTreeGrid { get; init; }
 	public required UiGridSettings CurrencyGrid { get; init; }
 	public required UiGridSettings CurrencyRateGrid { get; init; }
+	public required UiEditorPopupSettings AccountEditor { get; init; }
+	public required UiEditorPopupSettings ElementEditor { get; init; }
+	public required UiEditorPopupSettings GroupEditor { get; init; }
 	public required UiEditorPopupSettings AddCurrencyEditor { get; init; }
 	public required UiEditorPopupSettings EditCurrencyEditor { get; init; }
-	public required UiEditorPopupSettings AddCurrencyRateEditor { get; init; }
-	public required UiEditorPopupSettings EditCurrencyRateEditor { get; init; }
+	public required UiEditorPopupSettings CurrencyRateEditor { get; init; }
 	public required UiEditorPopupSettings DeleteCurrencyRateEditor { get; init; }
 }
