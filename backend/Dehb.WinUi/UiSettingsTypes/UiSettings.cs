@@ -17,6 +17,7 @@ public sealed class UiSettings
 	public required UiAppearanceSettings Appearance { get; init; }
 	public required UiGridSettings CatalogTreeGrid { get; init; }
 	public required UiGridSettings AccountTreeGrid { get; init; }
+	public required UiTransactionGridSettings TransactionGrid { get; init; }
 	public required UiGridSettings CurrencyGrid { get; init; }
 	public required UiGridSettings CurrencyRateGrid { get; init; }
 	public required UiTransactionEditorSettings TransactionEditor { get; init; }

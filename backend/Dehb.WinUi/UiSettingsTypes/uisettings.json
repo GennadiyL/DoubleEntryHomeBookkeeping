@@ -33,6 +33,8 @@
     "height": 400
   },
   "transactionEditor": {
+    "dateWidth": 120,
+    "timeWidth": 120,
     "width": 1120,
     "height": 800,
     "amountWidth": 140,
@@ -79,6 +81,19 @@
       "description": 448,
       "currency": 64,
       "star": 48
+    }
+  },
+  "transactionGrid": {
+    "dateWidth": 120,
+    "rangeWidth": 120,
+    "accountWidth": 320,
+    "columns": {
+      "dateTime": 120,
+      "description": 420,
+      "state": 100,
+      "amount": 160,
+      "cumulativeAmount": 160,
+      "currency": 80
     }
   },
   "currencyGrid": {

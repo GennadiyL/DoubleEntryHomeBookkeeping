@@ -23,8 +23,8 @@ internal sealed partial class UiSession
 		DateTime original = existing?.DateTime.ToLocalTime() ?? prepared?.DateTime.ToLocalTime() ?? DateTime.Now;
 		UiSettingsTypes.UiTransactionEditorSettings popup = ((App)Application.Current).UiSettings.TransactionEditor;
 		EditorWindow window = new(owner, Coordinator, "Transaction.Editor", id.HasValue ? "Edit transaction" : "New transaction", new Windows.Graphics.SizeInt32(popup.Width, popup.Height));
-		CalendarDatePicker date = new() { Width = 120, MinWidth = 0, Date = new DateTimeOffset(original.Date) };
-		TimePicker time = new() { Width = 120, MinWidth = 0, ClockIdentifier = "24HourClock", Time = new TimeSpan(original.Hour, original.Minute, 0) };
+		CalendarDatePicker date = new() { Width = popup.DateWidth, MinWidth = 0, Date = new DateTimeOffset(original.Date) };
+		TimePicker time = new() { Width = popup.TimeWidth, MinWidth = 0, ClockIdentifier = "24HourClock", Time = new TimeSpan(original.Hour, original.Minute, 0) };
 		time.Loaded += (_, _) =>
 		{
 			if (Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(time) > 0 &&

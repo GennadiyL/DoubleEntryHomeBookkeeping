@@ -70,6 +70,8 @@ public static class UiSettingsLoader
 		ValidateColor(settings.Appearance.BackgroundEndColor, "appearance.backgroundEndColor");
 		ValidateColor(settings.Appearance.SelectionBorderColor, "appearance.selectionBorderColor");
 		ValidatePopup(settings.TransactionEditor, "transactionEditor");
+		ValidateSize(settings.TransactionEditor.DateWidth, "transactionEditor.dateWidth");
+		ValidateSize(settings.TransactionEditor.TimeWidth, "transactionEditor.timeWidth");
 		ValidateSize(settings.TransactionEditor.AmountWidth, "transactionEditor.amountWidth");
 		ValidateSize(settings.TransactionEditor.CurrencyWidth, "transactionEditor.currencyWidth");
 		ValidateSize(settings.TransactionEditor.RateWidth, "transactionEditor.rateWidth");
@@ -88,6 +90,10 @@ public static class UiSettingsLoader
 		ValidatePopup(settings.DeleteCurrencyRateEditor, "deleteCurrencyRateEditor");
 		ValidateColumns(settings.CatalogTreeGrid, "catalogTreeGrid", ["main", "description", "star"]);
 		ValidateColumns(settings.AccountTreeGrid, "accountTreeGrid", ["main", "description", "currency", "star"]);
+		ValidateColumns(settings.TransactionGrid, "transactionGrid", ["dateTime", "description", "state", "amount", "cumulativeAmount", "currency"]);
+		ValidateSize(settings.TransactionGrid.DateWidth, "transactionGrid.dateWidth");
+		ValidateSize(settings.TransactionGrid.RangeWidth, "transactionGrid.rangeWidth");
+		ValidateSize(settings.TransactionGrid.AccountWidth, "transactionGrid.accountWidth");
 		ValidateColumns(settings.CurrencyGrid, "currencyGrid", ["code", "name", "symbol", "star"]);
 		ValidateColumns(settings.CurrencyRateGrid, "currencyRateGrid", ["date", "rate", "description"]);
 	}

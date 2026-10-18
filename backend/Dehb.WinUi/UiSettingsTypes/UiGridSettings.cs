@@ -10,7 +10,7 @@ namespace Dehb.WinUi.UiSettingsTypes;
 /// This object contains no persistence or layout application behavior.
 /// Grid controls consume these values when their layout is configured.
 /// </summary>
-public sealed class UiGridSettings
+public class UiGridSettings
 {
 	public required Dictionary<string, double> Columns { get; init; }
 }

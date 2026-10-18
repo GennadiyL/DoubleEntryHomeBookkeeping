@@ -15,15 +15,15 @@ namespace Dehb.WinUi.Ledger;
 
 internal sealed partial class LedgerView : UserControl
 {
-	private static readonly string[] Headers = ["Date/time", "Description", "Amount", "", "Currency"];
+	private static readonly string[] Headers = ["Date/time", "Description", "State", "Amount", "Cumulative", "Currency"];
 	private readonly UiSession _session;
 	private readonly Window _owner;
-	private readonly CalendarDatePicker _date = new() { Date = DateTimeOffset.Now, Width = 120, MinWidth = 0, VerticalAlignment = VerticalAlignment.Center };
-	private readonly ComboBox _step = new() { ItemsSource = new[] { "Week", "Month", "Quarter", "Year" }, SelectedIndex = 1, Width = 120, MinWidth = 0, VerticalAlignment = VerticalAlignment.Center };
+	private readonly CalendarDatePicker _date = new() { Date = DateTimeOffset.Now, MinWidth = 0, VerticalAlignment = VerticalAlignment.Center };
+	private readonly ComboBox _step = new() { ItemsSource = new[] { "Week", "Month", "Quarter", "Year" }, SelectedIndex = 1, MinWidth = 0, VerticalAlignment = VerticalAlignment.Center };
 	private readonly ListView _list = new() { SelectionMode = ListViewSelectionMode.Single };
 	private readonly TextBlock _error = Ui.Text("");
 	private readonly TextBlock _notice = Ui.Text("");
-	private readonly TextBox _account = new() { IsReadOnly = true, Text = "All accounts", Width = 320, MinWidth = 0, MinHeight = 0, VerticalAlignment = VerticalAlignment.Center };
+	private readonly TextBox _account = new() { IsReadOnly = true, Text = "All accounts", MinWidth = 0, MinHeight = 0, VerticalAlignment = VerticalAlignment.Center };
 	private readonly StackPanel _actions = Ui.Row();
 	private readonly Grid _header;
 	private List<TransactionInfo> _transactions = new();
@@ -37,7 +37,15 @@ internal sealed partial class LedgerView : UserControl
 	{
 		_session = session;
 		_owner = owner;
+		UiSettingsTypes.UiTransactionGridSettings settings = ((App)Application.Current).UiSettings.TransactionGrid;
+		_date.Width = settings.DateWidth;
+		_step.Width = settings.RangeWidth;
+		_account.Width = settings.AccountWidth;
 		Ui.StretchRows(_list);
+		_list.Padding = new Thickness(0);
+		Style rowStyle = new(typeof(ListViewItem)) { BasedOn = _list.ItemContainerStyle };
+		rowStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
+		_list.ItemContainerStyle = rowStyle;
 		Button chooseAccount = Ui.AsyncButton("...", async () =>
 		{
 			Guid? chosen = await session.Pick(owner, "Accounts", false, _accountId, _ => true);
@@ -316,8 +324,12 @@ internal sealed partial class LedgerView : UserControl
 			ToolTipService.SetToolTip(_account, "All accounts");
 		}
 
-		((TextBlock)_header.Children[3]).Text = _accountId.HasValue ? "Cumulative amount" : "";
-		_header.ColumnDefinitions[3].Width = new GridLength(_accountId.HasValue ? 1.5 : 0, GridUnitType.Star);
+		double[] widths = ColumnWidths(_accountId.HasValue);
+		for (int i = 0; i < widths.Length; i++)
+		{
+			_header.ColumnDefinitions[i].Width = new GridLength(widths[i]);
+		}
+		_header.Children[4].Visibility = _accountId.HasValue ? Visibility.Visible : Visibility.Collapsed;
 		List<Grid> rows = new();
 		foreach (TransactionInfo transaction in _transactions)
 		{
@@ -336,7 +348,7 @@ internal sealed partial class LedgerView : UserControl
 				IEnumerable<decimal> amounts = transaction.Entries.Select(e => _session.BaseAmount(e.Amount, e.Rate));
 				amount = positive && !negative ? -amounts.Where(a => a < 0).Sum() : amounts.Where(a => a > 0).Sum();
 			}
-			Grid row = Row(new[] { transaction.DateTime.ToLocalTime().ToString("d", System.Globalization.CultureInfo.CurrentCulture) + " " + transaction.DateTime.ToLocalTime().ToString("HH:mm", System.Globalization.CultureInfo.CurrentCulture) + (transaction.State == TransactionState.Draft ? "  Draft" : ""), transaction.Description ?? "", amount.ToString("N" + _session.Settings.AmountPrecision, System.Globalization.CultureInfo.CurrentCulture), cumulative, code }, _accountId.HasValue);
+			Grid row = Row(new[] { transaction.DateTime.ToLocalTime().ToString("d", System.Globalization.CultureInfo.CurrentCulture) + " " + transaction.DateTime.ToLocalTime().ToString("HH:mm", System.Globalization.CultureInfo.CurrentCulture), transaction.Description ?? "", transaction.State.ToString(), amount.ToString("N" + _session.Settings.AmountPrecision, System.Globalization.CultureInfo.CurrentCulture), cumulative, code }, _accountId.HasValue);
 			row.Tag = transaction;
 			rows.Add(row);
 		}
@@ -347,17 +359,25 @@ internal sealed partial class LedgerView : UserControl
 		_error.Text = "";
 		Actions();
 	}
+	private static double[] ColumnWidths(bool cumulative)
+	{
+		Dictionary<string, double> columns = ((App)Application.Current).UiSettings.TransactionGrid.Columns;
+		return [columns["dateTime"], columns["description"] + (cumulative ? 0 : columns["cumulativeAmount"]),
+			columns["state"], columns["amount"], cumulative ? columns["cumulativeAmount"] : 0, columns["currency"]];
+	}
+
 	private static Grid Row(string[] values, bool cumulative, bool header = false)
 	{
-		Grid grid = new() { ColumnSpacing = 12, HorizontalAlignment = HorizontalAlignment.Stretch, MinWidth = 760 };
-		foreach (double width in new[] { 2.0, 3, 1.3, cumulative ? 1.5 : 0, 0.8 })
+		double[] widths = ColumnWidths(cumulative);
+		Grid grid = new() { Width = widths.Sum(), Height = Ui.RowHeight, HorizontalAlignment = HorizontalAlignment.Left };
+		foreach (double width in widths)
 		{
-			grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(width, GridUnitType.Star) });
+			grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(width) });
 		}
 
 		for (int i = 0; i < values.Length; i++)
 		{
-			TextBlock text = new() { Text = values[i], VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, TextAlignment = header ? TextAlignment.Center : i is 2 or 3 ? TextAlignment.Right : TextAlignment.Left };
+			TextBlock text = new() { Text = values[i], VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(8, 0, 8, 0), Visibility = i == 4 && !cumulative ? Visibility.Collapsed : Visibility.Visible, TextAlignment = header || i == 2 ? TextAlignment.Center : i is 3 or 4 ? TextAlignment.Right : TextAlignment.Left };
 			ToolTipService.SetToolTip(text, values[i]);
 			Grid.SetColumn(text, i);
 			grid.Children.Add(text);
