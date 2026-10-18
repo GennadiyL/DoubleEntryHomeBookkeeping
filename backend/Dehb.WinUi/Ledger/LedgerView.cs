@@ -45,6 +45,8 @@ internal sealed partial class LedgerView : UserControl
 		_list.Padding = new Thickness(0);
 		Style rowStyle = new(typeof(ListViewItem)) { BasedOn = _list.ItemContainerStyle };
 		rowStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
+		rowStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+		rowStyle.Setters.Add(new Setter(UIElement.UseSystemFocusVisualsProperty, false));
 		_list.ItemContainerStyle = rowStyle;
 		Button chooseAccount = Ui.AsyncButton("...", async () =>
 		{
@@ -111,8 +113,19 @@ internal sealed partial class LedgerView : UserControl
 		Grid.SetRow(_list, 6);
 		layout.Children.Add(_list);
 		Content = layout;
+		ViewShortcuts.Attach(this, () => ViewShortcuts.FocusRows(_list));
 		_list.DoubleTapped += async (_, _) => await Edit();
-		_list.SelectionChanged += (_, _) => Actions();
+		_list.SelectionChanged += (_, args) =>
+		{
+			foreach (Grid row in args.RemovedItems.Concat(args.AddedItems).OfType<Grid>())
+			{
+				foreach (Border outline in row.Children.OfType<Border>())
+				{
+					outline.Visibility = ReferenceEquals(_list.SelectedItem, row) ? Visibility.Visible : Visibility.Collapsed;
+				}
+			}
+			Actions();
+		};
 		_date.DateChanged += (_, _) => Reload();
 		Actions();
 		Reload();
@@ -353,7 +366,7 @@ internal sealed partial class LedgerView : UserControl
 			rows.Add(row);
 		}
 		_list.ItemsSource = rows;
-		_list.SelectedItem = rows.FirstOrDefault(r => ((TransactionInfo)r.Tag).Id == selected);
+		_list.SelectedItem = rows.FirstOrDefault(r => ((TransactionInfo)r.Tag).Id == selected) ?? rows.FirstOrDefault();
 		_ready = true;
 		_list.IsEnabled = true;
 		_error.Text = "";
@@ -381,6 +394,18 @@ internal sealed partial class LedgerView : UserControl
 			ToolTipService.SetToolTip(text, values[i]);
 			Grid.SetColumn(text, i);
 			grid.Children.Add(text);
+		}
+		if (!header)
+		{
+			Border outline = new()
+			{
+				BorderThickness = Ui.SelectionBorderThickness,
+				BorderBrush = Ui.SelectionBorder,
+				IsHitTestVisible = false,
+				Visibility = Visibility.Collapsed
+			};
+			Grid.SetColumnSpan(outline, values.Length);
+			grid.Children.Add(outline);
 		}
 		return grid;
 	}

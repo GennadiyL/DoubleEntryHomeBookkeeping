@@ -467,7 +467,6 @@ public abstract class GroupService<TGroup, TElement> :
 			.OrderBy(child => child.Order).ThenBy(child => child.Id.ToString("D"), StringComparer.Ordinal)];
 
 		HashSet<string> groupNames = new(destinationChildren.Select(child => child.Name.Trim()), StringComparer.OrdinalIgnoreCase);
-		HashSet<string> elementNames = new(destination.Elements.Select(element => element.Name.Trim()), StringComparer.OrdinalIgnoreCase);
 		int groupOrder = liveDestinationChildren.Count;
 		int elementOrder = liveDestinationElements.Count;
 		foreach (TGroup child in children)
@@ -486,10 +485,6 @@ public abstract class GroupService<TGroup, TElement> :
 		}
 		foreach (TElement element in elements)
 		{
-			if (typeof(TElement) != typeof(Account))
-			{
-				element.Name = GetUniqueCombinedName(element.Name.Trim(), elementNames);
-			}
 			element.GroupId = destination.Id;
 			element.Group = destination;
 			if (!element.IsDeleted())

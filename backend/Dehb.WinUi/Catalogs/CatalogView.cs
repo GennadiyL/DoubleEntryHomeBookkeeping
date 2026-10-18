@@ -26,7 +26,7 @@ internal sealed partial class CatalogView : UserControl
 	private readonly StackPanel _commands = Ui.Row();
 	private readonly Dictionary<Guid, TreeGridNode> _nodes = new();
 	private TreeGridNode? _combineSource;
-	public TreeGrid Tree { get; } = new() { FontSize = Ui.FontSize, RowHeight = Ui.RowHeight, SelectionBorderBrush = Ui.SelectionBorder, DialogCancelButtonStyle = Ui.DialogButtonStyle };
+	public TreeGrid Tree { get; } = new() { FontSize = Ui.FontSize, RowHeight = Ui.RowHeight, SelectionBorderBrush = Ui.SelectionBorder, SelectionBorderThickness = Ui.SelectionBorderThickness, DialogCancelButtonStyle = Ui.DialogButtonStyle };
 	public bool Ready { get; private set; }
 	public event Action<TreeGridNode>? Accepted;
 
@@ -48,6 +48,7 @@ internal sealed partial class CatalogView : UserControl
 		Grid.SetRow(Tree, 2);
 		layout.Children.Add(Tree);
 		Content = layout;
+		ViewShortcuts.Attach(this, Tree.FocusRows, Tree);
 		Tree.NameHeader = catalog;
 		Tree.SetSearchIcons(
 			new Uri("ms-appx:///Assets/Icons/previous-enabled.svg"),

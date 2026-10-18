@@ -3,6 +3,10 @@ using Dehb.WinUi.WindowManagement;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Automation;
+using Windows.System;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
 using Windows.Graphics;
@@ -57,6 +61,15 @@ internal sealed partial class EditorWindow : Window
 		Grid.SetRow(footer, 2);
 		grid.Children.Add(footer);
 		Content = grid;
+		grid.KeyDown += (_, args) =>
+		{
+			if (args.Key != VirtualKey.Escape || args.Handled || !CanHandleShortcut())
+			{
+				return;
+			}
+			args.Handled = true;
+			Close();
+		};
 		if (fixedSize is { } dialogSize)
 		{
 			double scale = GetDpiForWindow(WinRT.Interop.WindowNative.GetWindowHandle(owner)) / 96d;
@@ -146,9 +159,40 @@ internal sealed partial class EditorWindow : Window
 	public void Finish(bool saved) { _saved = saved; _closing = true; Close(); }
 	public void SaveButton(Action save)
 	{
-		Commands.Children.Add(Ui.DialogButton("Save", () => { save(); Finish(true); }, Error));
-		Commands.Children.Add(Ui.DialogButton("Cancel", Close, Error));
+		void Save() { save(); Finish(true); }
+		Button saveButton = Ui.DialogButton("Save", Save, Error);
+		KeyboardAccelerator shortcut = new() { Key = VirtualKey.Enter, Modifiers = VirtualKeyModifiers.Control };
+		shortcut.Invoked += (_, args) =>
+		{
+			args.Handled = true;
+			if (!saveButton.IsEnabled || !CanHandleShortcut())
+			{
+				return;
+			}
+			try
+			{
+				Error.Text = "";
+				Save();
+			}
+			catch (Exception e)
+			{
+				Error.Text = e.Message;
+			}
+		};
+		saveButton.KeyboardAccelerators.Add(shortcut);
+		AutomationProperties.SetAcceleratorKey(saveButton, "Ctrl+Enter");
+		ToolTipService.SetToolTip(saveButton, "Save (Ctrl+Enter)");
+		Commands.Children.Add(saveButton);
+		Button cancelButton = Ui.DialogButton("Cancel", Close, Error);
+		AutomationProperties.SetAcceleratorKey(cancelButton, "Esc");
+		ToolTipService.SetToolTip(cancelButton, "Cancel (Esc)");
+		Commands.Children.Add(cancelButton);
 	}
+	private bool CanHandleShortcut() =>
+		!_closing && !_checking && ReferenceEquals(_coordinator.Top(this), this) &&
+		Content is FrameworkElement { XamlRoot: not null } root &&
+		VisualTreeHelper.GetOpenPopupsForXamlRoot(root.XamlRoot).Count == 0;
+
 	private void SetOwner(Window owner)
 	{
 		IntPtr handle = WinRT.Interop.WindowNative.GetWindowHandle(this);

@@ -132,19 +132,19 @@ public sealed class ElementsLifecycleServiceTests<TGroup, TElement, TService, TR
 
 	[TestCase(false)]
 	[TestCase(true)]
-	public void Save_TrimmedCaseInsensitiveCollision_Rejects(bool update)
+	public async Task Save_TrimmedCaseInsensitiveCollision_Allows(bool update)
 	{
 		_group.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = "  COLLISION  ", DeleteRevision = 0 });
 		ElementParam input = new() { GroupId = _group.Id, Name = " collision " };
 		if (update)
 		{
-			Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, input));
+			await _service.Update(_element.Id, input);
 		}
 		else
 		{
-			Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Add(input));
+			await _service.Add(input);
 		}
-		AssertNoWrites();
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(false)]

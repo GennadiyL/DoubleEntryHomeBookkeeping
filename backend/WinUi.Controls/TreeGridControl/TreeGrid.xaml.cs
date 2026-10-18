@@ -28,6 +28,10 @@ namespace WinUi.Controls.TreeGridControl;
 /// </summary>
 public sealed partial class TreeGrid : UserControl
 {
+	public static readonly DependencyProperty SelectionBorderThicknessProperty = DependencyProperty.Register(
+		nameof(SelectionBorderThickness), typeof(Thickness), typeof(TreeGrid), new PropertyMetadata(new Thickness(1), OnLayoutPropertyChanged));
+	public Thickness SelectionBorderThickness { get => (Thickness)GetValue(SelectionBorderThicknessProperty); set => SetValue(SelectionBorderThicknessProperty, value); }
+
 	public static readonly DependencyProperty SelectionBorderBrushProperty = DependencyProperty.Register(
 		nameof(SelectionBorderBrush), typeof(Brush), typeof(TreeGrid), new PropertyMetadata(null, OnLayoutPropertyChanged));
 	public Brush? SelectionBorderBrush { get => (Brush?)GetValue(SelectionBorderBrushProperty); set => SetValue(SelectionBorderBrushProperty, value); }
@@ -139,6 +143,7 @@ public sealed partial class TreeGrid : UserControl
 			{
 				selection = selection.Parent;
 			}
+			selection ??= _projection.VisibleRows.FirstOrDefault();
 			_changingProjection = false;
 			SelectedNode = selection;
 			RowsList.SelectedItem = selection;
@@ -158,6 +163,64 @@ public sealed partial class TreeGrid : UserControl
 		};
 		RefreshLayout();
 		RefreshSearchControls();
+	}
+
+	public void SetAllExpanded(bool expanded)
+	{
+		_projection.UpdateRows(() =>
+		{
+			void Visit(TreeGridNode node, bool root)
+			{
+				if (node.IsGroup)
+				{
+					node.IsExpanded = expanded || root;
+				}
+				foreach (TreeGridNode child in node.Children)
+				{
+					Visit(child, false);
+				}
+			}
+			foreach (TreeGridNode root in ItemsSource)
+			{
+				Visit(root, true);
+			}
+		});
+	}
+
+	public void FocusRows()
+	{
+		if (!RowsList.IsEnabled)
+		{
+			return;
+		}
+		SelectedNode ??= _projection.VisibleRows.FirstOrDefault();
+		if (SelectedNode is { } selected)
+		{
+			RowsList.ScrollIntoView(selected);
+			RowsList.UpdateLayout();
+			if (RowsList.ContainerFromItem(selected) is ListViewItem container)
+			{
+				if (container.Focus(FocusState.Keyboard))
+				{
+					return;
+				}
+			}
+		}
+		RowsList.Focus(FocusState.Keyboard);
+		if (SelectedNode is { } pending)
+		{
+			DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+			{
+				if (IsLoaded && RowsList.IsEnabled && ReferenceEquals(SelectedNode, pending))
+				{
+					RowsList.UpdateLayout();
+					if (RowsList.ContainerFromItem(pending) is ListViewItem row)
+					{
+						row.Focus(FocusState.Keyboard);
+					}
+				}
+			});
+		}
 	}
 
 	public void SetSearchIcons(Uri previousEnabled, Uri previousDisabled, Uri nextEnabled, Uri nextDisabled)

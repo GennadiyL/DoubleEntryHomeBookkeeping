@@ -70,12 +70,12 @@ public sealed class TemplatesAddServiceTests : TemplatesServiceTestsBase
 	[TestCase(null)]
 	[TestCase(0L)]
 	[TestCase(12L)]
-	public void Add_RejectsDuplicateTrimmedName(long? deleteRevision)
+	public async Task Add_AllowsDuplicateTrimmedName(long? deleteRevision)
 	{
 		Template.Name = "  nEW ";
 		Template.DeleteRevision = deleteRevision;
-		Assert.ThrowsAsync<InvalidElementException>(async () => await Service.Add(Param));
-		AssertNoWrites();
+		await Service.Add(Param);
+		await UnitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(false)]

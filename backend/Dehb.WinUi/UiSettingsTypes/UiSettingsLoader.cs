@@ -69,6 +69,9 @@ public static class UiSettingsLoader
 		ValidateColor(settings.Appearance.BackgroundStartColor, "appearance.backgroundStartColor");
 		ValidateColor(settings.Appearance.BackgroundEndColor, "appearance.backgroundEndColor");
 		ValidateColor(settings.Appearance.SelectionBorderColor, "appearance.selectionBorderColor");
+		ValidateSize(settings.Appearance.SelectionBorderThickness, "appearance.selectionBorderThickness");
+		ValidateColor(settings.Appearance.FocusBorderColor, "appearance.focusBorderColor");
+		ValidateSize(settings.Appearance.FocusBorderThickness, "appearance.focusBorderThickness");
 		ValidatePopup(settings.TransactionEditor, "transactionEditor");
 		ValidateSize(settings.TransactionEditor.DateWidth, "transactionEditor.dateWidth");
 		ValidateSize(settings.TransactionEditor.TimeWidth, "transactionEditor.timeWidth");

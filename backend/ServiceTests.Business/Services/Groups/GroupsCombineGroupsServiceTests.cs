@@ -183,7 +183,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		_group.Elements.Add(element);
 		await _service.CombineGroups(_destination.Id, _group.Id);
 		Assert.That(child.Name, Is.EqualTo("Same_1_1"));
-		Assert.That(element.Name, Is.EqualTo(typeof(TElement) == typeof(Account) ? "Same" : "Same_1_1"));
+		Assert.That(element.Name, Is.EqualTo("Same"));
 	}
 
 	[Test]
@@ -200,12 +200,12 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		await _service.CombineGroups(_destination.Id, _group.Id);
 		Assert.That(first.Name, Is.EqualTo("Name_1"));
 		Assert.That(second.Name, Is.EqualTo("Name_1_1"));
-		Assert.That(firstElement.Name, Is.EqualTo(typeof(TElement) == typeof(Account) ? "Name" : "Name_1"));
-		Assert.That(secondElement.Name, Is.EqualTo(typeof(TElement) == typeof(Account) ? "Name_1" : "Name_1_1"));
+		Assert.That(firstElement.Name, Is.EqualTo("Name"));
+		Assert.That(secondElement.Name, Is.EqualTo("Name_1"));
 	}
 
 	[Test]
-	public async Task Combine_NamesAreCaseInsensitiveWithAccountDuplicatesAllowed()
+	public async Task Combine_GroupNamesAreCaseInsensitiveAndElementDuplicatesAllowed()
 	{
 		_destination.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = "ITEM" });
 		_destination.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = "Item" });
@@ -215,7 +215,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		_group.Elements.Add(element);
 		await _service.CombineGroups(_destination.Id, _group.Id);
 		Assert.That(child.Name, Is.EqualTo("Item_1"));
-		Assert.That(element.Name, Is.EqualTo(typeof(TElement) == typeof(Account) ? "ITEM" : "ITEM_1"));
+		Assert.That(element.Name, Is.EqualTo("ITEM"));
 	}
 
 	[Test]

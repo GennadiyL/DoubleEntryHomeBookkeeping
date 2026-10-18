@@ -8,6 +8,7 @@ namespace Dehb.WinUi.Common;
 internal static class Ui
 {
 	public static double FontSize => ((App)Application.Current).UiSettings.Appearance.FontSize;
+	public static Thickness SelectionBorderThickness => new(((App)Application.Current).UiSettings.Appearance.SelectionBorderThickness);
 	public static double RowHeight => ((App)Application.Current).UiSettings.Appearance.RowHeight;
 
 	public static LinearGradientBrush Background => new()
@@ -35,13 +36,21 @@ internal static class Ui
 		textStyle.Setters.Add(new Setter(TextBlock.FontSizeProperty, FontSize));
 		resources[typeof(TextBlock)] = textStyle;
 		foreach (Type type in new[] { typeof(Button), typeof(TextBox), typeof(ComboBox), typeof(ComboBoxItem), typeof(CheckBox),
-			typeof(CalendarDatePicker), typeof(DatePicker), typeof(ListView), typeof(ListViewItem), typeof(ContentDialog),
+			typeof(CalendarDatePicker), typeof(DatePicker), typeof(TimePicker), typeof(Microsoft.UI.Xaml.Controls.Primitives.ToggleButton), typeof(ListView), typeof(ListViewItem), typeof(ContentDialog),
 			typeof(MenuFlyoutItem), typeof(ToolTip), typeof(DecimalBox) })
 		{
 			Style style = new(type);
 			style.Setters.Add(new Setter(Control.FontSizeProperty, FontSize));
+			ApplyFocusStyle(style);
 			resources[type] = style;
 		}
+	}
+
+	public static void ApplyFocusStyle(Style style)
+	{
+		style.Setters.Add(new Setter(Control.FocusVisualPrimaryBrushProperty, new SolidColorBrush(ParseColor(((App)Application.Current).UiSettings.Appearance.FocusBorderColor))));
+		style.Setters.Add(new Setter(Control.FocusVisualPrimaryThicknessProperty, new Thickness(((App)Application.Current).UiSettings.Appearance.FocusBorderThickness)));
+		style.Setters.Add(new Setter(Control.FocusVisualSecondaryThicknessProperty, new Thickness(0)));
 	}
 
 	public static Style DialogButtonStyle
@@ -55,6 +64,7 @@ internal static class Ui
 			style.Setters.Add(new Setter(FrameworkElement.MinHeightProperty, 0d));
 			style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(4, 0, 4, 0)));
 			style.Setters.Add(new Setter(Control.FontSizeProperty, FontSize));
+			ApplyFocusStyle(style);
 			style.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
 			style.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
 			return style;

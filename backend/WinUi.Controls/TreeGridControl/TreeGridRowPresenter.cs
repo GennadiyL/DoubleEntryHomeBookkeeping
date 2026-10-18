@@ -161,7 +161,7 @@ public sealed partial class TreeGridRowPresenter : UserControl
 		_star.DoubleTapped += StopDoubleTap;
 		Grid.SetColumn(_star, _owner.Columns.Count + 1);
 		row.Children.Add(_star);
-		_selectionOutline = new Border { BorderThickness = new Thickness(1), IsHitTestVisible = false };
+		_selectionOutline = new Border { BorderThickness = _owner.SelectionBorderThickness, IsHitTestVisible = false };
 		_selectionOutline.BorderBrush = _owner.SelectionBorderBrush ?? _selectionBorderBrush;
 		Grid.SetColumnSpan(_selectionOutline, _owner.Columns.Count + 2);
 		row.Children.Add(_selectionOutline);

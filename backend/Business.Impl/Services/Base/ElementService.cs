@@ -70,10 +70,6 @@ public abstract class ElementService<TGroup, TElement> :
 			throw new InvalidElementException("The group does not exist or is deleted.");
 		}
 
-		if (group.Elements.Any(element => string.Equals(element.Name.Trim(), param.Name.Trim(), StringComparison.OrdinalIgnoreCase)))
-		{
-			throw new InvalidElementException("An element with the same name already exists in this group.");
-		}
 
 		int maxOrder = group.Elements.Where(element => !element.IsDeleted()).Select(element => element.Order).DefaultIfEmpty(-1).Max();
 		if (maxOrder == int.MaxValue)
@@ -117,11 +113,6 @@ public abstract class ElementService<TGroup, TElement> :
 		if (group is null || group.IsDeleted())
 		{
 			throw new InvalidElementException("The group does not exist or is deleted.");
-		}
-		if (group.Elements.Any(item => item.Id != element.Id &&
-			string.Equals(item.Name.Trim(), param.Name.Trim(), StringComparison.OrdinalIgnoreCase)))
-		{
-			throw new InvalidElementException("An element with the same name already exists in this group.");
 		}
 
 		element.Name = param.Name.Trim();
@@ -220,11 +211,6 @@ public abstract class ElementService<TGroup, TElement> :
 		if (element.GroupId == toGroupId)
 		{
 			return;
-		}
-		if (destination.Elements.Any(item =>
-			string.Equals(item.Name.Trim(), element.Name.Trim(), StringComparison.OrdinalIgnoreCase)))
-		{
-			throw new InvalidElementException("An element with the same name already exists in the destination group.");
 		}
 
 		TGroup source = await GetActiveGroup(element.GroupId, cancellationToken);

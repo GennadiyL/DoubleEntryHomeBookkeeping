@@ -126,11 +126,11 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 
 	[TestCase(false)]
 	[TestCase(true)]
-	public void Add_DuplicateElementName_RejectsIncludingDeleted(bool deleted)
+	public async Task Add_DuplicateElementName_AllowsIncludingDeleted(bool deleted)
 	{
 		_group.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = _param.Name, DeleteRevision = deleted ? 0 : null });
-		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Add(_param));
-		AssertNoWrites();
+		await _service.Add(_param);
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
@@ -143,11 +143,11 @@ public sealed class ElementsAddServiceTests<TGroup, TElement, TService, TReposit
 	}
 
 	[Test]
-	public void Add_DifferentCase_RejectsDuplicate()
+	public async Task Add_DifferentCase_AllowsDuplicate()
 	{
 		_group.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = _param.Name.ToUpperInvariant() });
-		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Add(_param));
-		AssertNoWrites();
+		await _service.Add(_param);
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]

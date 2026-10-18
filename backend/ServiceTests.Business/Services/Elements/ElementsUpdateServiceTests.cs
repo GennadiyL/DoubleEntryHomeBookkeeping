@@ -129,22 +129,22 @@ public sealed class ElementsUpdateServiceTests<TGroup, TElement, TService, TRepo
 
 	[TestCase(false)]
 	[TestCase(true)]
-	public void Update_DuplicateName_RejectsIncludingDeleted(bool deleted)
+	public async Task Update_DuplicateName_AllowsIncludingDeleted(bool deleted)
 	{
 		_group.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = _param.Name, DeleteRevision = deleted ? 0 : null });
-		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, _param));
-		Assert.That(_element.Name, Is.EqualTo("Existing"));
-		AssertNoWrites();
+		await _service.Update(_element.Id, _param);
+		Assert.That(_element.Name, Is.EqualTo(_param.Name.Trim()));
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
-	public void Update_NameComparison_RejectsCaseInsensitiveDuplicates()
+	public async Task Update_NameComparison_AllowsCaseInsensitiveDuplicates()
 	{
 		_group.Name = _param.Name;
 		_group.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = _param.Name });
 		_group.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = _param.Name.ToUpperInvariant() });
-		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Update(_element.Id, _param));
-		AssertNoWrites();
+		await _service.Update(_element.Id, _param);
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(null)]

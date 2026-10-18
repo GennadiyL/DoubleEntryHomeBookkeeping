@@ -7,6 +7,8 @@ using Dehb.WinUi.Ledger;
 using Dehb.WinUi.WindowManagement;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Windows.System;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System.Xml.Linq;
@@ -122,12 +124,51 @@ public sealed partial class MainWindow : IDisposable
 		Grid.SetColumn(label, 1);
 		content.Children.Add(label);
 		Button button = Ui.AsyncButton(name, action, _error);
-		button.Style = (Style)Root.Resources["SidebarButtonStyle"];
+		Style sidebarStyle = new(typeof(Button)) { BasedOn = (Style)Root.Resources["SidebarButtonStyle"] };
+		Ui.ApplyFocusStyle(sidebarStyle);
+		button.Style = sidebarStyle;
 		button.Height = ((App)Application.Current).UiSettings.MainWindow.SideBarItemHeight;
 		button.FontSize = ((App)Application.Current).UiSettings.MainWindow.SideBarFontSize;
 		button.Content = content;
 		button.IsEnabled = enabled;
 		button.Foreground = (Brush)Root.Resources[enabled ? "SidebarText" : "SidebarMuted"];
+		VirtualKey key = name switch
+		{
+			"Ledger" => VirtualKey.F12,
+			"Reports" => VirtualKey.F11,
+			"Accounts" => VirtualKey.F5,
+			"Correspondents" => VirtualKey.F6,
+			"Categories" => VirtualKey.F7,
+			"Projects" => VirtualKey.F8,
+			"Templates" => VirtualKey.F9,
+			"Currencies" => VirtualKey.F10,
+			"Synchronization" => VirtualKey.F3,
+			"Settings" => VirtualKey.F2,
+			"Help" => VirtualKey.F1,
+			"Exit" => VirtualKey.F4,
+			_ => throw new ArgumentException("Unknown sidebar action.", nameof(name))
+		};
+		KeyboardAccelerator shortcut = new() { Key = key, Modifiers = VirtualKeyModifiers.Control };
+		shortcut.Invoked += async (_, args) =>
+		{
+			args.Handled = true;
+			if (!button.IsEnabled || _session is null || !ReferenceEquals(_session.Coordinator.Top(this), this))
+			{
+				return;
+			}
+			try
+			{
+				_error.Text = "";
+				await action();
+			}
+			catch (Exception e)
+			{
+				_error.Text = e.Message;
+			}
+		};
+		button.KeyboardAccelerators.Add(shortcut);
+		ToolTipService.SetToolTip(button, $"{name} (Ctrl+{key})");
+		Microsoft.UI.Xaml.Automation.AutomationProperties.SetAcceleratorKey(button, $"Ctrl+{key}");
 		Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, name);
 		_navigation.Add(name, (button, icon));
 		navigation.Children.Add(button);
@@ -193,7 +234,33 @@ public sealed partial class MainWindow : IDisposable
 			currencies.Reload();
 		}
 
+		void QueueViewFocus()
+		{
+			DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+			{
+				if (ReferenceEquals(_screen.Content, view) && view.IsLoaded && _session is not null &&
+					ReferenceEquals(_session.Coordinator.Top(this), this))
+				{
+					view.UpdateLayout();
+					ViewShortcuts.FocusFirst(view);
+				}
+			});
+		}
+		void OnViewLoaded(object sender, RoutedEventArgs args)
+		{
+			view.Loaded -= OnViewLoaded;
+			QueueViewFocus();
+		}
+		if (!view.IsLoaded)
+		{
+			view.Loaded += OnViewLoaded;
+		}
 		_screen.Content = view;
 		SelectSidebarItem(name);
+		if (view.IsLoaded)
+		{
+			view.Loaded -= OnViewLoaded;
+			QueueViewFocus();
+		}
 	}
 }

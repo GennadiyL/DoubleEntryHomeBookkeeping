@@ -54,10 +54,6 @@ internal sealed class TemplateService : ITemplateService
 			throw new InvalidElementException("The group does not exist or is deleted.");
 		}
 
-		if (group.Elements.Any(element => string.Equals(element.Name.Trim(), param.Name.Trim(), StringComparison.OrdinalIgnoreCase)))
-		{
-			throw new InvalidElementException("An element with the same name already exists in this group.");
-		}
 
 		int maxOrder = group.Elements.Where(element => !element.IsDeleted()).Select(element => element.Order).DefaultIfEmpty(-1).Max();
 		if (maxOrder == int.MaxValue)
@@ -107,11 +103,6 @@ internal sealed class TemplateService : ITemplateService
 		if (group is null || group.IsDeleted())
 		{
 			throw new InvalidElementException("The group does not exist or is deleted.");
-		}
-		if (group.Elements.Any(item => item.Id != element.Id &&
-			string.Equals(item.Name.Trim(), param.Name.Trim(), StringComparison.OrdinalIgnoreCase)))
-		{
-			throw new InvalidElementException("An element with the same name already exists in this group.");
 		}
 
 		List<TemplateEntry> entries = await PrepareEntries(param, cancellationToken);
@@ -213,11 +204,6 @@ internal sealed class TemplateService : ITemplateService
 		if (element.GroupId == toGroupId)
 		{
 			return;
-		}
-		if (destination.Elements.Any(item =>
-			string.Equals(item.Name.Trim(), element.Name.Trim(), StringComparison.OrdinalIgnoreCase)))
-		{
-			throw new InvalidElementException("An element with the same name already exists in the destination group.");
 		}
 
 		TemplateGroup source = await GetActiveGroup(element.GroupId, cancellationToken);

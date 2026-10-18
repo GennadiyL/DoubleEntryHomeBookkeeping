@@ -63,14 +63,16 @@ public sealed class TemplatesUpdateServiceTests : TemplatesServiceTestsBase
 	}
 
 	[Test]
-	public void Update_RejectsGroupChangeAndDuplicateName()
+	public async Task Update_RejectsGroupChangeButAllowsDuplicateName()
 	{
 		Param.GroupId = Guid.NewGuid();
 		Assert.ThrowsAsync<InvalidElementException>(async () => await Service.Update(Template.Id, Param));
+		AssertNoWrites();
 		Param.GroupId = Group.Id;
 		AddSibling(" new ", 1);
-		Assert.ThrowsAsync<InvalidElementException>(async () => await Service.Update(Template.Id, Param));
-		AssertNoWrites();
+		await Service.Update(Template.Id, Param);
+		Assert.That(Template.Name, Is.EqualTo(Param.Name.Trim()));
+		await UnitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]

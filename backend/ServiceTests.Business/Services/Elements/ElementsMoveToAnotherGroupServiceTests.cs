@@ -139,21 +139,23 @@ public sealed class ElementsMoveToAnotherGroupServiceTests<TGroup, TElement, TSe
 
 	[TestCase(false)]
 	[TestCase(true)]
-	public void MoveToAnotherGroup_DuplicateName_RejectsIncludingDeleted(bool deleted)
+	public async Task MoveToAnotherGroup_DuplicateName_AllowsIncludingDeleted(bool deleted)
 	{
 		_destination.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = _element.Name, DeleteRevision = deleted ? 0 : null });
-		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.MoveToAnotherGroup(_element.Id, _destination.Id));
-		AssertUnchanged();
+		await _service.MoveToAnotherGroup(_element.Id, _destination.Id);
+		Assert.That(_element.GroupId, Is.EqualTo(_destination.Id));
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
-	public void MoveToAnotherGroup_DifferentCase_RejectsDuplicate()
+	public async Task MoveToAnotherGroup_DifferentCase_AllowsDuplicate()
 	{
 		_destination.Name = _element.Name;
 		_destination.Children.Add(new TGroup { Id = Guid.NewGuid(), Name = _element.Name });
 		_destination.Elements.Add(new TElement { Id = Guid.NewGuid(), Name = _element.Name.ToUpperInvariant() });
-		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.MoveToAnotherGroup(_element.Id, _destination.Id));
-		AssertUnchanged();
+		await _service.MoveToAnotherGroup(_element.Id, _destination.Id);
+		Assert.That(_element.GroupId, Is.EqualTo(_destination.Id));
+		await _unitOfWork.Received(1).SaveChanges();
 	}
 
 	[TestCase(true)]

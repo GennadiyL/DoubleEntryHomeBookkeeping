@@ -20,7 +20,7 @@ internal sealed partial class CurrencyView : UserControl
 	private readonly UiSession _session;
 	private readonly Window _owner;
 	private readonly double[] _rateColumnWidths;
-	private readonly TreeGrid _currencies = new() { NameHeader = "Code", IsSearchEnabled = false, FontSize = Ui.FontSize, RowHeight = Ui.RowHeight, SelectionBorderBrush = Ui.SelectionBorder, DialogCancelButtonStyle = Ui.DialogButtonStyle };
+	private readonly TreeGrid _currencies = new() { NameHeader = "Code", IsSearchEnabled = false, FontSize = Ui.FontSize, RowHeight = Ui.RowHeight, SelectionBorderBrush = Ui.SelectionBorder, SelectionBorderThickness = Ui.SelectionBorderThickness, DialogCancelButtonStyle = Ui.DialogButtonStyle };
 	private readonly ListView _rates = new() { SelectionMode = ListViewSelectionMode.Single, Padding = new Thickness(0) };
 	private readonly TextBlock _error = Ui.Text("");
 	private readonly StackPanel _commands = Ui.Row();
@@ -71,6 +71,20 @@ internal sealed partial class CurrencyView : UserControl
 		Grid.SetColumn(ratePanel, 1);
 		grid.Children.Add(ratePanel);
 		Content = grid;
+		bool ratesFocusedLast = false;
+		_rates.GotFocus += (_, _) => ratesFocusedLast = true;
+		_currencies.GotFocus += (_, _) => ratesFocusedLast = false;
+		ViewShortcuts.Attach(this, () =>
+		{
+			if (ratesFocusedLast)
+			{
+				_currencies.FocusRows();
+			}
+			else
+			{
+				ViewShortcuts.FocusRows(_rates);
+			}
+		}, _currencies);
 		_currencies.Columns.Add(new TreeGridColumn { Header = "Name", BindingPath = "Data.Name" });
 		_currencies.Columns.Add(new TreeGridColumn { Header = "Symbol", BindingPath = "Data.Symbol" });
 		_currencies.SetFixedColumnWidths([settings.CurrencyGrid.Columns["code"], settings.CurrencyGrid.Columns["name"], settings.CurrencyGrid.Columns["symbol"], settings.CurrencyGrid.Columns["star"]]);
@@ -186,6 +200,7 @@ internal sealed partial class CurrencyView : UserControl
 		{
 			if (Selected is not { } selected)
 			{ _rates.ItemsSource = null; SetRateActions(false); return; }
+			CurrencyRateInfo? previous = (_rates.SelectedItem as FrameworkElement)?.Tag as CurrencyRateInfo;
 			List<CurrencyRateInfo> rates = _session.Host.Call<ICurrencyRateService, List<CurrencyRateInfo>>(s => s.GetRates(selected.Id));
 			_rates.ItemsSource = rates.OrderBy(r => r.IsInitial).ThenByDescending(r => r.Date).Select(r =>
 			{
@@ -193,7 +208,7 @@ internal sealed partial class CurrencyView : UserControl
 				row.Tag = r;
 				Border outline = new()
 				{
-					BorderThickness = new Thickness(1),
+					BorderThickness = Ui.SelectionBorderThickness,
 					BorderBrush = Ui.SelectionBorder,
 					IsHitTestVisible = false,
 					Visibility = Visibility.Collapsed
@@ -202,6 +217,9 @@ internal sealed partial class CurrencyView : UserControl
 				row.Children.Add(outline);
 				return row;
 			}).ToList();
+			_rates.SelectedItem = _rates.Items.OfType<Grid>().FirstOrDefault(row =>
+				row.Tag is CurrencyRateInfo rate && previous is not null &&
+				rate.CurrencyId == previous.CurrencyId && rate.Date == previous.Date) ?? _rates.Items.FirstOrDefault();
 			SetRateActions(true);
 		}
 		catch (Exception e) { SetRateActions(false); _error.Text = "Rate refresh failed. " + e.Message; }

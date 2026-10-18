@@ -53,14 +53,14 @@ public sealed class TemplatesMoveToAnotherGroupServiceTests : TemplatesServiceTe
 	}
 
 	[Test]
-	public void MoveToAnotherGroup_RejectsDuplicateNameBeforeChanges()
+	public async Task MoveToAnotherGroup_AllowsDuplicateNameBeforeChanges()
 	{
 		TemplateGroup destination = new() { Id = Guid.NewGuid(), Name = "Destination" };
 		destination.Elements.Add(new Template { Name = " existing " });
 		GroupRepository.GetWithContentsById(destination.Id, Arg.Any<CancellationToken>()).Returns(destination);
-		Assert.ThrowsAsync<InvalidElementException>(async () => await Service.MoveToAnotherGroup(Template.Id, destination.Id));
-		Assert.That(Template.GroupId, Is.EqualTo(Group.Id));
-		AssertNoWrites();
+		await Service.MoveToAnotherGroup(Template.Id, destination.Id);
+		Assert.That(Template.GroupId, Is.EqualTo(destination.Id));
+		await UnitOfWork.Received(1).SaveChanges();
 	}
 
 	[Test]
