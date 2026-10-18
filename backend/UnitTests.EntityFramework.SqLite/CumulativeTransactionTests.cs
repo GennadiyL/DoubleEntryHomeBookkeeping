@@ -91,6 +91,49 @@ public sealed class CumulativeTransactionTests
 		_databaseLifetime?.Dispose();
 	}
 
+	[TestCase(TransactionState.Draft)]
+	[TestCase(TransactionState.Planned)]
+	[TestCase(TransactionState.Confirmed)]
+	public async Task Save_RequestedState_IsPreservedOnlyForBalancedEntries(TransactionState state)
+	{
+		TransactionParam param = Input(_date, 10m);
+		param.State = state;
+		Guid id = await _service.Add(param);
+		Assert.That((await _service.GetById(id)).State, Is.EqualTo(state));
+		param.Entries[1].Amount = -9m;
+		await _service.Update(id, param);
+		Assert.That((await _service.GetById(id)).State, Is.EqualTo(TransactionState.Draft));
+		param.Entries.RemoveAt(1);
+		param.Entries[0].Amount = 0m;
+		await _service.Update(id, param);
+		Assert.That((await _service.GetById(id)).State, Is.EqualTo(TransactionState.Draft));
+		param.Entries.Clear();
+		await _service.Update(id, param);
+		Assert.That((await _service.GetById(id)).State, Is.EqualTo(TransactionState.Draft));
+	}
+
+	[TestCase(TransactionState.Draft)]
+	[TestCase(TransactionState.Planned)]
+	public async Task Update_ConfirmedToRequestedState_RemovesAccountingContribution(TransactionState state)
+	{
+		Guid first = await _service.Add(Input(_date, 10m));
+		Guid following = await _service.Add(Input(_date.AddDays(1), 5m));
+		TransactionParam param = Input(_date, 10m);
+		param.State = state;
+		await _service.Update(first, param);
+		TransactionInfo result = await _service.GetById(following);
+		Assert.That(result.Entries.Single(e => e.AccountId == _account.Id).CumulativeAmount, Is.EqualTo(5m));
+	}
+
+	[TestCase(TransactionState.Undefined)]
+	[TestCase((TransactionState)99)]
+	public void Save_InvalidState_IsRejected(TransactionState state)
+	{
+		TransactionParam param = Input(_date, 10m);
+		param.State = state;
+		Assert.ThrowsAsync<Business.Models.Exceptions.InvalidElementException>(() => _service.Add(param));
+	}
+
 	[Test]
 	public async Task Rebuild_UsesBinaryGuidAndPositionOrder_ExcludesDraftAndDeleted()
 	{

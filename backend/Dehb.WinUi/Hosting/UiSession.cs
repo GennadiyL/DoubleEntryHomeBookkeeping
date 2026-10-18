@@ -1,6 +1,7 @@
 using Dehb.WinUi.Catalogs;
 using Dehb.WinUi.Common;
 using Dehb.WinUi.Dialogs;
+using Dehb.WinUi.UiSettingsTypes;
 using Dehb.WinUi.WindowManagement;
 using Business.Contracts.Services;
 using Business.Contracts.Services.Accounts;
@@ -30,11 +31,14 @@ internal sealed partial class UiSession : IDisposable
 	{
 		bool readOnly = groups && (forceReadOnly || Coordinator.IsActive(catalog + ".Tree") || Coordinator.IsActive(catalog + ".Groups") || Coordinator.IsActive(catalog + ".GroupEditor"));
 		string key = catalog + (groups ? readOnly ? ".SelectGroups" : ".Groups" : ".Tree");
-		EditorWindow window = new(owner, Coordinator, key, "Select " + catalog);
-		CatalogView view = new(this, window, catalog, groups, readOnly, true) { Height = 540 };
-		window.Fields.Children.Add(view);
+		UiSettings settings = ((App)Application.Current).UiSettings;
+		UiEditorPopupSettings popup = groups ? settings.GroupTreeGridPopup : settings.ElementTreeGridPopup;
+		Windows.Graphics.SizeInt32 fixedSize = new(popup.Width, popup.Height);
+		EditorWindow window = new(owner, Coordinator, key, "Select " + catalog, fixedSize);
+		CatalogView view = new(this, window, catalog, groups, readOnly, true);
+		window.SetFieldContent(view);
 		Guid? result = null;
-		Button accept = Ui.Button("OK", () =>
+		Button accept = Ui.DialogButton("OK", () =>
 		{
 			if (!view.Ready || view.Tree.SelectedNode is not { } node || node.IsGroup != groups || !eligible(CatalogView.Id(node)))
 			{

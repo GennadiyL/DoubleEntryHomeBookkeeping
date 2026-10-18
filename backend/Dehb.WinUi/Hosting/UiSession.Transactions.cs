@@ -6,8 +6,12 @@ using Business.Contracts.Services.Accounts;
 using Business.Contracts.Services.Templates;
 using Business.Contracts.Services.Transactions;
 using Business.Contracts.Services.Trees;
+using Business.Models.Enums;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 
 namespace Dehb.WinUi.Hosting;
 
@@ -17,9 +21,62 @@ internal sealed partial class UiSession
 	{
 		TransactionInfo? existing = id.HasValue ? Host.Call<ITransactionService, TransactionInfo>(s => s.GetById(id.Value)) : null;
 		DateTime original = existing?.DateTime.ToLocalTime() ?? prepared?.DateTime.ToLocalTime() ?? DateTime.Now;
-		EditorWindow window = new(owner, Coordinator, "Transaction.Editor", id.HasValue ? "Edit transaction" : "New transaction");
-		CalendarDatePicker date = new() { Date = new DateTimeOffset(original.Date) };
-		TimePicker time = new() { ClockIdentifier = "24HourClock", Time = new TimeSpan(original.Hour, original.Minute, 0) };
+		UiSettingsTypes.UiTransactionEditorSettings popup = ((App)Application.Current).UiSettings.TransactionEditor;
+		EditorWindow window = new(owner, Coordinator, "Transaction.Editor", id.HasValue ? "Edit transaction" : "New transaction", new Windows.Graphics.SizeInt32(popup.Width, popup.Height));
+		CalendarDatePicker date = new() { Width = 120, MinWidth = 0, Date = new DateTimeOffset(original.Date) };
+		TimePicker time = new() { Width = 120, MinWidth = 0, ClockIdentifier = "24HourClock", Time = new TimeSpan(original.Hour, original.Minute, 0) };
+		time.Loaded += (_, _) =>
+		{
+			if (Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(time) > 0 &&
+				Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(time, 0) is FrameworkElement templateRoot &&
+				templateRoot.FindName("FlyoutButton") is Button flyoutButton)
+			{
+				flyoutButton.MinWidth = 0;
+			}
+		};
+		TransactionState selectedState = existing?.State ?? prepared?.State ?? TransactionState.Confirmed;
+		StackPanel stateButtons = Ui.Row();
+		Microsoft.UI.Xaml.Media.SolidColorBrush selectedStateBackground = new(Ui.ParseColor(((App)Application.Current).UiSettings.MainWindow.SideBarBackColor));
+		foreach (TransactionState state in new[] { TransactionState.Draft, TransactionState.Planned, TransactionState.Confirmed })
+		{
+			string label = state.ToString();
+			ToggleButton button = new()
+			{
+				Width = 40, Height = 40, Padding = new Thickness(6),
+				IsChecked = selectedState == state,
+				Content = new Image
+				{
+					Width = 24, Height = 24,
+					Source = new SvgImageSource(new Uri($"ms-appx:///Assets/Icons/{label.ToLowerInvariant()}-state-enabled.svg"))
+				},
+				MinWidth = 0,
+				VerticalAlignment = VerticalAlignment.Center
+			};
+			button.Resources["ToggleButtonBackgroundChecked"] = selectedStateBackground;
+			button.Resources["ToggleButtonBackgroundCheckedPointerOver"] = selectedStateBackground;
+			button.Resources["ToggleButtonBackgroundCheckedPressed"] = selectedStateBackground;
+			ToolTipService.SetToolTip(button, label);
+			AutomationProperties.SetName(button, label);
+			button.Checked += (_, _) =>
+			{
+				selectedState = state;
+				foreach (ToggleButton other in stateButtons.Children.OfType<ToggleButton>())
+				{
+					if (other != button)
+					{
+						other.IsChecked = false;
+					}
+				}
+			};
+			button.Unchecked += (_, _) =>
+			{
+				if (selectedState == state)
+				{
+					button.IsChecked = true;
+				}
+			};
+			stateButtons.Children.Add(button);
+		}
 		bool timeChanged = false;
 		time.TimeChanged += (_, _) => timeChanged = true;
 		TextBox description = new() { Header = "Description", Text = existing?.Description ?? prepared?.Description ?? "" };
@@ -55,14 +112,59 @@ internal sealed partial class UiSession
 			Add().SetAccount(filter.Value, true);
 		}
 
-		window.Fields.Children.Add(Ui.Row(date, time));
-		window.Fields.Children.Add(description);
-		window.Fields.Children.Add(Ui.Text("Account                         Amount / Currency                         Rate                         Base amount"));
-		window.Fields.Children.Add(entries);
-		window.Fields.Children.Add(Ui.Button("Add entry", () => Add(), window.Error));
-		window.Fields.Children.Add(difference);
-		window.Fields.Children.Add(warning);
-		window.Fields.Children.Add(Ui.Button("Add balancing entry", () =>
+		Grid body = new() { RowSpacing = 12 };
+		body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+		body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+		body.RowDefinitions.Add(new RowDefinition());
+		body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+		body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+		StackPanel fields = new() { Spacing = 12 };
+		description.Header = null;
+		fields.Children.Add(Ui.Row(Ui.EditorField("Date", date), Ui.EditorField("Time", time), Ui.EditorField("State", stateButtons)));
+		fields.Children.Add(Ui.EditorField("Description", description));
+		body.Children.Add(fields);
+		Grid header = new() { ColumnSpacing = 8, Margin = new Thickness(0, 0, 20, 0) };
+		header.ColumnDefinitions.Add(new ColumnDefinition());
+		header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(popup.AmountWidth) });
+		header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(popup.CurrencyWidth) });
+		header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(popup.RateWidth + 40) });
+		header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(popup.BaseAmountWidth) });
+		header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32) });
+		string[] labels = ["Account", "Amount", "Currency", "Rate", "Base amount"];
+		for (int i = 0; i < labels.Length; i++)
+		{
+			TextBlock label = Ui.Text(labels[i]);
+			label.TextAlignment = TextAlignment.Center;
+			Grid.SetColumn(label, i);
+			header.Children.Add(label);
+		}
+		Grid.SetRow(header, 1);
+		body.Children.Add(header);
+		ScrollViewer entryScroll = new()
+		{
+			Content = entries,
+			Style = (Style)Application.Current.Resources["PersistentListScrollViewerStyle"],
+			VerticalScrollBarVisibility = ScrollBarVisibility.Visible,
+			HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+			HorizontalContentAlignment = HorizontalAlignment.Stretch
+		};
+		entryScroll.LayoutUpdated += (_, _) =>
+		{
+			if (Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(entryScroll) > 0 &&
+				Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(entryScroll, 0) is Grid scrollLayout &&
+				scrollLayout.Children.OfType<Microsoft.UI.Xaml.Controls.Primitives.ScrollBar>().FirstOrDefault() is { } bar)
+			{
+				bar.IsEnabled = entryScroll.ScrollableHeight > 0;
+			}
+		};
+		Grid.SetRow(entryScroll, 2);
+		body.Children.Add(entryScroll);
+		Grid.SetRow(difference, 3);
+		body.Children.Add(difference);
+		Grid.SetRow(warning, 4);
+		body.Children.Add(warning);
+		window.SetFieldContent(body);
+		Button balanceEntry = Ui.DialogButton("Add balancing entry", () =>
 		{
 			foreach (EntryLine line in lines)
 			{
@@ -86,8 +188,15 @@ internal sealed partial class UiSession
 			added.SetAccount(accountId, false);
 			added.Rate.Value = 1m;
 			added.Amount.Value = -total;
-		}, window.Error));
-		string Snapshot() => $"{date.Date}|{time.Time}|{description.Text}|" + string.Join(";", lines.Select(l => l.Snapshot()));
+		}, window.Error);
+		Button addEntry = Ui.DialogButton("Add entry", () => Add(), window.Error);
+		foreach (Button button in new[] { balanceEntry, addEntry })
+		{
+			button.Width = double.NaN;
+			button.Padding = new Thickness(12, 0, 12, 0);
+			window.RightCommands.Children.Add(button);
+		}
+		string Snapshot() => $"{date.Date}|{time.Time}|{selectedState}|{description.Text}|" + string.Join(";", lines.Select(l => l.Snapshot()));
 		string initial = Snapshot();
 		window.IsDirty = () => initial != Snapshot();
 		window.BeforeClose = () => Coordinator.Release(window);
@@ -123,7 +232,7 @@ internal sealed partial class UiSession
 				local = local.AddTicks(original.TimeOfDay.Ticks % TimeSpan.TicksPerMinute);
 			}
 
-			TransactionParam param = new() { DateTime = local.ToUniversalTime(), Description = description.Text };
+			TransactionParam param = new() { DateTime = local.ToUniversalTime(), Description = description.Text, State = selectedState };
 			param.Entries.AddRange(lines.Select(l => l.Read()));
 			if (id.HasValue)
 			{ Host.Call<ITransactionService>(s => s.Update(id.Value, param)); saved = id; }
@@ -140,9 +249,10 @@ internal sealed partial class UiSession
 	public async Task<Guid?> EditTemplate(Window owner, Guid? id, Guid? groupId, FromTransactionInfo? prepared)
 	{
 		TemplateInfo? old = id.HasValue ? Host.Call<ITemplateService, TemplateInfo>(s => s.GetById(id.Value)) : null;
-		EditorWindow window = new(owner, Coordinator, "Templates.ElementEditor", "Template");
+		UiSettingsTypes.UiTemplateEditorSettings popup = ((App)Application.Current).UiSettings.TemplateEditor;
+		EditorWindow window = new(owner, Coordinator, "Templates.ElementEditor", "Template", new Windows.Graphics.SizeInt32(popup.Width, popup.Height));
 		TextBox name = new() { Header = "Name", Text = old?.Name ?? "" };
-		ReferenceField group = new(this, window, "Templates", true, false, old?.GroupId ?? groupId, false);
+		ReferenceField group = new(this, window, "Templates", true, false, old?.GroupId ?? groupId, false, true);
 		TextBox description = new() { Header = "Description", Text = old?.Description ?? prepared?.Description ?? "" };
 		CheckBox favorite = new() { Content = "Favorite", IsChecked = old?.IsFavorite ?? false };
 		StackPanel entries = new() { Spacing = 8 };
@@ -163,14 +273,57 @@ internal sealed partial class UiSession
 		}
 		foreach (TemplateEntryInfo entry in old?.Entries ?? prepared?.Entries ?? new())
 		{ EntryLine line = Add(); line.SetAccount(entry.AccountId, false); line.Amount.Value = entry.Amount; }
-		window.Fields.Children.Add(name);
-		window.Fields.Children.Add(Ui.Text("Group"));
-		window.Fields.Children.Add(group);
-		window.Fields.Children.Add(description);
-		window.Fields.Children.Add(favorite);
-		window.Fields.Children.Add(Ui.Text("Account                                  Amount                                  Currency"));
-		window.Fields.Children.Add(entries);
-		window.Fields.Children.Add(Ui.Button("Add entry", () => Add(), window.Error));
+		name.Header = null;
+		description.Header = null;
+		StackPanel fields = new() { Spacing = 12 };
+		fields.Children.Add(Ui.EditorField("Name", name));
+		fields.Children.Add(Ui.EditorField("Group", group));
+		fields.Children.Add(Ui.EditorField("Description", description));
+		fields.Children.Add(favorite);
+		Grid body = new() { RowSpacing = 12 };
+		body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+		body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+		body.RowDefinitions.Add(new RowDefinition());
+		body.Children.Add(fields);
+		Grid header = new() { ColumnSpacing = 8, Margin = new Thickness(0, 0, 20, 0) };
+		header.ColumnDefinitions.Add(new ColumnDefinition());
+		header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(popup.AmountWidth) });
+		header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(popup.CurrencyWidth) });
+		header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32) });
+		string[] labels = ["Account", "Amount", "Currency"];
+		for (int i = 0; i < labels.Length; i++)
+		{
+			TextBlock label = Ui.Text(labels[i]);
+			label.TextAlignment = TextAlignment.Center;
+			Grid.SetColumn(label, i);
+			header.Children.Add(label);
+		}
+		Grid.SetRow(header, 1);
+		body.Children.Add(header);
+		ScrollViewer entryScroll = new()
+		{
+			Content = entries,
+			Style = (Style)Application.Current.Resources["PersistentListScrollViewerStyle"],
+			VerticalScrollBarVisibility = ScrollBarVisibility.Visible,
+			HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+			HorizontalContentAlignment = HorizontalAlignment.Stretch
+		};
+		entryScroll.LayoutUpdated += (_, _) =>
+		{
+			if (Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(entryScroll) > 0 &&
+				Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(entryScroll, 0) is Grid scrollLayout &&
+				scrollLayout.Children.OfType<Microsoft.UI.Xaml.Controls.Primitives.ScrollBar>().FirstOrDefault() is { } bar)
+			{
+				bar.IsEnabled = entryScroll.ScrollableHeight > 0;
+			}
+		};
+		Grid.SetRow(entryScroll, 2);
+		body.Children.Add(entryScroll);
+		window.SetFieldContent(body);
+		Button addEntry = Ui.DialogButton("Add entry", () => Add(), window.Error);
+		addEntry.Width = double.NaN;
+		addEntry.Padding = new Thickness(12, 0, 12, 0);
+		window.RightCommands.Children.Add(addEntry);
 		string Snapshot() => $"{name.Text}|{group.Id}|{description.Text}|{favorite.IsChecked}|" + string.Join(";", lines.Select(l => l.Snapshot()));
 		string initial = Snapshot();
 		window.IsDirty = () => initial != Snapshot();

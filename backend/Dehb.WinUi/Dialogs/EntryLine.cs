@@ -17,6 +17,7 @@ internal sealed class EntryLine
 	private readonly Action _changed;
 	private readonly bool _template;
 	private readonly Button _account;
+	private readonly TextBox? _accountName;
 	private readonly TextBlock _currency = Ui.Text("");
 	private readonly TextBlock _base = Ui.Text("");
 	public Guid? AccountId { get; private set; }
@@ -41,23 +42,117 @@ internal sealed class EntryLine
 				SetAccount(id.Value, true);
 			}
 		}, owner.Error);
-		View.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) });
-		View.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star), MinWidth = 230 });
-		View.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star), MinWidth = 230 });
-		View.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-		View.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-		View.Children.Add(_account);
-		FrameworkElement amountCell = template ? Amount : Ui.Row(Amount, _currency);
-		Grid.SetColumn(amountCell, 1);
-		View.Children.Add(amountCell);
-		FrameworkElement rateCell = template ? _currency : Ui.Row(Rate, Ui.Button("Restore rate", RestoreRate, owner.Error));
-		Grid.SetColumn(rateCell, 2);
-		View.Children.Add(rateCell);
-		if (!template)
-		{ Grid.SetColumn(_base, 3); View.Children.Add(_base); }
-		Button delete = Ui.Button("Remove", () => remove(this), owner.Error);
-		Grid.SetColumn(delete, 4);
-		View.Children.Add(delete);
+		if (template)
+		{
+			UiSettingsTypes.UiTemplateEditorSettings settings = ((App)Application.Current).UiSettings.TemplateEditor;
+			View.ColumnDefinitions.Add(new ColumnDefinition());
+			View.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(settings.AmountWidth) });
+			View.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(settings.CurrencyWidth) });
+			View.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32) });
+			_accountName = new TextBox { IsReadOnly = true, PlaceholderText = "Select account", MinWidth = 0 };
+			Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_accountName, "Account");
+			_account.Content = "...";
+			_account.MinWidth = _account.MinHeight = 0;
+			_account.Padding = new Thickness(0);
+			_account.VerticalAlignment = VerticalAlignment.Top;
+			ToolTipService.SetToolTip(_account, "Choose account");
+			Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_account, "Choose account");
+			_accountName.SizeChanged += (_, args) => _account.Width = _account.Height = args.NewSize.Height;
+			Grid accountPicker = new() { ColumnSpacing = 8 };
+			accountPicker.ColumnDefinitions.Add(new ColumnDefinition());
+			accountPicker.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+			accountPicker.Children.Add(_accountName);
+			Grid.SetColumn(_account, 1);
+			accountPicker.Children.Add(_account);
+			View.Children.Add(accountPicker);
+			Amount.MinWidth = 0;
+			Amount.Width = settings.AmountWidth;
+			Amount.VerticalAlignment = VerticalAlignment.Top;
+			Grid.SetColumn(Amount, 1);
+			View.Children.Add(Amount);
+			_currency.VerticalAlignment = VerticalAlignment.Center;
+			_currency.TextTrimming = TextTrimming.CharacterEllipsis;
+			Grid.SetColumn(_currency, 2);
+			View.Children.Add(_currency);
+			Button deleteEntry = Ui.Button("", () => remove(this), owner.Error);
+			deleteEntry.Content = new FontIcon { Glyph = "\uE74D", Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Black) };
+			deleteEntry.Width = deleteEntry.Height = 32;
+			deleteEntry.MinWidth = deleteEntry.MinHeight = 0;
+			deleteEntry.Padding = new Thickness(0);
+			deleteEntry.VerticalAlignment = VerticalAlignment.Top;
+			ToolTipService.SetToolTip(deleteEntry, "Remove entry");
+			Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(deleteEntry, "Remove entry");
+			Grid.SetColumn(deleteEntry, 3);
+			View.Children.Add(deleteEntry);
+		}
+		else
+		{
+			UiSettingsTypes.UiTransactionEditorSettings settings = ((App)Application.Current).UiSettings.TransactionEditor;
+			View.ColumnDefinitions.Add(new ColumnDefinition());
+			View.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(settings.AmountWidth) });
+			View.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(settings.CurrencyWidth) });
+			View.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(settings.RateWidth + 40) });
+			View.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(settings.BaseAmountWidth) });
+			View.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32) });
+			_accountName = new TextBox { IsReadOnly = true, PlaceholderText = "Select account", MinWidth = 0 };
+			Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_accountName, "Account");
+			_account.Content = "...";
+			_account.MinWidth = _account.MinHeight = 0;
+			_account.Padding = new Thickness(0);
+			_account.VerticalAlignment = VerticalAlignment.Top;
+			ToolTipService.SetToolTip(_account, "Choose account");
+			Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_account, "Choose account");
+			_accountName.SizeChanged += (_, args) => _account.Width = _account.Height = args.NewSize.Height;
+			Grid accountPicker = new() { ColumnSpacing = 8 };
+			accountPicker.ColumnDefinitions.Add(new ColumnDefinition());
+			accountPicker.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+			accountPicker.Children.Add(_accountName);
+			Grid.SetColumn(_account, 1);
+			accountPicker.Children.Add(_account);
+			View.Children.Add(accountPicker);
+			Amount.MinWidth = 0;
+			Amount.Width = settings.AmountWidth;
+			Amount.VerticalAlignment = VerticalAlignment.Top;
+			Grid.SetColumn(Amount, 1);
+			View.Children.Add(Amount);
+			_currency.VerticalAlignment = VerticalAlignment.Center;
+			_currency.TextTrimming = TextTrimming.CharacterEllipsis;
+			Grid.SetColumn(_currency, 2);
+			View.Children.Add(_currency);
+			Button deleteEntry = Ui.Button("", () => remove(this), owner.Error);
+			deleteEntry.Content = new FontIcon { Glyph = "\uE74D", Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Black) };
+			deleteEntry.Width = deleteEntry.Height = 32;
+			deleteEntry.MinWidth = deleteEntry.MinHeight = 0;
+			deleteEntry.Padding = new Thickness(0);
+			deleteEntry.VerticalAlignment = VerticalAlignment.Top;
+			ToolTipService.SetToolTip(deleteEntry, "Remove entry");
+			Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(deleteEntry, "Remove entry");
+			Grid.SetColumn(deleteEntry, 5);
+			View.Children.Add(deleteEntry);
+			Rate.MinWidth = 0;
+			Rate.Width = settings.RateWidth;
+			Rate.VerticalAlignment = VerticalAlignment.Top;
+			Button restore = Ui.Button("\u21BB", RestoreRate, owner.Error);
+			restore.Width = restore.Height = 32;
+			restore.MinWidth = restore.MinHeight = 0;
+			restore.Padding = new Thickness(0);
+			restore.VerticalAlignment = VerticalAlignment.Top;
+			ToolTipService.SetToolTip(restore, "Restore rate");
+			Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(restore, "Restore rate");
+			Grid rateCell = new() { ColumnSpacing = 8 };
+			rateCell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(settings.RateWidth) });
+			rateCell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32) });
+			rateCell.Children.Add(Rate);
+			Grid.SetColumn(restore, 1);
+			rateCell.Children.Add(restore);
+			Grid.SetColumn(rateCell, 3);
+			View.Children.Add(rateCell);
+			_base.VerticalAlignment = VerticalAlignment.Center;
+			_base.TextAlignment = TextAlignment.Right;
+			_base.TextTrimming = TextTrimming.CharacterEllipsis;
+			Grid.SetColumn(_base, 4);
+			View.Children.Add(_base);
+		}
 		Amount.PropertyChanged += (_, e) => { if (e.PropertyName == "Value")
 			{
 				Update();
@@ -75,7 +170,15 @@ internal sealed class EntryLine
 		decimal? rate = restore && CurrencyId != account.CurrencyId && !_template ? _session.Rate(id, _date()) : null;
 		AccountId = account.Id;
 		CurrencyId = account.CurrencyId;
-		_account.Content = account.Name;
+		if (_accountName is not null)
+		{
+			_accountName.Text = account.Name;
+			ToolTipService.SetToolTip(_accountName, account.Name);
+		}
+		else
+		{
+			_account.Content = account.Name;
+		}
 		_currency.Text = _session.CurrencyCode(account.CurrencyId);
 		Rate.IsReadOnly = CurrencyId == _session.Settings.BaseCurrencyId;
 		if (rate.HasValue)

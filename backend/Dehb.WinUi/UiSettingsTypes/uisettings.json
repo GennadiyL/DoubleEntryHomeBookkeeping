@@ -16,6 +16,14 @@
     "backgroundEndColor": "#E7F1FF",
     "selectionBorderColor": "#606060"
   },
+  "elementTreeGridPopup": {
+    "width": 1120,
+    "height": 800
+  },
+  "groupTreeGridPopup": {
+    "width": 1120,
+    "height": 800
+  },
   "groupEditor": {
     "width": 520,
     "height": 400
@@ -23,6 +31,20 @@
   "elementEditor": {
     "width": 520,
     "height": 400
+  },
+  "transactionEditor": {
+    "width": 1120,
+    "height": 800,
+    "amountWidth": 140,
+    "currencyWidth": 100,
+    "rateWidth": 140,
+    "baseAmountWidth": 100
+  },
+  "templateEditor": {
+    "width": 1120,
+    "height": 800,
+    "amountWidth": 160,
+    "currencyWidth": 120
   },
   "accountEditor": {
     "width": 520,

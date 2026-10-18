@@ -137,6 +137,12 @@ internal sealed partial class EditorWindow : Window
 		Activate();
 		return _closed.Task;
 	}
+	public void SetFieldContent(UIElement content)
+	{
+		Grid grid = (Grid)Content;
+		grid.Children.RemoveAt(0);
+		grid.Children.Insert(0, content);
+	}
 	public void Finish(bool saved) { _saved = saved; _closing = true; Close(); }
 	public void SaveButton(Action save)
 	{

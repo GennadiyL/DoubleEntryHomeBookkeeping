@@ -18,7 +18,7 @@ namespace Business.Impl.Services;
 
 /// <summary>
 /// Implements atomic transaction mutations and detached transaction reads.
-/// Validates entries and derives Draft or Confirmed state on every save.
+/// Validates entries and honors the requested state, forcing invalid aggregates to Draft.
 /// Replaces aggregate entries while preserving the transaction identity.
 /// Owns database transactions around mutations and cumulative maintenance.
 /// Navigation returns the newest bounded set through a selected local date.
@@ -53,6 +53,10 @@ internal sealed class TransactionService : ITransactionService
 		if (param is null || param.DateTime.Kind != DateTimeKind.Utc || param.DateTime < AppValues.MinDateTime)
 		{
 			throw new InvalidElementException("A valid UTC transaction timestamp is required.");
+		}
+		if (param.State is not (TransactionState.Draft or TransactionState.Planned or TransactionState.Confirmed))
+		{
+			throw new InvalidElementException("Choose Draft, Planned or Confirmed state.");
 		}
 		IUnitOfWorkTransaction transaction = await _unitOfWork.BeginTransaction(cancellationToken);
 		try
@@ -96,7 +100,7 @@ internal sealed class TransactionService : ITransactionService
 			HashSet<Guid> accounts = [.. oldEntries.Select(entry => entry.AccountId), .. entries.Select(entry => entry.AccountId)];
 			entity.DateTime = param.DateTime;
 			entity.Description = param.Description;
-			entity.State = entries.Count >= 2 && baseTotal == 0m ? TransactionState.Confirmed : TransactionState.Draft;
+			entity.State = entries.Count >= 2 && baseTotal == 0m ? param.State : TransactionState.Draft;
 			entity.Entries = entries;
 			if (entityId.HasValue)
 			{

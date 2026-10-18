@@ -10,7 +10,7 @@ namespace Dehb.WinUi.UiSettingsTypes;
 /// Their field layout uses the available client width and configured margins.
 /// This model performs no file access or window management.
 /// </summary>
-public sealed class UiEditorPopupSettings
+public class UiEditorPopupSettings
 {
 	public required int Width { get; init; }
 	public required int Height { get; init; }

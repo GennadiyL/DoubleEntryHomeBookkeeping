@@ -142,7 +142,7 @@ internal sealed partial class CatalogView : UserControl
 		{
 			Dictionary<string, double> columns = ((App)Application.Current).UiSettings.AccountTreeGrid.Columns;
 			Tree.SetFixedColumnWidths(groupsOnly
-				? [columns["main"], columns["description"], columns["star"]]
+				? [columns["main"], columns["description"] + columns["currency"], columns["star"]]
 				: [columns["main"], columns["description"], columns["currency"], columns["star"]]);
 		}
 		else

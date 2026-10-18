@@ -69,8 +69,18 @@ public static class UiSettingsLoader
 		ValidateColor(settings.Appearance.BackgroundStartColor, "appearance.backgroundStartColor");
 		ValidateColor(settings.Appearance.BackgroundEndColor, "appearance.backgroundEndColor");
 		ValidateColor(settings.Appearance.SelectionBorderColor, "appearance.selectionBorderColor");
+		ValidatePopup(settings.TransactionEditor, "transactionEditor");
+		ValidateSize(settings.TransactionEditor.AmountWidth, "transactionEditor.amountWidth");
+		ValidateSize(settings.TransactionEditor.CurrencyWidth, "transactionEditor.currencyWidth");
+		ValidateSize(settings.TransactionEditor.RateWidth, "transactionEditor.rateWidth");
+		ValidateSize(settings.TransactionEditor.BaseAmountWidth, "transactionEditor.baseAmountWidth");
+		ValidatePopup(settings.TemplateEditor, "templateEditor");
+		ValidateSize(settings.TemplateEditor.AmountWidth, "templateEditor.amountWidth");
+		ValidateSize(settings.TemplateEditor.CurrencyWidth, "templateEditor.currencyWidth");
 		ValidatePopup(settings.AccountEditor, "accountEditor");
 		ValidatePopup(settings.ElementEditor, "elementEditor");
+		ValidatePopup(settings.ElementTreeGridPopup, "elementTreeGridPopup");
+		ValidatePopup(settings.GroupTreeGridPopup, "groupTreeGridPopup");
 		ValidatePopup(settings.GroupEditor, "groupEditor");
 		ValidatePopup(settings.AddCurrencyEditor, "addCurrencyEditor");
 		ValidatePopup(settings.EditCurrencyEditor, "editCurrencyEditor");
