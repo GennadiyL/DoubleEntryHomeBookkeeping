@@ -22,22 +22,6 @@ namespace Dehb.WinUi.Dialogs;
 /// </summary>
 internal static partial class EditorToolTips
 {
-	private static int _traceLines;
-	private static readonly string TracePath = Path.Combine(AppContext.BaseDirectory, "Dehb-popup-hints.log");
-
-	private static void Trace(string message)
-	{
-		if (_traceLines >= 300) { return; }
-		try
-		{
-			string line = $"{DateTimeOffset.Now:O} {message}{Environment.NewLine}";
-			if (_traceLines++ == 0) { File.WriteAllText(TracePath, line); }
-			else { File.AppendAllText(TracePath, line); }
-		}
-		catch (IOException) { }
-		catch (UnauthorizedAccessException) { }
-	}
-
 	private static readonly DependencyProperty HintProperty = DependencyProperty.RegisterAttached(
 		"Hint", typeof(string), typeof(EditorToolTips), new PropertyMetadata(null));
 
@@ -77,7 +61,6 @@ internal static partial class EditorToolTips
 		IntPtr handle = WinRT.Interop.WindowNative.GetWindowHandle(window);
 
 		bool CanShow() => GetForegroundWindow() == handle && isActive();
-		Trace($"Attach window={window.Title} handle={handle}");
 
 		void Close()
 		{
@@ -89,11 +72,9 @@ internal static partial class EditorToolTips
 
 		timer.Tick += (_, _) =>
 		{
-			Trace($"Timer window={window.Title} target={target?.GetType().Name} loaded={target?.IsLoaded} foreground={GetForegroundWindow()} handle={handle} top={isActive()} layer={layer.ActualWidth}x{layer.ActualHeight}");
 			if (target is not { IsLoaded: true, XamlRoot: not null } || !CanShow() ||
 				VisualTreeHelper.GetOpenPopupsForXamlRoot(root.XamlRoot).Any(popup => popup.Child is not ToolTip && (popup.IsLightDismissEnabled || popup.Child is ContentDialog)))
 			{
-				Trace($"Blocked window={window.Title} popups={string.Join(",", root.XamlRoot is null ? [] : VisualTreeHelper.GetOpenPopupsForXamlRoot(root.XamlRoot).Select(popup => $"{popup.Child?.GetType().Name}:{popup.IsLightDismissEnabled}"))}");
 				Close();
 				return;
 			}
@@ -102,7 +83,6 @@ internal static partial class EditorToolTips
 			string? label = (content is ToolTip configured ? configured.Content : content) as string;
 			if (string.IsNullOrEmpty(label) || layer.ActualWidth <= 0 || layer.ActualHeight <= 0)
 			{
-				Trace($"No hint window={window.Title} contentType={content?.GetType().Name} label={label}");
 				return;
 			}
 			bool dark = root.ActualTheme == ElementTheme.Dark;
@@ -119,7 +99,6 @@ internal static partial class EditorToolTips
 			if (y + hint.DesiredSize.Height > layer.ActualHeight) { y = pointer.Y - hint.DesiredSize.Height - 8; }
 			Canvas.SetLeft(hint, x);
 			Canvas.SetTop(hint, Math.Max(0, y));
-			Trace($"Show window={window.Title} label={label} position={x},{y} size={hint.DesiredSize.Width}x{hint.DesiredSize.Height}");
 		};
 
 		root.AddHandler(UIElement.PointerMovedEvent, new PointerEventHandler((_, args) =>
@@ -148,7 +127,6 @@ internal static partial class EditorToolTips
 				if (candidate is not null && hint.Visibility != Visibility.Visible && !timer.IsRunning && CanShow()) { timer.Start(); }
 				return;
 			}
-			Trace($"Hover window={window.Title} source={args.OriginalSource?.GetType().Name} button={candidate?.GetType().Name} hint={(candidate is null ? null : GetHint(candidate))} canShow={CanShow()}");
 			Close();
 			if (candidate is not null && CanShow())
 			{
@@ -160,7 +138,6 @@ internal static partial class EditorToolTips
 		{
 			if (!GetCursorPos(out NativePoint position)) { return; }
 			IntPtr pointerWindow = GetAncestor(WindowFromPoint(position), 2);
-			Trace($"PointerExit window={window.Title} pointerWindow={pointerWindow} handle={handle} dismiss={pointerWindow != handle}");
 			if (pointerWindow != handle) { Close(); }
 		};
 		root.AddHandler(UIElement.PointerPressedEvent, new PointerEventHandler((_, _) => Close()), true);
@@ -168,7 +145,6 @@ internal static partial class EditorToolTips
 		root.Unloaded += (_, _) => Close();
 		window.Activated += (_, args) =>
 		{
-			Trace($"Activation window={window.Title} state={args.WindowActivationState}");
 			if (args.WindowActivationState == WindowActivationState.Deactivated) { Close(); }
 		};
 		window.Closed += (_, _) => Close();

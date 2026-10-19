@@ -23,7 +23,7 @@ namespace WinUi.Controls.TreeGridControl;
 /// Selection remains independent of optional three-state checkboxes.
 /// Row activation and user changes are exposed to the hosting application.
 /// Domain validation and persistence belong to that host.
-/// Header and row widths share proportional or fixed pixel column definitions.
+/// Header and row widths share host-configured fixed pixel column definitions.
 /// Public visibility permits construction from application XAML.
 /// </summary>
 public sealed partial class TreeGrid : UserControl
@@ -76,11 +76,8 @@ public sealed partial class TreeGrid : UserControl
 	private bool _changingProjection;
 	private bool _attached;
 	private MenuFlyout? _contextMenu;
-	private double[]? _columnWidths;
 	private double[]? _fixedColumnWidths;
-	private readonly Style _defaultRowStyle;
 	private readonly Style _fixedRowStyle;
-	public event EventHandler<TreeGridColumnWidthsEventArgs>? ColumnWidthsApplying;
 	private TreeGridNode? _selectionBeforeRefresh;
 
 	public bool IsSearchEnabled { get => (bool)GetValue(IsSearchEnabledProperty); set => SetValue(IsSearchEnabledProperty, value); }
@@ -97,7 +94,6 @@ public sealed partial class TreeGrid : UserControl
 	public bool ShowCheckboxes { get => (bool)GetValue(ShowCheckboxesProperty); set => SetValue(ShowCheckboxesProperty, value); }
 	public TreeGridNode? SelectedNode { get => (TreeGridNode?)GetValue(SelectedNodeProperty); set => SetValue(SelectedNodeProperty, value); }
 	public string NameHeader { get => (string)GetValue(NameHeaderProperty); set => SetValue(NameHeaderProperty, value); }
-	public Style? DialogCancelButtonStyle { get; set; }
 	public ObservableCollection<TreeGridColumn> Columns { get; } = new();
 	public event EventHandler<TreeGridNode>? RowActivated;
 	public event EventHandler<TreeGridContextMenuEventArgs>? ContextMenuRequested;
@@ -109,8 +105,7 @@ public sealed partial class TreeGrid : UserControl
 	public TreeGrid()
 	{
 		InitializeComponent();
-		_defaultRowStyle = RowsList.ItemContainerStyle;
-		_fixedRowStyle = new Style(typeof(ListViewItem)) { BasedOn = _defaultRowStyle };
+		_fixedRowStyle = new Style(typeof(ListViewItem)) { BasedOn = RowsList.ItemContainerStyle };
 		_fixedRowStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
 		_fixedRowStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
 		RegisterPropertyChangedCallback(FontSizeProperty, (_, _) => RefreshLayout());
@@ -121,7 +116,6 @@ public sealed partial class TreeGrid : UserControl
 		ItemsSource = new ObservableCollection<TreeGridNode>();
 		Columns.CollectionChanged += (_, _) =>
 		{
-			_columnWidths = null;
 			if (_fixedColumnWidths is not null)
 			{
 				_fixedColumnWidths = null;
@@ -544,27 +538,6 @@ public sealed partial class TreeGrid : UserControl
 		return null;
 	}
 
-	public IReadOnlyList<double> ColumnWidths => Array.AsReadOnly(GetColumnWidths().ToArray());
-
-	private double[] GetColumnWidths() => _fixedColumnWidths ?? (_columnWidths ??= TreeGridColumnWidths.Defaults(Columns.Count + 2));
-
-	public void SetColumnWidths(IEnumerable<double> widths)
-	{
-		double[] values = widths.ToArray();
-		string? error = TreeGridColumnWidths.Validate(values, Columns.Count + 2);
-		if (error is not null)
-		{
-			throw new ArgumentException(error, nameof(widths));
-		}
-		if (_fixedColumnWidths is not null)
-		{
-			_fixedColumnWidths = null;
-			Width = double.NaN;
-		}
-		_columnWidths = values;
-		RefreshLayout();
-	}
-
 	public void SetFixedColumnWidths(IEnumerable<double> widths)
 	{
 		double[] values = widths.ToArray();
@@ -577,44 +550,15 @@ public sealed partial class TreeGrid : UserControl
 		RefreshLayout();
 	}
 
-	private async void OnColumnsClick(object sender, RoutedEventArgs e)
-	{
-		string[] headers = new[] { NameHeader }.Concat(Columns.Select(column => column.Header)).Append("Star").ToArray();
-		TreeGridColumnsDialog dialog = new(headers, GetColumnWidths().ToArray(), values =>
-		{
-			try
-			{
-				TreeGridColumnWidthsEventArgs request = new(values);
-				ColumnWidthsApplying?.Invoke(this, request);
-				if (!string.IsNullOrEmpty(request.ErrorMessage))
-				{
-					return request.ErrorMessage;
-				}
-				SetColumnWidths(values);
-				return null;
-			}
-			catch (Exception exception)
-			{
-				return $"Could not apply widths: {exception.Message}";
-			}
-		}) { XamlRoot = XamlRoot };
-		if (DialogCancelButtonStyle is not null)
-		{
-			dialog.CloseButtonStyle = DialogCancelButtonStyle;
-		}
-		await dialog.ShowAsync();
-	}
-
 	internal void ConfigureColumns(Grid grid)
 	{
 		grid.ColumnDefinitions.Clear();
-		double[] widths = GetColumnWidths();
-		for (int i = 0; i < widths.Length; i++)
+		for (int i = 0; i < Columns.Count + 2; i++)
 		{
 			grid.ColumnDefinitions.Add(new ColumnDefinition
 			{
-				Width = new GridLength(widths[i], _fixedColumnWidths is null ? GridUnitType.Star : GridUnitType.Pixel),
-				MinWidth = _fixedColumnWidths is null ? TreeGridColumnWidths.MinimumPixels(i, widths.Length) : widths[i]
+				Width = _fixedColumnWidths is null ? GridLength.Auto : new GridLength(_fixedColumnWidths[i]),
+				MinWidth = _fixedColumnWidths?[i] ?? 0
 			});
 		}
 	}
@@ -694,15 +638,13 @@ public sealed partial class TreeGrid : UserControl
 			AddHeader(Columns[i].Header, i + 1, HorizontalAlignment.Center, FontSize);
 		}
 		AddHeader("★", Columns.Count + 1, HorizontalAlignment.Center, 24);
-		ColumnsButton.Visibility = _fixedColumnWidths is null ? Visibility.Visible : Visibility.Collapsed;
-		bool fixedColumns = _fixedColumnWidths is not null;
-		HeaderGrid.Margin = ToolbarGrid.Margin = SearchPanel.Margin = fixedColumns ? new Thickness(0, 0, 20, 0) : new Thickness(8, 0, 28, 0);
-		Style rowStyle = new(typeof(ListViewItem)) { BasedOn = fixedColumns ? _fixedRowStyle : _defaultRowStyle };
+		HeaderGrid.Margin = ToolbarGrid.Margin = SearchPanel.Margin = new Thickness(0, 0, 20, 0);
+		Style rowStyle = new(typeof(ListViewItem)) { BasedOn = _fixedRowStyle };
 		rowStyle.Setters.Add(new Setter(FrameworkElement.HeightProperty, RowHeight));
 		rowStyle.Setters.Add(new Setter(FrameworkElement.MinHeightProperty, RowHeight));
 		RowsList.ItemContainerStyle = rowStyle;
 		ScrollViewer.SetVerticalScrollBarVisibility(RowsList, ScrollBarVisibility.Visible);
-		MinWidth = fixedColumns ? _fixedColumnWidths!.Sum() + 20 : TreeGridColumnWidths.MinimumRowWidth(Columns.Count + 2) + 36;
+		MinWidth = _fixedColumnWidths is null ? 0 : _fixedColumnWidths.Sum() + 20;
 		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 

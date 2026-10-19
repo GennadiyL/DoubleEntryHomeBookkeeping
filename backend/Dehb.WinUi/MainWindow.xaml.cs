@@ -75,7 +75,7 @@ public sealed partial class MainWindow : IDisposable
 			AddSidebarItem(navigation, "Help", true, async () =>
 			{
 				UiEditorPopupSettings settings = ((App)Application.Current).UiSettings.HelpPopup;
-				EditorWindow help = new(this, _session.Coordinator, "Help", "Help", new SizeInt32(settings.Width, settings.Height));
+				using EditorWindow help = new(this, _session.Coordinator, "Help", "Help", new SizeInt32(settings.Width, settings.Height));
 				Button guide = Ui.Button("User guide", () =>
 				{
 					string path = Path.Combine(AppContext.BaseDirectory, "Assets", "UserGuide.md");

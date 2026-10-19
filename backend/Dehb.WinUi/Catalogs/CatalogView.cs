@@ -26,7 +26,7 @@ internal sealed partial class CatalogView : UserControl
 	private readonly StackPanel _commands = Ui.Row();
 	private readonly Dictionary<Guid, TreeGridNode> _nodes = new();
 	private TreeGridNode? _combineSource;
-	public TreeGrid Tree { get; } = new() { FontSize = Ui.FontSize, RowHeight = Ui.RowHeight, SelectionBorderBrush = Ui.SelectionBorder, SelectionBorderThickness = Ui.SelectionBorderThickness, DialogCancelButtonStyle = Ui.DialogButtonStyle };
+	public TreeGrid Tree { get; } = new() { FontSize = Ui.FontSize, RowHeight = Ui.RowHeight, SelectionBorderBrush = Ui.SelectionBorder, SelectionBorderThickness = Ui.SelectionBorderThickness };
 	public bool Ready { get; private set; }
 	public event Action<TreeGridNode>? Accepted;
 

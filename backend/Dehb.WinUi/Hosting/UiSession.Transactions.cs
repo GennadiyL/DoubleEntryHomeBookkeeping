@@ -24,7 +24,7 @@ internal sealed partial class UiSession
 		TransactionInfo? existing = id.HasValue ? Host.Call<ITransactionService, TransactionInfo>(s => s.GetById(id.Value)) : null;
 		DateTime original = existing?.DateTime.ToLocalTime() ?? prepared?.DateTime.ToLocalTime() ?? DateTime.Now;
 		UiSettingsTypes.UiTransactionEditorSettings popup = ((App)Application.Current).UiSettings.TransactionEditor;
-		EditorWindow window = new(owner, Coordinator, "Transaction.Editor", id.HasValue ? "Edit transaction" : "New transaction", new Windows.Graphics.SizeInt32(popup.Width, popup.Height));
+		using EditorWindow window = new(owner, Coordinator, "Transaction.Editor", id.HasValue ? "Edit transaction" : "New transaction", new Windows.Graphics.SizeInt32(popup.Width, popup.Height));
 		CalendarDatePicker date = new() { Width = popup.DateWidth, MinWidth = 0, Date = new DateTimeOffset(original.Date) };
 		TimePicker time = new() { Width = popup.TimeWidth, MinWidth = 0, ClockIdentifier = "24HourClock", Time = new TimeSpan(original.Hour, original.Minute, 0) };
 		time.Loaded += (_, _) =>
@@ -291,7 +291,7 @@ internal sealed partial class UiSession
 	{
 		TemplateInfo? old = id.HasValue ? Host.Call<ITemplateService, TemplateInfo>(s => s.GetById(id.Value)) : null;
 		UiSettingsTypes.UiTemplateEditorSettings popup = ((App)Application.Current).UiSettings.TemplateEditor;
-		EditorWindow window = new(owner, Coordinator, "Templates.ElementEditor", "Template", new Windows.Graphics.SizeInt32(popup.Width, popup.Height));
+		using EditorWindow window = new(owner, Coordinator, "Templates.ElementEditor", "Template", new Windows.Graphics.SizeInt32(popup.Width, popup.Height));
 		TextBox name = new() { Header = "Name", Text = old?.Name ?? "" };
 		ReferenceField group = new(this, window, "Templates", true, false, old?.GroupId ?? groupId, false, true);
 		group.AddShortcuts(window, VirtualKey.G, "G", "Group");

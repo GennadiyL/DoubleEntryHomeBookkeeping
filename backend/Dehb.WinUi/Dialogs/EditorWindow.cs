@@ -15,10 +15,12 @@ using Windows.Graphics;
 
 namespace Dehb.WinUi.Dialogs;
 
-internal sealed partial class EditorWindow : Window
+internal sealed partial class EditorWindow : Window, IDisposable
 {
 	private readonly Window _owner;
 	private readonly PopupCoordinator _coordinator;
+	private readonly string _key;
+	private bool _registered;
 	private readonly TaskCompletionSource<bool> _closed = new();
 	private bool _closing;
 	private bool _checking;
@@ -38,6 +40,7 @@ internal sealed partial class EditorWindow : Window
 
 		_owner = owner;
 		_coordinator = coordinator;
+		_key = key;
 		Title = title;
 		SetOwner(owner);
 		Grid grid = new() { Background = Ui.Background, Padding = fixedSize.HasValue ? new Thickness(24, 16, 24, 16) : new Thickness(20), RowSpacing = 12 };
@@ -126,16 +129,21 @@ internal sealed partial class EditorWindow : Window
 		};
 		Closed += (_, _) =>
 		{
-			BeforeClose?.Invoke();
-			_coordinator.Pop(this);
-			EnableWindow(WinRT.Interop.WindowNative.GetWindowHandle(_owner), true);
-			_owner.Activate();
-			_closed.TrySetResult(_saved);
+			_closing = true;
+			try { BeforeClose?.Invoke(); }
+			finally { Cleanup(); }
 		};
-		coordinator.Push(key, this);
 	}
 	public Task<bool> Show()
 	{
+		if (_closing || _registered)
+		{
+			throw new InvalidOperationException("This window has already been shown or closed.");
+		}
+		if (_coordinator.IsActive(_key))
+		{
+			throw new InvalidOperationException("This catalog window is already open.");
+		}
 		Window main = _owner;
 		while (main is EditorWindow editor)
 		{
@@ -150,9 +158,46 @@ internal sealed partial class EditorWindow : Window
 		AppWindow.Move(new PointInt32(
 			Math.Clamp(x, workArea.X, Math.Max(workArea.X, workArea.X + workArea.Width - dialogSize.Width)),
 			Math.Clamp(y, workArea.Y, Math.Max(workArea.Y, workArea.Y + workArea.Height - dialogSize.Height))));
-		EnableWindow(WinRT.Interop.WindowNative.GetWindowHandle(_owner), false);
-		Activate();
+		_coordinator.Push(_key, this);
+		_registered = true;
+		try
+		{
+			EnableWindow(WinRT.Interop.WindowNative.GetWindowHandle(_owner), false);
+			Activate();
+		}
+		catch
+		{
+			Dispose();
+			throw;
+		}
 		return _closed.Task;
+	}
+	public void Dispose()
+	{
+		try
+		{
+			if (!_closing) { Finish(false); }
+		}
+		finally
+		{
+			Cleanup();
+			GC.SuppressFinalize(this);
+		}
+	}
+	private void Cleanup()
+	{
+		_coordinator.Release(this);
+		try
+		{
+			if (_registered)
+			{
+				_registered = false;
+				_coordinator.Pop(this);
+				EnableWindow(WinRT.Interop.WindowNative.GetWindowHandle(_owner), true);
+				_owner.Activate();
+			}
+		}
+		finally { _closed.TrySetResult(_saved); }
 	}
 	public void SetFieldContent(UIElement content)
 	{

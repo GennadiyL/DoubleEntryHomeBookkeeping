@@ -36,7 +36,7 @@ internal sealed partial class UiSession : IDisposable
 		UiSettings settings = ((App)Application.Current).UiSettings;
 		UiEditorPopupSettings popup = groups ? settings.GroupTreeGridPopup : settings.ElementTreeGridPopup;
 		Windows.Graphics.SizeInt32 fixedSize = new(popup.Width, popup.Height);
-		EditorWindow window = new(owner, Coordinator, key, "Select " + catalog, fixedSize);
+		using EditorWindow window = new(owner, Coordinator, key, "Select " + catalog, fixedSize);
 		CatalogView view = new(this, window, catalog, groups, readOnly, true);
 		window.SetFieldContent(view);
 		Guid? result = null;
@@ -99,7 +99,7 @@ internal sealed partial class UiSession : IDisposable
 			var popup = group ? settings.GroupEditor : catalog == "Accounts" ? settings.AccountEditor : settings.ElementEditor;
 			fixedSize = new Windows.Graphics.SizeInt32(popup.Width, popup.Height);
 		}
-		EditorWindow window = new(owner, Coordinator, catalog + (group ? ".GroupEditor" : ".ElementEditor"), (id.HasValue ? "Edit " : "Add ") + (group ? "group" : catalog), fixedSize);
+		using EditorWindow window = new(owner, Coordinator, catalog + (group ? ".GroupEditor" : ".ElementEditor"), (id.HasValue ? "Edit " : "Add ") + (group ? "group" : catalog), fixedSize);
 		TextBox name = new() { Header = "Name", Text = oldGroup?.Name ?? oldElement?.Name ?? "" };
 		TextBox description = new() { Header = "Description", Text = oldGroup?.Description ?? oldElement?.Description ?? "" };
 		CheckBox favorite = new() { Content = "Favorite", IsChecked = oldGroup?.IsFavorite ?? oldElement?.IsFavorite ?? false };

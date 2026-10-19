@@ -2,6 +2,8 @@
 
 ## Document Control and BRD Reference
 
+- Revision 0.233, 2026-10-20: reconcile the individually confirmed Windows UI decisions for fixed popups, keyboard commands/focus, command-only tooltips, readonly/error appearance, Assets settings and the Markdown guide. Source: requesting user, this conversation, “Fix TRD”. This is documentation alignment only; no full BRD/TRD approval or business-contract changes are inferred.
+
 - Revision 0.232, 2026-10-08: define Business-only WinUI integration against an existing Local database, defer other domains, and record the accepted coordinator account-reference registry. No complete-document approval inferred.
 
 - Revision 0.231, 2026-10-08: record accepted report JSON, post-date-save calculation and CSV-export failure outcomes, aligned with BRD 0.217. No full approval or application implementation inferred.
@@ -22,8 +24,8 @@
 
 - Controlled revision 0.223, 2026-10-08: requesting user explicitly requested the four-rule cleanup, aligned to BRD 0.217. Local is the default conflict priority; Currency has no Description while CurrencyRate retains it; AmountPrecision and RatePrecision govern calculation and display; Drafts have no separate entry-count limit, but every present entry must be valid and have an Account. Confirmed state still requires at least two valid entries and exact balance. No complete-document approval is inferred.
 
-- Version: **0.232**. Status: **Draft**. Date: **2026-10-08**.
-- Business source: [BRD 0.218](BRD.md), Draft dated 2026-10-08, and the individually confirmed UI/business decisions in this conversation. Prior full-version approval covers BRD 0.32 only, requesting user, 2026-09-27. No approval of complete BRD 0.218 or TRD 0.232 is inferred.
+- Version: **0.233**. Status: **Draft**. Date: **2026-10-20**.
+- Business source: [BRD 0.218](BRD.md), Draft dated 2026-10-08, and the individually confirmed UI/business decisions in this conversation. Prior full-version approval covers BRD 0.32 only, requesting user, 2026-09-27. No approval of complete BRD 0.218 or TRD 0.233 is inferred.
 - Scope: core bookkeeping, synchronization, first use and Windows UI integration. Owner/intended approver: requesting user.
 - Revision basis: replaces legacy TRD 0.1 while retaining its parent-reference constraint. Discovery sources: [core](001-personal-bookkeeping/discovery.md), [synchronization](002-synchronization/discovery.md), [first use](003-first-using/discovery.md). Later BRD decisions supersede their historical statements.
 - Naming: BRD uses Business Capabilities `BC-###`; this TRD uses Detailed Use Cases `UC-###-##`, linked to `OP-###` under `SVC-###`. This is the user-selected convention, replacing the skill's default BRD UC convention.
@@ -35,26 +37,282 @@
 
 Source: the requesting user's current decision and explicit implementation request; aligned with BRD Portable UI customization. Supersedes earlier profile-based appearance storage, Columns-popup persistence and default-on-error behavior.
 
-- Keep appsettings.json for application configuration. Resolve uisettings.json and uisettings.default.json relative to AppContext.BaseDirectory, not the process working directory or Windows profile.
+- Keep appsettings.json for application configuration. Store uisettings.json and uisettings.default.json in Assets in the project and build/publish output. Resolve Assets/uisettings.json and Assets/uisettings.default.json relative to AppContext.BaseDirectory, not the process working directory or Windows profile.
 - Only uisettings.json supplies appearance values. uisettings.default.json is the original distribution copy for manual restoration and is never a normal-startup fallback.
-- Deserialize once at startup into WinUI UiSettings before creating the normal workspace or accessing the bookkeeping database. Expose the validated object to subsequent UI consumers. Do not reload or write the active file automatically.
-- Main-window settings: mainWindow contains sideBarBackColor (RGB #RRGGBB; default #BDD3FA), sideBarFontSize (17), sideBarItemHeight (45), width (1400) and minHeight (820). Dimensions are positive finite logical pixels. The sidebar uses its own solid background and sideBarFontSize for headings and items. appearance.fontSize controls text in all application windows and dialogs, including grid headers, rows, inputs, menus and tooltips; icon glyph sizes remain independent. Enforce the configured fixed width and minimum height when restoring geometry and resizing, accounting for Windows DPI scaling. Users may resize only height; maximizing uses the available screen height while retaining the configured width.
+- Deserialize once at startup into WinUI UiSettings before creating the normal workspace or accessing the bookkeeping database. UiSettings is a plain data model; UiSettingsLoader owns deserialization and validation and may be static. Expose the validated object to subsequent UI consumers. Do not reload or write the active file automatically.
+- Main-window settings: mainWindow contains sideBarBackColor (RGB #RRGGBB; default #BDD3FA), sideBarFontSize (17), sideBarItemHeight, width and minHeight. Dimensions are positive finite logical pixels. The sidebar uses its own solid background and sideBarFontSize for headings and items. appearance.fontSize controls text in all application windows and dialogs, including grid headers, rows, inputs, menus and tooltips; icon glyph sizes remain independent. Enforce the configured fixed width and minimum height when restoring geometry and resizing, accounting for Windows DPI scaling. Users may resize only height; maximizing uses the monitor work area, excluding the taskbar, while retaining the configured width.
 - Transaction add/edit popups use transactionEditor (1120 x 800) with the Template editor's fixed modal behavior, padding, centered entry headers and independent persistent entries scrollbar. Date and Time controls use transactionEditor.dateWidth and transactionEditor.timeWidth, each defaulting to 120. Entry widths come from amountWidth (140), currencyWidth (100), rateWidth (140, excluding its square restore button) and baseAmountWidth (100); Account fills the remaining space with a read-only textbox and ellipsis picker. Restore rate uses a circular-arrow symbol; removal uses a black trash icon. Add balancing entry sits immediately left of Add entry in the right side of the Save/Cancel footer.
 - Element-selection popups use elementTreeGridPopup (1120 x 800) with the same fixed modal behavior and layout as group-selection popups. This applies to all shared element pickers, including Account editor Category, Correspondent and Project selectors. The tree fills the body without an outer dialog scrollbar.
-- Group-selection popups use groupTreeGridPopup (1120 x 768): fixed modal windows centered on the main window, close-only title bar, shared colors/fonts/buttons and 24px side padding. The tree fills the available body area and retains its own scrolling; there is no outer dialog scrollbar.
-- Correspondent, Category and Project add/edit popups use elementEditor (520 x 400), with the same fixed-window behavior, field spacing and read-only group textbox plus square ellipsis picker as groupEditor. Account add/edit popups use accountEditor (520 x 720) with the same fixed-window behavior and spacing. Category, Correspondent and Project selectors use read-only textboxes followed by square x (clear) and ... (choose) buttons; both buttons match the textbox height. Template add/edit popups use templateEditor (1120 x 800), with fixed modal sizing, close-only title bar, standard spacing and no outer scrollbar. Group and entry Account selectors use read-only textboxes with square ellipsis buttons. Entries occupy the remaining body height with an always-visible vertical scrollbar disabled when no scrolling is needed. Entry Amount uses templateEditor.amountWidth (default 160), Currency uses templateEditor.currencyWidth (default 120), and Account takes the remaining row width after padding, spacing, scrollbar and buttons, and a black trash-icon button removes the entry at the right. Add entry is right-aligned in the Save/Cancel footer.
+- Group-selection popups use groupTreeGridPopup: fixed modal windows centered on the main window, close-only title bar, shared colors/fonts/buttons and 24px side padding. The tree fills the available body area and retains its own scrolling; there is no outer dialog scrollbar.
+- Correspondent, Category and Project add/edit popups use elementEditor (520 x 400), with the same fixed-window behavior, field spacing and read-only group textbox plus square ellipsis picker as groupEditor. Account add/edit popups use accountEditor (520 x 720) with the same fixed-window behavior and spacing. Category, Correspondent and Project selectors use read-only textboxes followed by square x (clear) and ... (choose) buttons; both buttons match the textbox height. Template add/edit popups use templateEditor (1120 x 800), with fixed modal sizing, close-only title bar, standard spacing and no outer scrollbar. Group and entry Account selectors use read-only textboxes with square ellipsis buttons. Entries occupy the remaining body height with independent vertical scrolling. Reserve scrollbar space so entry widths and positions never change when scrolling becomes necessary or unnecessary; either enable/disable or visible/hidden scrollbar presentation is acceptable when that space stays reserved. Entry Amount uses templateEditor.amountWidth (default 160), Currency uses templateEditor.currencyWidth (default 120), and Account takes the remaining row width after padding, spacing, scrollbar and buttons, and a black trash-icon button removes the entry at the right. Add entry is right-aligned in the Save/Cancel footer.
 - All catalog group editors use groupEditor (520 x 400) with fixed size, only a close title-bar button and no content scrollbars. Fields use 24-pixel side margins and 12-pixel label/control and inter-field gaps. Parent selection uses a read-only textbox plus a square ellipsis button whose dimensions follow the textbox height.
-- Editor popup settings: addCurrencyEditor (360 x 384), editCurrencyEditor (360 x 256), currencyRateEditor (360 x 400, shared by Add and Edit), deleteCurrencyRateEditor (360 x 400). Each contains required positive integer width and height in logical pixels. These windows have fixed size, only a close title-bar button, no content scrollbars, and vertically stacked edit controls stretched between 24-pixel left/right client margins.
+- Editor popup settings: addCurrencyEditor, editCurrencyEditor (360 x 256), currencyRateEditor (360 x 400, shared by Add and Edit), deleteCurrencyRateEditor. Each contains required positive integer width and height in logical pixels. These windows have fixed size, only a close title-bar button, no content scrollbars, and vertically stacked edit controls stretched between 24-pixel left/right client margins.
 - Correspondents, Categories, Projects and Templates share catalogTreeGrid.columns: main (480), description (512), star (48), in logical pixels. Apply fixed widths in main and picker views; the JSON settings replace saved percentage widths.
-- Accounts tree uses accountTreeGrid.columns: main (600), description (560), currency (80), star (60), in logical pixels. Apply fixed widths in main and picker views; group-only pickers omit the currency column. These views use the JSON settings instead of saved percentage widths.
-- Initial JSON shape: version: int32 (1); appearance containing buttonWidth (64) and buttonHeight (32), applied to Save and Cancel buttons in application dialogs, fontSize, rowHeight (positive finite logical-pixel numbers), backgroundStartColor, backgroundEndColor, selectionBorderColor (RGB #RRGGBB strings); currencyGrid.columns containing named widths code, name, symbol, star; currencyRateGrid.columns containing date, rate, description.
-- Apply backgroundStartColor and backgroundEndColor as a diagonal gradient to the main window and application dialogs. Equal colors produce a solid background. Apply selectionBorderColor to tree/list selection outlines and list focus borders. Appearance changes take effect after restart.
+- Accounts tree uses accountTreeGrid.columns: main, description, currency and star, in logical pixels. Apply configured fixed widths in main and picker views. Group-only pickers omit Currency and add its configured width to Description, keeping the total tree width unchanged. These views use the JSON settings instead of saved percentage widths.
+- Required JSON shape: version: int32 (1); appearance containing buttonWidth (64) and buttonHeight (32), applied to Save and Cancel buttons in application dialogs, fontSize, rowHeight (positive finite logical-pixel numbers), backgroundStartColor, backgroundEndColor, selectionBorderColor, focusBorderColor, readonlyColor and errorColor (RGB #RRGGBB strings), selectionBorderThickness and focusBorderThickness (positive finite logical pixels); currencyGrid.columns containing named widths code, name, symbol, star; currencyRateGrid.columns containing date, rate, description.
+- Apply backgroundStartColor and backgroundEndColor as a diagonal gradient to the main window and application dialogs. Equal colors produce a solid background. Apply selectionBorderColor and selectionBorderThickness to row selection outlines; use focusBorderColor and focusBorderThickness for keyboard focus across controls, including lists, trees, textboxes, comboboxes, DecimalBox, date and time controls. Appearance changes take effect after restart.
 - All initial members are required. Reject unknown or duplicate properties, null objects, incorrect types, unsupported versions, invalid colors and nonpositive/nonfinite widths. Row height must not be smaller than font size. This structural check does not replace control-specific minimum layout validation when applying settings.
 - Report the full active file path and offending property or JSON parser location where available. Show an error-only native startup message and stop launching the workspace. The message may explain manual replacement from the distribution copy; no recovery buttons or automatic fallback in version one.
 - Fresh build/publish output receives both files. Existing active files are preserved; the shipped default copy can be refreshed. Deployment updates must likewise preserve active user settings.
 - Appearance settings are not database entities, Business configuration, API DTOs or synchronization payloads. Window geometry remains independent runtime state.
-- Initial implementation scope requested in this turn: files, typed deserialization, validation and startup loading. Replacing existing hard-coded control values and legacy per-view column persistence with consumers of this object remains separate UI integration work; those old stores must not compete once integration is complete.
+- All implemented UI consumers use the validated settings, including row height and font size in grids, trees, windows and dialogs. Do not maintain competing per-view width or appearance stores. The current bundled defaults are recorded below separately from the configurable behavior contract.
 
+
+### Windows UI interaction contract — reconciled 2026-10-20
+
+Source: requesting user's explicit requests and confirmations in this conversation, including the present instruction to fix the TRD. Applies to the current Business-only Windows UI. This section supersedes conflicting older UI prose and historical decision-log entries; it does not change persistent models, DTOs, business validation, or deferred Reports/Settings/Synchronization scope. The consolidated document remains Draft.
+
+#### Popup ownership, layout and selection
+
+- Only the top modal is interactive. Each nested popup is owned by its parent; closing it restores the parent and keyboard focus. Returning through the application's taskbar icon after activating another application must bring the top modal above its blocked owners. Popups have no independent taskbar entries.
+- Current editors, tree selectors and Help use configured fixed sizes, only the Close title-bar button, and no outer dialog scrollbar. Tree/list selectors and entry panels scroll internally. Group, element, account and currency forms use 24 logical-pixel side margins, controls stretched to the available width, 12-pixel label/control spacing and consistent inter-field spacing.
+- Save and Cancel use appearance.buttonWidth/buttonHeight and remain in the footer. Template/Transaction Add entry sits at the bottom right; Transaction Add balancing entry is immediately to its left. Account Restore name is right-aligned on the Save/Cancel line.
+- Reference selection uses an enabled readonly textbox and a square ellipsis button matching its height. Optional Account classifications also have a square clear button. Users can select/copy reference text but cannot type a replacement into it.
+- A selection popup opens with keyboard focus in its treegrid. For an existing reference, select that item, expand its ancestor path and scroll it into view. If no current reference can be selected, select the first available row; keep acceptance disabled for an ineligible group/item. Empty trees have no selection.
+- Main grids/treegrids select their top row on initial load when nonempty. Refresh can retain an existing valid selection. Currency and rate lists follow the same rule. Ledger selection uses the shared configurable appearance.
+- Grid/tree scrolling must preserve column alignment and control positions. Entry-panel scrollbar visibility must not alter any entry's width or horizontal position. No outer scrollbar may overlap the header, search box, entry fields or footer.
+- Help uses helpPopup (360 x 256), with all controls and multiline text centered horizontally. User guide is enabled and opens Assets/UserGuide.md in Notepad. Include the Markdown file in build/publish output; show an error in Help if opening fails. PDF generation is deferred.
+
+#### Appearance, readonly controls and tooltips
+
+- appearance.readonlyColor defaults to #E7F1FF. Apply it consistently to readonly text/decimal displays in normal, pointer-over and focused states. Keep their text readable, enabled, keyboard-focusable and selectable/copyable; prohibit direct editing. Use readonly text displays for immutable Account currency and the immutable rate date when editing an existing currency rate.
+- appearance.errorColor defaults to #FF0000 and colors popup errors and field validation errors. Preserve entered values when validation fails.
+- Use configured selection/focus colors and thicknesses consistently. Text, decimal, combo, date and time controls must not retain a separate red underline or dark bottom-only border inconsistent with the shared border appearance. Checkbox focus borders have consistent padding and must not clip the checkbox; this includes Favorite and Starred only in all picker modes.
+- Tooltips are allowed only on command buttons and sidebar navigation items. Show the command name and its shortcut when assigned. Quick account-filter buttons also show the stored account. Do not attach tooltips to textboxes, decimal inputs, date/time pickers, comboboxes, checkboxes, labels or grid/tree cells.
+- Button hints work in every modal editor, including currency/rate Save and Cancel, and can be shown again after moving away and returning. Displaying a hint must not steal focus, activate a different window, block the modal owner, cause cursor oscillation or close the application. A hint is not another modal window.
+- Tooltips describe commands; they do not restrict keyboard-command scope to buttons. Context menus show the same command shortcuts as toolbar hints.
+
+#### Keyboard routing and focus
+
+- Route commands only to the active view or top modal. Hidden/detached views and blocked owners must not react. Do not execute a disabled command through a shortcut. An open input flyout or confirmation handles its own keyboard input.
+- Sidebar controls and command buttons are excluded from Tab traversal. Tab/Shift+Tab move among inputs, checkboxes, lists and trees; main-view traversal cycles within the active view without entering the sidebar. Mouse activation of an entry command must retain enough current-row context for that command.
+- Navigation shortcuts activate the requested view and move focus into that view. Do not leave a stale keyboard-focus border on the previous sidebar item. F5/F8 must work reliably on the newly active view.
+- View commands such as add/delete, refresh, move, merge and tree expand/collapse are view-scoped, including when an input has focus. Shift+Enter editing is row-scoped and does not override search-text navigation. Entry choose/remove/restore commands target the row containing focus, not a different selected or first row.
+- Save is Ctrl+Enter; Cancel/Close is Esc. Ctrl+S toggles Favorite where specified and is not Save. Plain Enter selects in selection popups; Shift+Enter edits a focused grid/tree row where editing is available. Search uses Enter/Shift+Enter for next/previous; Ctrl+Up/Down are not application search commands.
+- Adding an entry focuses the new row. Removing one focuses the previous row, or the first remaining row when removing the first. If no rows remain, Template focuses Name and Transaction focuses Description.
+- F6 leaves roots expanded to show their immediate children and collapses every descendant group, including currently hidden groups. F7 expands all groups. F8 focuses the current/first grid row; in Currencies it switches between currency and rate lists. F5 focuses the first eligible input.
+
+#### Shortcut reference
+
+The bindings below describe the current shipped commands, checked against the implementation and [User guide](../../backend/Dehb.WinUi/Assets/UserGuide.md). Maintain both references when changing a binding. Templates Ctrl+F9 / Currencies Ctrl+F10 reflect the current code and guide; the initial conversation listed the reverse mapping. This documentation reconciliation does not change those implemented bindings.
+
+##### Main window - navigation
+
+- Ledger - Ctrl+F12
+- Accounts - Ctrl+F5
+- Correspondents - Ctrl+F6
+- Categories - Ctrl+F7
+- Projects - Ctrl+F8
+- Templates - Ctrl+F9
+- Currencies - Ctrl+F10
+- Help - Ctrl+F1
+- Exit - Ctrl+F4
+
+Reserved for currently disabled views:
+
+- Reports - Ctrl+F11
+- Synchronization - Ctrl+F3
+- Settings - Ctrl+F2
+
+##### Focus and common controls
+
+- Next input control - Tab
+- Previous input control - Shift+Tab
+- Toggle a focused checkbox - Space
+- Select all text in a textbox - Ctrl+A
+- Copy selected text (including readonly textboxes) - Ctrl+C
+- Increase/decrease a decimal value - Up/Down (in an editable decimal box)
+
+Tab skips command buttons and the sidebar. In main views, Tab cycles within the view.
+
+##### Accounts, Correspondents, Categories, Projects and Templates - tree views
+
+- Focus first input control - F5
+- Focus treegrid - F8
+- Collapse groups, leaving roots and their immediate children visible - F6
+- Expand all groups - F7
+- Refresh - Ctrl+R
+- Add group - Ctrl+Shift+Insert
+- Add element - Alt+Shift+Insert
+- Edit selected group or element - Shift+Enter
+- Delete selected group or element - Alt+Shift+Delete
+- Move selected group or element - Ctrl+M
+- Merge / combine into selected - Ctrl+U
+- Add/remove star on selected group or element - Ctrl+S
+- Toggle Starred only filter - Ctrl+Shift+S
+- Focus search textbox - Ctrl+F
+- Next search result - Enter (in search textbox)
+- Previous search result - Shift+Enter (in search textbox)
+
+With focus in the treegrid:
+
+- Previous/next visible row - Up/Down
+- Expand group or select its first visible child - Right
+- Collapse group or select its parent - Left
+- First/last visible row - Home/End
+- Open context menu - Shift+F10 or Menu key
+- Toggle row checkbox, where checkboxes are shown - Space
+- Cancel an active drag operation - Esc
+
+##### Choose group / Choose element / Choose account popups
+
+- Select the highlighted row - Enter (with focus in treegrid)
+- Cancel - Esc
+- Edit selected row, when editing is available - Shift+Enter
+
+Tree navigation, search, focus, refresh and filter shortcuts are the same as in the tree views above.
+Add, delete, move, merge and star commands work only when the popup exposes and enables those commands.
+In the search textbox, Enter and Shift+Enter navigate search results instead of selecting or editing.
+
+##### Currencies and rates view
+
+- Focus first input control - F5
+- Focus/switch between currency and rate lists - F8
+- Refresh - Ctrl+R
+- Add currency - Ctrl+Shift+Insert
+- Edit selected currency - Shift+Enter (currency list focused)
+- Delete selected currency - Ctrl+Shift+Delete
+- Add currency rate - Alt+Shift+Insert
+- Edit selected currency rate - Shift+Enter (rate list focused)
+- Delete currency rates - Alt+Shift+Delete
+
+Commands unavailable for the base currency remain disabled.
+
+##### Ledger view
+
+- Focus first input control - F5
+- Focus transaction grid - F8
+- Refresh - Ctrl+R
+- Add transaction - Alt+Shift+Insert
+- Edit selected transaction - Shift+Enter (grid focused)
+- Delete selected transaction - Alt+Shift+Delete
+- Duplicate transaction - Ctrl+D
+- Create transaction from template - Ctrl+L
+- Create template from transaction - Ctrl+Shift+L
+- Today - Ctrl+T
+- Previous period - Ctrl+PageUp
+- Next period - Ctrl+PageDown
+- Choose account filter - Ctrl+9
+- Clear account filter - Ctrl+Shift+9
+- Restore quick account filter 1 through 5 - Alt+1 through Alt+5
+
+Empty quick-filter slots are disabled. Hover over a slot button to see its stored account.
+
+##### All editor popups
+
+- Save / confirm the editor action - Ctrl+Enter
+- Cancel / close - Esc
+
+Unsaved changes may require confirmation before closing.
+These shortcuts also apply to currency and currency-rate editors.
+
+##### Add/Edit group popup
+
+- Choose parent - Ctrl+G
+- Toggle Favorite - Ctrl+S
+- Save - Ctrl+Enter
+- Cancel - Esc
+
+##### Add/Edit catalog element popup
+
+Applies to Correspondents, Categories and Projects.
+
+- Choose group - Ctrl+G
+- Toggle Favorite - Ctrl+S
+- Save - Ctrl+Enter
+- Cancel - Esc
+
+##### Add/Edit account popup
+
+- Choose group - Ctrl+G
+- Toggle Favorite - Ctrl+S
+- Choose correspondent - Ctrl+6
+- Clear correspondent - Ctrl+Shift+6
+- Choose category - Ctrl+7
+- Clear category - Ctrl+Shift+7
+- Choose project - Ctrl+8
+- Clear project - Ctrl+Shift+8
+- Restore name - Ctrl+Shift+R
+- Save - Ctrl+Enter
+- Cancel - Esc
+
+##### Template editor popup
+
+- Focus first input control - F5
+- Focus first entry - F8
+- Choose group - Ctrl+G
+- Toggle Favorite - Ctrl+S
+- Add entry - Alt+Shift+Insert
+- Choose account for current entry - Ctrl+9
+- Remove current entry - Alt+Shift+Delete
+- Save - Ctrl+Enter
+- Cancel - Esc
+
+Focus an entry's account or amount control before using its row commands.
+Adding an entry focuses the new row. Removing one focuses the previous row, or the first remaining row when deleting the first. If no rows remain, focus returns to Name.
+
+##### Transaction editor popup
+
+- Focus first input control - F5
+- Focus first entry - F8
+- Add entry - Alt+Shift+Insert
+- Add balancing entry - Ctrl+Shift+B
+- Choose account for current entry - Ctrl+9
+- Remove current entry - Alt+Shift+Delete
+- Restore rate for current entry - Ctrl+Shift+R
+- Select Draft state - Alt+1
+- Select Planned state - Alt+2
+- Select Confirmed state - Alt+3
+- Save - Ctrl+Enter
+- Cancel - Esc
+
+Focus a control in the entry before using its row commands.
+Adding an entry focuses the new row. Removing one focuses the previous row, or the first remaining row when deleting the first. If no rows remain, focus returns to Description.
+
+##### Help popup
+
+- Close - Esc
+
+Use the User guide button to open Assets/UserGuide.md in Notepad.
+
+#### Configuration baseline and distribution
+
+The dimensions and colors above are configurable, not hardcoded UI constraints. The following is a snapshot of the bundled default file on 2026-10-20, not a new approval of values previously adjusted directly in JSON. Assets/uisettings.default.json defines the distributed defaults; Assets/uisettings.json is the sole runtime appearance source. All popup objects require non-null positive int32 width and height in logical pixels, scaled for DPI.
+
+| Setting | Bundled default |
+| --- | --- |
+| mainWindow | width 1400; minHeight 800; sideBarItemHeight 40; sideBarFontSize 17; sideBarBackColor #BDD3FA |
+| appearance | fontSize 14; rowHeight 28; buttonWidth 64; buttonHeight 32; backgroundStartColor #F3F7FE; backgroundEndColor #E7F1FF |
+| appearance outlines | selectionBorderColor #606060; selectionBorderThickness 1; focusBorderColor #606060; focusBorderThickness 1 |
+| appearance readonly/errors | readonlyColor #E7F1FF; errorColor #FF0000 |
+| helpPopup | 360 x 256 |
+| groupEditor / elementEditor | 520 x 400 |
+| accountEditor | 520 x 720 |
+| groupTreeGridPopup / elementTreeGridPopup | 1120 x 800 |
+| templateEditor / transactionEditor | 1120 x 800; entry field widths as specified in the portable settings contract |
+| addCurrencyEditor / editCurrencyEditor | 360 x 400 / 360 x 256 |
+| currencyRateEditor / deleteCurrencyRateEditor | 360 x 400 / 360 x 300 |
+| catalogTreeGrid.columns | main 480; description 512; star 48 |
+| accountTreeGrid.columns | main 480; description 448; currency 64; star 48; group-only Description totals 512 |
+| transactionGrid | dateWidth 120; rangeWidth 120; accountWidth 320 |
+| transactionGrid.columns | dateTime 120; description 420; state 100; amount 160; cumulativeAmount 160; currency 80 |
+| currencyGrid.columns | code 120; name 120; symbol 80; star 80 |
+| currencyRateGrid.columns | date 120; rate 120; description 360 |
+
+- Without an account filter, omit the cumulative-amount column and add its configured width to Description; with an account filter, show both at their configured widths. Do not store a second competing set of widths.
+- Deployment is unpackaged x64 with both .NET and Windows App SDK runtimes bundled. The entire output folder, including Assets, is distributed. Keep user-edited UI settings and existing accounting data on updates. This UI documentation revision does not change database deployment paths or add a new publish-copy requirement.
+
+#### Acceptance checks for the reconciled UI behavior
+
+1. Open every current editor/picker and Help: verify configured DPI-scaled size, modal ownership, close-only title bar, no resize/maximize/minimize and no outer scrollbar.
+2. Open nested popups, switch to another application, then return through the taskbar: the top modal is visible and usable, and owners remain blocked until it closes.
+3. Tab through a main view: sidebar and buttons are skipped; keyboard focus stays within the view. Change views with a navigation shortcut and verify F5/F8 immediately target the new view without a stale focus border.
+4. Invoke view-scoped add/delete/refresh/tree commands with search or Starred only focused; verify command availability is respected. Verify Enter/Shift+Enter search behavior versus picker selection/grid editing.
+5. Open each reference picker with a current value: verify selection, expanded ancestors, scrolling and tree focus. Verify empty and ineligible selections cannot be accepted.
+6. Add/remove template and transaction entries and use row commands from each editable row control: verify the intended row changes and focus follows the specified rules. Toggle scrollbar necessity and verify unchanged column widths/positions.
+7. Hover buttons repeatedly in main views and every popup: verify command/shortcut hints; hover inputs, checkboxes and grid cells: verify no tooltip or cursor changes caused by hints.
+8. Tab to readonly controls, select/copy text and attempt typing: copying works, editing does not; configured background and border remain consistent. Verify popup validation errors use errorColor.
+9. Open User guide from Help in a distributed folder: verify the bundled Markdown is readable in Notepad; verify a missing file reports an error without closing the application.
 
 ## Technical Scope and Constraints
 
@@ -130,7 +388,7 @@ The six catalogs include Reports/ReportGroup. Report checkbox filters are a sepa
 | Settings | OP-071/072; one Setup read and one atomic Setup save for Local/shared sections; staged Save/Cancel, readonly immutable values, eligible balancing-account picker | Combined operations and one-transaction Save confirmed 2026-10-08; existing flat ConfigurationInfo read shape retained; editable-only save payload confirmed |
 | Sync | OP-043–050; Ready/Recovery required, Sync now/Retry recovery, modal stages/cancel, readonly summary/TXT | Runtime signals/absent results TQ-04/07/15 |
 | First start | OP-001–004; Continue after credentials, automatic attachment or same-dialog Create/Back | Auth/check/bootstrap/request details TQ-03/04/16 |
-| Help/shell | Modal Help User guide/About/Close; guide disabled until available; bundled PDF/default Windows viewer, About name/version | PDF authoring deferred; host/package/file/window state details TQ-15/16 |
+| Help/shell | Fixed modal Help using helpPopup, horizontally centered controls, application name/version, enabled User guide and Close; guide opens Assets/UserGuide.md in Notepad | Markdown is the current deliverable; PDF is deferred. See Windows UI interaction contract below. |
 
 #### Orchestration constraints
 
@@ -159,13 +417,13 @@ Invalid persisted report JSON must surface an error from report loading/deserial
 - MVVM is confirmed by the user, 2026-10-06, after the XAML/code-behind/ViewModel explanation. XAML defines layout/bindings; code-behind handles initialization and UI-specific events; a separate ViewModel holds screen state and commands. Authoritative business validation and persistence stay in existing services called in process.
 - CommunityToolkit.Mvvm is selected 2026-10-06 after the manual/generated property-notification comparison. Use its observable-property and command helpers in UI ViewModels. WinUI observable properties use the documented partial-property form. The exact compatible package version remains an implementation/runtime choice; domain/DAL contracts and validation responsibilities are unchanged.
 - Dialog hosting is confirmed 2026-10-06: owned WinUI windows for nested editors/pickers, ContentDialog for simple confirmations, and one shared coordinator managing opening/closing, parent blocking, focus restoration and existing catalog/window-type routing rules. The coordinator tracks the chain; individual dialogs retain their UI/ViewModels. This decision does not register popup instances as DI singletons or resolve data-service scope lifetime.
-- Open each popup centered over its immediate parent. Do not add automatic popup resizing or repositioning to accommodate a smaller monitor; the user closes popups before maximizing or adjusting the main window.
+- Current editor, picker and Help popups are centered over the main window, within the available work area. Retain the configured size; do not silently shrink controls or change column widths to fit another monitor. This supersedes the earlier immediate-parent positioning rule for these popups.
 - Only the main window has a minimize button; popups have none. The user must close all modal popups before operating the main window, including minimizing, maximizing or resizing it. Do not introduce a minimize/restore-whole-stack command.
 - The main window has one normal Windows taskbar icon, allowing the user to return after minimizing it. Popups have no separate taskbar icons. The previously confirmed main-window-only minimize button and modal parent-blocking rules remain unchanged.
-- Tree pickers, transaction/template editors and report-result popups are resizable. Simple forms, such as group-name editors, have a fixed size. Existing minimum usable dimensions remain applicable.
-- Persist resizable popup dimensions locally per popup type, and separately per catalog/mode for tree pickers. Restore those dimensions when reopened, centering over the current parent rather than restoring the previous popup position.
+- All current catalog/currency editors, transaction/template editors, group/element tree pickers and Help are fixed-size modal windows with a close-only title bar: no minimize, maximize or user resizing. Their sizes come from the corresponding required UI settings objects. Deferred report-result windows retain their separately specified behavior; they are not implicitly included in this change.
+- Do not persist or restore runtime size overrides for fixed popups. Reopening uses their configured dimensions. Main-window geometry remains separate runtime state; this rule does not redefine deferred report-result geometry.
 - Appearance and column preferences use the portable user-edited settings file described in the 2026-10-10 decision below. Window geometry remains separate local runtime state. Business Local/System configuration is unchanged.
-- Appearance and column changes are made in the settings file and loaded at startup. Persist resizable popup dimensions on closing and main-window geometry on exit separately.
+- Appearance, column and fixed-popup size changes are made in the settings file and loaded at startup. Persist main-window geometry separately on exit.
 - Missing or invalid appearance settings show a clear startup error and prevent opening the workspace; no automatic fallback or file changes.
 - Data-service lifetime is confirmed 2026-10-06. DbContext, repositories, Business services and components depending on that context retain Scoped registrations. All repositories/services in one call share its scope/context; existing compatible Shared singleton helpers are not changed by this rule.
 - The boundary matches WebAPI: one request scope around a call, disposed after completion. WinUI explicitly creates a scope for each logical service call, resolves the service within it, waits for completion and then disposes the scope on success/failure. The next call receives a fresh scoped graph/context.
@@ -239,14 +497,14 @@ Source: requesting user's row-ViewModel proposal and confirmations, 2026-10-06. 
 - Report row check state uses a nullable Boolean: true checked, false unchecked, null partial. It represents BR-024's existing report selection rules across the underlying tree, including hidden descendants; ordinary management trees do not show these checkboxes.
 - For mouse interaction, only the expander arrow toggles expansion. Ordinary row clicks select; existing double-click edit/select rules and independent star/checkbox interactions remain applicable.
 - When the tree row area has keyboard focus, Up/Down selects the previous/next visible row. Right Arrow expands a closed group; on an expanded group it selects the first visible child, if any. Left Arrow collapses an expanded group; otherwise it selects the parent, if any. At the root, the parent-navigation action does nothing. Navigation uses the actual hierarchy even beyond the visual indentation cap and preserves existing picker eligibility rules.
-- With a tree row focused, Enter invokes the same action as double-click: edit in management views, select an eligible item in selection pickers, or run a saved report. Existing mode-specific eligibility and disabled-action rules apply. Home/End selects the first/last visible row. In report checkbox trees, Space toggles the selected row checkbox; a partially checked group becomes fully checked, following the existing report checkbox propagation rules. These row shortcuts do not override text-entry or other focused controls.
+- With a row focused, Shift+Enter edits the selected group/element in management views and editable selection popups. Plain Enter selects an eligible row in selection popups; it does not edit in current main grids. In a tree search textbox, Enter finds the next match and Shift+Enter finds the previous match. These replace the older Enter-to-edit rule. Home/End selects the first/last visible row. Deferred report activation and checkbox-tree behavior remain separate; Space toggles report checkboxes under the report propagation rules.
 - After saved catalog changes, refresh affected open screens and pickers when they become active again. This includes returning from a nested picker canceled after independently saving catalog changes.
 - During tree refresh, preserve expanded groups, selection and scroll position where possible. Previously confirmed rules for revealing added/moved items and other explicit selection/visibility outcomes take priority.
 - If refresh fails, keep the previous rows visible, show an error with Retry, and disable editing and selection confirmation until refresh succeeds. Cancel/Close remains available.
 - Ordinary local SQLite loading and editor saving use synchronous execution from the UI action, as requested by the user. Do not add progress indicators, progress popups or temporary busy-state input/Save/close guards for these short operations. Existing validation, error reporting, transaction rollback and explicit refresh-failure rules remain applicable. This decision does not change synchronization or first-use creation/attachment progress and cancellation flows. Expected short duration is a design assumption, not a measured performance guarantee.
 - Indentation uses an empty layout spacer in the first column, with width equal to min(IndentLevel, 8) multiplied by a shared indentation step. Only the hierarchy/name area shifts; the other columns stay aligned. A monospace font is not required. The exact step remains a layout choice; 16 units was an example, not an accepted fixed value. Confirmed by the requesting user, 2026-10-06.
 - If collapse removes the selected descendant from VisibleRows, transfer selection to the collapsed group. Preserve selection outside that subtree. Apply existing picker eligibility rules to the resulting selection.
-- Keep column headers visible during vertical scrolling, aligned with their row columns; headers do not invoke sorting. Use single-line row text with ellipsis on overflow and a tooltip containing the full text. Horizontal scrolling is not allowed. Configure column widths only through the portable UI settings file, loaded on restart. Do not expose a Columns popup or maintain a competing per-view width store. Prevent widths that hide essential row controls, including expanders, checkboxes and favorite stars. In version one all columns remain visible in their fixed order. Enforce a minimum window/popup width so it cannot be resized below the width needed for usable columns. Exact minimum dimensions remain a layout detail. Names and descriptions are left-aligned; amounts and rates are right-aligned; stars and checkboxes are centered within their allotted space. The currency-name text in the Account tree is centered. Cap visual indentation at eight steps, using a fixed constant of 8. Rows deeper than level 8 use the same visual indentation as level 8. Preserve actual hierarchy depth, parent relationships and expand/collapse behavior; this is a display limit only.
+- Keep column headers visible during vertical scrolling, aligned with their row columns; headers do not invoke sorting. Use single-line row text with ellipsis on overflow, without cell or row-text tooltips. Horizontal scrolling is not allowed. Configure column widths only through the portable UI settings file, loaded on restart. Do not expose a Columns popup or maintain a competing per-view width store. Prevent widths that hide essential row controls, including expanders, checkboxes and favorite stars. In version one all columns remain visible in their fixed order. Use the configured window/popup width and configured column widths; fixed popups cannot be resized. All grid/tree column headers are horizontally centered. Names and descriptions in data rows are left-aligned; amounts and rates are right-aligned; stars and checkboxes are centered within their allotted space. The currency-name text in the Account tree is centered. Cap visual indentation at eight steps, using a fixed constant of 8. Rows deeper than level 8 use the same visual indentation as level 8. Preserve actual hierarchy depth, parent relationships and expand/collapse behavior; this is a display limit only.
 - Tree interaction and column/header decisions recorded in this document are settled; TQ-15 tracks remaining implementation integration. This choice does not authorize application implementation or change service scope boundaries.
 
 ### Boundary and proposal status
@@ -1162,7 +1420,7 @@ These questions identify concrete draft contract gaps. They do not reopen settle
 | TQ-06 | Confirmed: persist/check schema version before database use or downloaded-copy activation; unsupported newer database blocks with update message and no mutation; older database uses an available supported automatic migration, completely applied or rolled back; missing migration blocks unchanged. Confirmed: increasing integer version independent of application version, version change atomic with migration, and preservation of pending data/flags without blanket modification marking. Confirmed: matching Local/Master schemas before exchanging business changes, mismatch stops sync while preserving pending work and explaining the required update, no automatic downgrades, Master migrations owned solely by Master service. Confirmed: SQLite user_version storage, existing version 0 requires an explicit known-structure migration, and new databases establish current structure/version together before use. Confirmed: initial released schema version 1, sequential multi-version migration chain in one transaction with full rollback on failure, and source/target error reporting with diagnostic logging and no automatic retry. Confirmed: Local migration at startup before Ledger/automatic synchronization, shared per-dataset exclusive lock for Master migrations/synchronization, and candidate-copy Master migration with activation only after success. Confirmed: Master migration on first dataset access after service update, new snapshot publication without rewriting existing snapshots, and no sync-success/expiry-renewal/recovery-clear effect from migration alone. Current pre-production schema changes use revised initial scripts/data and fresh databases; no legacy-development migration mapping is required. Future supported-version migration mappings, publication primitives and already-pending synchronization recovery coordination remain open. | All PMs; snapshot operations | Blocks safe compatible local installation; no implementation schema inferred. |
 | TQ-07 | Proposal/open: domain error DTO/code taxonomy and local/transport mappings; canceled/absent result representation. | All OPs | Observable BRD errors fixed; exact response contracts incomplete. |
 | TQ-08 | Windows Logs beside executable, daily UTF-8 files and cleanup at startup/daily confirmed. First Windows release is unpackaged in a writable folder. Confirmed: local-date filenames, offset-bearing local entry timestamps, retention of today plus six prior calendar dates, and exclusion of passwords/tokens/authorization headers. Open: other-platform log locations and latest report counts after full replacement. | DTO-024/025; OP-050–052 | Blocks diagnostic details; no new Share/Export feature. |
-| TQ-09 | Confirmed: first Windows release runs unpackaged from a writable folder, delivered as ZIP with bundled .NET and Windows App SDK runtimes. Confirmed: ordinary managed .NET compilation without Native AOT, initial x64 package, executable-adjacent Data directory, release ZIP without user data and manual updates preserving data/logs/settings. Confirmed: Windows 11 only initially, same .NET major version as backend, stable explicitly pinned Windows App SDK/CommunityToolkit.Mvvm packages without previews. Open: exact compatible version pins/minimum Windows 11 build and verification workload; only propose capacity/latency limits if needed. Transaction reads OP-026/057–060 use a required inclusive end date and a fixed result cap defined by an application constant initially set to 300 transactions, returning the latest matching transactions newest first with a deterministic Transaction.Id tie-breaker and an exceeded-limit warning (confirmed 2026-10-02). No offset/page-number pagination is introduced; the earlier unlimited-list interpretation is superseded. | NFR-001–005/SC-001–004 | Runtime/deployment constraints unresolved; no new business target. |
+| TQ-09 | Confirmed: first Windows release runs unpackaged from a writable folder, delivered as ZIP with bundled .NET and Windows App SDK runtimes. Confirmed: ordinary managed .NET compilation without Native AOT, initial x64 package, executable-adjacent Data directory, release ZIP without user data and manual updates preserving data/logs/settings. Confirmed: Windows 11 only initially, same .NET major version as backend, stable explicitly pinned Windows App SDK/CommunityToolkit.Mvvm packages without previews. Open: exact compatible version pins/minimum Windows 11 build and verification workload; only propose capacity/latency limits if needed. Transaction reads OP-026/057–060 use a required inclusive end date and a fixed result cap defined by an application constant initially set to 300 transactions, returning the latest matching transactions newest first with a deterministic Transaction.Id tie-breaker and an exceeded-limit warning (confirmed 2026-10-02). No offset/page-number pagination is introduced; the earlier unlimited-list interpretation is superseded. | NFR-001–005/SC-001–004 | Bundled-runtime deployment is confirmed; exact platform/version verification remains open. No new business target. |
 | TQ-10 | Template create/update/delete is confirmed under the shared Business lifecycle; entry collection replacement is the aggregate exception. Proposal to review: exact preview input/output requiredness; other invalid-input handling for OP-053/054; OP-020 is resolved for range validation: inclusive dates, initial rate excluded, and FromDate > ToDate throws a validation exception without changes. Self-merge is resolved for OP-007/053/054: equal IDs return immediately without exception or changes. Template CombineElements remains unsupported, with failure and no mutation. | UC-005-04; UC-006-04; OP-007/020/025/035/036/053/054/064/066–069 | These details are labeled proposals, not silent additions to BRD. Keep unsupported operations inactive until resolved. |
 | TQ-11 | Resolved 2026-09-27: int32 Position, consecutive 0..N-1 on saving edited collections; preserve accepted positions during whole-aggregate sync. Scope excludes catalog element/group ordering. | PM-007/009; DTO-009/011; OP-027/033 | Entry ordering and DTO order representation resolved: list/array order maps to Position on save, confirmed 2026-10-01. |
 | TQ-12 | Partly resolved: per-entity ModificationType flags, Local-wins flagged Order independent of content priority, int32 separate zero-based catalog sequences, normalization and GUID tie-breaks. Merged per-member Order values sort ascending with GUID tie-break, then normalize; changed intended placement is accepted. Canonical lowercase GUID strings with ordinal ascending comparison are confirmed. Order-only changes require synchronization, whether represented by uncaptured flags or a queued batch. Open: order transport and change-detection implementation. | PM-001/002/003/005/008; catalog DTOs and mutation/sync operations | Complete collection ordering protocol; BRD 0.218 BR-029 records the accepted independent ordering policy. |
@@ -2660,7 +2918,7 @@ Source: requesting user explicitly confirmed the four rules and requested cleanu
 
 ### 2026-10-06 — Tree/table headers and overflow confirmed
 
-- User accepted stationary column headers without sorting and single-line text with ellipsis/full-text tooltips. User rejected horizontal scrolling: users should make columns narrower.
+- User accepted stationary column headers without sorting and single-line text with ellipsis/full-text tooltips. User rejected horizontal scrolling: users should make columns narrower. The full-text tooltip portion is historical and superseded by the 2026-10-20 command-only tooltip contract.
 - Width-configuration details remain open; no automatic resizing policy is inferred.
 - TRD 0.170 becomes Draft 0.171. No full-document approval or implementation completion is inferred.
 
@@ -2692,6 +2950,8 @@ Source: requesting user explicitly confirmed the four rules and requested cleanu
 - TRD 0.175 becomes Draft 0.176. No full-document approval or implementation completion is inferred.
 
 ### 2026-10-06 — Tree activation and checkbox shortcuts confirmed
+
+Historical decision: the current Windows UI interaction contract supersedes the popup resizing/placement and Enter-to-edit portions, respectively. Other unaffected decisions remain applicable.
 
 - User accepted Enter matching double-click, Home/End selecting the first/last visible row, and Space toggling a report-tree checkbox with partial becoming fully checked.
 - TRD 0.176 becomes Draft 0.177. No full-document approval or implementation completion is inferred.
@@ -2728,6 +2988,8 @@ Source: requesting user explicitly confirmed the four rules and requested cleanu
 - TRD 0.182 becomes Draft 0.183. No full-document approval or implementation completion is inferred.
 
 ### 2026-10-06 — Popup placement, resizing and saved dimensions confirmed
+
+Historical decision: the current Windows UI interaction contract supersedes the popup resizing/placement and Enter-to-edit portions, respectively. Other unaffected decisions remain applicable.
 
 - User accepted all three proposals: center over parent within the monitor work area; resize tree pickers, transaction/template editors and report results while keeping simple forms fixed; remember dimensions locally by popup type and catalog/mode for tree pickers, reopening centered.
 - TRD 0.183 becomes Draft 0.184. No full-document approval or implementation completion is inferred.
