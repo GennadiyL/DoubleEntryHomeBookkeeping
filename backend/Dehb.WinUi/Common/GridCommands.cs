@@ -25,6 +25,14 @@ internal static class GridCommands
 	public static string Shortcut(string label) => label switch
 	{
 		"Refresh" => "Ctrl+R",
+		"Duplicate" => "Ctrl+D",
+		"From template" => "Ctrl+L",
+		"Create template" => "Ctrl+Shift+L",
+		"Today" => "Ctrl+T",
+		"Next" => "Ctrl+PageDown",
+		"Previous" => "Ctrl+PageUp",
+		"Choose account" => "Ctrl+9",
+		"Clear account" => "Ctrl+Shift+9",
 		"Move" => "Ctrl+M",
 		"Merge" or "Combine into selected" => "Ctrl+U",
 		"Add star" or "Remove star" => "Ctrl+S",

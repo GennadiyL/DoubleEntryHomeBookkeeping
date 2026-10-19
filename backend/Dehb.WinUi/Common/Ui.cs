@@ -21,6 +21,7 @@ internal static class Ui
 			new GradientStop { Offset = 1, Color = ParseColor(((App)Application.Current).UiSettings.Appearance.BackgroundEndColor) }
 		}
 	};
+	public static SolidColorBrush ErrorForeground => new(ParseColor(((App)Application.Current).UiSettings.Appearance.ErrorColor));
 	public static SolidColorBrush SelectionBorder => new(ParseColor(((App)Application.Current).UiSettings.Appearance.SelectionBorderColor));
 	public static Windows.UI.Color ParseColor(string value) => Windows.UI.Color.FromArgb(
 		255, Convert.ToByte(value.Substring(1, 2), 16), Convert.ToByte(value.Substring(3, 2), 16), Convert.ToByte(value.Substring(5, 2), 16));
@@ -28,6 +29,7 @@ internal static class Ui
 	public static void ApplyFontSettings()
 	{
 		ResourceDictionary resources = Application.Current.Resources;
+		resources["ValidationErrorBrush"] = ErrorForeground;
 		SolidColorBrush focusBorder = new(ParseColor(((App)Application.Current).UiSettings.Appearance.FocusBorderColor));
 		Thickness focusThickness = new(((App)Application.Current).UiSettings.Appearance.FocusBorderThickness);
 		resources["TextControlBorderBrushFocused"] = focusBorder;
@@ -48,6 +50,11 @@ internal static class Ui
 			Style style = new(type);
 			style.Setters.Add(new Setter(Control.FontSizeProperty, FontSize));
 			ApplyFocusStyle(style);
+			if (type == typeof(TextBox))
+			{
+				style.Setters.Add(new Setter(ReadOnlyTextBoxAppearance.BrushProperty,
+					new SolidColorBrush(ParseColor(((App)Application.Current).UiSettings.Appearance.ReadonlyColor))));
+			}
 			resources[type] = style;
 		}
 	}

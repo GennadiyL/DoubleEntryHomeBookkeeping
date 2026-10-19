@@ -5,6 +5,8 @@ using Dehb.WinUi.Dialogs;
 using Dehb.WinUi.Hosting;
 using Dehb.WinUi.Ledger;
 using Dehb.WinUi.WindowManagement;
+using Dehb.WinUi.UiSettingsTypes;
+using Windows.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -72,10 +74,29 @@ public sealed partial class MainWindow : IDisposable
 			AddSidebarItem(navigation, "Settings", false, () => Task.CompletedTask);
 			AddSidebarItem(navigation, "Help", true, async () =>
 			{
-				EditorWindow help = new(this, _session.Coordinator, "Help", "Help");
-				help.Fields.Children.Add(new Button { Content = "User guide", IsEnabled = false });
-				help.Fields.Children.Add(Ui.Text("Double Entry Home Bookkeeping\n" + typeof(App).Assembly.GetName().Version));
-				help.Commands.Children.Add(Ui.Button("Close", help.Close, help.Error));
+				UiEditorPopupSettings settings = ((App)Application.Current).UiSettings.HelpPopup;
+				EditorWindow help = new(this, _session.Coordinator, "Help", "Help", new SizeInt32(settings.Width, settings.Height));
+				Button guide = Ui.Button("User guide", () =>
+				{
+					string path = Path.Combine(AppContext.BaseDirectory, "Assets", "UserGuide.md");
+					if (!File.Exists(path)) { throw new FileNotFoundException("User guide file was not found.", path); }
+					System.Diagnostics.ProcessStartInfo start = new("notepad.exe") { UseShellExecute = false };
+					start.ArgumentList.Add(path);
+					using System.Diagnostics.Process? process = System.Diagnostics.Process.Start(start);
+				}, help.Error);
+				guide.HorizontalAlignment = HorizontalAlignment.Center;
+				EditorToolTips.SetHint(guide, "Open user guide");
+				help.Fields.Children.Add(guide);
+				TextBlock information = Ui.Text("Double Entry Home Bookkeeping\n" + typeof(App).Assembly.GetName().Version);
+				information.HorizontalAlignment = HorizontalAlignment.Center;
+				information.TextAlignment = TextAlignment.Center;
+				help.Fields.Children.Add(information);
+				help.Error.TextAlignment = TextAlignment.Center;
+				help.Commands.HorizontalAlignment = HorizontalAlignment.Center;
+				Grid.SetColumnSpan(help.Commands, 2);
+				Button close = Ui.Button("Close", help.Close, help.Error);
+				EditorToolTips.SetHint(close, "Close (Esc)");
+				help.Commands.Children.Add(close);
 				await help.Show();
 			});
 			AddSidebarItem(navigation, "Exit", true, () => { Close(); return Task.CompletedTask; });

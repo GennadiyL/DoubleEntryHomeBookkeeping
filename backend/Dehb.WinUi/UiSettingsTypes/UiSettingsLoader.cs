@@ -68,6 +68,8 @@ public static class UiSettingsLoader
 		}
 		ValidateColor(settings.Appearance.BackgroundStartColor, "appearance.backgroundStartColor");
 		ValidateColor(settings.Appearance.BackgroundEndColor, "appearance.backgroundEndColor");
+		ValidateColor(settings.Appearance.ReadonlyColor, "appearance.readonlyColor");
+		ValidateColor(settings.Appearance.ErrorColor, "appearance.errorColor");
 		ValidateColor(settings.Appearance.SelectionBorderColor, "appearance.selectionBorderColor");
 		ValidateSize(settings.Appearance.SelectionBorderThickness, "appearance.selectionBorderThickness");
 		ValidateColor(settings.Appearance.FocusBorderColor, "appearance.focusBorderColor");
@@ -82,6 +84,7 @@ public static class UiSettingsLoader
 		ValidatePopup(settings.TemplateEditor, "templateEditor");
 		ValidateSize(settings.TemplateEditor.AmountWidth, "templateEditor.amountWidth");
 		ValidateSize(settings.TemplateEditor.CurrencyWidth, "templateEditor.currencyWidth");
+		ValidatePopup(settings.HelpPopup, "helpPopup");
 		ValidatePopup(settings.AccountEditor, "accountEditor");
 		ValidatePopup(settings.ElementEditor, "elementEditor");
 		ValidatePopup(settings.ElementTreeGridPopup, "elementTreeGridPopup");

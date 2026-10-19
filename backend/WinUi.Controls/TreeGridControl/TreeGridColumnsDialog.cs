@@ -41,6 +41,7 @@ internal sealed partial class TreeGridColumnsDialog : ContentDialog
 		};
 		content.Children.Add(defaults);
 		TextBlock error = new() { TextWrapping = TextWrapping.Wrap };
+		if (Application.Current.Resources.TryGetValue("ValidationErrorBrush", out object errorBrush) && errorBrush is Microsoft.UI.Xaml.Media.Brush brush) { error.Foreground = brush; }
 		content.Children.Add(error);
 		Content = new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
 		PrimaryButtonClick += (_, e) =>

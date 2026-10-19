@@ -38,6 +38,7 @@ internal sealed partial class CatalogView : UserControl
 		_groupsOnly = groupsOnly;
 		_readOnly = readOnly;
 		_picker = picker;
+		if (picker) { _error.Foreground = Ui.ErrorForeground; }
 		Grid layout = new() { RowSpacing = 8, MinHeight = 420 };
 		layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 		layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });

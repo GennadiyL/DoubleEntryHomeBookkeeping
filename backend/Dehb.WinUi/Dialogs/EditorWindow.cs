@@ -24,7 +24,7 @@ internal sealed partial class EditorWindow : Window
 	private bool _checking;
 	private bool _saved;
 	public StackPanel Fields { get; } = new() { Spacing = 12, Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(-8, -4, -8, -4) };
-	public TextBlock Error { get; } = new() { TextWrapping = TextWrapping.Wrap };
+	public TextBlock Error { get; } = new() { TextWrapping = TextWrapping.Wrap, Foreground = Ui.ErrorForeground };
 	public StackPanel Commands { get; } = new() { Orientation = Orientation.Horizontal, Spacing = 8 };
 	public StackPanel RightCommands { get; } = new() { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
 	public Func<bool> IsDirty { get; set; } = () => false;

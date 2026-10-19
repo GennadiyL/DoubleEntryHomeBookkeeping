@@ -18,6 +18,8 @@ public sealed class UiAppearanceSettings
 	public required double RowHeight { get; init; }
 	public required string BackgroundStartColor { get; init; }
 	public required string BackgroundEndColor { get; init; }
+	public required string ReadonlyColor { get; init; }
+	public required string ErrorColor { get; init; }
 	public required string SelectionBorderColor { get; init; }
 	public required double SelectionBorderThickness { get; init; }
 	public required string FocusBorderColor { get; init; }

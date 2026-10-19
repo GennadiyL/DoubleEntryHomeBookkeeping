@@ -21,7 +21,7 @@ public partial class App : Application
 		}
 		try
 		{
-			UiSettings = UiSettingsLoader.Load(Path.Combine(AppContext.BaseDirectory, "uisettings.json"));
+			UiSettings = UiSettingsLoader.Load(Path.Combine(AppContext.BaseDirectory, "Assets", "uisettings.json"));
 		}
 		catch (InvalidDataException exception)
 		{

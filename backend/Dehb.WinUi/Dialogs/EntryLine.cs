@@ -84,7 +84,7 @@ internal sealed class EntryLine
 			deleteEntry.VerticalAlignment = VerticalAlignment.Top;
 			ToolTipService.SetToolTip(deleteEntry, "Remove entry");
 			Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(deleteEntry, "Remove entry");
-			owner.AddShortcut(_account, VirtualKey.Number0, VirtualKeyModifiers.Control, "Choose account (Ctrl+0)",
+			owner.AddShortcut(_account, VirtualKey.Number9, VirtualKeyModifiers.Control, "Choose account (Ctrl+9)",
 				() => new ButtonAutomationPeer(_account).Invoke(), View);
 			owner.AddShortcut(deleteEntry, VirtualKey.Delete, VirtualKeyModifiers.Menu | VirtualKeyModifiers.Shift, "Remove entry (Alt+Shift+Delete)",
 				() => new ButtonAutomationPeer(deleteEntry).Invoke(), View);
@@ -133,7 +133,7 @@ internal sealed class EntryLine
 			deleteEntry.VerticalAlignment = VerticalAlignment.Top;
 			ToolTipService.SetToolTip(deleteEntry, "Remove entry");
 			Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(deleteEntry, "Remove entry");
-			owner.AddShortcut(_account, VirtualKey.Number0, VirtualKeyModifiers.Control, "Choose account (Ctrl+0)",
+			owner.AddShortcut(_account, VirtualKey.Number9, VirtualKeyModifiers.Control, "Choose account (Ctrl+9)",
 				() => new ButtonAutomationPeer(_account).Invoke(), View);
 			owner.AddShortcut(deleteEntry, VirtualKey.Delete, VirtualKeyModifiers.Menu | VirtualKeyModifiers.Shift, "Remove entry (Alt+Shift+Delete)",
 				() => new ButtonAutomationPeer(deleteEntry).Invoke(), View);

@@ -308,7 +308,21 @@ internal sealed partial class CurrencyView : UserControl
 		UiSettings settings = ((App)Application.Current).UiSettings;
 		UiEditorPopupSettings popup = settings.CurrencyRateEditor;
 		EditorWindow window = new(_owner, _session.Coordinator, "Currencies.Rate", "Rate: " + currency.Code, new Windows.Graphics.SizeInt32(popup.Width, popup.Height));
-		CalendarDatePicker date = new() { MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Stretch, Date = new DateTimeOffset((old?.Date ?? DateOnly.FromDateTime(DateTime.Today)).ToDateTime(TimeOnly.MinValue)), IsEnabled = old is null };
+		CalendarDatePicker? date = null;
+		FrameworkElement dateControl;
+		if (old is null)
+		{
+			date = new() { MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Stretch, Date = DateTimeOffset.Now };
+			dateControl = date;
+		}
+		else
+		{
+			dateControl = new TextBox
+			{
+				Text = old.IsInitial ? "Initial" : old.Date.ToString(System.Globalization.CultureInfo.CurrentCulture),
+				IsReadOnly = true, MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Stretch
+			};
+		}
 		DecimalBox rate = new() { Precision = _session.Settings.RatePrecision, Value = old?.Rate, IsReadOnly = currency.Id == _session.Settings.BaseCurrencyId };
 		if (currency.Id == _session.Settings.BaseCurrencyId)
 		{
@@ -316,15 +330,15 @@ internal sealed partial class CurrencyView : UserControl
 		}
 
 		TextBox description = new() { Text = old?.Description ?? "" };
-		window.Fields.Children.Add(old?.IsInitial == true ? Ui.EditorField("Date", Ui.Text("Initial")) : Ui.EditorField("Date", date));
+		window.Fields.Children.Add(Ui.EditorField("Date", dateControl));
 		window.Fields.Children.Add(Ui.EditorField("Rate", rate));
 		window.Fields.Children.Add(Ui.EditorField("Description", description));
-		string Snapshot() => $"{date.Date}|{rate.Text}|{description.Text}";
+		string Snapshot() => $"{old?.Date}|{date?.Date}|{rate.Text}|{description.Text}";
 		string initial = Snapshot();
 		window.IsDirty = () => Snapshot() != initial;
 		window.SaveButton(() =>
 		{
-			CurrencyRateParam param = new() { CurrencyId = currency.Id, Date = old?.IsInitial == true ? old.Date : DateOnly.FromDateTime(date.Date?.DateTime ?? throw new InvalidOperationException("Choose a date.")), Rate = Ui.Number(rate), Description = description.Text };
+			CurrencyRateParam param = new() { CurrencyId = currency.Id, Date = old?.Date ?? DateOnly.FromDateTime(date?.Date?.DateTime ?? throw new InvalidOperationException("Choose a date.")), Rate = Ui.Number(rate), Description = description.Text };
 			_session.Host.Call<ICurrencyRateService, Guid>(s => s.AddOrUpdate(param));
 		});
 		await window.Show();

@@ -5,7 +5,11 @@ using Business.Contracts.Services.Accounts;
 using Business.Contracts.Services.Templates;
 using Business.Contracts.Services.Transactions;
 using Business.Models.Enums;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation.Peers;
+using Windows.System;
+using Windows.UI.Core;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Media;
@@ -87,8 +91,10 @@ internal sealed partial class LedgerView : UserControl
 		AutomationProperties.SetName(_account, "Account");
 		AutomationProperties.SetName(chooseAccount, "Choose account");
 		AutomationProperties.SetName(clearAccount, "Clear account");
-		ToolTipService.SetToolTip(chooseAccount, "Choose account");
-		ToolTipService.SetToolTip(clearAccount, "Clear account");
+		ToolTipService.SetToolTip(chooseAccount, GridCommands.Hint("Choose account"));
+		AutomationProperties.SetAcceleratorKey(chooseAccount, "Ctrl+9");
+		ToolTipService.SetToolTip(clearAccount, GridCommands.Hint("Clear account"));
+		AutomationProperties.SetAcceleratorKey(clearAccount, "Ctrl+Shift+9");
 		AutomationProperties.SetName(_date, "Date");
 		AutomationProperties.SetName(_step, "Period");
 		StackPanel accountFilter = Ui.Row(_account, chooseAccount, clearAccount, Separator());
@@ -113,6 +119,7 @@ internal sealed partial class LedgerView : UserControl
 		Grid.SetRow(_list, 6);
 		layout.Children.Add(_list);
 		Content = layout;
+		AttachShortcuts(today, previous, next, chooseAccount, clearAccount);
 		ViewShortcuts.Attach(this, () => ViewShortcuts.FocusRows(_list));
 		GridCommands.Attach(_list, () => _actions.Children.OfType<Button>(), scope: this);
 		GridCommands.AttachMenu(_list, () => _actions.Children.OfType<Button>());
@@ -132,6 +139,51 @@ internal sealed partial class LedgerView : UserControl
 		Actions();
 		Reload();
 	}
+	private void AttachShortcuts(Button today, Button previous, Button next, Button chooseAccount, Button clearAccount)
+	{
+		PreviewKeyDown += (_, args) =>
+		{
+			if (args.Handled || !IsLoaded || Visibility != Visibility.Visible || VisualTreeHelper.GetParent(this) is null ||
+				!ReferenceEquals(_session.Coordinator.Top(_owner), _owner) || XamlRoot is null ||
+				VisualTreeHelper.GetOpenPopupsForXamlRoot(XamlRoot).Any(popup => popup.Child is not ToolTip && (popup.IsLightDismissEnabled || popup.Child is ContentDialog))) { return; }
+			bool Down(VirtualKey key) => (InputKeyboardSource.GetKeyStateForCurrentThread(key) & CoreVirtualKeyStates.Down) != 0;
+			bool control = Down(VirtualKey.Control);
+			bool shift = Down(VirtualKey.Shift);
+			bool alt = Down(VirtualKey.Menu);
+			if (Down(VirtualKey.LeftWindows) || Down(VirtualKey.RightWindows)) { return; }
+			Button? button = null;
+			if (alt && !control && !shift && args.Key >= VirtualKey.Number1 && args.Key <= VirtualKey.Number5)
+			{
+				button = _quickAccountButtons[(int)args.Key - (int)VirtualKey.Number1];
+			}
+			else if (control && !alt && (args.Key == VirtualKey.Number9 || args.OriginalKey == VirtualKey.Number9))
+			{
+				button = shift ? clearAccount : chooseAccount;
+			}
+			else if (control && !alt)
+			{
+				string? action = args.Key switch
+				{
+					VirtualKey.D when !shift => "Duplicate",
+					VirtualKey.L => shift ? "Create template" : "From template",
+					_ => null
+				};
+				button = action is not null
+					? _actions.Children.OfType<Button>().FirstOrDefault(item => AutomationProperties.GetName(item) == action)
+					: args.Key switch
+					{
+						VirtualKey.T when !shift => today,
+						VirtualKey.PageUp when !shift => previous,
+						VirtualKey.PageDown when !shift => next,
+						_ => null
+					};
+			}
+			if (button is null) { return; }
+			args.Handled = true;
+			if (button.IsEnabled) { new ButtonAutomationPeer(button).Invoke(); }
+		};
+	}
+
 	private void UpdateQuickAccounts()
 	{
 		for (int i = 0; i < QuickAccountFilters.Count; i++)
@@ -139,7 +191,8 @@ internal sealed partial class LedgerView : UserControl
 			Button button = _quickAccountButtons[i];
 			button.IsEnabled = _quickAccounts.GetId(i).HasValue;
 			string label = _quickAccounts.GetName(i) ?? $"Empty account slot {i + 1}";
-			ToolTipService.SetToolTip(button, GridCommands.Hint(label));
+			ToolTipService.SetToolTip(button, $"Account filter {i + 1}: {label} (Alt+{i + 1})");
+			AutomationProperties.SetAcceleratorKey(button, $"Alt+{i + 1}");
 			AutomationProperties.SetName(button, $"Account slot {i + 1}: {label}");
 		}
 	}
@@ -276,6 +329,7 @@ internal sealed partial class LedgerView : UserControl
 		button.Content = icon;
 		ToolTipService.SetToolTip(button, GridCommands.Hint(label));
 		AutomationProperties.SetName(button, label);
+		AutomationProperties.SetAcceleratorKey(button, GridCommands.Shortcut(label));
 		button.RegisterPropertyChangedCallback(IsEnabledProperty, (_, _) => icon.Source = button.IsEnabled ? enabled : disabled);
 		return button;
 	}

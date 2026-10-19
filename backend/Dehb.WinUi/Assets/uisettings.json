@@ -8,6 +8,8 @@
     "minHeight": 800
   },
   "appearance": {
+    "errorColor": "#FF0000",
+    "readonlyColor": "#E7F1FF",
     "buttonWidth": 64,
     "buttonHeight": 32,
     "fontSize": 14,
@@ -50,6 +52,10 @@
     "height": 800,
     "amountWidth": 160,
     "currencyWidth": 120
+  },
+  "helpPopup": {
+    "width": 360,
+    "height": 256
   },
   "accountEditor": {
     "width": 520,

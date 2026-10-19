@@ -151,18 +151,27 @@ internal sealed partial class UiSession : IDisposable
 		ComboBox? currency = null;
 		if (!group && catalog == "Accounts")
 		{
-			currency = new() { HorizontalAlignment = HorizontalAlignment.Stretch, MinWidth = 0, ItemsSource = Currencies(), DisplayMemberPath = "Code", SelectedValuePath = "Id", SelectedValue = account?.CurrencyId, IsEnabled = !id.HasValue };
+			FrameworkElement currencyControl;
+			if (account is null)
+			{
+				currency = new() { HorizontalAlignment = HorizontalAlignment.Stretch, MinWidth = 0, ItemsSource = Currencies(), DisplayMemberPath = "Code", SelectedValuePath = "Id" };
+				currencyControl = currency;
+			}
+			else
+			{
+				currencyControl = new TextBox { Text = CurrencyCode(account.CurrencyId), IsReadOnly = true, MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Stretch };
+			}
 			correspondent = new(this, window, "Correspondents", false, true, account?.CorrespondentId, false, true);
 			category = new(this, window, "Categories", false, true, account?.CategoryId, false, true);
 			project = new(this, window, "Projects", false, true, account?.ProjectId, false, true);
 			correspondent.AddShortcuts(window, VirtualKey.Number6, "6", "Correspondent");
 			category.AddShortcuts(window, VirtualKey.Number7, "7", "Category");
 			project.AddShortcuts(window, VirtualKey.Number8, "8", "Project");
-			window.Fields.Children.Add(Ui.EditorField("Currency", currency));
+			window.Fields.Children.Add(Ui.EditorField("Currency", currencyControl));
 			window.Fields.Children.Add(Ui.EditorField("Correspondent", correspondent));
 			window.Fields.Children.Add(Ui.EditorField("Category", category));
 			window.Fields.Children.Add(Ui.EditorField("Project", project));
-			Button restoreName = Ui.DialogButton("Restore name", () => name.Text = Host.Call<IAccountService, string>(s => s.GetDefaultName(correspondent.Id, category.Id, project.Id, currency.SelectedValue as Guid?)), window.Error);
+			Button restoreName = Ui.DialogButton("Restore name", () => name.Text = Host.Call<IAccountService, string>(s => s.GetDefaultName(correspondent.Id, category.Id, project.Id, account?.CurrencyId ?? (currency?.SelectedValue as Guid?))), window.Error);
 			restoreName.Width = double.NaN;
 			restoreName.Padding = new Thickness(12, 0, 12, 0);
 			window.RightCommands.Children.Add(restoreName);
@@ -175,7 +184,7 @@ internal sealed partial class UiSession : IDisposable
 			Description = description.Text,
 			Favorite = favorite.IsChecked,
 			destination.Id,
-			Currency = currency?.SelectedValue,
+			Currency = account?.CurrencyId ?? (currency?.SelectedValue as Guid?),
 			Correspondent = correspondent?.Id,
 			Category = category?.Id,
 			Project = project?.Id
@@ -215,7 +224,7 @@ internal sealed partial class UiSession : IDisposable
 			}
 			else if (catalog == "Accounts")
 			{
-				Guid currencyId = currency?.SelectedValue as Guid? ?? throw new InvalidOperationException("Choose a currency.");
+				Guid currencyId = account?.CurrencyId ?? (currency?.SelectedValue as Guid?) ?? throw new InvalidOperationException("Choose a currency.");
 				if (!id.HasValue && string.IsNullOrWhiteSpace(name.Text))
 				{
 					name.Text = Host.Call<IAccountService, string>(s => s.GetDefaultName(correspondent!.Id, category!.Id, project!.Id, currencyId));

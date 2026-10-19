@@ -22,6 +22,7 @@ public sealed class UiSettings
 	public required UiGridSettings CurrencyRateGrid { get; init; }
 	public required UiTransactionEditorSettings TransactionEditor { get; init; }
 	public required UiTemplateEditorSettings TemplateEditor { get; init; }
+	public required UiEditorPopupSettings HelpPopup { get; init; }
 	public required UiEditorPopupSettings AccountEditor { get; init; }
 	public required UiEditorPopupSettings ElementEditor { get; init; }
 	public required UiEditorPopupSettings ElementTreeGridPopup { get; init; }

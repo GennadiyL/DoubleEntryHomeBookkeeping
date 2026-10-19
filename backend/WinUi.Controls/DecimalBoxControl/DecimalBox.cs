@@ -87,6 +87,7 @@ public sealed partial class DecimalBox : UserControl, INotifyPropertyChanged
 
 	public DecimalBox()
 	{
+		if (Application.Current.Resources.TryGetValue("ValidationErrorBrush", out object errorBrush) && errorBrush is Brush brush) { _error.Foreground = brush; }
 		IsTabStop = false;
 		HorizontalContentAlignment = HorizontalAlignment.Stretch;
 		StackPanel layout = new() { Spacing = 4 };
@@ -103,12 +104,19 @@ public sealed partial class DecimalBox : UserControl, INotifyPropertyChanged
 		Grid.SetColumn(_decrease, 2);
 		input.Children.Add(_increase);
 		input.Children.Add(_decrease);
-		layout.Children.Add(new Border
+		Border inputBorder = new()
 		{
-			Child = input, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4),
-			BorderBrush = (Brush)Application.Current.Resources["TextControlBorderBrush"],
-			Background = (Brush)Application.Current.Resources["TextControlBackground"]
+			Child = input, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4)
+		};
+		inputBorder.SetBinding(Border.BorderBrushProperty, new Microsoft.UI.Xaml.Data.Binding
+		{
+			Source = _editor, Path = new PropertyPath(nameof(TextBox.BorderBrush)), Mode = Microsoft.UI.Xaml.Data.BindingMode.OneWay
 		});
+		inputBorder.SetBinding(Border.BackgroundProperty, new Microsoft.UI.Xaml.Data.Binding
+		{
+			Source = _editor, Path = new PropertyPath(nameof(TextBox.Background)), Mode = Microsoft.UI.Xaml.Data.BindingMode.OneWay
+		});
+		layout.Children.Add(inputBorder);
 		layout.Children.Add(_error);
 		Content = layout;
 		_editor.GotFocus += (_, _) =>
