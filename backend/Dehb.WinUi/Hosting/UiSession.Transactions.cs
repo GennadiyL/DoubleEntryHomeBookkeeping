@@ -1,3 +1,5 @@
+using Windows.System;
+using Microsoft.UI.Xaml.Automation.Peers;
 using Dehb.WinUi.Catalogs;
 using Dehb.WinUi.Common;
 using Dehb.WinUi.Dialogs;
@@ -76,6 +78,14 @@ internal sealed partial class UiSession
 				}
 			};
 			stateButtons.Children.Add(button);
+			(VirtualKey key, string keyText) = state switch
+			{
+				TransactionState.Draft => (VirtualKey.Number1, "1"),
+				TransactionState.Planned => (VirtualKey.Number2, "2"),
+				_ => (VirtualKey.Number3, "3")
+			};
+			window.AddShortcut(button, key, VirtualKeyModifiers.Menu, $"{label} (Alt+{keyText})",
+				() => button.IsChecked = true);
 		}
 		bool timeChanged = false;
 		time.TimeChanged += (_, _) => timeChanged = true;
@@ -95,9 +105,34 @@ internal sealed partial class UiSession
 				Coordinator.Protect(window, lines.Where(l => l.AccountId.HasValue).Select(l => l.AccountId!.Value));
 			}
 		}
+		void FocusEntry(EntryLine? entry)
+		{
+			entries.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+			{
+				if (!description.IsLoaded || !ReferenceEquals(Coordinator.Top(window), window)) { return; }
+				if (entry is not null && lines.Contains(entry))
+				{
+					entries.UpdateLayout();
+					ViewShortcuts.FocusFirst(entry.View);
+					entry.View.StartBringIntoView();
+				}
+				else if (lines.Count == 0)
+				{
+					description.Focus(FocusState.Keyboard);
+				}
+			});
+		}
 		EntryLine Add()
 		{
-			EntryLine line = new(this, window, false, Day, Changed, removed => { lines.Remove(removed); entries.Children.Remove(removed.View); Changed(); });
+			EntryLine line = new(this, window, false, Day, Changed, removed =>
+			{
+				int index = lines.IndexOf(removed);
+				if (index < 0) { return; }
+				lines.RemoveAt(index);
+				entries.Children.Remove(removed.View);
+				Changed();
+				FocusEntry(lines.Count > 0 ? lines[Math.Max(0, index - 1)] : null);
+			});
 			lines.Add(line);
 			entries.Children.Add(line.View);
 			Changed();
@@ -164,6 +199,7 @@ internal sealed partial class UiSession
 		Grid.SetRow(warning, 4);
 		body.Children.Add(warning);
 		window.SetFieldContent(body);
+		ViewShortcuts.Attach(body, () => ViewShortcuts.FocusFirst(entries));
 		Button balanceEntry = Ui.DialogButton("Add balancing entry", () =>
 		{
 			foreach (EntryLine line in lines)
@@ -188,8 +224,13 @@ internal sealed partial class UiSession
 			added.SetAccount(accountId, false);
 			added.Rate.Value = 1m;
 			added.Amount.Value = -total;
+			FocusEntry(added);
 		}, window.Error);
-		Button addEntry = Ui.DialogButton("Add entry", () => Add(), window.Error);
+		Button addEntry = Ui.DialogButton("Add entry", () => FocusEntry(Add()), window.Error);
+		window.AddShortcut(addEntry, VirtualKey.Insert, VirtualKeyModifiers.Menu | VirtualKeyModifiers.Shift,
+			"Add entry (Alt+Shift+Insert)", () => new ButtonAutomationPeer(addEntry).Invoke());
+		window.AddShortcut(balanceEntry, VirtualKey.B, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift,
+			"Add balancing entry (Ctrl+Shift+B)", () => new ButtonAutomationPeer(balanceEntry).Invoke());
 		foreach (Button button in new[] { balanceEntry, addEntry })
 		{
 			button.Width = double.NaN;
@@ -253,8 +294,11 @@ internal sealed partial class UiSession
 		EditorWindow window = new(owner, Coordinator, "Templates.ElementEditor", "Template", new Windows.Graphics.SizeInt32(popup.Width, popup.Height));
 		TextBox name = new() { Header = "Name", Text = old?.Name ?? "" };
 		ReferenceField group = new(this, window, "Templates", true, false, old?.GroupId ?? groupId, false, true);
+		group.AddShortcuts(window, VirtualKey.G, "G", "Group");
 		TextBox description = new() { Header = "Description", Text = old?.Description ?? prepared?.Description ?? "" };
 		CheckBox favorite = new() { Content = "Favorite", IsChecked = old?.IsFavorite ?? false };
+		window.AddShortcut(favorite, VirtualKey.S, VirtualKeyModifiers.Control, "Favorite (Ctrl+S)",
+			() => favorite.IsChecked = favorite.IsChecked != true);
 		StackPanel entries = new() { Spacing = 8 };
 		List<EntryLine> lines = new();
 		void Changed()
@@ -265,7 +309,29 @@ internal sealed partial class UiSession
 		}
 		EntryLine Add()
 		{
-			EntryLine line = new(this, window, true, () => DateOnly.FromDateTime(DateTime.Today), Changed, removed => { lines.Remove(removed); entries.Children.Remove(removed.View); Changed(); });
+			EntryLine line = new(this, window, true, () => DateOnly.FromDateTime(DateTime.Today), Changed, removed =>
+			{
+				int index = lines.IndexOf(removed);
+				if (index < 0) { return; }
+				lines.RemoveAt(index);
+				entries.Children.Remove(removed.View);
+				Changed();
+				EntryLine? previous = lines.Count > 0 ? lines[Math.Max(0, index - 1)] : null;
+				entries.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+				{
+					if (!name.IsLoaded || !ReferenceEquals(Coordinator.Top(window), window)) { return; }
+					if (previous is not null && lines.Contains(previous))
+					{
+						entries.UpdateLayout();
+						ViewShortcuts.FocusFirst(previous.View);
+						previous.View.StartBringIntoView();
+					}
+					else if (lines.Count == 0)
+					{
+						name.Focus(FocusState.Keyboard);
+					}
+				});
+			});
 			lines.Add(line);
 			entries.Children.Add(line.View);
 			Changed();
@@ -320,10 +386,23 @@ internal sealed partial class UiSession
 		Grid.SetRow(entryScroll, 2);
 		body.Children.Add(entryScroll);
 		window.SetFieldContent(body);
-		Button addEntry = Ui.DialogButton("Add entry", () => Add(), window.Error);
+		ViewShortcuts.Attach(body, () => ViewShortcuts.FocusFirst(entries));
+		Button addEntry = Ui.DialogButton("Add entry", () =>
+		{
+			EntryLine added = Add();
+			entries.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+			{
+				if (!name.IsLoaded || !lines.Contains(added) || !ReferenceEquals(Coordinator.Top(window), window)) { return; }
+				entries.UpdateLayout();
+				ViewShortcuts.FocusFirst(added.View);
+				added.View.StartBringIntoView();
+			});
+		}, window.Error);
 		addEntry.Width = double.NaN;
 		addEntry.Padding = new Thickness(12, 0, 12, 0);
 		window.RightCommands.Children.Add(addEntry);
+		window.AddShortcut(addEntry, VirtualKey.Insert, VirtualKeyModifiers.Menu | VirtualKeyModifiers.Shift,
+			"Add entry (Alt+Shift+Insert)", () => new ButtonAutomationPeer(addEntry).Invoke());
 		string Snapshot() => $"{name.Text}|{group.Id}|{description.Text}|{favorite.IsChecked}|" + string.Join(";", lines.Select(l => l.Snapshot()));
 		string initial = Snapshot();
 		window.IsDirty = () => initial != Snapshot();

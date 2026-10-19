@@ -20,11 +20,12 @@ public sealed partial class MainWindow : IDisposable
 	private readonly Dictionary<string, (Button Button, Image Icon)> _navigation = new();
 	private UiSession? _session;
 	private readonly Dictionary<string, FrameworkElement> _screens = new();
-	private readonly ContentControl _screen = new() { HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
+	private readonly ContentControl _screen = new() { IsTabStop = false, TabFocusNavigation = KeyboardNavigationMode.Cycle, HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
 	private readonly TextBlock _error = Ui.Text("");
 	public MainWindow()
 	{
 		InitializeComponent();
+		Ui.ApplyPickerFocus(Root);
 		Root.Background = Ui.Background;
 		Root.Resources["SidebarBackground"] = new SolidColorBrush(Ui.ParseColor(((App)Application.Current).UiSettings.MainWindow.SideBarBackColor));
 		WindowPlacement.Attach(this, ((App)Application.Current).UiSettings.MainWindow);
@@ -83,7 +84,7 @@ public sealed partial class MainWindow : IDisposable
 			{
 				Background = (Brush)Root.Resources["SidebarBackground"],
 				Padding = new Thickness(16, 24, 16, 24),
-				Child = new ScrollViewer { Content = navigation, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }
+				Child = new ScrollViewer { IsTabStop = false, Content = navigation, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }
 			});
 			_screen.Margin = new Thickness(20, 16, 16, 16);
 			Grid.SetColumn(_screen, 1);
@@ -127,6 +128,7 @@ public sealed partial class MainWindow : IDisposable
 		Style sidebarStyle = new(typeof(Button)) { BasedOn = (Style)Root.Resources["SidebarButtonStyle"] };
 		Ui.ApplyFocusStyle(sidebarStyle);
 		button.Style = sidebarStyle;
+		button.IsTabStop = false;
 		button.Height = ((App)Application.Current).UiSettings.MainWindow.SideBarItemHeight;
 		button.FontSize = ((App)Application.Current).UiSettings.MainWindow.SideBarFontSize;
 		button.Content = content;

@@ -28,6 +28,12 @@ internal static class Ui
 	public static void ApplyFontSettings()
 	{
 		ResourceDictionary resources = Application.Current.Resources;
+		SolidColorBrush focusBorder = new(ParseColor(((App)Application.Current).UiSettings.Appearance.FocusBorderColor));
+		Thickness focusThickness = new(((App)Application.Current).UiSettings.Appearance.FocusBorderThickness);
+		resources["TextControlBorderBrushFocused"] = focusBorder;
+		resources["TextControlBorderThemeThicknessFocused"] = focusThickness;
+		resources["ComboBoxBackgroundBorderBrushFocused"] = focusBorder;
+		resources["ComboBoxBackgroundBorderThicknessFocused"] = focusThickness;
 		foreach (string key in new[] { "ControlContentThemeFontSize", "TextControlThemeFontSize", "ContentDialogTitleFontSize" })
 		{
 			resources[key] = FontSize;
@@ -46,8 +52,32 @@ internal static class Ui
 		}
 	}
 
+	public static void ApplyPickerFocus(FrameworkElement root)
+	{
+		root.GettingFocus += (_, args) =>
+		{
+			if (args.NewFocusedElement is not Control focused) { return; }
+			DependencyObject? parent = focused;
+			while (parent is not null && parent is not DatePicker && parent is not TimePicker && parent is not CalendarDatePicker)
+			{
+				parent = VisualTreeHelper.GetParent(parent);
+			}
+			if (parent is null) { return; }
+			focused.FocusVisualPrimaryBrush = new SolidColorBrush(ParseColor(((App)Application.Current).UiSettings.Appearance.FocusBorderColor));
+			focused.FocusVisualPrimaryThickness = new Thickness(((App)Application.Current).UiSettings.Appearance.FocusBorderThickness);
+			focused.FocusVisualSecondaryThickness = new Thickness(0);
+			focused.FocusVisualMargin = new Thickness(0);
+			focused.UseSystemFocusVisuals = true;
+		};
+	}
+
 	public static void ApplyFocusStyle(Style style)
 	{
+		if (style.TargetType == typeof(Button) || style.TargetType == typeof(Microsoft.UI.Xaml.Controls.Primitives.ToggleButton))
+		{
+			style.Setters.Add(new Setter(Control.IsTabStopProperty, false));
+			style.Setters.Add(new Setter(FrameworkElement.AllowFocusOnInteractionProperty, false));
+		}
 		style.Setters.Add(new Setter(Control.FocusVisualPrimaryBrushProperty, new SolidColorBrush(ParseColor(((App)Application.Current).UiSettings.Appearance.FocusBorderColor))));
 		style.Setters.Add(new Setter(Control.FocusVisualPrimaryThicknessProperty, new Thickness(((App)Application.Current).UiSettings.Appearance.FocusBorderThickness)));
 		style.Setters.Add(new Setter(Control.FocusVisualSecondaryThicknessProperty, new Thickness(0)));

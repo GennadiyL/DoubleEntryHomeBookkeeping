@@ -10,6 +10,8 @@ using Business.Contracts.Services.Trees;
 using Business.Models.Entities.Config;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.System;
+using Microsoft.UI.Xaml.Automation.Peers;
 
 namespace Dehb.WinUi.Hosting;
 
@@ -53,7 +55,21 @@ internal sealed partial class UiSession : IDisposable
 		view.Accepted += node => { if (eligible(CatalogView.Id(node))) { result = CatalogView.Id(node); window.Finish(true); } };
 		window.Commands.Children.Add(accept);
 		window.Commands.Children.Add(Ui.DialogButton("Cancel", window.Close, window.Error));
-		view.Reload(current, false);
+		bool initialized = false;
+		view.Loaded += (_, _) => view.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+		{
+			if (view.IsLoaded && ReferenceEquals(Coordinator.Top(window), window))
+			{
+				if (!initialized)
+				{
+					initialized = true;
+					view.Reload(current, false);
+					Update();
+				}
+				view.UpdateLayout();
+				view.Tree.FocusRows();
+			}
+		});
 		Update();
 		await window.Show();
 		return result;
@@ -88,6 +104,9 @@ internal sealed partial class UiSession : IDisposable
 		TextBox description = new() { Header = "Description", Text = oldGroup?.Description ?? oldElement?.Description ?? "" };
 		CheckBox favorite = new() { Content = "Favorite", IsChecked = oldGroup?.IsFavorite ?? oldElement?.IsFavorite ?? false };
 		ReferenceField destination = new(this, window, catalog, true, false, oldGroup?.ParentId ?? oldElement?.GroupId ?? parent ?? tree.Groups.Single(g => g.IsRoot).Id, group, fixedEditor);
+		destination.AddShortcuts(window, VirtualKey.G, "G", group ? "Parent" : "Group");
+		window.AddShortcut(favorite, VirtualKey.S, VirtualKeyModifiers.Control, "Favorite (Ctrl+S)",
+			() => favorite.IsChecked = favorite.IsChecked != true);
 		if (group && id.HasValue)
 		{
 			destination.Eligible = candidate =>
@@ -136,6 +155,9 @@ internal sealed partial class UiSession : IDisposable
 			correspondent = new(this, window, "Correspondents", false, true, account?.CorrespondentId, false, true);
 			category = new(this, window, "Categories", false, true, account?.CategoryId, false, true);
 			project = new(this, window, "Projects", false, true, account?.ProjectId, false, true);
+			correspondent.AddShortcuts(window, VirtualKey.Number6, "6", "Correspondent");
+			category.AddShortcuts(window, VirtualKey.Number7, "7", "Category");
+			project.AddShortcuts(window, VirtualKey.Number8, "8", "Project");
 			window.Fields.Children.Add(Ui.EditorField("Currency", currency));
 			window.Fields.Children.Add(Ui.EditorField("Correspondent", correspondent));
 			window.Fields.Children.Add(Ui.EditorField("Category", category));
@@ -144,6 +166,8 @@ internal sealed partial class UiSession : IDisposable
 			restoreName.Width = double.NaN;
 			restoreName.Padding = new Thickness(12, 0, 12, 0);
 			window.RightCommands.Children.Add(restoreName);
+			window.AddShortcut(restoreName, VirtualKey.R, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift,
+				"Restore name (Ctrl+Shift+R)", () => new ButtonAutomationPeer(restoreName).Invoke());
 		}
 		string Snapshot() => System.Text.Json.JsonSerializer.Serialize(new
 		{
@@ -209,7 +233,20 @@ internal sealed partial class UiSession : IDisposable
 					ProjectId = project!.Id
 				};
 				if (id.HasValue)
-				{ Host.Call<IAccountService>(s => s.Update(id.Value, param)); result = id; }
+				{
+					if (account is not null && groupId != account.GroupId)
+					{
+						Host.Call<IAccountService>(s => s.MoveToAnotherGroup(id.Value, groupId));
+						account.GroupId = groupId;
+					}
+					if (account is null || param.Name != account.Name || param.Description != (account.Description ?? "") ||
+						param.IsFavorite != account.IsFavorite || param.CorrespondentId != account.CorrespondentId ||
+						param.CategoryId != account.CategoryId || param.ProjectId != account.ProjectId)
+					{
+						Host.Call<IAccountService>(s => s.Update(id.Value, param));
+					}
+					result = id;
+				}
 				else
 				{
 					result = Host.Call<IAccountService, Guid>(s => s.Add(param));

@@ -126,6 +126,14 @@ internal sealed partial class CurrencyView : UserControl
 		}, _error));
 		_commands.Children.Add(Ui.AsyncButton("Delete currency rates", DeleteRates, _error));
 		ConfigureToolbar();
+		GridCommands.Attach(_currencies, () => _commands.Children.OfType<Button>(), "Edit currency", true, scope: this);
+		GridCommands.Attach(_rates, () => _commands.Children.OfType<Button>(), "Edit currency rate", true, scope: this);
+		_currencies.ContextMenuRequested += (_, args) =>
+		{
+			foreach (Button button in _commands.Children.OfType<Button>()) { args.Menu.Items.Add(GridCommands.MenuItem(button)); }
+			GridCommands.AddStarMenu(args.Menu, _currencies, _currencies.IsEnabled);
+		};
+		GridCommands.AttachMenu(_rates, () => _commands.Children.OfType<Button>());
 		Reload();
 	}
 	private void ConfigureToolbar()
@@ -145,7 +153,7 @@ internal sealed partial class CurrencyView : UserControl
 			button.HorizontalContentAlignment = HorizontalAlignment.Center;
 			button.VerticalContentAlignment = VerticalAlignment.Center;
 			button.Content = icon;
-			ToolTipService.SetToolTip(button, label);
+			ToolTipService.SetToolTip(button, GridCommands.Hint(label));
 			AutomationProperties.SetName(button, label);
 			button.RegisterPropertyChangedCallback(IsEnabledProperty, (_, _) => icon.Source = button.IsEnabled ? enabled : disabled);
 		}
@@ -235,7 +243,7 @@ internal sealed partial class CurrencyView : UserControl
 		for (int i = 0; i < values.Length; i++)
 		{
 			TextBlock cell = new() { Text = values[i], Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, TextAlignment = header ? TextAlignment.Center : i == 1 ? TextAlignment.Right : TextAlignment.Left };
-			ToolTipService.SetToolTip(cell, values[i]); Grid.SetColumn(cell, i); row.Children.Add(cell);
+			Grid.SetColumn(cell, i); row.Children.Add(cell);
 		}
 		return row;
 	}
@@ -266,7 +274,6 @@ internal sealed partial class CurrencyView : UserControl
 						isoCode.Text = $"Code: {info.Code}";
 						englishName.Text = $"English Name: {info.EnglishName}";
 						symbol.Text = $"Symbol: {info.Symbol}";
-						ToolTipService.SetToolTip(code, info.EnglishName);
 					}
 				};
 				window.Fields.Children.Add(Ui.EditorField("Currency", code));

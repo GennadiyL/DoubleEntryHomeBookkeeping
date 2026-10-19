@@ -49,13 +49,14 @@ internal sealed partial class CatalogView : UserControl
 		layout.Children.Add(Tree);
 		Content = layout;
 		ViewShortcuts.Attach(this, Tree.FocusRows, Tree);
+		GridCommands.Attach(Tree, () => _commands.Children.OfType<Button>(), activateSelection: picker, canStar: () => Ready && !_readOnly, scope: this);
 		Tree.NameHeader = catalog;
 		Tree.SetSearchIcons(
 			new Uri("ms-appx:///Assets/Icons/previous-enabled.svg"),
 			new Uri("ms-appx:///Assets/Icons/previous-disabled.svg"),
 			new Uri("ms-appx:///Assets/Icons/next-enabled.svg"),
 			new Uri("ms-appx:///Assets/Icons/next-disabled.svg"));
-		Tree.Columns.Add(new TreeGridColumn { Header = "Description", BindingPath = "Data.Description", TextAlignment = catalog == "Accounts" ? TextAlignment.Left : TextAlignment.Center });
+		Tree.Columns.Add(new TreeGridColumn { Header = "Description", BindingPath = "Data.Description", TextAlignment = TextAlignment.Left });
 		if (catalog == "Accounts" && !groupsOnly)
 		{
 			Tree.Columns.Add(new TreeGridColumn { Header = "Currency", BindingPath = "Data.CurrencyName" });
@@ -132,12 +133,12 @@ internal sealed partial class CatalogView : UserControl
 		};
 		Tree.ContextMenuRequested += (_, e) =>
 		{
-			foreach (Button button in _commands.Children.OfType<Button>().Where(b => CommandLabel(b) != "Refresh"))
+			foreach (Button button in _commands.Children.OfType<Button>())
 			{
-				MenuFlyoutItem item = new() { Text = CommandLabel(button), IsEnabled = button.IsEnabled };
-				item.Click += (_, _) => new Microsoft.UI.Xaml.Automation.Peers.ButtonAutomationPeer(button).Invoke();
+				MenuFlyoutItem item = GridCommands.MenuItem(button);
 				e.Menu.Items.Add(item);
 			}
+			GridCommands.AddStarMenu(e.Menu, Tree, Ready && !_readOnly);
 		};
 		if (catalog == "Accounts")
 		{
@@ -437,7 +438,7 @@ internal sealed partial class CatalogView : UserControl
 			button.HorizontalContentAlignment = HorizontalAlignment.Center;
 			button.VerticalContentAlignment = VerticalAlignment.Center;
 			button.Content = icon;
-			ToolTipService.SetToolTip(button, label);
+			ToolTipService.SetToolTip(button, GridCommands.Hint(label));
 			AutomationProperties.SetName(button, label);
 			button.RegisterPropertyChangedCallback(IsEnabledProperty, (_, _) => icon.Source = button.IsEnabled ? enabled : disabled);
 		}

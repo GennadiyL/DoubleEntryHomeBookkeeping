@@ -114,6 +114,8 @@ internal sealed partial class LedgerView : UserControl
 		layout.Children.Add(_list);
 		Content = layout;
 		ViewShortcuts.Attach(this, () => ViewShortcuts.FocusRows(_list));
+		GridCommands.Attach(_list, () => _actions.Children.OfType<Button>(), scope: this);
+		GridCommands.AttachMenu(_list, () => _actions.Children.OfType<Button>());
 		_list.DoubleTapped += async (_, _) => await Edit();
 		_list.SelectionChanged += (_, args) =>
 		{
@@ -137,7 +139,7 @@ internal sealed partial class LedgerView : UserControl
 			Button button = _quickAccountButtons[i];
 			button.IsEnabled = _quickAccounts.GetId(i).HasValue;
 			string label = _quickAccounts.GetName(i) ?? $"Empty account slot {i + 1}";
-			ToolTipService.SetToolTip(button, label);
+			ToolTipService.SetToolTip(button, GridCommands.Hint(label));
 			AutomationProperties.SetName(button, $"Account slot {i + 1}: {label}");
 		}
 	}
@@ -272,7 +274,7 @@ internal sealed partial class LedgerView : UserControl
 		button.HorizontalContentAlignment = HorizontalAlignment.Center;
 		button.VerticalContentAlignment = VerticalAlignment.Center;
 		button.Content = icon;
-		ToolTipService.SetToolTip(button, label);
+		ToolTipService.SetToolTip(button, GridCommands.Hint(label));
 		AutomationProperties.SetName(button, label);
 		button.RegisterPropertyChangedCallback(IsEnabledProperty, (_, _) => icon.Source = button.IsEnabled ? enabled : disabled);
 		return button;
@@ -328,13 +330,11 @@ internal sealed partial class LedgerView : UserControl
 		{
 			AccountInfo info = _session.Host.Call<IAccountService, AccountInfo>(s => s.GetById(account));
 			_account.Text = info.Name;
-			ToolTipService.SetToolTip(_account, info.Name);
 			code = _session.CurrencyCode(info.CurrencyId);
 		}
 		else
 		{
 			_account.Text = "All accounts";
-			ToolTipService.SetToolTip(_account, "All accounts");
 		}
 
 		double[] widths = ColumnWidths(_accountId.HasValue);
@@ -391,7 +391,6 @@ internal sealed partial class LedgerView : UserControl
 		for (int i = 0; i < values.Length; i++)
 		{
 			TextBlock text = new() { Text = values[i], VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(8, 0, 8, 0), Visibility = i == 4 && !cumulative ? Visibility.Collapsed : Visibility.Visible, TextAlignment = header || i == 2 ? TextAlignment.Center : i is 3 or 4 ? TextAlignment.Right : TextAlignment.Left };
-			ToolTipService.SetToolTip(text, values[i]);
 			Grid.SetColumn(text, i);
 			grid.Children.Add(text);
 		}

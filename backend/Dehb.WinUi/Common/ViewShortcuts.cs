@@ -21,9 +21,9 @@ internal static class ViewShortcuts
 {
 	public static void Attach(FrameworkElement view, Action? focusGrid = null, TreeGrid? tree = null)
 	{
-		void Add(VirtualKey key, Action action)
+		void Add(VirtualKey key, Action action, VirtualKeyModifiers modifiers = VirtualKeyModifiers.None)
 		{
-			KeyboardAccelerator shortcut = new() { Key = key, Modifiers = VirtualKeyModifiers.None, IsEnabled = view.IsLoaded };
+			KeyboardAccelerator shortcut = new() { Key = key, Modifiers = modifiers, IsEnabled = view.IsLoaded };
 			view.Loaded += (_, _) => shortcut.IsEnabled = true;
 			view.Unloaded += (_, _) => shortcut.IsEnabled = false;
 			shortcut.Invoked += (_, args) =>
@@ -42,6 +42,8 @@ internal static class ViewShortcuts
 		Add(VirtualKey.F5, () => FocusFirst(view));
 		if (tree is not null)
 		{
+			Add(VirtualKey.S, () => { if (tree.IsEnabled) { tree.StarredOnly = !tree.StarredOnly; } }, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
+			Add(VirtualKey.F, tree.FocusSearch, VirtualKeyModifiers.Control);
 			Add(VirtualKey.F6, () => tree.SetAllExpanded(false));
 			Add(VirtualKey.F7, () => tree.SetAllExpanded(true));
 		}

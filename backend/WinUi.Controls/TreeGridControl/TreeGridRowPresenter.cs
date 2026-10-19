@@ -179,9 +179,6 @@ public sealed partial class TreeGridRowPresenter : UserControl
 			TextAlignment = path == nameof(TreeGridNode.Name) ? TextAlignment.Left : TextAlignment.Center
 		};
 		text.SetBinding(TextBlock.TextProperty, new Binding { Source = _node, Path = new PropertyPath(path), Mode = BindingMode.OneWay });
-		ToolTipService.SetToolTip(text, new ToolTip());
-		((ToolTip)ToolTipService.GetToolTip(text)).SetBinding(ContentControl.ContentProperty,
-			new Binding { Source = _node, Path = new PropertyPath(path), Mode = BindingMode.OneWay });
 		return text;
 	}
 
@@ -197,7 +194,7 @@ public sealed partial class TreeGridRowPresenter : UserControl
 		_expander.FontSize = _node.IsExpanded ? 13 : 18;
 		_expander.Opacity = _node.IsGroup ? 1 : 0;
 		_expander.IsHitTestVisible = _node.IsGroup;
-		_expander.IsTabStop = _node.IsGroup;
+		_expander.IsTabStop = false;
 		AutomationProperties.SetName(_expander, (_node.IsExpanded ? "Collapse " : "Expand ") + _node.Name);
 		_check.Visibility = _owner.ShowCheckboxes ? Visibility.Visible : Visibility.Collapsed;
 		_check.IsChecked = _node.IsChecked;
@@ -205,7 +202,7 @@ public sealed partial class TreeGridRowPresenter : UserControl
 		_star.IsEnabled = _node.CanEditStar;
 		_star.Content = _node.IsStarred ? "★" : "☆";
 		AutomationProperties.SetName(_star, (_node.IsStarred ? "Remove star " : "Add star ") + _node.Name);
-		ToolTipService.SetToolTip(_star, _node.IsStarred ? "Remove star" : "Add star");
+		ToolTipService.SetToolTip(_star, _node.IsStarred ? "Remove star (Ctrl+S)" : "Add star (Ctrl+S)");
 	}
 
 	private void UpdateSelection()

@@ -6,6 +6,8 @@ using Business.Contracts.Services.Transactions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using WinUi.Controls.DecimalBoxControl;
+using Windows.System;
+using Microsoft.UI.Xaml.Automation.Peers;
 
 namespace Dehb.WinUi.Dialogs;
 
@@ -82,6 +84,10 @@ internal sealed class EntryLine
 			deleteEntry.VerticalAlignment = VerticalAlignment.Top;
 			ToolTipService.SetToolTip(deleteEntry, "Remove entry");
 			Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(deleteEntry, "Remove entry");
+			owner.AddShortcut(_account, VirtualKey.Number0, VirtualKeyModifiers.Control, "Choose account (Ctrl+0)",
+				() => new ButtonAutomationPeer(_account).Invoke(), View);
+			owner.AddShortcut(deleteEntry, VirtualKey.Delete, VirtualKeyModifiers.Menu | VirtualKeyModifiers.Shift, "Remove entry (Alt+Shift+Delete)",
+				() => new ButtonAutomationPeer(deleteEntry).Invoke(), View);
 			Grid.SetColumn(deleteEntry, 3);
 			View.Children.Add(deleteEntry);
 		}
@@ -127,6 +133,10 @@ internal sealed class EntryLine
 			deleteEntry.VerticalAlignment = VerticalAlignment.Top;
 			ToolTipService.SetToolTip(deleteEntry, "Remove entry");
 			Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(deleteEntry, "Remove entry");
+			owner.AddShortcut(_account, VirtualKey.Number0, VirtualKeyModifiers.Control, "Choose account (Ctrl+0)",
+				() => new ButtonAutomationPeer(_account).Invoke(), View);
+			owner.AddShortcut(deleteEntry, VirtualKey.Delete, VirtualKeyModifiers.Menu | VirtualKeyModifiers.Shift, "Remove entry (Alt+Shift+Delete)",
+				() => new ButtonAutomationPeer(deleteEntry).Invoke(), View);
 			Grid.SetColumn(deleteEntry, 5);
 			View.Children.Add(deleteEntry);
 			Rate.MinWidth = 0;
@@ -139,6 +149,8 @@ internal sealed class EntryLine
 			restore.VerticalAlignment = VerticalAlignment.Top;
 			ToolTipService.SetToolTip(restore, "Restore rate");
 			Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(restore, "Restore rate");
+			owner.AddShortcut(restore, VirtualKey.R, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift, "Restore rate (Ctrl+Shift+R)",
+				() => new ButtonAutomationPeer(restore).Invoke(), View);
 			Grid rateCell = new() { ColumnSpacing = 8 };
 			rateCell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(settings.RateWidth) });
 			rateCell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32) });
@@ -173,7 +185,6 @@ internal sealed class EntryLine
 		if (_accountName is not null)
 		{
 			_accountName.Text = account.Name;
-			ToolTipService.SetToolTip(_accountName, account.Name);
 		}
 		else
 		{

@@ -3,7 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:WinUi.Controls.TreeGridControl">
-    <Grid RowSpacing="4">
+    <Grid RowSpacing="4" Padding="8,4" Margin="-8,-4">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -11,7 +11,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Grid x:Name="ToolbarGrid" Margin="8,0,28,0">
-            <CheckBox x:Name="StarFilter" Content="Starred only" VerticalAlignment="Center" VerticalContentAlignment="Center" Click="OnStarFilterClick" />
+            <CheckBox x:Name="StarFilter" Content="Starred only" Margin="8,4,0,4" VerticalAlignment="Center" VerticalContentAlignment="Center" Click="OnStarFilterClick" />
             <Button x:Name="ColumnsButton" Content="Columns" HorizontalAlignment="Right" Click="OnColumnsClick" />
         </Grid>
         <Grid Grid.Row="1" x:Name="SearchPanel" Margin="8,0,28,0" ColumnSpacing="8">

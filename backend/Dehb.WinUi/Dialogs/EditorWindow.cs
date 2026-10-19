@@ -7,6 +7,8 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Automation;
 using Windows.System;
+using Microsoft.UI.Input;
+using Windows.UI.Core;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
 using Windows.Graphics;
@@ -21,7 +23,7 @@ internal sealed partial class EditorWindow : Window
 	private bool _closing;
 	private bool _checking;
 	private bool _saved;
-	public StackPanel Fields { get; } = new() { Spacing = 12 };
+	public StackPanel Fields { get; } = new() { Spacing = 12, Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(-8, -4, -8, -4) };
 	public TextBlock Error { get; } = new() { TextWrapping = TextWrapping.Wrap };
 	public StackPanel Commands { get; } = new() { Orientation = Orientation.Horizontal, Spacing = 8 };
 	public StackPanel RightCommands { get; } = new() { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
@@ -61,6 +63,8 @@ internal sealed partial class EditorWindow : Window
 		Grid.SetRow(footer, 2);
 		grid.Children.Add(footer);
 		Content = grid;
+		Ui.ApplyPickerFocus(grid);
+		EditorToolTips.Attach(this, grid, () => !_closing && ReferenceEquals(_coordinator.Top(this), this));
 		grid.KeyDown += (_, args) =>
 		{
 			if (args.Key != VirtualKey.Escape || args.Handled || !CanHandleShortcut())
@@ -181,17 +185,41 @@ internal sealed partial class EditorWindow : Window
 		};
 		saveButton.KeyboardAccelerators.Add(shortcut);
 		AutomationProperties.SetAcceleratorKey(saveButton, "Ctrl+Enter");
-		ToolTipService.SetToolTip(saveButton, "Save (Ctrl+Enter)");
+		EditorToolTips.SetHint(saveButton, "Save (Ctrl+Enter)");
 		Commands.Children.Add(saveButton);
 		Button cancelButton = Ui.DialogButton("Cancel", Close, Error);
 		AutomationProperties.SetAcceleratorKey(cancelButton, "Esc");
-		ToolTipService.SetToolTip(cancelButton, "Cancel (Esc)");
+		EditorToolTips.SetHint(cancelButton, "Cancel (Esc)");
 		Commands.Children.Add(cancelButton);
 	}
+	public void AddShortcut(Control control, VirtualKey key, VirtualKeyModifiers modifiers, string hint, Action action, FrameworkElement? scope = null)
+	{
+		(scope ?? (FrameworkElement)Content).PreviewKeyDown += (_, args) =>
+		{
+			if (args.Handled || (args.Key != key && args.OriginalKey != key) || !control.IsEnabled || !CanHandleShortcut()) { return; }
+			VirtualKeyModifiers pressed = VirtualKeyModifiers.None;
+			foreach ((VirtualKey modifierKey, VirtualKeyModifiers modifier) in new[]
+			{
+				(VirtualKey.Control, VirtualKeyModifiers.Control), (VirtualKey.Shift, VirtualKeyModifiers.Shift),
+				(VirtualKey.Menu, VirtualKeyModifiers.Menu), (VirtualKey.LeftWindows, VirtualKeyModifiers.Windows),
+				(VirtualKey.RightWindows, VirtualKeyModifiers.Windows)
+			})
+			{
+				if ((InputKeyboardSource.GetKeyStateForCurrentThread(modifierKey) & CoreVirtualKeyStates.Down) != 0) { pressed |= modifier; }
+			}
+			if (pressed != modifiers) { return; }
+			args.Handled = true;
+			try { Error.Text = ""; action(); }
+			catch (Exception exception) { Error.Text = exception.Message; }
+		};
+		if (control is Microsoft.UI.Xaml.Controls.Primitives.ButtonBase and not CheckBox) { EditorToolTips.SetHint(control, hint); }
+		AutomationProperties.SetAcceleratorKey(control, hint[(hint.LastIndexOf('(') + 1)..].TrimEnd(')'));
+	}
+
 	private bool CanHandleShortcut() =>
 		!_closing && !_checking && ReferenceEquals(_coordinator.Top(this), this) &&
 		Content is FrameworkElement { XamlRoot: not null } root &&
-		VisualTreeHelper.GetOpenPopupsForXamlRoot(root.XamlRoot).Count == 0;
+		!VisualTreeHelper.GetOpenPopupsForXamlRoot(root.XamlRoot).Any(popup => popup.IsLightDismissEnabled || popup.Child is ContentDialog);
 
 	private void SetOwner(Window owner)
 	{

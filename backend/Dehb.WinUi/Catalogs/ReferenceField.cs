@@ -5,6 +5,8 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Business.Contracts.Services.Trees;
+using Microsoft.UI.Xaml.Automation.Peers;
+using Windows.System;
 
 namespace Dehb.WinUi.Catalogs;
 
@@ -14,6 +16,7 @@ internal sealed partial class ReferenceField : UserControl
 	private readonly string _catalog;
 	private readonly bool _groups;
 	private readonly Button _pick;
+	private readonly Button? _clear;
 	private readonly TextBox? _display;
 	public Guid? Id { get; private set; }
 	public Func<Guid, bool> Eligible { get; set; } = _ => true;
@@ -41,6 +44,7 @@ internal sealed partial class ReferenceField : UserControl
 			row.Children.Add(clear);
 		}
 
+		_clear = clear;
 		if (textBoxPicker)
 		{
 			HorizontalContentAlignment = HorizontalAlignment.Stretch;
@@ -83,6 +87,17 @@ internal sealed partial class ReferenceField : UserControl
 		owner.Activated += (_, _) => { try { Refresh(); } catch (Exception e) { owner.Error.Text = e.Message; } };
 		Refresh();
 	}
+	public void AddShortcuts(EditorWindow owner, VirtualKey key, string keyText, string label)
+	{
+		owner.AddShortcut(_pick, key, VirtualKeyModifiers.Control, $"Choose {label} (Ctrl+{keyText})",
+			() => new ButtonAutomationPeer(_pick).Invoke());
+		if (_clear is not null)
+		{
+			owner.AddShortcut(_clear, key, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift, $"Clear {label} (Ctrl+Shift+{keyText})",
+				() => new ButtonAutomationPeer(_clear).Invoke());
+		}
+	}
+
 	public void Refresh()
 	{
 		if (Id is null)
@@ -103,7 +118,6 @@ internal sealed partial class ReferenceField : UserControl
 		{
 			_display.Text = name ?? "";
 			_display.PlaceholderText = "Select " + _catalog;
-			ToolTipService.SetToolTip(_display, name ?? "");
 		}
 		else
 		{

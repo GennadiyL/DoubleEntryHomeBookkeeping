@@ -115,6 +115,8 @@ public sealed partial class TreeGrid : UserControl
 		_fixedRowStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
 		RegisterPropertyChangedCallback(FontSizeProperty, (_, _) => RefreshLayout());
 		_dragTimer.Tick += OnDragTimerTick;
+		ToolTipService.SetToolTip(PreviousSearchButton, "Previous (Shift+Enter in search)");
+		ToolTipService.SetToolTip(NextSearchButton, "Next (Enter in search)");
 		RowsList.ItemsSource = _projection.VisibleRows;
 		ItemsSource = new ObservableCollection<TreeGridNode>();
 		Columns.CollectionChanged += (_, _) =>
@@ -225,8 +227,8 @@ public sealed partial class TreeGrid : UserControl
 
 	public void SetSearchIcons(Uri previousEnabled, Uri previousDisabled, Uri nextEnabled, Uri nextDisabled)
 	{
-		ConfigureSearchButton(PreviousSearchButton, "Previous", previousEnabled, previousDisabled);
-		ConfigureSearchButton(NextSearchButton, "Next", nextEnabled, nextDisabled);
+		ConfigureSearchButton(PreviousSearchButton, "Previous (Shift+Enter in search)", previousEnabled, previousDisabled);
+		ConfigureSearchButton(NextSearchButton, "Next (Enter in search)", nextEnabled, nextDisabled);
 	}
 
 	private static void ConfigureSearchButton(Button button, string label, Uri enabledUri, Uri disabledUri)
@@ -296,11 +298,25 @@ public sealed partial class TreeGrid : UserControl
 
 	private void OnSearchKeyDown(object sender, KeyRoutedEventArgs e)
 	{
-		if (e.Key == VirtualKey.Enter)
+		if (e.Key == VirtualKey.Enter &&
+			(InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control) & CoreVirtualKeyStates.Down) == 0 &&
+			(InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Menu) & CoreVirtualKeyStates.Down) == 0)
 		{
-			FindNext();
+			if ((InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift) & CoreVirtualKeyStates.Down) != 0)
+			{
+				FindPrevious();
+			}
+			else
+			{
+				FindNext();
+			}
 			e.Handled = true;
 		}
+	}
+
+	public void FocusSearch()
+	{
+		if (IsEnabled && IsSearchEnabled) { SearchBox.Focus(FocusState.Keyboard); }
 	}
 
 	public void FindNext() => FindMatch(false);
@@ -616,6 +632,11 @@ public sealed partial class TreeGrid : UserControl
 	{
 		SelectedNode = node;
 		RowActivated?.Invoke(this, node);
+	}
+
+	public void ToggleSelectedStar()
+	{
+		if (IsEnabled && SelectedNode is { } node) { ToggleStar(node); }
 	}
 
 	internal void ToggleStar(TreeGridNode node)
