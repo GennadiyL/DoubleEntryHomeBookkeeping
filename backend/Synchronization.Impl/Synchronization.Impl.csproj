@@ -12,6 +12,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Synchronization.Contracts\Synchronization.Contracts.csproj" />
+		<ProjectReference Include="..\Exchange.Models\Exchange.Models.csproj" />
 		<ProjectReference Include="..\Master.Contracts\Master.Contracts.csproj" />
 		<ProjectReference Include="..\DataAccess.Contracts\DataAccess.Contracts.csproj" />
 		<ProjectReference Include="..\Shared.Contracts\Shared.Contracts.csproj" />

@@ -38,7 +38,6 @@ internal class JsonService : IJsonService
 		{
 			WriteIndented = true,
 			PropertyNameCaseInsensitive = true,
-			ReferenceHandler = ReferenceHandler.IgnoreCycles,
 			PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
 			DefaultIgnoreCondition = JsonIgnoreCondition.Never,
 			PreferredObjectCreationHandling = JsonObjectCreationHandling.Populate
