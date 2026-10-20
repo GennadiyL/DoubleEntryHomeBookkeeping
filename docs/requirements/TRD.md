@@ -3366,3 +3366,11 @@ Implements BRD section “Quick account filters — user request 2026-10-18”; 
 
 - transactionGrid.columns stores dateTime=120, description=440, state=80, amount=160, cumulativeAmount=160 and currency=80 in logical pixels. Header and rows share fixed column widths with centered headers and the shared row height. State displays Draft, Planned or Confirmed in a separate column.
 - With an account filter, display all six columns. Without an account filter, hide Cumulative Amount and add its configured width to Description (600 by default), preserving the total content width (1040 by default). This interprets the user wording “amount filtering” as the existing account filter.
+
+### 2026-10-20 — Master domain and independent provider contracts
+
+- User confirmed Master.Contracts, Master.Impl and the Master.Azure infrastructure host, with Adapters.Master.Azure implementing the remote provider boundary. Synchronization.Impl may reference Master.Contracts for its in-process adapter; the executable/test host selects Master.Impl.
+- IMasterAdapter belongs to Synchronization.Contracts and owns provider-independent DTOs. IMasterService belongs to Master.Contracts and owns separate DTOs. Each adapter maps between these contracts; Synchronization.Contracts must not reference Master.Contracts.
+- Added the four projects and the Master server contract for existing-Local authentication, synchronization, outcome lookup, cancellation, snapshot download, acknowledgement, recovery and expired-copy replacement. Initial Master provisioning is outside this increment.
+- Current declaration choice: explicit Master authorization carries token, MasterDatasetKey and LocalDatasetKey; authorization and ownership checks must also apply in-process. Synchronize carries attempt identity, known snapshot version, schema version, priority and opaque ChangesJson.
+- ChangesJson is a placeholder pending the separately agreed JSON-format discussion, not approval of a wire schema. Multi-batch identity, ordering and replay representation remain unresolved under TQ-04. Provider mappings, service implementations and Azure endpoints are not implemented by this scaffold.
