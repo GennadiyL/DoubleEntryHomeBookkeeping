@@ -1,16 +1,18 @@
 using DataAccess.EntityFramework.Models;
 using DataAccess.EntityFramework.SqLite.Utils;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace DataAccess.EntityFramework.SqLite;
 
 /// <summary>
-/// Applies SQLite-specific transaction storage mappings.
+/// Applies SQLite-specific storage mappings to the complete persistence model.
 /// Entry amounts and cumulative amounts use scaled integers.
-/// Transaction identities use parameterless Guid.ToByteArray bytes.
-/// Entry foreign keys use exactly the same identity representation.
+/// All Guid properties use parameterless Guid.ToByteArray bytes.
+/// Required and nullable foreign keys use the same identity representation.
 /// Database ordering therefore matches cumulative tie-breaking.
-/// Account and entry identities retain their existing representations.
+/// String dataset keys retain their existing text representation.
 /// Indexes support account membership and transaction-date lookups.
 /// Existing databases require explicit schema migration before use.
 /// </summary>
@@ -44,10 +46,17 @@ public sealed class SqLiteAppDbContext : AppDbContext
 		modelBuilder.Entity<LocalConfig>().ToTable(nameof(LocalConfig));
 		modelBuilder.Entity<SystemConfig>().HasOne<Currency>().WithMany().HasForeignKey(config => config.BaseCurrencyId);
 		modelBuilder.Entity<SystemConfig>().HasOne<Account>().WithMany().HasForeignKey(config => config.BalancingAccountId);
-		modelBuilder.Entity<Transaction>().Property(entity => entity.Id)
-			.HasConversion(value => value.ToByteArray(), value => new Guid(value)).HasColumnType("BLOB");
-		modelBuilder.Entity<TransactionEntry>().Property(entity => entity.TransactionId)
-			.HasConversion(value => value.ToByteArray(), value => new Guid(value)).HasColumnType("BLOB");
+		foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
+		{
+			foreach (IMutableProperty property in entityType.GetProperties())
+			{
+				if ((Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType) == typeof(Guid))
+				{
+					property.SetValueConverter(new GuidToBytesConverter());
+					property.SetColumnType("BLOB");
+				}
+			}
+		}
 		modelBuilder.Entity<TransactionEntry>().Property(entity => entity.Amount)
 			.HasConversion(value => ScaledAmount.ToStorage(value), value => ScaledAmount.FromStorage(value)).HasColumnType("INTEGER");
 		modelBuilder.Entity<TransactionEntry>().Property(entity => entity.CumulativeAmount)

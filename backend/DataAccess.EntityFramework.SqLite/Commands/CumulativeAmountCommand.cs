@@ -44,7 +44,7 @@ internal sealed class CumulativeAmountCommand : ICumulativeAmountCommand
 					CASE WHEN t.State = {confirmed} THEN e.Amount ELSE 0 END
 				FROM "TransactionEntry" AS e
 				JOIN "Transaction" AS t ON t.Id = e.TransactionId
-				WHERE e.AccountId = {accountId} AND t.DeleteRevision IS NULL
+				WHERE e.AccountId = {accountId.ToByteArray()} AND t.DeleteRevision IS NULL
 					AND ({fromDateTime} IS NULL OR t.DateTime >= {fromDateTime})
 			),
 			Calculated AS (

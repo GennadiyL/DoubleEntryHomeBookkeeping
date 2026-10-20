@@ -2,6 +2,7 @@ using Business.Contracts.Services;
 using Business.Contracts.Utils.Models;
 using Business.Impl;
 using Business.Models.Constants;
+using Business.Models.Entities;
 using Business.Models.Entities.Config;
 using Business.Models.Entities.Reporting;
 using Business.Models.Enums;
@@ -104,6 +105,34 @@ public sealed class CatalogSchemaTests
 		Assert.That(await check.ExecuteScalarAsync(), Is.Null);
 		check.CommandText = "PRAGMA user_version;";
 		Assert.That(await check.ExecuteScalarAsync(), Is.EqualTo(1L));
+	}
+
+	[Test]
+	public async Task Scripts_StoreGuidValuesAsSixteenByteBlobs()
+	{
+		using IServiceScope scope = _provider.CreateScope();
+		AppDbContext context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+		foreach (IEntityType entityType in context.Model.GetEntityTypes())
+		{
+			StoreObjectIdentifier table = StoreObjectIdentifier.Table(entityType.GetTableName()!, entityType.GetSchema());
+			foreach (IProperty property in entityType.GetProperties())
+			{
+				if ((Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType) != typeof(Guid))
+				{
+					continue;
+				}
+				string column = property.GetColumnName(table)!;
+				Assert.That(property.GetColumnType(), Is.EqualTo("BLOB"), $"{table.Name}.{column}");
+				await using SqliteCommand command = _lifetime.CreateCommand();
+				command.CommandText = $"SELECT COUNT(*) FROM \"{table.Name}\" WHERE \"{column}\" IS NOT NULL AND (typeof(\"{column}\") <> 'blob' OR length(\"{column}\") <> 16);";
+				Assert.That(await command.ExecuteScalarAsync(), Is.EqualTo(0L), $"{table.Name}.{column}");
+			}
+		}
+		IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+		Account? account = await unit.AccountRepo.GetById(Guid.Parse("00000000-0000-0000-0000-000000000012"));
+		Assert.That(account!.CategoryId, Is.EqualTo(Guid.Parse("00000000-0000-0000-0000-000000000020")));
+		Account? cash = await unit.AccountRepo.GetById(Guid.Parse("00000000-0000-0000-0000-000000000011"));
+		Assert.That(cash!.CategoryId, Is.Null);
 	}
 
 	[Test]
