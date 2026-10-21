@@ -11,7 +11,7 @@ namespace Synchronization.Impl;
 /// Infrastructure hosts select this module when composing Local execution.
 /// Registration exposes interfaces while retaining internal implementations.
 /// This module does not execute capture or acceptance during registration.
-/// Capture reads pending changes; acceptance remains a separate implementation placeholder.
+/// Capture reads pending changes; acceptance applies bulk cleanup and tracking updates.
 /// Master services and provider adapters are composed separately.
 /// </summary>
 public static class SynchronizationDiConfiguration

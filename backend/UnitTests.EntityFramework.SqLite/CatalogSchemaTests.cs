@@ -327,4 +327,76 @@ public sealed class CatalogSchemaTests
 		Assert.That(templates.Single().Entries.Select(entry => entry.Position), Is.Ordered);
 		Assert.That(scope.ServiceProvider.GetRequiredService<AppDbContext>().ChangeTracker.Entries(), Is.Empty);
 	}
+
+	[Test]
+	public async Task AcceptChanges_BulkClearsFlagsAndPreservesKnownRevisions()
+	{
+		using IServiceScope scope = _provider.CreateScope();
+		IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+		await unit.CurrencyRepo.AcceptChanges();
+		Currency created = new() { Id = Guid.NewGuid(), Code = "TS1", Symbol = "T", EnglishName = "Test", Name = "New" };
+		Currency edited = new() { Id = Guid.NewGuid(), Code = "TS2", Symbol = "T", EnglishName = "Test", Name = "Edited", EditRevision = 7, ModificationType = ModificationType.Content | ModificationType.Order };
+		Currency captured = new() { Id = Guid.NewGuid(), Code = "TS3", Symbol = "T", EnglishName = "Test", Name = "Captured", EditRevision = 0 };
+		unit.CurrencyRepo.Add(created);
+		unit.CurrencyRepo.Add(edited);
+		unit.CurrencyRepo.Add(captured);
+		await unit.SaveChanges();
+		AppDbContext context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+		context.ChangeTracker.Clear();
+		int count = await unit.CurrencyRepo.AcceptChanges();
+		Currency first = (await unit.CurrencyRepo.GetById(created.Id))!;
+		Currency second = (await unit.CurrencyRepo.GetById(edited.Id))!;
+		Assert.Multiple(() =>
+		{
+			Assert.That(count, Is.EqualTo(2));
+			Assert.That(first.EditRevision, Is.Zero);
+			Assert.That(second.EditRevision, Is.EqualTo(7));
+			Assert.That(second.ModificationType, Is.EqualTo(ModificationType.None));
+			Assert.That(second.Name, Is.EqualTo("Edited"));
+			Assert.That(second.DeleteRevision, Is.Null);
+			Assert.That(context.ChangeTracker.Entries(), Is.Empty);
+		});
+		Assert.That(await unit.CurrencyRepo.AcceptChanges(), Is.Zero);
+	}
+
+	[Test]
+	public async Task DeleteSoftDeleted_RemovesOnlyLocalMarkersAndCascadesOwnedEntries()
+	{
+		await using SqliteCommand command = _lifetime.CreateCommand();
+		command.CommandText = "UPDATE \"Transaction\" SET DeleteRevision = 0 WHERE Description = 'Opening cash'; UPDATE \"Transaction\" SET DeleteRevision = 8 WHERE Description = 'Groceries'; UPDATE \"Template\" SET DeleteRevision = 0;";
+		await command.ExecuteNonQueryAsync();
+		using IServiceScope scope = _provider.CreateScope();
+		IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+		Assert.That(await unit.TransactionRepo.HardDelete(), Is.EqualTo(1));
+		Assert.That(await unit.TemplateRepo.HardDelete(), Is.EqualTo(1));
+		Assert.That((await unit.TransactionRepo.GetAll()).Single().DeleteRevision, Is.EqualTo(8));
+		Assert.That(await unit.TemplateRepo.GetAll(), Is.Empty);
+		Assert.That(await unit.TransactionEntryRepo.GetAll(), Has.Count.EqualTo(2));
+		Assert.That(await unit.TemplateEntryRepo.GetAll(), Is.Empty);
+		Assert.That(await unit.TransactionRepo.HardDelete(), Is.Zero);
+		Assert.That(await unit.AccountRepo.HardDelete(), Is.Zero);
+	}
+
+	[Test]
+	public async Task BulkAcceptance_RollsBackWithCallerTransaction()
+	{
+		await using SqliteCommand command = _lifetime.CreateCommand();
+		command.CommandText = "UPDATE \"Template\" SET DeleteRevision = 0;";
+		await command.ExecuteNonQueryAsync();
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+			DataAccess.Core.Entities.IUnitOfWorkTransaction transaction = await unit.BeginTransaction();
+			await unit.TemplateRepo.HardDelete();
+			await unit.CurrencyRepo.AcceptChanges();
+			Assert.That(await unit.TemplateRepo.GetAll(), Is.Empty);
+			Assert.That(await unit.CurrencyRepo.GetChanges(), Is.Empty);
+			await unit.RollbackTransaction(transaction);
+		}
+		using IServiceScope verify = _provider.CreateScope();
+		IAppUnitOfWork restored = verify.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+		Assert.That(await restored.TemplateRepo.GetAll(), Has.Count.EqualTo(1));
+		Assert.That(await restored.TemplateEntryRepo.GetAll(), Has.Count.EqualTo(2));
+		Assert.That(await restored.CurrencyRepo.GetChanges(), Is.Not.Empty);
+	}
 }

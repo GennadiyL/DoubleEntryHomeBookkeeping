@@ -1,18 +1,16 @@
-using Exchange.Models.Synchronizations;
-
 namespace Synchronization.Impl.Operations.AcceptCapture;
 
 /// <summary>
-/// Defines local tracking acceptance for the exact captured synchronization batch.
-/// Run uses the batch rather than a timestamp or Master revision cutoff.
-/// Captured creations transition from a null local revision to the zero sentinel.
-/// Captured modification flags are cleared without assigning positive revisions.
-/// Physical deletion must preserve durable replay evidence and reference integrity.
-/// The caller coordinates acceptance with durable persistence and transaction boundaries.
-/// Acceptance does not mean Master publication or successful synchronization.
-/// The interface is internal to the Synchronization implementation project.
+/// Accepts the captured Local state while editing remains blocked.
+/// No batch IDs or revision cutoff are required under that invariant.
+/// Physically removes local soft deletions before accepting surviving rows.
+/// New surviving rows receive the zero edit-revision sentinel.
+/// Existing positive revisions remain unchanged and modification flags are cleared.
+/// The caller secures replay data and owns the transaction around all operations.
+/// A fresh tracking scope and resolved live dependencies are required for bulk SQL.
+/// Failures propagate to the caller for rollback; acceptance is not Master success.
 /// </summary>
 internal interface IAcceptCaptureOperation
 {
-	public Task Run(SyncBatch batch, CancellationToken cancellationToken = default);
+	public Task Run(CancellationToken cancellationToken = default);
 }

@@ -16,4 +16,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="DataAccess.EntityFramework.SqLite" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
+  </ItemGroup>
 </Project>
