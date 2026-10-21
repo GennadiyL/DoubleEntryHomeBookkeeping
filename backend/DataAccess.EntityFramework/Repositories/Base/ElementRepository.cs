@@ -2,13 +2,12 @@ using Business.Models.Entities.Interfaces;
 using DataAccess.Contracts.Repositories.Base;
 using DataAccess.Core.Behaviors;
 using DataAccess.Core.Entities;
-using DataAccess.Core.EntityFramework.Behaviors;
 
 namespace DataAccess.EntityFramework.Repositories.Base;
 
-internal abstract class ElementRepository<TGroup, TElement, TD> : Repository<AppDbContext, TElement, TD>, IElementRepository<TGroup, TElement>
+internal abstract class ElementRepository<TGroup, TElement, TD> : TrackedRepository<TElement, TD>, IElementRepository<TGroup, TElement>
 	where TGroup : class, IGroupEntity<TGroup, TElement>, new()
-	where TElement : class, IElementEntity<TGroup, TElement>, new()
+	where TElement : class, IElementEntity<TGroup, TElement>, ITrackedEntity, new()
 	where TD : class, IDalEntity, new()
 {
 	public ElementRepository(AppDbContext context, IMapper mapper) : base(context, mapper)

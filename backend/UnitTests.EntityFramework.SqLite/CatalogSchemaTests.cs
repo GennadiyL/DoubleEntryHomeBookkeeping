@@ -264,4 +264,67 @@ public sealed class CatalogSchemaTests
 			Assert.That(await accounts.GetDefaultName(null, null, null, baseCurrencyId), Is.EqualTo("||(UAH)"));
 		}
 	}
+
+	[TestCase(null, null, ModificationType.None, true)]
+	[TestCase(null, 0L, ModificationType.Content, true)]
+	[TestCase(0L, null, ModificationType.None, false)]
+	[TestCase(5L, null, ModificationType.None, false)]
+	[TestCase(5L, null, ModificationType.Content, true)]
+	[TestCase(5L, null, ModificationType.Order, true)]
+	[TestCase(5L, null, ModificationType.Content | ModificationType.Order, true)]
+	[TestCase(0L, 0L, ModificationType.Content, true)]
+	[TestCase(5L, 0L, ModificationType.Content, true)]
+	[TestCase(5L, 0L, ModificationType.None, false)]
+	[TestCase(5L, 5L, ModificationType.None, false)]
+	public async Task GetChanges_SelectsUncapturedRowsIncludingDeletions(long? editRevision, long? deleteRevision, ModificationType flags, bool expected)
+	{
+		using IServiceScope scope = _provider.CreateScope();
+		IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+		Currency currency = new()
+		{
+			Id = Guid.NewGuid(), Code = "TST", Symbol = "T", EnglishName = "Test", Name = "Test",
+			EditRevision = editRevision, DeleteRevision = deleteRevision, ModificationType = flags
+		};
+		unit.CurrencyRepo.Add(currency);
+		await unit.SaveChanges();
+		AppDbContext context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+		context.ChangeTracker.Clear();
+		ICollection<Currency> changes = await unit.CurrencyRepo.GetChanges();
+		Assert.That(changes.Any(item => item.Id == currency.Id), Is.EqualTo(expected));
+		Assert.That(context.ChangeTracker.Entries(), Is.Empty);
+		Currency persisted = (await unit.CurrencyRepo.GetById(currency.Id))!;
+		Assert.Multiple(() =>
+		{
+			Assert.That(persisted.EditRevision, Is.EqualTo(editRevision));
+			Assert.That(persisted.DeleteRevision, Is.EqualTo(deleteRevision));
+			Assert.That(persisted.ModificationType, Is.EqualTo(flags));
+		});
+	}
+
+	[Test]
+	public async Task GetChanges_LoadsEntriesForSoftDeletedAggregates()
+	{
+		await using SqliteCommand command = _lifetime.CreateCommand();
+		command.CommandText = "UPDATE \"Transaction\" SET EditRevision = 5, DeleteRevision = 0, ModificationType = 1; UPDATE \"Template\" SET EditRevision = 5, DeleteRevision = 0, ModificationType = 1;";
+		await command.ExecuteNonQueryAsync();
+		using IServiceScope scope = _provider.CreateScope();
+		IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+		ICollection<Transaction> transactions = await unit.TransactionRepo.GetChanges();
+		ICollection<Template> templates = await unit.TemplateRepo.GetChanges();
+		Assert.Multiple(() =>
+		{
+			Assert.That(transactions, Has.Count.EqualTo(2));
+			Assert.That(transactions.Sum(item => item.Entries.Count), Is.EqualTo(4));
+			Assert.That(templates, Has.Count.EqualTo(1));
+			Assert.That(templates.Single().Entries, Has.Count.EqualTo(2));
+			Assert.That(transactions.All(item => item.DeleteRevision == 0), Is.True);
+			Assert.That(templates.Single().DeleteRevision, Is.Zero);
+		});
+		foreach (Transaction transaction in transactions)
+		{
+			Assert.That(transaction.Entries.Select(entry => entry.Position), Is.Ordered);
+		}
+		Assert.That(templates.Single().Entries.Select(entry => entry.Position), Is.Ordered);
+		Assert.That(scope.ServiceProvider.GetRequiredService<AppDbContext>().ChangeTracker.Entries(), Is.Empty);
+	}
 }

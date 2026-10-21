@@ -1,9 +1,9 @@
 using Business.Models.Entities;
-using DataAccess.Core.Behaviors;
+using DataAccess.Contracts.Repositories.Base;
 
 namespace DataAccess.Contracts.Repositories;
 
-public interface ICurrencyRateRepository : IRepository<CurrencyRate>
+public interface ICurrencyRateRepository : ITrackedRepository<CurrencyRate>
 {
 	public Task<CurrencyRate?> GetApplicable(Guid currencyId, DateOnly date, CancellationToken cancellationToken = default);
 	public Task<CurrencyRate?> GetByCurrencyAndDate(Guid currencyId, DateOnly date, CancellationToken cancellationToken = default);

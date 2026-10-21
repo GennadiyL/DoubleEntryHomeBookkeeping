@@ -1,13 +1,13 @@
 using DataAccess.Contracts.Repositories;
 using DataAccess.Core.Behaviors;
-using DataAccess.Core.EntityFramework.Behaviors;
+using DataAccess.EntityFramework.Repositories.Base;
 using DataAccess.EntityFramework.Models;
 using Microsoft.EntityFrameworkCore;
 using CurrencyRateEntity = Business.Models.Entities.CurrencyRate;
 
 namespace DataAccess.EntityFramework.Repositories;
 
-internal sealed class CurrencyRateRepository : Repository<AppDbContext, CurrencyRateEntity, CurrencyRate>, ICurrencyRateRepository
+internal sealed class CurrencyRateRepository : TrackedRepository<CurrencyRateEntity, CurrencyRate>, ICurrencyRateRepository
 {
 	public CurrencyRateRepository(AppDbContext context, IMapper mapper) : base(context, mapper)
 	{

@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using DataAccess.Contracts.Repositories;
 using DataAccess.Core.Behaviors;
 using DataAccess.EntityFramework.Models;
@@ -11,5 +12,13 @@ internal sealed class TemplateRepository : ElementRepository<TemplateGroupEntity
 {
 	public TemplateRepository(AppDbContext context, IMapper mapper) : base(context, mapper)
 	{
+	}
+
+	public override async Task<ICollection<TemplateEntity>> GetChanges(CancellationToken cancellationToken = default)
+	{
+		List<Template> entities = await Changes
+			.Include(entity => entity.Entries.OrderBy(entry => entry.Position))
+			.ToListAsync(cancellationToken);
+		return Mapper.Map<Template, TemplateEntity>(entities);
 	}
 }

@@ -1,9 +1,8 @@
 using Business.Models.Entities.Config;
-using DataAccess.Core.Behaviors;
+using DataAccess.Contracts.Repositories.Base;
 
 namespace DataAccess.Contracts.Repositories;
 
-public interface ISystemConfigRepository : IRepository<SystemConfig>
+public interface ISystemConfigRepository : ITrackedRepository<SystemConfig>
 {
 }
-

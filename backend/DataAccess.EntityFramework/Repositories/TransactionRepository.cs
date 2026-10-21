@@ -2,7 +2,7 @@ using Business.Models.Enums;
 using DataAccess.Contracts.Queries;
 using DataAccess.Contracts.Repositories;
 using DataAccess.Core.Behaviors;
-using DataAccess.Core.EntityFramework.Behaviors;
+using DataAccess.EntityFramework.Repositories.Base;
 using DataAccess.EntityFramework.Models;
 using Microsoft.EntityFrameworkCore;
 using TransactionEntity = Business.Models.Entities.Transaction;
@@ -19,7 +19,7 @@ namespace DataAccess.EntityFramework.Repositories;
 /// Only parent scalar fields are staged by repository updates.
 /// Transaction ownership remains with the application service.
 /// </summary>
-internal sealed class TransactionRepository : Repository<AppDbContext, TransactionEntity, Transaction>, ITransactionRepository
+internal sealed class TransactionRepository : TrackedRepository<TransactionEntity, Transaction>, ITransactionRepository
 {
 	public TransactionRepository(AppDbContext context, IMapper mapper) : base(context, mapper)
 	{
@@ -83,5 +83,13 @@ internal sealed class TransactionRepository : Repository<AppDbContext, Transacti
 			.Include(transaction => transaction.Entries.OrderBy(entry => entry.Position))
 			.ThenInclude(entry => entry.Account).ThenInclude(account => account!.Currency).ToListAsync(cancellationToken);
 		return Mapper.Map<Transaction, TransactionEntity>(transactions);
+	}
+
+	public override async Task<ICollection<TransactionEntity>> GetChanges(CancellationToken cancellationToken = default)
+	{
+		List<Transaction> entities = await Changes
+			.Include(entity => entity.Entries.OrderBy(entry => entry.Position))
+			.ToListAsync(cancellationToken);
+		return Mapper.Map<Transaction, TransactionEntity>(entities);
 	}
 }

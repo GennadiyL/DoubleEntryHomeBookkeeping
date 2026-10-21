@@ -1,6 +1,6 @@
 using Business.Models.Entities;
 using DataAccess.Contracts.Queries;
-using DataAccess.Core.Behaviors;
+using DataAccess.Contracts.Repositories.Base;
 
 namespace DataAccess.Contracts.Repositories;
 
@@ -14,7 +14,7 @@ namespace DataAccess.Contracts.Repositories;
 /// Writes are staged in the caller's unit of work.
 /// Repository methods do not own transaction lifetime.
 /// </summary>
-public interface ITransactionRepository : IRepository<Transaction>
+public interface ITransactionRepository : ITrackedRepository<Transaction>
 {
 	public Task<ICollection<Transaction>> Search(TransactionSearch search, CancellationToken cancellationToken = default);
 }

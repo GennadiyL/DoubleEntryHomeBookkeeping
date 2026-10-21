@@ -1,10 +1,9 @@
 using Business.Models.Entities.Interfaces;
-using DataAccess.Core.Behaviors;
 
 namespace DataAccess.Contracts.Repositories.Base;
 
-public interface IGroupRepository<TGroup, TElement> : IRepository<TGroup>
-	where TGroup : class, IGroupEntity<TGroup, TElement>
+public interface IGroupRepository<TGroup, TElement> : ITrackedRepository<TGroup>
+	where TGroup : class, IGroupEntity<TGroup, TElement>, ITrackedEntity
 	where TElement : class, IElementEntity<TGroup, TElement>
 {
 	public Task<ICollection<TGroup>> GetByName(string name, CancellationToken cancellationToken = default);
