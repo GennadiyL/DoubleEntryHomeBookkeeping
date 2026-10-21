@@ -1,3 +1,4 @@
+using Business.Models.Constants;
 using Dehb.WinUi.Common;
 using Dehb.WinUi.Hosting;
 using Business.Contracts.Services;
@@ -410,8 +411,8 @@ internal sealed partial class LedgerView : UserControl
 			}
 			else
 			{
-				bool positive = transaction.Entries.Any(e => e.AccountId == _session.Settings.BalancingAccountId && _session.BaseAmount(e.Amount, e.Rate) > 0);
-				bool negative = transaction.Entries.Any(e => e.AccountId == _session.Settings.BalancingAccountId && _session.BaseAmount(e.Amount, e.Rate) < 0);
+				bool positive = transaction.Entries.Any(e => e.AccountId == EntitiesIds.BalancingAccountId && _session.BaseAmount(e.Amount, e.Rate) > 0);
+				bool negative = transaction.Entries.Any(e => e.AccountId == EntitiesIds.BalancingAccountId && _session.BaseAmount(e.Amount, e.Rate) < 0);
 				IEnumerable<decimal> amounts = transaction.Entries.Select(e => _session.BaseAmount(e.Amount, e.Rate));
 				amount = positive && !negative ? -amounts.Where(a => a < 0).Sum() : amounts.Where(a => a > 0).Sum();
 			}

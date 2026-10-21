@@ -64,7 +64,7 @@ internal sealed partial class BusinessHost : IDisposable
 		return new SystemConfig
 		{
 			BaseCurrencyId = settings.BaseCurrencyId,
-			BalancingAccountId = settings.BalancingAccountId,
+			CurrentRevision = settings.CurrentRevision,
 			AmountPrecision = settings.AmountPrecision,
 			RatePrecision = settings.RatePrecision
 		};

@@ -1,3 +1,4 @@
+using Business.Models.Entities.Interfaces;
 using Business.Models.Entities.Config;
 using Business.Models.Enums;
 using NUnit.Framework;
@@ -8,17 +9,15 @@ namespace UnitTests.Business.Models;
 public sealed class ConfigurationTests
 {
 	[Test]
-	public void SystemConfig_Defaults_MatchPrecisionAndTrackingContract()
+	public void SystemConfig_Defaults_MatchMasterOwnedConfiguration()
 	{
 		SystemConfig config = new();
 		Assert.Multiple(() =>
 		{
 			Assert.That(config.AmountPrecision, Is.EqualTo(2));
 			Assert.That(config.RatePrecision, Is.EqualTo(4));
-			Assert.That(config.BalancingAccountId, Is.Null);
-			Assert.That(config.EditRevision, Is.Null);
-			Assert.That(config.DeleteRevision, Is.Null);
-			Assert.That(config.ModificationType, Is.EqualTo(ModificationType.None));
+			Assert.That(config.CurrentRevision, Is.Zero);
+			Assert.That(typeof(ITrackedEntity).IsAssignableFrom(typeof(SystemConfig)), Is.False);
 		});
 	}
 

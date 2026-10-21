@@ -1,3 +1,4 @@
+using Business.Models.Constants;
 using Windows.System;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Dehb.WinUi.Catalogs;
@@ -213,7 +214,7 @@ internal sealed partial class UiSession
 				return;
 			}
 
-			Guid accountId = Settings.BalancingAccountId ?? throw new InvalidOperationException("No balancing account configured.");
+			Guid accountId = EntitiesIds.BalancingAccountId;
 			AccountInfo account = Host.Call<IAccountService, AccountInfo>(s => s.GetById(accountId));
 			if (account.CurrencyId != Settings.BaseCurrencyId)
 			{

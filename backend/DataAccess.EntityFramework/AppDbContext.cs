@@ -32,4 +32,6 @@ public class AppDbContext : DbContext
 	internal DbSet<TransactionEntry> TransactionEntries { get; set; } = null!;
 	internal DbSet<SystemConfig> SystemConfigs { get; set; } = null!;
 	internal DbSet<LocalConfig> LocalConfigs { get; set; } = null!;
+	internal DbSet<LocalRegistration> LocalRegistrations { get; set; } = null!;
+	internal DbSet<LocalSyncBatch> LocalSyncBatches { get; set; } = null!;
 }

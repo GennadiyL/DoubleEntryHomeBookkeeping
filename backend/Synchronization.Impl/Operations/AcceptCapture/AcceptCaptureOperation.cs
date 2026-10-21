@@ -25,7 +25,6 @@ internal sealed class AcceptCaptureOperation : IAcceptCaptureOperation
 	public async Task Run(CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		await _unitOfWork.SystemConfigRepo.HardDelete(cancellationToken);
 		await _unitOfWork.TransactionRepo.HardDelete(cancellationToken);
 		await _unitOfWork.TemplateRepo.HardDelete(cancellationToken);
 		await _unitOfWork.ReportRepo.HardDelete(cancellationToken);
@@ -42,7 +41,6 @@ internal sealed class AcceptCaptureOperation : IAcceptCaptureOperation
 		await _unitOfWork.ProjectGroupRepo.HardDelete(cancellationToken);
 		await _unitOfWork.CurrencyRepo.HardDelete(cancellationToken);
 
-		await _unitOfWork.SystemConfigRepo.AcceptChanges(cancellationToken);
 		await _unitOfWork.TransactionRepo.AcceptChanges(cancellationToken);
 		await _unitOfWork.TemplateRepo.AcceptChanges(cancellationToken);
 		await _unitOfWork.ReportRepo.AcceptChanges(cancellationToken);

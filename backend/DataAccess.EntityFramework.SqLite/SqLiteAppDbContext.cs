@@ -45,7 +45,14 @@ public sealed class SqLiteAppDbContext : AppDbContext
 		modelBuilder.Entity<SystemConfig>().ToTable(nameof(SystemConfig));
 		modelBuilder.Entity<LocalConfig>().ToTable(nameof(LocalConfig));
 		modelBuilder.Entity<SystemConfig>().HasOne<Currency>().WithMany().HasForeignKey(config => config.BaseCurrencyId);
-		modelBuilder.Entity<SystemConfig>().HasOne<Account>().WithMany().HasForeignKey(config => config.BalancingAccountId);
+		modelBuilder.Entity<LocalRegistration>().ToTable(nameof(LocalRegistration));
+		modelBuilder.Entity<LocalRegistration>().HasIndex(entity => entity.LocalDatasetKey).IsUnique();
+		modelBuilder.Entity<LocalRegistration>().Property(entity => entity.SyncDateTime)
+			.HasConversion(value => value, value => value.HasValue ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc) : (DateTime?)null);
+		modelBuilder.Entity<LocalSyncBatch>().ToTable(nameof(LocalSyncBatch));
+		modelBuilder.Entity<LocalSyncBatch>().HasOne(entity => entity.LocalRegistration).WithMany()
+			.HasForeignKey(entity => entity.LocalRegistrationId).OnDelete(DeleteBehavior.Restrict);
+		modelBuilder.Entity<LocalSyncBatch>().HasIndex(entity => new { entity.LocalRegistrationId, entity.SyncKey }).IsUnique();
 		foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
 		{
 			foreach (IMutableProperty property in entityType.GetProperties())

@@ -1,28 +1,22 @@
 using Business.Core.Entities;
-using Business.Models.Entities.Interfaces;
-using Business.Models.Enums;
 
 namespace Business.Models.Entities.Config;
 
 /// <summary>
-/// Stores the single synchronized configuration row for a Master dataset and its Local copies.
-/// Master generates the row identity once; every Local retains it through synchronization.
+/// Stores the single Master-owned configuration row shared with Local snapshots.
 /// MasterDatasetKey identifies the dataset independently of the row identity.
 /// BaseCurrencyId and both precision settings are immutable after initialization.
-/// AmountPrecision and RatePrecision range from zero to four, defaulting to two and four.
-/// BalancingAccountId optionally selects a base-currency account for assisted balancing.
-/// Account deletion preserves the stored selection; reads expose null when the account is unavailable.
-/// Entity references are ID-only and are resolved and validated by services.
-/// Mutable setting changes use the shared content-tracking and atomic persistence rules.
+/// AmountPrecision and RatePrecision range from zero to four.
+/// CurrentRevision identifies the committed Master version represented by this database.
+/// Master advances the revision atomically with accepted batches and their receipts.
+/// Local reads the downloaded values and never captures this row as a change.
+/// The balancing account has a fixed identity in EntitiesIds rather than a setting.
 /// </summary>
-public class SystemConfig : BaseEntity, ITrackedEntity
+public class SystemConfig : BaseEntity
 {
-	public long? EditRevision { get; set; }
-	public long? DeleteRevision { get; set; }
-	public ModificationType ModificationType { get; set; }
 	public Guid BaseCurrencyId { get; set; }
 	public string MasterDatasetKey { get; set; } = string.Empty;
-	public Guid? BalancingAccountId { get; set; }
+	public long CurrentRevision { get; set; }
 	public int AmountPrecision { get; set; } = 2;
 	public int RatePrecision { get; set; } = 4;
 }

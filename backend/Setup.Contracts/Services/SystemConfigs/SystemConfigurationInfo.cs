@@ -8,12 +8,11 @@ namespace Setup.Contracts.Services.SystemConfigs;
 /// Dataset keys and synchronization revisions are not settings fields.
 /// The result does not expose persistent navigation objects.
 /// Reading settings does not commit changes.
-/// SaveConfiguration persists editable fields separately.
+/// System configuration is read-only after initialization.
 /// </summary>
 public record SystemConfigurationInfo
 {
 	public Guid BaseCurrencyId { get; set; }
 	public int AmountPrecision { get; set; }
 	public int RatePrecision { get; set; }
-	public Guid? BalancingAccountId { get; set; }
 }

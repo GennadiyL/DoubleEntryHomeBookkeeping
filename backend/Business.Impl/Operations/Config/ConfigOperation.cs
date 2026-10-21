@@ -1,6 +1,4 @@
 using Business.Contracts.Services.Configs;
-using Business.Contracts.Utils.Merging;
-using Business.Models.Entities;
 using Business.Models.Entities.Config;
 using Business.Models.Enums;
 using DataAccess.Contracts;
@@ -13,7 +11,7 @@ namespace Business.Impl.Operations.Config;
 /// Provides System or Local configuration for internal business consumers.
 /// Rejects missing, duplicate or invalid singleton data without creating defaults.
 /// Each read obtains current values without retaining a cached snapshot.
-/// Missing or deleted balancing accounts are exposed as an absent selection.
+/// The balancing account uses its fixed identity and is not configurable.
 /// Returned System values are copied without changing the stored configuration.
 /// User-facing configuration editing remains owned by Setup.
 /// </summary>
@@ -33,7 +31,6 @@ internal sealed class ConfigOperation : IConfigOperation
 		return new ConfigurationInfo
 		{
 			BaseCurrencyId = system.BaseCurrencyId,
-			BalancingAccountId = system.BalancingAccountId,
 			AmountPrecision = system.AmountPrecision,
 			RatePrecision = system.RatePrecision,
 			AccountNameOrder = local.AccountNameOrder,
@@ -52,31 +49,19 @@ internal sealed class ConfigOperation : IConfigOperation
 			throw new InvalidOperationException("The System configuration singleton is missing or invalid.");
 		}
 		SystemConfig config = configurations.Single();
-		if (config.IsDeleted() || config.AmountPrecision is < 0 or > 4 || config.RatePrecision is < 0 or > 4 ||
-			config.BaseCurrencyId == Guid.Empty)
+		if (config.AmountPrecision is < 0 or > 4 || config.RatePrecision is < 0 or > 4 ||
+			config.BaseCurrencyId == Guid.Empty || config.CurrentRevision < 0)
 		{
 			throw new InvalidOperationException("The System configuration singleton is missing or invalid.");
-		}
-		Guid? balancingAccountId = config.BalancingAccountId;
-		if (balancingAccountId.HasValue)
-		{
-			Account? account = await _unitOfWork.AccountRepo.GetById(balancingAccountId.Value, cancellationToken);
-			if (account is null || account.IsDeleted())
-			{
-				balancingAccountId = null;
-			}
 		}
 		return new SystemConfig
 		{
 			Id = config.Id,
 			MasterDatasetKey = config.MasterDatasetKey,
+			CurrentRevision = config.CurrentRevision,
 			BaseCurrencyId = config.BaseCurrencyId,
-			BalancingAccountId = balancingAccountId,
 			AmountPrecision = config.AmountPrecision,
 			RatePrecision = config.RatePrecision,
-			EditRevision = config.EditRevision,
-			DeleteRevision = config.DeleteRevision,
-			ModificationType = config.ModificationType
 		};
 	}
 

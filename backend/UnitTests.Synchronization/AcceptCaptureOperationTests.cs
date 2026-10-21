@@ -32,7 +32,6 @@ public sealed class AcceptCaptureOperationTests
 	private CancellationToken _expectedToken;
 	private static readonly string[] Repositories =
 	[
-		"SystemConfig",
 		"Transaction",
 		"Template",
 		"Report",
@@ -57,7 +56,6 @@ public sealed class AcceptCaptureOperationTests
 		_failure = null;
 		_expectedToken = default;
 		_unit = Substitute.For<IAppUnitOfWork>();
-		Observe(_unit.SystemConfigRepo, "SystemConfig");
 		Observe(_unit.TransactionRepo, "Transaction");
 		Observe(_unit.TemplateRepo, "Template");
 		Observe(_unit.ReportRepo, "Report");

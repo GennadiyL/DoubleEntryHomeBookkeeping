@@ -61,7 +61,6 @@ public sealed class CaptureChangesOperationTests
 		Empty(_unit.TransactionRepo);
 		Empty(_unit.CurrencyRepo);
 		Empty(_unit.CurrencyRateRepo);
-		Empty(_unit.SystemConfigRepo);
 		ServiceCollection services = new();
 		services.AddSharedModule();
 		services.AddSynchronizationModule();

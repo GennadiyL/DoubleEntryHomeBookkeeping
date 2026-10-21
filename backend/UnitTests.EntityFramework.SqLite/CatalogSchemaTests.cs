@@ -1,3 +1,4 @@
+using Business.Models.Entities.Synchronizations;
 using Business.Contracts.Services;
 using Business.Contracts.Utils.Models;
 using Business.Impl;
@@ -104,7 +105,7 @@ public sealed class CatalogSchemaTests
 		check.CommandText = "PRAGMA foreign_key_check;";
 		Assert.That(await check.ExecuteScalarAsync(), Is.Null);
 		check.CommandText = "PRAGMA user_version;";
-		Assert.That(await check.ExecuteScalarAsync(), Is.EqualTo(1L));
+		Assert.That(await check.ExecuteScalarAsync(), Is.EqualTo(2L));
 	}
 
 	[Test]
@@ -398,5 +399,107 @@ public sealed class CatalogSchemaTests
 		Assert.That(await restored.TemplateRepo.GetAll(), Has.Count.EqualTo(1));
 		Assert.That(await restored.TemplateEntryRepo.GetAll(), Has.Count.EqualTo(2));
 		Assert.That(await restored.CurrencyRepo.GetChanges(), Is.Not.Empty);
+	}
+	[Test]
+	public async Task SynchronizationMetadata_RoundTripsAndLoadsRegistration()
+	{
+		LocalRegistration registration = new()
+		{
+			Id = Guid.NewGuid(), LocalDatasetKey = "device-a",
+			SyncDateTime = new DateTime(2026, 10, 21, 12, 30, 0, DateTimeKind.Utc), SyncRevision = 8
+		};
+		LocalSyncBatch batch = new()
+		{
+			Id = Guid.NewGuid(), LocalRegistrationId = registration.Id, LocalRegistration = registration,
+			SyncKey = "batch-a", Revision = 9, PayloadHash = "payload-hash"
+		};
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+			unit.LocalRegistrationRepo.Add(registration);
+			unit.LocalSyncBatchRepo.Add(batch);
+			SystemConfig config = (await unit.SystemConfigRepo.GetAll()).Single();
+			config.CurrentRevision = long.MaxValue;
+			unit.SystemConfigRepo.Update(config);
+			await unit.SaveChanges();
+		}
+		using IServiceScope verify = _provider.CreateScope();
+		IAppUnitOfWork read = verify.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+		LocalSyncBatch loaded = (await read.LocalSyncBatchRepo.GetById(batch.Id))!;
+		Assert.That((loaded.LocalRegistrationId, loaded.SyncKey, loaded.Revision, loaded.PayloadHash),
+			Is.EqualTo((registration.Id, "batch-a", 9L, "payload-hash")));
+		Assert.That(loaded.LocalRegistration.Id, Is.EqualTo(registration.Id));
+		Assert.That(loaded.LocalRegistration.SyncDateTime, Is.EqualTo(registration.SyncDateTime));
+		Assert.That(loaded.LocalRegistration.SyncDateTime!.Value.Kind, Is.EqualTo(DateTimeKind.Utc));
+		Assert.That(loaded.LocalRegistration.SyncRevision, Is.EqualTo(8));
+		Assert.That((await read.SystemConfigRepo.GetAll()).Single().CurrentRevision, Is.EqualTo(long.MaxValue));
+	}
+
+	[TestCase("registration")]
+	[TestCase("batch")]
+	[TestCase("foreignKey")]
+	public async Task SynchronizationMetadata_RejectsDuplicateKeysAndMissingRegistration(string constraint)
+	{
+		Guid registrationId = Guid.NewGuid();
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+			unit.LocalRegistrationRepo.Add(new LocalRegistration { Id = registrationId, LocalDatasetKey = "device-a" });
+			unit.LocalSyncBatchRepo.Add(new LocalSyncBatch { Id = Guid.NewGuid(), LocalRegistrationId = registrationId, SyncKey = "batch-a", PayloadHash = "hash" });
+			await unit.SaveChanges();
+		}
+		using IServiceScope duplicate = _provider.CreateScope();
+		IAppUnitOfWork invalid = duplicate.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+		if (constraint == "registration")
+		{
+			invalid.LocalRegistrationRepo.Add(new LocalRegistration { Id = Guid.NewGuid(), LocalDatasetKey = "device-a" });
+		}
+		else
+		{
+			invalid.LocalSyncBatchRepo.Add(new LocalSyncBatch
+			{
+				Id = Guid.NewGuid(), LocalRegistrationId = constraint == "foreignKey" ? Guid.NewGuid() : registrationId,
+				SyncKey = "batch-a", PayloadHash = "different-hash"
+			});
+		}
+		Assert.ThrowsAsync<DbUpdateException>(async () => await invalid.SaveChanges());
+	}
+
+	[TestCase(false)]
+	[TestCase(true)]
+	public async Task BatchTransaction_CommitsOrRollsBackBusinessRevisionAndReceiptTogether(bool commit)
+	{
+		Guid registrationId = Guid.NewGuid();
+		using (IServiceScope setup = _provider.CreateScope())
+		{
+			IAppUnitOfWork unit = setup.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+			unit.LocalRegistrationRepo.Add(new LocalRegistration { Id = registrationId, LocalDatasetKey = "device-a" });
+			await unit.SaveChanges();
+		}
+		string originalName;
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+			await using DataAccess.Core.Entities.IUnitOfWorkTransaction transaction = await unit.BeginTransaction();
+			Currency currency = (await unit.CurrencyRepo.GetById(EntitiesIds.BaseCurrencyId))!;
+			originalName = currency.Name;
+			currency.Name = "Batch changed name";
+			unit.CurrencyRepo.Update(currency);
+			SystemConfig config = (await unit.SystemConfigRepo.GetAll()).Single();
+			config.CurrentRevision = 1;
+			unit.SystemConfigRepo.Update(config);
+			unit.LocalSyncBatchRepo.Add(new LocalSyncBatch
+			{
+				Id = Guid.NewGuid(), LocalRegistrationId = registrationId, SyncKey = "batch-a", Revision = 1, PayloadHash = "hash"
+			});
+			await unit.SaveChanges();
+			if (commit) { await unit.CommitTransaction(transaction); }
+			else { await unit.RollbackTransaction(transaction); }
+		}
+		using IServiceScope verify = _provider.CreateScope();
+		IAppUnitOfWork read = verify.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+		Assert.That((await read.CurrencyRepo.GetById(EntitiesIds.BaseCurrencyId))!.Name, Is.EqualTo(commit ? "Batch changed name" : originalName));
+		Assert.That((await read.SystemConfigRepo.GetAll()).Single().CurrentRevision, Is.EqualTo(commit ? 1L : 0L));
+		Assert.That(await read.LocalSyncBatchRepo.GetAll(), Has.Count.EqualTo(commit ? 1 : 0));
 	}
 }

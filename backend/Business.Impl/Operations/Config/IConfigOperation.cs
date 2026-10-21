@@ -9,7 +9,7 @@ namespace Business.Impl.Operations.Config;
 /// Loads individual singletons for operations requiring only one settings scope.
 /// Missing or invalid configuration raises a critical failure.
 /// Services share this operation instead of calling another service.
-/// Missing or deleted balancing accounts are returned as an absent selection.
+/// System configuration is Master-owned; the balancing account identity is fixed.
 /// Reads never modify configuration rows or synchronization metadata.
 /// User-facing settings editing belongs to the Setup subdomain.
 /// </summary>

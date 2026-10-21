@@ -1,3 +1,4 @@
+using Business.Models.Constants;
 using Business.Models.Enums;
 using Business.Models.Entities.Config;
 using Business.Contracts.Services;
@@ -79,7 +80,7 @@ public sealed class AccountsLifecycleServiceTests
 			CurrencyId = _currency.Id, Currency = _currency, Order = 0, EditRevision = 5 };
 		_group.Elements.Add(_account);
 		_repository.GetById(_account.Id, Arg.Any<CancellationToken>()).Returns(_account);
-		_system = new SystemConfig { Id = Guid.NewGuid(), BaseCurrencyId = _currency.Id, EditRevision = 7 };
+		_system = new SystemConfig { Id = Guid.NewGuid(), BaseCurrencyId = _currency.Id, CurrentRevision = 7 };
 		_local = new LocalConfig { Id = Guid.NewGuid() };
 		_unitOfWork.SystemConfigRepo.GetAll(Arg.Any<CancellationToken>()).Returns(new List<SystemConfig> { _system });
 		_unitOfWork.LocalConfigRepo.GetAll(Arg.Any<CancellationToken>()).Returns(new List<LocalConfig> { _local });
@@ -170,15 +171,13 @@ public sealed class AccountsLifecycleServiceTests
 	}
 
 	[Test]
-	public async Task Delete_PreservesFlags_NormalizesSurvivorsAndPreservesBalancingSelection(
+	public async Task Delete_PreservesFlags_NormalizesSurvivorsAndPreservesConfiguration(
 		[Values(null, 0L, 7L)] long? revision,
 		[Values(ModificationType.None, ModificationType.Content, ModificationType.Order,
 			ModificationType.Content | ModificationType.Order)] ModificationType flags)
 	{
 		_account.EditRevision = revision;
 		_account.ModificationType = flags;
-		_system.BalancingAccountId = _account.Id;
-		_system.ModificationType = ModificationType.Order;
 		Account sibling = new() { Id = Guid.NewGuid(), Order = 8, EditRevision = 4, ModificationType = ModificationType.Content };
 		Account deleted = new() { Id = Guid.NewGuid(), Order = 9, DeleteRevision = 0 };
 		_group.Elements.Add(sibling);
@@ -193,25 +192,10 @@ public sealed class AccountsLifecycleServiceTests
 		Assert.That(sibling.EditRevision, Is.EqualTo(4));
 		Assert.That(sibling.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
 		Assert.That(deleted.Order, Is.EqualTo(9));
-		Assert.That(_system.BalancingAccountId, Is.EqualTo(_account.Id));
 		_unitOfWork.SystemConfigRepo.DidNotReceiveWithAnyArgs().Update(default!);
-		Assert.That(_system.EditRevision, Is.EqualTo(7));
-		Assert.That(_system.ModificationType, Is.EqualTo(ModificationType.Order));
+		Assert.That(_system.CurrentRevision, Is.EqualTo(7));
 		_repository.DidNotReceive().Update(deleted);
 		await _unitOfWork.Received(1).SaveChanges();
-	}
-
-	[TestCase(false)]
-	[TestCase(true)]
-	public async Task Delete_OtherOrNoBalancingSelection_DoesNotUpdateConfiguration(bool selected)
-	{
-		Guid? id = selected ? Guid.NewGuid() : null;
-		_system.BalancingAccountId = id;
-
-		await _service.Delete(_account.Id);
-
-		Assert.That(_system.BalancingAccountId, Is.EqualTo(id));
-		_unitOfWork.SystemConfigRepo.DidNotReceive().Update(Arg.Any<SystemConfig>());
 	}
 
 	[Test]
@@ -265,13 +249,12 @@ public sealed class AccountsLifecycleServiceTests
 	}
 
 	[Test]
-	public async Task Combine_ReplacesRepeatedEntries_TracksEachParentOnceAndPreservesSelection()
+	public async Task Combine_ReplacesRepeatedEntries_TracksEachParentOnceAndPreservesConfiguration()
 	{
 		Account destination = new() { Id = Guid.NewGuid(), CurrencyId = _currency.Id, GroupId = _group.Id,
 			Order = 4, EditRevision = 6, ModificationType = ModificationType.Content };
 		_group.Elements.Add(destination);
 		_repository.GetById(destination.Id).Returns(destination);
-		_system.BalancingAccountId = _account.Id;
 		_account.ModificationType = ModificationType.Order;
 		Transaction parent = new() { Id = Guid.NewGuid(), EditRevision = 9, ModificationType = ModificationType.Order };
 		Template template = new() { Id = Guid.NewGuid(), EditRevision = 8, DeleteRevision = 0, ModificationType = ModificationType.Order };
@@ -308,7 +291,6 @@ public sealed class AccountsLifecycleServiceTests
 		Assert.That(_account.DeleteRevision, Is.Zero);
 		Assert.That(destination.Order, Is.Zero);
 		Assert.That(destination.EditRevision, Is.EqualTo(6));
-		Assert.That(_system.BalancingAccountId, Is.EqualTo(_account.Id));
 		_unitOfWork.SystemConfigRepo.DidNotReceiveWithAnyArgs().Update(default!);
 		_unitOfWork.TransactionRepo.Received(1).Update(parent);
 		_unitOfWork.TemplateRepo.Received(1).Update(template);
@@ -502,6 +484,37 @@ public sealed class AccountsLifecycleServiceTests
 		Assert.ThrowsAsync<OperationCanceledException>(async () => await _service.GetById(_account.Id, cancellation.Token));
 
 		AssertNoWrites();
+	}
+
+	[Test]
+	public void Delete_BalancingAccount_RejectsBeforeMutation()
+	{
+		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.Delete(EntitiesIds.BalancingAccountId));
+		AssertNoWrites();
+	}
+
+	[Test]
+	public void Combine_BalancingAccountAsSource_RejectsBeforeTransaction()
+	{
+		Assert.ThrowsAsync<InvalidElementException>(async () => await _service.CombineElements(_account.Id, EntitiesIds.BalancingAccountId));
+		Assert.That(_unitOfWork.ReceivedCalls().Any(call => call.GetMethodInfo().Name == nameof(IAppUnitOfWork.BeginTransaction)), Is.False);
+		AssertNoWrites();
+	}
+
+	[Test]
+	public async Task BalancingAccount_CanBeUpdatedAndMoved()
+	{
+		_account.Id = EntitiesIds.BalancingAccountId;
+		_repository.GetById(_account.Id, Arg.Any<CancellationToken>()).Returns(_account);
+		_param.Name = "Renamed balancing account";
+		await _service.Update(_account.Id, _param);
+		AccountGroup destination = new() { Id = Guid.NewGuid(), Name = "Destination" };
+		_groupRepository.GetWithContentsById(destination.Id, Arg.Any<CancellationToken>()).Returns(destination);
+		await _service.MoveToAnotherGroup(_account.Id, destination.Id);
+		Assert.That(_account.Name, Is.EqualTo(_param.Name));
+		Assert.That(_account.GroupId, Is.EqualTo(destination.Id));
+		Assert.That(_account.CurrencyId, Is.EqualTo(_currency.Id));
+		Assert.That(_account.DeleteRevision, Is.Null);
 	}
 
 	private void AssertNoWrites()

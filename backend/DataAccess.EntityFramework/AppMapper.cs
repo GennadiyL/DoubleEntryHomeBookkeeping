@@ -1,3 +1,5 @@
+using LocalSyncBatchEntity = Business.Models.Entities.Synchronizations.LocalSyncBatch;
+using LocalRegistrationEntity = Business.Models.Entities.Synchronizations.LocalRegistration;
 using Business.Core.Entities;
 using LocalConfigEntity = Business.Models.Entities.Config.LocalConfig;
 using DataAccess.Core.Behaviors;
@@ -106,6 +108,8 @@ internal class AppMapper : IMapper
 		TransactionEntity value => Map(value),
 		TransactionEntryEntity value => Map(value),
 		LocalConfigEntity value => Map(value),
+		LocalSyncBatchEntity value => Map(value),
+		LocalRegistrationEntity value => Map(value),
 		_ => throw UnsupportedMapping(entity.GetType(), typeof(IDalEntity))
 	};
 
@@ -130,6 +134,8 @@ internal class AppMapper : IMapper
 		Transaction value => Map(value, cache),
 		TransactionEntry value => Map(value, cache),
 		LocalConfig value => Map(value, cache),
+		LocalSyncBatch value => Map(value, cache),
+		LocalRegistration value => Map(value, cache),
 		_ => throw UnsupportedMapping(entity.GetType(), typeof(IBaseEntity))
 	};
 
@@ -619,12 +625,9 @@ internal class AppMapper : IMapper
 	private static SystemConfig Map(SystemConfigEntity value) => new()
 	{
 		Id = value.Id,
-		EditRevision = value.EditRevision,
-		DeleteRevision = value.DeleteRevision,
-		ModificationType = value.ModificationType,
 		BaseCurrencyId = value.BaseCurrencyId,
 		MasterDatasetKey = value.MasterDatasetKey,
-		BalancingAccountId = value.BalancingAccountId,
+		CurrentRevision = value.CurrentRevision,
 		AmountPrecision = value.AmountPrecision,
 		RatePrecision = value.RatePrecision
 	};
@@ -639,12 +642,9 @@ internal class AppMapper : IMapper
 		SystemConfigEntity mapped = new()
 		{
 			Id = value.Id,
-			EditRevision = value.EditRevision,
-			DeleteRevision = value.DeleteRevision,
-			ModificationType = value.ModificationType,
 			BaseCurrencyId = value.BaseCurrencyId,
 			MasterDatasetKey = value.MasterDatasetKey,
-			BalancingAccountId = value.BalancingAccountId,
+			CurrentRevision = value.CurrentRevision,
 			AmountPrecision = value.AmountPrecision,
 			RatePrecision = value.RatePrecision
 		};
@@ -863,6 +863,59 @@ internal class AppMapper : IMapper
 			SnapshotRevision = value.SnapshotRevision
 		};
 		cache.Add(value, mapped);
+		return mapped;
+	}
+
+	private static LocalRegistration Map(LocalRegistrationEntity value) => new()
+	{
+		Id = value.Id,
+		LocalDatasetKey = value.LocalDatasetKey,
+		SyncDateTime = value.SyncDateTime,
+		SyncRevision = value.SyncRevision
+	};
+
+	private static LocalRegistrationEntity Map(LocalRegistration value, Dictionary<IDalEntity, IBaseEntity> cache)
+	{
+		if (cache.TryGetValue(value, out IBaseEntity? existing))
+		{
+			return (LocalRegistrationEntity)existing;
+		}
+		LocalRegistrationEntity mapped = new()
+		{
+			Id = value.Id,
+			LocalDatasetKey = value.LocalDatasetKey,
+			SyncDateTime = value.SyncDateTime,
+			SyncRevision = value.SyncRevision
+		};
+		cache.Add(value, mapped);
+		return mapped;
+	}
+
+	private static LocalSyncBatch Map(LocalSyncBatchEntity value) => new()
+	{
+		Id = value.Id,
+		LocalRegistrationId = value.LocalRegistrationId,
+		SyncKey = value.SyncKey,
+		Revision = value.Revision,
+		PayloadHash = value.PayloadHash
+	};
+
+	private static LocalSyncBatchEntity Map(LocalSyncBatch value, Dictionary<IDalEntity, IBaseEntity> cache)
+	{
+		if (cache.TryGetValue(value, out IBaseEntity? existing))
+		{
+			return (LocalSyncBatchEntity)existing;
+		}
+		LocalSyncBatchEntity mapped = new()
+		{
+			Id = value.Id,
+			LocalRegistrationId = value.LocalRegistrationId,
+			SyncKey = value.SyncKey,
+			Revision = value.Revision,
+			PayloadHash = value.PayloadHash
+		};
+		cache.Add(value, mapped);
+		mapped.LocalRegistration = value.LocalRegistration is null ? null! : Map(value.LocalRegistration, cache);
 		return mapped;
 	}
 }

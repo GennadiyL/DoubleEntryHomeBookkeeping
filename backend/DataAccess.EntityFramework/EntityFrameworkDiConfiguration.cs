@@ -32,5 +32,7 @@ public static class EntityFrameworkDiConfiguration
 		services.AddScoped<ITransactionEntryRepository, TransactionEntryRepository>();
 		services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
 		services.AddScoped<ILocalConfigRepository, LocalConfigRepository>();
+		services.AddScoped<ILocalRegistrationRepository, LocalRegistrationRepository>();
+		services.AddScoped<ILocalSyncBatchRepository, LocalSyncBatchRepository>();
 	}
 }

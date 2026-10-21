@@ -228,15 +228,11 @@ CREATE TABLE "Account" (
 
 CREATE TABLE "SystemConfig" (
     "Id" BLOB NOT NULL CONSTRAINT "PK_SystemConfig" PRIMARY KEY,
-    "EditRevision" INTEGER NULL,
-    "DeleteRevision" INTEGER NULL,
-    "ModificationType" INTEGER NOT NULL,
     "BaseCurrencyId" BLOB NOT NULL,
     "MasterDatasetKey" TEXT NOT NULL,
-    "BalancingAccountId" BLOB NULL,
+    "CurrentRevision" INTEGER NOT NULL,
     "AmountPrecision" INTEGER NOT NULL,
     "RatePrecision" INTEGER NOT NULL,
-    CONSTRAINT "FK_SystemConfig_Account_BalancingAccountId" FOREIGN KEY ("BalancingAccountId") REFERENCES "Account" ("Id"),
     CONSTRAINT "FK_SystemConfig_Currency_BaseCurrencyId" FOREIGN KEY ("BaseCurrencyId") REFERENCES "Currency" ("Id") ON DELETE CASCADE
 );
 
@@ -304,7 +300,6 @@ CREATE INDEX "IX_Project_GroupId" ON "Project" ("GroupId");
 CREATE INDEX "IX_ProjectGroup_ParentId" ON "ProjectGroup" ("ParentId");
 
 
-CREATE INDEX "IX_SystemConfig_BalancingAccountId" ON "SystemConfig" ("BalancingAccountId");
 
 
 CREATE INDEX "IX_SystemConfig_BaseCurrencyId" ON "SystemConfig" ("BaseCurrencyId");
@@ -334,4 +329,23 @@ CREATE INDEX "IX_TransactionEntry_TransactionId" ON "TransactionEntry" ("Transac
 CREATE INDEX "IX_ReportGroup_ParentId" ON "ReportGroup" ("ParentId");
 CREATE INDEX "IX_Report_GroupId" ON "Report" ("GroupId");
 
-PRAGMA user_version = 1;
+CREATE TABLE "LocalRegistration" (
+    "Id" BLOB NOT NULL CONSTRAINT "PK_LocalRegistration" PRIMARY KEY,
+    "LocalDatasetKey" TEXT NOT NULL,
+    "SyncDateTime" TEXT NULL,
+    "SyncRevision" INTEGER NOT NULL
+);
+
+CREATE TABLE "LocalSyncBatch" (
+    "Id" BLOB NOT NULL CONSTRAINT "PK_LocalSyncBatch" PRIMARY KEY,
+    "LocalRegistrationId" BLOB NOT NULL,
+    "SyncKey" TEXT NOT NULL,
+    "Revision" INTEGER NOT NULL,
+    "PayloadHash" TEXT NOT NULL,
+    CONSTRAINT "FK_LocalSyncBatch_LocalRegistration_LocalRegistrationId" FOREIGN KEY ("LocalRegistrationId") REFERENCES "LocalRegistration" ("Id") ON DELETE RESTRICT
+);
+
+CREATE UNIQUE INDEX "IX_LocalRegistration_LocalDatasetKey" ON "LocalRegistration" ("LocalDatasetKey");
+CREATE UNIQUE INDEX "IX_LocalSyncBatch_LocalRegistrationId_SyncKey" ON "LocalSyncBatch" ("LocalRegistrationId", "SyncKey");
+
+PRAGMA user_version = 2;

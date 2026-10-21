@@ -97,10 +97,6 @@ internal sealed class CaptureChangesOperation : ICaptureChangesOperation
 			properties.Add("json", item.Json);
 			return properties;
 		}, batch, cancellationToken);
-		await Capture(_unitOfWork.SystemConfigRepo, "systemConfig", item => Properties(
-			("masterDatasetKey", item.MasterDatasetKey), ("baseCurrencyId", item.BaseCurrencyId),
-			("balancingAccountId", item.BalancingAccountId), ("amountPrecision", item.AmountPrecision),
-			("ratePrecision", item.RatePrecision)), batch, cancellationToken);
 		return batch;
 	}
 

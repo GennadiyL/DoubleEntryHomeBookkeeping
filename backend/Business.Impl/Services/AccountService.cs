@@ -1,3 +1,4 @@
+using Business.Models.Constants;
 using Business.Impl.Operations.Cumulative;
 using DataAccess.Core.Entities;
 using Business.Impl.Operations.Config;
@@ -167,6 +168,10 @@ internal sealed class AccountService : IAccountService
 
 	public async Task Delete(Guid entityId, CancellationToken cancellationToken = default)
 	{
+		if (entityId == EntitiesIds.BalancingAccountId)
+		{
+			throw new InvalidElementException("The balancing account cannot be deleted.");
+		}
 		Account element = await GetActiveElement(entityId, cancellationToken);
 		if (await _unitOfWork.TransactionEntryRepo.HasByAccountId(entityId, cancellationToken) ||
 			(await _unitOfWork.TemplateEntryRepo.GetByAccountId(entityId, cancellationToken)).Count != 0)
@@ -278,6 +283,11 @@ internal sealed class AccountService : IAccountService
 		if (toElementId == Guid.Empty || fromElementId == Guid.Empty)
 		{
 			throw new InvalidElementException("Two account identifiers are required.");
+		}
+
+		if (fromElementId == EntitiesIds.BalancingAccountId)
+		{
+			throw new InvalidElementException("The balancing account cannot be combined into another account.");
 		}
 
 		IUnitOfWorkTransaction transactionScope = await _unitOfWork.BeginTransaction(cancellationToken);

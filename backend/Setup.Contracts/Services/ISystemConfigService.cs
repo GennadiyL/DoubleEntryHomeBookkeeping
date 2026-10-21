@@ -4,7 +4,7 @@ namespace Setup.Contracts.Services;
 
 /// <summary>
 /// Provides settings-screen access to the single System configuration.
-/// Reads do not save changes and saves preserve the existing configuration identity.
+/// Initialization settings and Master revision are never edited by Local.
 /// </summary>
 public interface ISystemConfigService
 {
@@ -13,11 +13,4 @@ public interface ISystemConfigService
 	/// This read does not call AcceptChanges.
 	/// </summary>
 	public Task<SystemConfigurationInfo> GetConfiguration(CancellationToken cancellationToken = default);
-
-	/// <summary>
-	/// Validates and saves editable settings to the single System configuration.
-	/// Commits a successful state-changing action once through AcceptChanges; invalid inputs do not save.
-	/// System changes include sync tracking; base currency and precisions remain immutable.
-	/// </summary>
-	public Task SaveConfiguration(SaveSystemConfiguration settings, CancellationToken cancellationToken = default);
 }
