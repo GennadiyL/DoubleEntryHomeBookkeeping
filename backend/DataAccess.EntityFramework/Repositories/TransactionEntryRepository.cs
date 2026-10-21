@@ -33,12 +33,7 @@ internal sealed class TransactionEntryRepository : Repository<AppDbContext, Tran
 	public Task RemoveRange(IEnumerable<TransactionEntryEntity> entries, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		Dictionary<Guid, TransactionEntry> tracked = Entities.Local.ToDictionary(entry => entry.Id);
-		foreach (TransactionEntryEntity entry in entries)
-		{
-			Entities.Remove(tracked.TryGetValue(entry.Id, out TransactionEntry? existing)
-				? existing : Mapper.Map<TransactionEntry, TransactionEntryEntity>(entry));
-		}
+		Entities.RemoveRange(entries.Select(entry => Mapper.Map<TransactionEntry, TransactionEntryEntity>(entry)));
 		return Task.CompletedTask;
 	}
 

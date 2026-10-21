@@ -43,7 +43,7 @@ public sealed class TemplatesUpdateServiceTests : TemplatesServiceTestsBase
 		Assert.That(Template.Entries.All(entry => entry.Id != oldId && entry.Id != Guid.Empty &&
 			entry.TemplateId == Template.Id && ReferenceEquals(entry.Template, Template)), Is.True);
 		Assert.That(Template.Entries.Select(entry => entry.Position), Is.EqualTo(Enumerable.Range(0, count)));
-		EntryRepository.Received(1).RemoveRange(Entries);
+		await EntryRepository.Received(1).RemoveRange(Entries);
 		EntryRepository.Received(count).Add(Arg.Any<TemplateEntry>());
 		Repository.Received(1).Update(Template);
 		await UnitOfWork.Received(1).SaveChanges();
@@ -100,6 +100,7 @@ public sealed class TemplatesUpdateServiceTests : TemplatesServiceTestsBase
 		await Service.Update(Template.Id, Param, source.Token);
 		await Repository.Received(1).GetById(Template.Id, source.Token);
 		await EntryRepository.Received(1).GetByTemplateId(Template.Id, source.Token);
+		await EntryRepository.Received(1).RemoveRange(Entries, source.Token);
 		await UnitOfWork.Received(1).SaveChanges(source.Token);
 	}
 }

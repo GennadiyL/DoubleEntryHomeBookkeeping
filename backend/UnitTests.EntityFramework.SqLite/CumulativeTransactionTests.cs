@@ -101,13 +101,16 @@ public sealed class CumulativeTransactionTests
 		Guid id = await _service.Add(param);
 		Assert.That((await _service.GetById(id)).State, Is.EqualTo(state));
 		param.Entries[1].Amount = -9m;
+		BeginApiCall();
 		await _service.Update(id, param);
 		Assert.That((await _service.GetById(id)).State, Is.EqualTo(TransactionState.Draft));
 		param.Entries.RemoveAt(1);
 		param.Entries[0].Amount = 0m;
+		BeginApiCall();
 		await _service.Update(id, param);
 		Assert.That((await _service.GetById(id)).State, Is.EqualTo(TransactionState.Draft));
 		param.Entries.Clear();
+		BeginApiCall();
 		await _service.Update(id, param);
 		Assert.That((await _service.GetById(id)).State, Is.EqualTo(TransactionState.Draft));
 	}
@@ -120,6 +123,7 @@ public sealed class CumulativeTransactionTests
 		Guid following = await _service.Add(Input(_date.AddDays(1), 5m));
 		TransactionParam param = Input(_date, 10m);
 		param.State = state;
+		BeginApiCall();
 		await _service.Update(first, param);
 		TransactionInfo result = await _service.GetById(following);
 		Assert.That(result.Entries.Single(e => e.AccountId == _account.Id).CumulativeAmount, Is.EqualTo(5m));
@@ -191,13 +195,16 @@ public sealed class CumulativeTransactionTests
 
 		TransactionParam draft = new() { DateTime = _date };
 		draft.Entries.Add(new TransactionEntryParam { AccountId = _account.Id, Amount = 100m, Rate = 1m });
+		BeginApiCall();
 		await _service.Update(first, draft);
 		Assert.That((await _service.GetById(first)).State, Is.EqualTo(TransactionState.Draft));
 		Assert.That((await _service.GetById(first)).Entries[0].CumulativeAmount, Is.Zero);
 		Assert.That((await _service.GetById(second)).Entries[0].CumulativeAmount, Is.EqualTo(20m));
 
+		BeginApiCall();
 		await _service.Update(first, Input(_date, 30m));
 		Assert.That((await _service.GetById(second)).Entries[0].CumulativeAmount, Is.EqualTo(50m));
+		BeginApiCall();
 		await _service.Delete(first);
 		Assert.That((await _service.GetById(second)).Entries[0].CumulativeAmount, Is.EqualTo(20m));
 	}
@@ -209,6 +216,7 @@ public sealed class CumulativeTransactionTests
 		Guid following = await _service.Add(Input(_date.AddDays(1), 20m));
 		TransactionParam changed = Input(_date.AddDays(2), 40m);
 		changed.Entries[0].AccountId = _destination.Id;
+		BeginApiCall();
 		await _service.Update(moving, changed);
 		Assert.That((await _service.GetById(following)).Entries[0].CumulativeAmount, Is.EqualTo(20m));
 		TransactionInfo moved = await _service.GetById(moving);
@@ -247,6 +255,7 @@ public sealed class CumulativeTransactionTests
 		Assert.That(initial.Transactions[0].Entries[0].CumulativeAmount, Is.EqualTo(301m));
 
 		Guid edited = initial.Transactions[4].Id;
+		BeginApiCall();
 		await _service.Update(edited, Input(_date.AddDays(10), 1m));
 		TransactionRefreshParam refresh = new() { Date = selected, AccountId = _account.Id };
 		refresh.TransactionIds.AddRange(initial.Transactions.Select(transaction => transaction.Id));
@@ -270,6 +279,7 @@ public sealed class CumulativeTransactionTests
 		await _unitOfWork.SaveChanges();
 		_context.ChangeTracker.Clear();
 		await _cumulative.Rebuild();
+		BeginApiCall();
 		await _service.DeleteTransactionsByAccount(_account.Id, new DateOnly(2024, 12, 31), new DateOnly(2025, 1, 2));
 		Assert.That((await _service.GetById(keep)).Entries[0].CumulativeAmount, Is.EqualTo(5m));
 		Assert.That((await _service.GetTransactions(new DateOnly(2025, 1, 5))).Transactions, Has.Count.EqualTo(1));
@@ -294,6 +304,7 @@ public sealed class CumulativeTransactionTests
 		await _service.Add(Input(_date, AppValues.MaxDecimal));
 		Guid edited = await _service.Add(Input(_date.AddDays(1), -1m));
 		ICollection<TransactionEntry> original = await _unitOfWork.TransactionEntryRepo.GetByTransactionId(edited);
+		BeginApiCall();
 		Assert.ThrowsAsync<SqliteException>(async () => await _service.Update(edited, Input(_date.AddDays(1), 1m)));
 		StartNewScopeAfterRollback();
 		TransactionInfo restored = await _service.GetById(edited);
@@ -385,6 +396,12 @@ public sealed class CumulativeTransactionTests
 		_service = _scope.ServiceProvider.GetRequiredService<ITransactionService>();
 		_cumulative = _scope.ServiceProvider.GetRequiredService<ICumulativeService>();
 	}
+
+	private void BeginApiCall()
+	{
+		_context.ChangeTracker.Clear();
+	}
+
 	private TransactionParam Input(DateTime dateTime, decimal amount)
 	{
 		TransactionParam param = new() { DateTime = dateTime };

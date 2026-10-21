@@ -7,6 +7,6 @@ public interface ITemplateEntryRepository : IRepository<TemplateEntry>
 {
 	public Task<ICollection<TemplateEntry>> GetByAccountId(Guid accountId, CancellationToken cancellationToken = default);
 	public Task<ICollection<TemplateEntry>> GetByTemplateId(Guid templateId, CancellationToken cancellationToken = default);
-	public void RemoveRange(IEnumerable<TemplateEntry> entries);
+	public Task RemoveRange(IEnumerable<TemplateEntry> entries, CancellationToken cancellationToken = default);
 }
 

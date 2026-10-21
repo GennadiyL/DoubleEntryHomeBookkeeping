@@ -111,7 +111,7 @@ internal sealed class TemplateService : ITemplateService
 		element.Description = param.Description;
 		element.IsFavorite = param.IsFavorite;
 		AssignEntries(element, entries);
-		_unitOfWork.TemplateEntryRepo.RemoveRange(previous);
+		await _unitOfWork.TemplateEntryRepo.RemoveRange(previous, cancellationToken);
 		foreach (TemplateEntry entry in entries)
 		{
 			_unitOfWork.TemplateEntryRepo.Add(entry);

@@ -27,8 +27,10 @@ internal sealed class TemplateEntryRepository : Repository<AppDbContext, Templat
 		return Mapper.Map<TemplateEntry, TemplateEntryEntity>(entries);
 	}
 
-	public void RemoveRange(IEnumerable<TemplateEntryEntity> entries)
+	public Task RemoveRange(IEnumerable<TemplateEntryEntity> entries, CancellationToken cancellationToken = default)
 	{
+		cancellationToken.ThrowIfCancellationRequested();
 		Entities.RemoveRange(entries.Select(entry => Mapper.Map<TemplateEntry, TemplateEntryEntity>(entry)));
+		return Task.CompletedTask;
 	}
 }

@@ -15,28 +15,14 @@ namespace DataAccess.EntityFramework.Repositories;
 /// A transaction matching several entries appears only once.
 /// Account and currency references support detached read projection.
 /// Database identity ordering follows the configured provider mapping.
-/// Updates preserve an already tracked parent instance when present.
-/// Only parent scalar fields are staged by repository updates.
+/// Updates use the base repository behavior for detached parent values.
+/// Entry mutations remain owned by the transaction entry repository.
 /// Transaction ownership remains with the application service.
 /// </summary>
 internal sealed class TransactionRepository : TrackedRepository<TransactionEntity, Transaction>, ITransactionRepository
 {
 	public TransactionRepository(AppDbContext context, IMapper mapper) : base(context, mapper)
 	{
-	}
-
-	public override void Update(TransactionEntity entity)
-	{
-		Transaction mapped = Mapper.Map<Transaction, TransactionEntity>(entity);
-		Transaction? tracked = Entities.Local.FirstOrDefault(item => item.Id == entity.Id);
-		if (tracked is null)
-		{
-			Entities.Update(mapped);
-		}
-		else
-		{
-			Context.Entry(tracked).CurrentValues.SetValues(mapped);
-		}
 	}
 
 	public async Task<ICollection<TransactionEntity>> Search(TransactionSearch search, CancellationToken cancellationToken = default)

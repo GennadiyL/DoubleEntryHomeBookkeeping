@@ -68,6 +68,7 @@
     <Project Path="ServiceTests.Business/ServiceTests.Business.csproj" />
   </Folder>
   <Folder Name="/Tests/UnitTests/">
+    <Project Path="UnitTests.Synchronization/UnitTests.Synchronization.csproj" />
     <Project Path="UnitTests.WinUi.Controls/UnitTests.WinUi.Controls.csproj">
       <Platform Project="x64" />
       <Build Project="true" />
