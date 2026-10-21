@@ -21,19 +21,16 @@ public interface IMasterService
 	public Task<AuthenticateInfo> Authenticate(Authenticate command, CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// Validates and merges submitted changes, publishes the resulting snapshot and returns the outcome for Local download.
+	/// Checks synchronization authorization before capture; false means credentials are required, while transport failures propagate as errors.
+	/// Every protected request must still validate authorization independently of this check.
+	/// </summary>
+	public Task<bool> CheckAuthorization(MasterAuthorization? authorization, CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// Merges pending batches in document order, skipping already merged batch identities, and returns a snapshot for Local download.
+	/// Repeating the same durable attempt resolves its outcome without merging its changes again; cancellation does not undo publication.
 	/// </summary>
 	public Task<SynchronizeInfo> Synchronize(MasterAuthorization authorization, Synchronize command, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	/// Resolves the durable attempt outcome for retry and recovery without applying the submitted changes again.
-	/// </summary>
-	public Task<OperationStatusInfo> GetOutcome(MasterAuthorization authorization, SyncIdentity identity, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	/// Requests cancellation where possible and returns the durable outcome; already published changes remain published.
-	/// </summary>
-	public Task<OperationStatusInfo> Cancel(MasterAuthorization authorization, SyncIdentity identity, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Opens the selected immutable business snapshot for download; the caller owns and disposes the returned stream.
@@ -46,12 +43,8 @@ public interface IMasterService
 	public Task<OperationStatusInfo> Acknowledge(MasterAuthorization authorization, AcknowledgeSnapshot command, CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// Resolves the previous attempt and selects the latest published snapshot for Local recovery installation.
-	/// </summary>
-	public Task<TransferInfo> Recover(MasterAuthorization authorization, SyncIdentity identity, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	/// Registers a replacement for the authorized expired Local copy and selects the snapshot for its explicit download action.
+	/// Registers a replacement for the authorized expired Local copy and selects a snapshot after the explicit user Download action.
+	/// Retrying for the same expired registration resumes its replacement instead of creating another Local registration.
 	/// </summary>
 	public Task<ReplaceExpiredCopyInfo> ReplaceExpired(MasterAuthorization authorization, ReplaceExpiredCopy command, CancellationToken cancellationToken = default);
 }

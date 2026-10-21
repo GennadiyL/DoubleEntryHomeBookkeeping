@@ -24,5 +24,6 @@ public enum OperationState
 	Installed = 9,
 	Complete = 10,
 	Expired = 11,
-	Failed = 12
+	Failed = 12,
+	AuthorizationRequired = 13
 }

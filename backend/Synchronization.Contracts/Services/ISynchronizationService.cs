@@ -3,49 +3,28 @@ using Synchronization.Contracts.Services.Synchronizations;
 namespace Synchronization.Contracts.Services;
 
 /// <summary>
-/// Coordinates synchronization and recovery for the current local dataset.
-/// These application-facing operations obtain pending changes from local context.
-/// They do not define the unresolved cloud change serialization protocol.
-/// Each attempt retains durable identity across uncertain responses.
-/// Owner and registration checks apply to every remote action.
-/// Publication cannot be rolled back by cancellation.
-/// Snapshot installation must precede acknowledgement.
+/// Coordinates synchronization and explicit replacement of the current Local dataset.
+/// Checks authorization before preparing new changes for remote submission.
+/// Retains original batch identities and omits empty batches from the saved document.
+/// Owns capture, publication, download, installation and acknowledgement sequencing.
+/// Resumes durable pending work, including acknowledgement after installation.
+/// Clears saved synchronization data only after acknowledgement succeeds.
+/// Cancellation respects atomic Local persistence and installation boundaries.
+/// Expired-copy replacement requires explicit user intent, not ordinary recovery.
 /// Local settings remain outside synchronized business content.
 /// </summary>
 public interface ISynchronizationService
 {
 	/// <summary>
-	/// Captures pending local changes and starts synchronization for the progress UI using stored priority and authorization.
+	/// Synchronizes or resumes pending work through installation and acknowledgement, returning the outcome for the UI.
+	/// Cancellation stops cooperative local work but cannot undo Master publication or discard durable pending work.
 	/// </summary>
-	public Task<SynchronizeInfo> Synchronize(Synchronize command, CancellationToken cancellationToken = default);
+	public Task<SynchronizeInfo> Synchronize(CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// Resolves a durable attempt outcome for recovery; timestamps alone cannot establish success.
+	/// Replaces the current expired Local copy after the explicit user Download action, returning the workflow outcome for the UI.
+	/// Coordinates authorization, replacement registration, download, installation and acknowledgement while preserving Local settings.
+	/// Old unsynchronized business changes are discarded under the confirmed-expiry policy and are never submitted as new changes.
 	/// </summary>
-	public Task<OperationStatusInfo> GetOutcome(SyncIdentity identity, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	/// Cancels work where possible for the progress UI; published changes remain published.
-	/// </summary>
-	public Task<OperationStatusInfo> Cancel(SyncIdentity identity, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	/// Downloads the selected immutable business snapshot for local installation; the caller disposes its stream.
-	/// </summary>
-	public Task<DownloadSnapshotInfo> Download(DownloadSnapshot command, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	/// Records actual successful installation for completion and deletion acknowledgement; retries must be idempotent.
-	/// </summary>
-	public Task<OperationStatusInfo> Acknowledge(AcknowledgeSnapshot command, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	/// Resolves an earlier attempt and selects the latest snapshot for recovery installation.
-	/// </summary>
-	public Task<TransferInfo> Recover(SyncIdentity identity, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	/// Registers a replacement copy and selects its snapshot after the user chooses Download on expiry.
-	/// </summary>
-	public Task<ReplaceExpiredCopyInfo> ReplaceExpired(ReplaceExpiredCopy command, CancellationToken cancellationToken = default);
+	public Task<ReplaceExpiredCopyInfo> ReplaceExpired(CancellationToken cancellationToken = default);
 }

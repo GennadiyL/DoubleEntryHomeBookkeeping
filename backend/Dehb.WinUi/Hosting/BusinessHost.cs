@@ -1,3 +1,4 @@
+using Adapter.TokenStore.WinUi;
 using Business.Impl;
 using DataAccess.Contracts;
 using DataAccess.EntityFramework.SqLite;
@@ -28,6 +29,7 @@ internal sealed partial class BusinessHost : IDisposable
 		ServiceCollection services = new();
 		services.AddLogging();
 		services.AddSharedModule();
+		services.AddAdapterTokenStoreWinUiModule();
 		services.AddBusinessModule();
 		services.AddDataAccessSqLiteModule(configuration);
 		services.AddMessagingInProcessBusModule();

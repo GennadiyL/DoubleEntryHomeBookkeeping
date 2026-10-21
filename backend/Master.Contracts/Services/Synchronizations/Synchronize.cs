@@ -6,9 +6,9 @@ namespace Master.Contracts.Services.Synchronizations;
 /// KnownVersion identifies the business snapshot currently installed on Local.
 /// SchemaVersion must match the Master schema before changes are exchanged.
 /// Priority selects preferred conflicting content, subject to business validity.
-/// ChangesJson carries the pending change document, whose schema is deferred.
-/// It is an opaque contract placeholder, not an approved merge protocol.
-/// Batch identities and ordering inside the document must be defined before implementation.
+/// ChangesJson carries the ordered pending batches with their original immutable identities.
+/// The JSON remains opaque at this boundary; provider mappings interpret the exchange document.
+/// Master skips batches already merged and does not apply their changes a second time.
 /// Neither Local UI state nor persistent entity instances cross this boundary.
 /// </summary>
 public record Synchronize

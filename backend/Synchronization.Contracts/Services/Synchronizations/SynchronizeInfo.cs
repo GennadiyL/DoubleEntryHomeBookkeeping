@@ -1,17 +1,16 @@
 namespace Synchronization.Contracts.Services.Synchronizations;
 
 /// <summary>
-/// Returns the outcome of a synchronization attempt.
-/// Used to display progress and continue snapshot installation.
-/// Status carries the durable attempt key and observable state.
-/// Transfer is present when a snapshot download is needed.
-/// A no-change outcome may have no transfer descriptor.
-/// Absence of a transfer is not by itself proof of success.
-/// The returned state determines recovery or acknowledgement work.
-/// No business entities or owner secrets are returned.
+/// Returns the application-facing outcome of the complete synchronization workflow.
+/// Status identifies completion or the state that prevents completion.
+/// AuthorizationRequired asks the UI to obtain credentials before resuming.
+/// OutcomeUnknown retains pending work for later durable outcome resolution.
+/// Expired requires the explicit replacement interaction rather than silent data loss.
+/// Download descriptors and database streams remain inside the workflow.
+/// Complete is reported only after the applicable installation and acknowledgement.
+/// The result contains no authorization secrets or persistent business entities.
 /// </summary>
 public record SynchronizeInfo
 {
 	public required OperationStatusInfo Status { get; set; }
-	public TransferInfo? Transfer { get; set; }
 }

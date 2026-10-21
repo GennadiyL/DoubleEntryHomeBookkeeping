@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Business.Core.Entities;
-using Business.Models.Entities;
 using Business.Models.Entities.Base;
 using Business.Models.Entities.Config;
 using Business.Models.Entities.Interfaces;
@@ -8,7 +7,7 @@ using DataAccess.Contracts;
 using DataAccess.Contracts.Repositories.Base;
 using Exchange.Models.Synchronizations;
 using Shared.Contracts;
-using ModificationType = Business.Models.Enums.ModificationType;
+using Business.Models.Enums;
 using ExchangeModificationType = Exchange.Models.Enums.ModificationType;
 using ExchangeConflictPriority = Exchange.Models.Enums.ConflictPriority;
 
@@ -45,8 +44,8 @@ internal sealed class CaptureChangesOperation : ICaptureChangesOperation
 		}
 		ExchangeConflictPriority priority = configurations.Single().ConflictPriority switch
 		{
-			Business.Models.Enums.ConflictPriority.Local => ExchangeConflictPriority.Local,
-			Business.Models.Enums.ConflictPriority.Master => ExchangeConflictPriority.Master,
+			ConflictPriority.Local => ExchangeConflictPriority.Local,
+			ConflictPriority.Master => ExchangeConflictPriority.Master,
 			_ => throw new InvalidOperationException("The Local conflict priority is invalid.")
 		};
 		SyncBatch batch = new()
@@ -61,15 +60,15 @@ internal sealed class CaptureChangesOperation : ICaptureChangesOperation
 		await Capture(_unitOfWork.CurrencyRateRepo, "currencyRate", item => Properties(
 			("currencyId", item.CurrencyId), ("date", item.Date), ("rate", item.Rate),
 			("description", item.Description)), batch, cancellationToken);
-		await Capture(_unitOfWork.AccountGroupRepo, "accountGroup", item => GroupProperties(item), batch, cancellationToken);
-		await Capture(_unitOfWork.CategoryGroupRepo, "categoryGroup", item => GroupProperties(item), batch, cancellationToken);
-		await Capture(_unitOfWork.CorrespondentGroupRepo, "correspondentGroup", item => GroupProperties(item), batch, cancellationToken);
-		await Capture(_unitOfWork.ProjectGroupRepo, "projectGroup", item => GroupProperties(item), batch, cancellationToken);
-		await Capture(_unitOfWork.TemplateGroupRepo, "templateGroup", item => GroupProperties(item), batch, cancellationToken);
-		await Capture(_unitOfWork.ReportGroupRepo, "reportGroup", item => GroupProperties(item), batch, cancellationToken);
-		await Capture(_unitOfWork.CategoryRepo, "category", item => ElementProperties(item), batch, cancellationToken);
-		await Capture(_unitOfWork.CorrespondentRepo, "correspondent", item => ElementProperties(item), batch, cancellationToken);
-		await Capture(_unitOfWork.ProjectRepo, "project", item => ElementProperties(item), batch, cancellationToken);
+		await Capture(_unitOfWork.AccountGroupRepo, "accountGroup", GroupProperties, batch, cancellationToken);
+		await Capture(_unitOfWork.CategoryGroupRepo, "categoryGroup", GroupProperties, batch, cancellationToken);
+		await Capture(_unitOfWork.CorrespondentGroupRepo, "correspondentGroup", GroupProperties, batch, cancellationToken);
+		await Capture(_unitOfWork.ProjectGroupRepo, "projectGroup", GroupProperties, batch, cancellationToken);
+		await Capture(_unitOfWork.TemplateGroupRepo, "templateGroup", GroupProperties, batch, cancellationToken);
+		await Capture(_unitOfWork.ReportGroupRepo, "reportGroup", GroupProperties, batch, cancellationToken);
+		await Capture(_unitOfWork.CategoryRepo, "category", ElementProperties, batch, cancellationToken);
+		await Capture(_unitOfWork.CorrespondentRepo, "correspondent", ElementProperties, batch, cancellationToken);
+		await Capture(_unitOfWork.ProjectRepo, "project", ElementProperties, batch, cancellationToken);
 		await Capture(_unitOfWork.AccountRepo, "account", item =>
 		{
 			Dictionary<string, object?> properties = ElementProperties(item);
