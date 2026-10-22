@@ -57,7 +57,7 @@ public sealed class CumulativeTransactionTests
 		await _databaseLifetime.OpenAsync();
 		IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
 			new Dictionary<string, string?> { ["ConnectionStrings:DehbSqLite"] = connectionString }).Build();
-		services.AddDataAccessSqLiteModule(configuration);
+		services.AddLocalDataAccessSqLiteModule(configuration);
 		_provider = services.BuildServiceProvider(true);
 		_scope = _provider.CreateScope();
 		_context = _scope.ServiceProvider.GetRequiredService<AppDbContext>();

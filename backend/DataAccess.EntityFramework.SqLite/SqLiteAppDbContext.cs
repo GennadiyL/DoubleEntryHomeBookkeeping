@@ -16,9 +16,9 @@ namespace DataAccess.EntityFramework.SqLite;
 /// Indexes support account membership and transaction-date lookups.
 /// Existing databases require explicit schema migration before use.
 /// </summary>
-public sealed class SqLiteAppDbContext : AppDbContext
+public abstract class SqLiteAppDbContext : AppDbContext
 {
-	public SqLiteAppDbContext(DbContextOptions<SqLiteAppDbContext> options) : base(options)
+	protected SqLiteAppDbContext(DbContextOptions options) : base(options)
 	{
 	}
 

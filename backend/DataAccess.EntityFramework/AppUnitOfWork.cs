@@ -5,32 +5,45 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace DataAccess.EntityFramework;
 
-internal class AppUnitOfWork : UnitOfWork<AppDbContext>, IAppUnitOfWork
+/// <summary>
+/// Shares repository access and transaction behavior between database roles.
+/// Derived units of work supply their context and repository service key.
+/// Every repository is resolved lazily from the current dependency scope.
+/// Keyed resolution keeps Local and Master repository instances separate.
+/// Repository writes and unit-of-work saves use the same role-specific context.
+/// Common repository contracts remain independent of EF Core.
+/// This base does not choose connection strings or create service providers.
+/// Infrastructure owns registration and context disposal.
+/// </summary>
+public abstract class AppUnitOfWork : UnitOfWork<AppDbContext>, IAppUnitOfWork
 {
-	public AppUnitOfWork(AppDbContext context, IServiceProvider serviceProvider)
+	private readonly Type _databaseKey;
+
+	protected AppUnitOfWork(AppDbContext context, IServiceProvider serviceProvider, Type databaseKey)
 		: base(context, new Lazy<IServiceProvider>(() => serviceProvider))
 	{
+		_databaseKey = databaseKey;
 	}
 
-	public IAccountRepository AccountRepo => ServiceProvider.Value.GetRequiredService<IAccountRepository>();
-	public IAccountGroupRepository AccountGroupRepo => ServiceProvider.Value.GetRequiredService<IAccountGroupRepository>();
-	public ICategoryRepository CategoryRepo => ServiceProvider.Value.GetRequiredService<ICategoryRepository>();
-	public ICategoryGroupRepository CategoryGroupRepo => ServiceProvider.Value.GetRequiredService<ICategoryGroupRepository>();
-	public ICorrespondentRepository CorrespondentRepo => ServiceProvider.Value.GetRequiredService<ICorrespondentRepository>();
-	public ICorrespondentGroupRepository CorrespondentGroupRepo => ServiceProvider.Value.GetRequiredService<ICorrespondentGroupRepository>();
-	public ICurrencyRepository CurrencyRepo => ServiceProvider.Value.GetRequiredService<ICurrencyRepository>();
-	public ICurrencyRateRepository CurrencyRateRepo => ServiceProvider.Value.GetRequiredService<ICurrencyRateRepository>();
-	public IReportRepository ReportRepo => ServiceProvider.Value.GetRequiredService<IReportRepository>();
-	public IReportGroupRepository ReportGroupRepo => ServiceProvider.Value.GetRequiredService<IReportGroupRepository>();
-	public IProjectRepository ProjectRepo => ServiceProvider.Value.GetRequiredService<IProjectRepository>();
-	public IProjectGroupRepository ProjectGroupRepo => ServiceProvider.Value.GetRequiredService<IProjectGroupRepository>();
-	public ITemplateRepository TemplateRepo => ServiceProvider.Value.GetRequiredService<ITemplateRepository>();
-	public ITemplateEntryRepository TemplateEntryRepo => ServiceProvider.Value.GetRequiredService<ITemplateEntryRepository>();
-	public ITemplateGroupRepository TemplateGroupRepo => ServiceProvider.Value.GetRequiredService<ITemplateGroupRepository>();
-	public ITransactionRepository TransactionRepo => ServiceProvider.Value.GetRequiredService<ITransactionRepository>();
-	public ITransactionEntryRepository TransactionEntryRepo => ServiceProvider.Value.GetRequiredService<ITransactionEntryRepository>();
-	public ISystemConfigRepository SystemConfigRepo => ServiceProvider.Value.GetRequiredService<ISystemConfigRepository>();
-	public ILocalConfigRepository LocalConfigRepo => ServiceProvider.Value.GetRequiredService<ILocalConfigRepository>();
-	public ILocalRegistrationRepository LocalRegistrationRepo => ServiceProvider.Value.GetRequiredService<ILocalRegistrationRepository>();
-	public ILocalSyncBatchRepository LocalSyncBatchRepo => ServiceProvider.Value.GetRequiredService<ILocalSyncBatchRepository>();
+	public IAccountRepository AccountRepo => ServiceProvider.Value.GetRequiredKeyedService<IAccountRepository>(_databaseKey);
+	public IAccountGroupRepository AccountGroupRepo => ServiceProvider.Value.GetRequiredKeyedService<IAccountGroupRepository>(_databaseKey);
+	public ICategoryRepository CategoryRepo => ServiceProvider.Value.GetRequiredKeyedService<ICategoryRepository>(_databaseKey);
+	public ICategoryGroupRepository CategoryGroupRepo => ServiceProvider.Value.GetRequiredKeyedService<ICategoryGroupRepository>(_databaseKey);
+	public ICorrespondentRepository CorrespondentRepo => ServiceProvider.Value.GetRequiredKeyedService<ICorrespondentRepository>(_databaseKey);
+	public ICorrespondentGroupRepository CorrespondentGroupRepo => ServiceProvider.Value.GetRequiredKeyedService<ICorrespondentGroupRepository>(_databaseKey);
+	public ICurrencyRepository CurrencyRepo => ServiceProvider.Value.GetRequiredKeyedService<ICurrencyRepository>(_databaseKey);
+	public ICurrencyRateRepository CurrencyRateRepo => ServiceProvider.Value.GetRequiredKeyedService<ICurrencyRateRepository>(_databaseKey);
+	public IReportRepository ReportRepo => ServiceProvider.Value.GetRequiredKeyedService<IReportRepository>(_databaseKey);
+	public IReportGroupRepository ReportGroupRepo => ServiceProvider.Value.GetRequiredKeyedService<IReportGroupRepository>(_databaseKey);
+	public IProjectRepository ProjectRepo => ServiceProvider.Value.GetRequiredKeyedService<IProjectRepository>(_databaseKey);
+	public IProjectGroupRepository ProjectGroupRepo => ServiceProvider.Value.GetRequiredKeyedService<IProjectGroupRepository>(_databaseKey);
+	public ITemplateRepository TemplateRepo => ServiceProvider.Value.GetRequiredKeyedService<ITemplateRepository>(_databaseKey);
+	public ITemplateEntryRepository TemplateEntryRepo => ServiceProvider.Value.GetRequiredKeyedService<ITemplateEntryRepository>(_databaseKey);
+	public ITemplateGroupRepository TemplateGroupRepo => ServiceProvider.Value.GetRequiredKeyedService<ITemplateGroupRepository>(_databaseKey);
+	public ITransactionRepository TransactionRepo => ServiceProvider.Value.GetRequiredKeyedService<ITransactionRepository>(_databaseKey);
+	public ITransactionEntryRepository TransactionEntryRepo => ServiceProvider.Value.GetRequiredKeyedService<ITransactionEntryRepository>(_databaseKey);
+	public ISystemConfigRepository SystemConfigRepo => ServiceProvider.Value.GetRequiredKeyedService<ISystemConfigRepository>(_databaseKey);
+	public ILocalConfigRepository LocalConfigRepo => ServiceProvider.Value.GetRequiredKeyedService<ILocalConfigRepository>(_databaseKey);
+	public ILocalRegistrationRepository LocalRegistrationRepo => ServiceProvider.Value.GetRequiredKeyedService<ILocalRegistrationRepository>(_databaseKey);
+	public ILocalSyncBatchRepository LocalSyncBatchRepo => ServiceProvider.Value.GetRequiredKeyedService<ILocalSyncBatchRepository>(_databaseKey);
 }

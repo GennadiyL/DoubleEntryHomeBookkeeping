@@ -50,7 +50,7 @@ public sealed class CatalogSchemaTests
 		services.AddBusinessModule();
 		IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
 			new Dictionary<string, string?> { ["ConnectionStrings:DehbSqLite"] = connectionString }).Build();
-		services.AddDataAccessSqLiteModule(configuration);
+		services.AddLocalDataAccessSqLiteModule(configuration);
 		_provider = services.BuildServiceProvider(true);
 		foreach (string file in new[] { "001-schema.sql", "002-initial-data.sql", "003-test-data.sql" })
 		{

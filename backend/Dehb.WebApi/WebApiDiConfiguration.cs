@@ -21,7 +21,7 @@ public static class WebApiDiConfiguration
 		ConfigureJsonSerializerOptions(services);
 		services.AddSharedModule();
 		services.AddBusinessModule();
-		services.AddDataAccessSqLiteModule(configuration);
+		services.AddLocalDataAccessSqLiteModule(configuration);
 		services.AddMessagingInProcessBusModule();
 	}
 

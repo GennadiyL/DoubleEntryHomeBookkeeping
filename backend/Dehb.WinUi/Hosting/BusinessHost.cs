@@ -31,7 +31,7 @@ internal sealed partial class BusinessHost : IDisposable
 		services.AddSharedModule();
 		services.AddAdapterTokenStoreWinUiModule();
 		services.AddBusinessModule();
-		services.AddDataAccessSqLiteModule(configuration);
+		services.AddLocalDataAccessSqLiteModule(configuration);
 		services.AddMessagingInProcessBusModule();
 		_services = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
 	}
