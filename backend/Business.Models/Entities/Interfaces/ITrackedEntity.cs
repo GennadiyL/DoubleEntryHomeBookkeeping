@@ -9,7 +9,7 @@ namespace Business.Models.Entities.Interfaces;
 /// EditRevision > 0 - Last known Master revision of the entity content. Local edits preserve this value; it does not prove that the row has no pending changes.
 /// DeleteRevision = null - Alive.
 /// DeleteRevision = 0 - Locally soft-deleted. Deletion sets the Content flag until captured.
-/// DeleteRevision > 0 - Master-assigned deletion revision. Master retains the marker until all relevant non-expired Local copies acknowledge that revision or later.
+/// DeleteRevision > 0 - Master-assigned deletion revision. Master retains the marker until all registered Local copies acknowledge that revision or later.
 /// ModificationType.None = 0 - No subsequent edits awaiting capture. New creations and durable queued batches can still require synchronization.
 /// ModificationType.Content = 1 - Business content changed or the row was soft-deleted. Includes names, amounts, references and favorites; excludes independent catalog ordering.
 /// ModificationType.Order = 2 - Independent catalog order changed. This flag alone must not overwrite business content.

@@ -7,7 +7,7 @@ namespace Synchronization.Contracts.Adapters.Master;
 /// OutcomeUnknown requires durable attempt resolution.
 /// Published means the Master snapshot is available for download.
 /// Complete means the applicable completion conditions are satisfied.
-/// Expired and Failed do not indicate a successful synchronization.
+/// Failed does not indicate a successful synchronization.
 /// Local startup and installation UI stages are outside this contract.
 /// </summary>
 public enum OperationState
@@ -18,6 +18,5 @@ public enum OperationState
 	OutcomeUnknown = 7,
 	Published = 8,
 	Complete = 10,
-	Expired = 11,
 	Failed = 12
 }

@@ -9,7 +9,7 @@ namespace DataAccess.EntityFramework.Models;
 /// It remains null until the initial installation has been acknowledged.
 /// SyncRevision is the latest installed revision confirmed to Master.
 /// It can lag behind the actual Local revision while acknowledgement is pending.
-/// Master uses these values for expiry and deletion-marker retention.
+/// Master uses these values for synchronization history and deletion-marker retention.
 /// This metadata is not captured or merged as a Local business change.
 /// </summary>
 internal class LocalRegistration : IDalEntity

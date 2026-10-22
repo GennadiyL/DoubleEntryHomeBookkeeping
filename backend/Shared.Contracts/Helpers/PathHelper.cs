@@ -49,28 +49,4 @@ public static class PathHelper
 
 		return IsValidDirectory(Path.GetDirectoryName(filePath));
 	}
-
-	public static bool IsFileExists(string filePath)
-	{
-		try
-		{
-			return File.Exists(filePath);
-		}
-		catch (Exception)
-		{
-			return false;
-		}
-	}
-
-	public static bool IsDirectoryExists(string directoryPath)
-	{
-		try
-		{
-			return Directory.Exists(directoryPath);
-		}
-		catch (Exception)
-		{
-			return false;
-		}
-	}
 }

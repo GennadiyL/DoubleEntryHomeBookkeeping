@@ -15,7 +15,7 @@ namespace Setup.Contracts.Services;
 public interface IStartupService
 {
 	/// <summary>
-	/// Reads local existence, recovery and expiry state for startup navigation; does not mutate business data.
+	/// Reads local existence and recovery state for startup navigation; does not mutate business data.
 	/// </summary>
 	public Task<OperationStatusInfo> GetStartupState(CancellationToken cancellationToken = default);
 

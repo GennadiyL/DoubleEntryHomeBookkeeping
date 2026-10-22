@@ -29,4 +29,11 @@ internal sealed class LocalSyncBatchRepository : Repository<AppDbContext, LocalS
 			.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
 		return entity is null ? null : Mapper.Map<LocalSyncBatch, LocalSyncBatchEntity>(entity);
 	}
+
+	public async Task<LocalSyncBatchEntity?> GetBySyncKey(Guid localRegistrationId, string syncKey, CancellationToken cancellationToken = default)
+	{
+		LocalSyncBatch? entity = await Entities.AsNoTracking().Include(item => item.LocalRegistration)
+			.SingleOrDefaultAsync(item => item.LocalRegistrationId == localRegistrationId && item.SyncKey == syncKey, cancellationToken);
+		return entity is null ? null : Mapper.Map<LocalSyncBatch, LocalSyncBatchEntity>(entity);
+	}
 }

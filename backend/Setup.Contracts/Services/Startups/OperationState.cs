@@ -8,7 +8,7 @@ namespace Setup.Contracts.Services.Startups;
 /// Waiting and Running describe an active attempt.
 /// OutcomeUnknown requires durable outcome resolution.
 /// Published and Installed precede acknowledged completion.
-/// Expired and Failed must not be treated as successful synchronization.
+/// Failed must not be treated as successful synchronization.
 /// </summary>
 public enum OperationState
 {
@@ -23,6 +23,5 @@ public enum OperationState
 	Published = 8,
 	Installed = 9,
 	Complete = 10,
-	Expired = 11,
 	Failed = 12
 }

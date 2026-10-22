@@ -33,10 +33,4 @@ public interface IMasterService
 	/// Repeated acknowledgements are idempotent; older receipts must not decrease SyncRevision.
 	/// </summary>
 	public Task<AcknowledgeInfo> Acknowledge(AcknowledgeRequest request, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	/// Registers a replacement for the authorized expired Local copy and selects a snapshot after the explicit user Download action.
-	/// Retrying for the same expired registration resumes its replacement instead of creating another Local registration.
-	/// </summary>
-	public Task<ReplaceExpiredCopyInfo> ReplaceExpired(ReplaceExpiredCopyRequest request, CancellationToken cancellationToken = default);
 }

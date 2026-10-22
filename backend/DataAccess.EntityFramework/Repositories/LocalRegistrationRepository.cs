@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using DataAccess.Contracts.Repositories;
 using DataAccess.Core.Behaviors;
 using DataAccess.Core.EntityFramework.Behaviors;
@@ -13,12 +14,19 @@ namespace DataAccess.EntityFramework.Repositories;
 /// It remains null until the initial installation has been acknowledged.
 /// SyncRevision is the latest installed revision confirmed to Master.
 /// It can lag behind the actual Local revision while acknowledgement is pending.
-/// Master uses these values for expiry and deletion-marker retention.
+/// Master uses these values for synchronization history and deletion-marker retention.
 /// This metadata is not captured or merged as a Local business change.
 /// </summary>
 internal sealed class LocalRegistrationRepository : Repository<AppDbContext, LocalRegistrationEntity, LocalRegistration>, ILocalRegistrationRepository
 {
 	public LocalRegistrationRepository(AppDbContext context, IMapper mapper) : base(context, mapper)
 	{
+	}
+
+	public async Task<LocalRegistrationEntity?> GetByLocalDatasetKey(string localDatasetKey, CancellationToken cancellationToken = default)
+	{
+		LocalRegistration? entity = await Entities.AsNoTracking()
+			.SingleOrDefaultAsync(item => item.LocalDatasetKey == localDatasetKey, cancellationToken);
+		return entity is null ? null : Mapper.Map<LocalRegistration, LocalRegistrationEntity>(entity);
 	}
 }

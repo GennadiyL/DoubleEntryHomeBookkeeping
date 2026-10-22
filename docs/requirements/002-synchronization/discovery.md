@@ -1,5 +1,7 @@
 # Requirements Discovery: Synchronization
 
+**Current decision — 2026-10-22:** Local copies and registrations never expire because of inactivity. Users may merge pending changes at any time, subject to authorization, schema compatibility and normal merge validation. The former 90-day Local expiry, automatic disposal and replacement workflow are removed. Authorization-token lifetime is separate and unchanged. Earlier expiry decisions in the clarification history are superseded.
+
 ## Status and Sources
 
 - Feature folder: `docs/requirements/002-synchronization/`.
@@ -43,7 +45,7 @@ Interpretation: allow personal bookkeeping offline on registered devices, then r
 - Offline bookkeeping using local SQLite, with a mandatory cloud MasterDb relationship.
 - Bidirectional synchronization of complete business datasets.
 - Predictable priority-based conflict selection with silent business-rule-preserving corrections.
-- Simple local deletion handling, device expiration, and recoverable interrupted synchronization.
+- Simple local deletion handling and recoverable interrupted synchronization without inactivity expiry.
 - A concise latest-sync report and detailed diagnostic logs for unresolved failures.
 
 ## Stakeholders
@@ -64,9 +66,9 @@ Interpretation: allow personal bookkeeping offline on registered devices, then r
 - Entry-level or field-level merge versus whole versions: whole entities and whole aggregates selected.
 - Interactive per-conflict selection versus configured priority: configured Local/Master priority selected, with silent corrections and report.
 - Comparing business values to suppress equal-value conflicts: rejected; use priority when both sides changed, regardless of value equality.
-- Immediate master hard deletion versus deletion propagation: soft deletion until every non-expired LocalDb acknowledges selected.
-- Indefinite offline registration versus expiration: fixed 90-day expiration selected.
-- Recovery alternatives evolved from exact-result replay to full download of the latest published MasterDb. Resolve uncertain publication by SyncId before discarding non-expired local outgoing changes. Expiry separately requires disposal and replacement.
+- Immediate master hard deletion versus deletion propagation: soft deletion until every LocalDb acknowledges selected.
+- Indefinite offline registration selected on 2026-10-22; the former fixed 90-day expiration was removed.
+- Recovery alternatives evolved from exact-result replay to full download of the latest published MasterDb. Resolve uncertain publication by SyncId before discarding local outgoing changes. Inactivity no longer requires disposal or replacement.
 - Equal timestamps alone versus operation identity: use SyncId, published revision/outcome, and acknowledgement. Retaining the exact original change payload is superseded.
 - Global all-or-nothing rollback versus two atomic database commits with recovery: the latter accepted after explaining the network failure window.
 
@@ -82,7 +84,7 @@ Interpretation: allow personal bookkeeping offline on registered devices, then r
 Do not re-ask confirmed decisions below. Continue one question at a time. These gaps are not approved rules.
 
 1. Publication and acknowledgement: specify durable SyncId outcomes, atomic Admin.db active-version changes, safe local activation, and repeatable acknowledgements after lost responses. Coordinate snapshot cleanup with active downloads. Recovery uses the latest version, not exact-result replay.
-2. Administrative storage: first-release SQLite is settled; hosting, safe access, and exact placement of LocalDb registrations/acknowledgements/expiration metadata remain design details. Multi-user SQL Server is deferred.
+2. Administrative storage: first-release SQLite is settled; hosting, safe access, and exact placement of LocalDb registrations/acknowledgement metadata remain design details. Multi-user SQL Server is deferred.
 3. Local snapshot preparation: reconcile whole-database download with Master soft-deletion markers, master-only metadata, and local hard deletion after successful sync. Preserve local identity and configuration. Do not assume an unmodified byte-for-byte Master file is already an appropriate active LocalDb.
 4. Change tracking: exact timestamp fields, stable entity identifiers, revision mechanism, both-sided change detection, and preservation of account currency locks remain design details. User requested additional sync fields such as CreatingTime, EditingTime, DeletingTime.
 5. Currency merging: same-code currency merge and account remapping are settled. Work out remapping of other currency references and initial-rate collisions without violating core currency rules.
@@ -119,7 +121,7 @@ All decisions below are from the requesting user in this task on 2026-09-26 unle
 - Saved report definitions are business data and synchronize.
 - Unbalanced draft transactions synchronize.
 - Configuration does not synchronize. Conflict priority and sync trigger are separate per LocalDb.
-- Configuration survives replacement of an expired LocalDb (user answered "I think yes", subsequently carried forward without reversal).
+- Local configuration survives synchronization database replacement. The former expired-copy replacement flow was removed on 2026-10-22.
 - Transaction and Template are the two aggregates: sync each complete aggregate including entries.
 - For all other synchronized business entities, select the whole entity version. No field-level merge.
 - A change on only one side is not a conflict and propagates regardless of priority.
@@ -129,7 +131,7 @@ All decisions below are from the requesting user in this task on 2026-09-26 unle
 
 - Skip business-data transfer only when neither LocalDb nor MasterDb has business changes since their last completed sync (user confirmation, 2026-09-27).
 - If MasterDb changed, LocalDb must receive its current business data even if LocalDb has no outgoing changes.
-- A successful no-change sync still resets the 90-day expiration period. Administrative bookkeeping still occurs.
+- A successful no-change sync still records acknowledgement. No Local expiry period exists.
 
 ### Priority and silent conflict resolution
 
@@ -144,8 +146,8 @@ All decisions below are from the requesting user in this task on 2026-09-26 unle
 ### Deletion, restoration, and dependencies
 
 - Use soft deletion to propagate deletions.
-- Master hard-deletes only after every remaining non-expired registered LocalDb has received/acknowledged the deletion.
-- Before sync, Master removes expired registrations and performs hard deletion newly eligible after those removals.
+- Master hard-deletes only after every remaining registered LocalDb has received/acknowledged the deletion.
+- Master never removes registrations because of inactivity. Hard deletion waits for acknowledgement from every registered Local.
 - LocalDb uses soft deletion only for sync. After the first successful sync confirming deletion, hard-delete locally. Failed/cancelled sync retains pending deletion information unless its outcome is being recovered through the accepted committed-sync flow.
 - For delete-versus-edit conflicts, apply priority if business rules permit: Master deletion wins under Master priority; Local edited version survives under Local priority.
 - If deletion violates a reference or another business rule, retain/restore the entity regardless of priority and report the reason.
@@ -184,7 +186,7 @@ All decisions below are from the requesting user in this task on 2026-09-26 unle
 - User can cancel sync. Timeout also stops an attempt, subject to post-commit recovery semantics below.
 - Startup sync with no internet/failure shows an error and allows ordinary offline work, except when recovery is pending.
 - If configured on-start sync cannot start because Wi-Fi is unavailable, show a message and let the user continue working offline (user confirmation, 2026-09-27). This does not override the existing access block for pending recovery. User did not specify a new automatic trigger when Wi-Fi later becomes available; do not infer one.
-- Failed or cancelled on-exit sync allows app closure and retains unsynced local data, subject to explicit expiration disposal rules.
+- Failed or cancelled on-exit sync allows app closure and retains unsynced local data without an inactivity deadline.
 
 ### Report and diagnostic log
 
@@ -196,17 +198,13 @@ All decisions below are from the requesting user in this task on 2026-09-26 unle
 - Latest-attempt report rule also applies around recovery/replacement; no separate retained earlier report.
 - Detailed logs for unresolved critical situations are separate from the in-memory user report.
 
-### Expiration and replacement
+### Local lifetime — updated 2026-10-22
 
-- Fixed expiry: 90 days after last successful sync, calculated by MasterDb clock. "Three months" was explicitly clarified to 90 days, not calendar months.
-- Successful initial registration/download starts this period. Every successful sync resets it, even with zero changes.
-- Future configurable expiry was mentioned as a possibility, not selected for current scope.
-- Remove expired LocalDb from Master's sync registry. Reject its sync and show information/error indicating a fresh LocalDb is required.
-- Once expiration is confirmed, no offline viewing/export of the expired LocalDb; delete its database file automatically.
-- Expiration overrides pending recovery. Discard expired local changes regardless of whether they were uploaded. User has no option to preserve the expired database through this workflow.
-- Offer a fresh LocalDb from the same MasterDb. Download starts only when user clicks **Download**, not automatically.
-- Preserve local configuration.
-- The temporary "Cancel or Wait" answer concerned a misunderstanding of expiry and was superseded by the explicit 90-day clarification. Do not reinstate it as an expiry option.
+- Local copies and registrations have no inactivity expiry. Users may merge pending changes at any time, subject to normal authorization and schema/merge validation.
+- Inactivity never deletes the Local database, discards pending changes, removes registration or forces replacement.
+- Acknowledgement records installed revisions and history, without renewing a lifetime.
+- Master retains deletion markers until all registered Locals acknowledge them, even after prolonged inactivity.
+- This supersedes the former fixed 90-day expiry and disposal/replacement policy. Token expiration remains separate.
 
 ### Commit boundary and recovery rules
 
@@ -222,7 +220,7 @@ Current direction is copy-and-publish on Master followed by full LocalDb replace
 - While recovery is pending, block all local business-data access, including viewing and reports. This is incomplete synchronization, not necessarily physical SQLite corruption.
 - On startup, initiate pending recovery regardless of configured sync trigger, subject to Android's Wi-Fi start rule. User may start recovery manually on Wi-Fi or mobile data.
 - Recovery uses the same communication-inactivity timeout, Cancel control, and lock-wait rules. Cancellation/failure leaves access blocked.
-- Non-expired local data must not be discarded while it may contain changes Master never received. Expiration is the explicit exception: discard the old database regardless of local changes, then require Download.
+- Local data must not be discarded while it may contain changes Master never received. There is no inactivity exception permitting disposal of pending changes.
 - Configured conflict priority intentionally discards losing versions; preservation of all historical edits is not promised.
 
 ### Versioned SQLite publication — latest direction, 2026-09-26
@@ -244,12 +242,12 @@ Analysis constraints explained in the conversation (not all independently approv
 - Publication is the Master commit point. After it, do not roll Master back because Local failed; Local must recover by downloading/installing a valid published snapshot.
 - Publish only a fully persisted and validated candidate. Switching the active-version record must be atomic and reject a stale expected previous version.
 - Persist SyncId and publication outcome together so a lost response can be resolved without duplicate application. Exact per-entity recovery payload retention is no longer the proposed recovery mechanism.
-- Download to a temporary local database, validate it, safely activate it, then acknowledge completion. Never activate a partial download or delete the old non-expired file before a successful switch.
+- Download to a temporary local database, validate it, safely activate it, then acknowledge completion. Never activate a partial download or delete the old file before a successful switch.
 - Interrupted database downloads restart from the beginning; discard partial download data rather than resume it (user confirmation, 2026-09-27). On recovery, select the latest published MasterDb as already agreed.
 - Preserve local configuration and LocalDb identity. Local business snapshots must not expose master-only registrations or retain master deletion markers contrary to local hard-deletion rules.
 - Keep a published snapshot available while an active download needs it. Pending recovery alone does not require retaining its original version, because recovery downloads the latest MasterDb (clarification, 2026-09-27). Delete superseded MasterDb versions once no download or actual recovery dependency needs them; no backup/history retention. Publication outcome records must remain available independently to resolve SyncId uncertainty. Cleanup and acknowledgements need coordination.
 - Azure object storage holds SQLite files; processing needs an application service that obtains a consistent database copy and uses SQLite. Admin.db is a logical registry proposal, not approval to open a blob URL as a live SQLite database or to allow concurrent writers to independent registry copies.
-- Expiration and blocked pending recovery rules remain unchanged.
+- Pending recovery continues to block access; inactivity never expires the Local copy.
 
 Confirmed admin storage options (user, 2026-09-26):
 
@@ -274,7 +272,7 @@ Remaining design questions are consolidated in Open Questions above. No BRD/TRD 
 - Combined on-start and on-exit trigger settings; automatic default sync.
 - Timeout for waiting on Master lock.
 - Keeping all reports or persisting user reports across app closure.
-- Viewing/exporting the expired LocalDb or retaining its file after confirmed expiration.
+- The former rejection of viewing/exporting or retaining expired LocalDb files is superseded: Local copies no longer expire.
 - Automatic fresh download without clicking Download.
 - Using timestamp equality alone to establish commit completion.
 - Treating a post-Master-commit cancellation as a rollback of Master.
@@ -290,7 +288,7 @@ Remaining design questions are consolidated in Open Questions above. No BRD/TRD 
 
 - AWS: possible later cloud target; no commitment/date.
 - Browser and Apple support: explicitly postponed beyond the first release. Revisit timing and exact Apple platforms later.
-- Configurable expiry: possible future addition; current rule is fixed 90 days.
+- Local inactivity expiry is removed; configurable expiry is not part of the current requirements.
 - BRD/TRD format rework: after brainstorming and applicable promotion/approval steps, per user instruction.
 - Implementation, schema, algorithms, and tests: not authorized by discovery.
 

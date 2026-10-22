@@ -5,7 +5,7 @@ namespace Synchronization.Contracts.Services.Synchronizations;
 /// Status identifies completion or the state that prevents completion.
 /// AuthorizationRequired asks the UI to obtain credentials before resuming.
 /// OutcomeUnknown retains pending work for later durable outcome resolution.
-/// Expired requires the explicit replacement interaction rather than silent data loss.
+/// Inactivity never expires the Local registration or discards pending changes.
 /// Download descriptors and database streams remain inside the workflow.
 /// Complete is reported only after the applicable installation and acknowledgement.
 /// The result contains no authorization secrets or persistent business entities.

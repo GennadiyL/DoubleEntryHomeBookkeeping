@@ -39,13 +39,7 @@ public interface IMasterAdapter
 	public Task<DownloadSnapshotInfo> Download(MasterIdentity identity, DownloadSnapshot command, CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// Records the Local copy's actual installed version for completion, expiry renewal and deletion acknowledgement; retries are idempotent.
+	/// Records the Local copy's actual installed version for completion and deletion acknowledgement; retries are idempotent.
 	/// </summary>
 	public Task<OperationStatusInfo> Acknowledge(MasterIdentity identity, AcknowledgeSnapshot command, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	/// Registers a replacement for the authorized expired Local copy and selects a snapshot after the explicit user Download action.
-	/// Retrying for the same expired registration resumes its replacement instead of creating another Local registration.
-	/// </summary>
-	public Task<ReplaceExpiredCopyInfo> ReplaceExpired(MasterIdentity identity, ReplaceExpiredCopy command, CancellationToken cancellationToken = default);
 }
