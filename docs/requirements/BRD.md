@@ -2362,3 +2362,8 @@ Source and authorization: the user explicitly requested these requirements and i
 - Removed the configurable balancing-account selection. System configuration becomes read-only on Local and no longer participates in outgoing entity change tracking. These decisions supersede the earlier selectable/deletable balancing-account behavior.
 - User approved Master synchronization metadata names LocalRegistration (Id, LocalDatasetKey, SyncDateTime, SyncRevision) and LocalSyncBatch (Id, LocalRegistrationId, LocalRegistration, SyncKey, Revision, PayloadHash).
 - SyncDateTime is the Master UTC timestamp of successful acknowledgement; SyncRevision is the Local-installed revision confirmed to Master. Neither represents a batch identifier.
+
+### 2026-10-22 — Download without pending Local changes
+
+- User approved downloading the latest consistent Master database without first submitting changes, provided Local has no unsynchronized work. This includes both changes still in the local database and captured batches retained in pending synchronization JSON.
+- A download can be newer than the revision returned by an earlier synchronization. Local acknowledges the actual revision only after successful installation, and older acknowledgements must not decrease the recorded Local revision.

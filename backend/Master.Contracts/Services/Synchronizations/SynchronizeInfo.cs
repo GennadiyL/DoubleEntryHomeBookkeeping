@@ -1,17 +1,16 @@
 namespace Master.Contracts.Services.Synchronizations;
 
 /// <summary>
-/// Returns the outcome of a synchronization attempt.
-/// Used to display progress and continue snapshot installation.
-/// Status carries the durable attempt key and observable state.
-/// Transfer is present when a snapshot download is needed.
-/// A no-change outcome may have no transfer descriptor.
-/// Absence of a transfer is not by itself proof of success.
-/// The returned state determines recovery or acknowledgement work.
-/// No business entities or owner secrets are returned.
+/// Returns the Master revision observed after processing the submitted container.
+/// Successful completion confirms every batch was applied or already applied.
+/// Revision is a lower bound for a subsequent database download.
+/// Other Local copies may advance Master before that download starts.
+/// An empty or entirely deduplicated container can return the current revision.
+/// This result does not reserve a snapshot or issue a transfer token.
+/// Download reports the actual revision represented by its returned bytes.
+/// Failures propagate instead of being encoded as progress states.
 /// </summary>
 public record SynchronizeInfo
 {
-	public required OperationStatusInfo Status { get; set; }
-	public TransferInfo? Transfer { get; set; }
+	public long Revision { get; set; }
 }
