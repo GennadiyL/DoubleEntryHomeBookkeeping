@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using NUnit.Framework;
 using Shared.Impl;
-using Tests.Common.DiConfigurations;
+using System.Text.Json;
 
 namespace ServiceTests.Business.Services.Currencies;
 
@@ -47,7 +47,6 @@ public abstract class CurrenciesServiceTestsBase
 		IServiceCollection services = new ServiceCollection();
 		services.AddSharedModule();
 		services.AddBusinessModule();
-		services.AddSharedMockModule();
 		services.AddScoped<IAppUnitOfWork>(_ => Unit);
 		_provider = services.BuildServiceProvider(true);
 		_scope = _provider.CreateScope();
@@ -64,10 +63,16 @@ public abstract class CurrenciesServiceTestsBase
 
 	protected Currency AddCurrency(string code, int order)
 	{
-		Currency currency = new() { Id = Guid.NewGuid(), Code = code, EnglishName = "Catalog " + code, Name = code, Symbol = code, Order = order, EditRevision = 7 };
+		Currency currency = new() { Id = CatalogId(code), Code = code, EnglishName = "Catalog " + code, Name = code, Symbol = code, Order = order, EditRevision = 7 };
 		Currencies.Add(currency);
 		Unit.CurrencyRepo.GetById(currency.Id, Arg.Any<CancellationToken>()).Returns(currency);
 		return currency;
+	}
+
+	protected static Guid CatalogId(string code)
+	{
+		using JsonDocument catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Assets", "currencies.json")));
+		return catalog.RootElement.EnumerateArray().Single(profile => profile.GetProperty("code").GetString() == code).GetProperty("id").GetGuid();
 	}
 
 	protected void AssertNoWrites()

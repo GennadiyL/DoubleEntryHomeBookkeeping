@@ -17,7 +17,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using Shared.Impl;
-using Tests.Common.DiConfigurations;
+using System.Text.Json;
 
 namespace UnitTests.EntityFramework.SqLite;
 
@@ -46,7 +46,6 @@ public sealed class CatalogSchemaTests
 		await _lifetime.OpenAsync();
 		ServiceCollection services = new();
 		services.AddSharedModule();
-		services.AddSharedMockModule();
 		services.AddBusinessModule();
 		IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
 			new Dictionary<string, string?> { ["ConnectionStrings:DehbSqLite"] = connectionString }).Build();
@@ -168,7 +167,7 @@ public sealed class CatalogSchemaTests
 	}
 
 	[Test]
-	public async Task Currency_AddDeleteAdd_PreservesDeletedRecordAndCreatesNewInitialRate()
+	public async Task Currency_AddDeleteAdd_RestoresSameCurrencyAndInitialRate()
 	{
 		Guid deletedId;
 		Guid newId;
@@ -187,14 +186,63 @@ public sealed class CatalogSchemaTests
 		using (IServiceScope scope = _provider.CreateScope())
 		{
 			ICurrencyService service = scope.ServiceProvider.GetRequiredService<ICurrencyService>();
-			Assert.That(newId, Is.Not.EqualTo(deletedId));
+			Assert.That(newId, Is.EqualTo(deletedId));
 			Assert.That((await service.GetAllCurrencies()).Single(currency => currency.Code == "EUR").Id, Is.EqualTo(newId));
 			IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
-			Assert.That((await unit.CurrencyRepo.GetById(deletedId))!.DeleteRevision, Is.EqualTo(0));
+			Assert.That((await unit.CurrencyRepo.GetById(deletedId))!.DeleteRevision, Is.Null);
+			Assert.That((await unit.CurrencyRepo.GetAll()).Count(currency => currency.Code == "EUR"), Is.EqualTo(1));
+			Assert.That((await unit.CurrencyRateRepo.GetAll()).Count(rate => rate.CurrencyId == deletedId), Is.EqualTo(1));
 			var rates = await scope.ServiceProvider.GetRequiredService<ICurrencyRateService>().GetRates(newId);
 			Assert.That(rates.Single().Rate, Is.EqualTo(54.2654m));
 			Assert.That(rates.Single().IsInitial, Is.True);
 			Assert.ThrowsAsync<Business.Models.Exceptions.InvalidCurrencyException>(async () => await service.Add("EUR", 1m));
+		}
+	}
+
+	[Test]
+	public async Task Currency_SeedIdentitiesMatchBundledCatalog()
+	{
+		using IServiceScope scope = _provider.CreateScope();
+		IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+		using JsonDocument catalog = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "Assets", "currencies.json")));
+		Dictionary<string, Guid> ids = catalog.RootElement.EnumerateArray().ToDictionary(
+			profile => profile.GetProperty("code").GetString()!, profile => profile.GetProperty("id").GetGuid());
+		foreach (Currency currency in await unit.CurrencyRepo.GetAll())
+		{
+			Assert.That(currency.Id, Is.EqualTo(ids[currency.Code]), currency.Code);
+		}
+	}
+
+	[Test]
+	public async Task Currency_HardDeleteAndAdd_ReusesPermanentIdentity()
+	{
+		Guid originalId;
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			originalId = await scope.ServiceProvider.GetRequiredService<ICurrencyService>().Add("EUR", 40m);
+		}
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			await scope.ServiceProvider.GetRequiredService<ICurrencyService>().Delete(originalId);
+		}
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+			await unit.CurrencyRepo.HardDelete();
+			Assert.That(await unit.CurrencyRepo.GetById(originalId), Is.Null);
+		}
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			Guid recreated = await scope.ServiceProvider.GetRequiredService<ICurrencyService>().Add("EUR", 50m);
+			Assert.That(recreated, Is.EqualTo(originalId));
+		}
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+			Currency currency = (await unit.CurrencyRepo.GetById(originalId))!;
+			Assert.That((currency.EditRevision, currency.DeleteRevision, currency.ModificationType),
+				Is.EqualTo(((long?)null, (long?)null, ModificationType.None)));
+			Assert.That((await unit.CurrencyRateRepo.GetByCurrencyId(originalId)).Single().Rate, Is.EqualTo(50m));
 		}
 	}
 
@@ -481,7 +529,7 @@ public sealed class CatalogSchemaTests
 		{
 			IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
 			await using DataAccess.Core.Entities.IUnitOfWorkTransaction transaction = await unit.BeginTransaction();
-			Currency currency = (await unit.CurrencyRepo.GetById(EntitiesIds.BaseCurrencyId))!;
+			Currency currency = (await unit.CurrencyRepo.GetById((await unit.SystemConfigRepo.GetAll()).Single().BaseCurrencyId))!;
 			originalName = currency.Name;
 			currency.Name = "Batch changed name";
 			unit.CurrencyRepo.Update(currency);
@@ -498,7 +546,7 @@ public sealed class CatalogSchemaTests
 		}
 		using IServiceScope verify = _provider.CreateScope();
 		IAppUnitOfWork read = verify.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
-		Assert.That((await read.CurrencyRepo.GetById(EntitiesIds.BaseCurrencyId))!.Name, Is.EqualTo(commit ? "Batch changed name" : originalName));
+		Assert.That((await read.CurrencyRepo.GetById((await read.SystemConfigRepo.GetAll()).Single().BaseCurrencyId))!.Name, Is.EqualTo(commit ? "Batch changed name" : originalName));
 		Assert.That((await read.SystemConfigRepo.GetAll()).Single().CurrentRevision, Is.EqualTo(commit ? 1L : 0L));
 		Assert.That(await read.LocalSyncBatchRepo.GetAll(), Has.Count.EqualTo(commit ? 1 : 0));
 	}

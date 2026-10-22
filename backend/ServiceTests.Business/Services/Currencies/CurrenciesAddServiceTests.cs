@@ -34,7 +34,7 @@ public sealed class CurrenciesAddServiceTests : CurrenciesServiceTestsBase
 		Guid id = await Service.Add(" eur ", 1.23445m);
 
 		Assert.That(saved, Is.Not.Null);
-		Assert.That(saved!.Id, Is.EqualTo(id).And.Not.EqualTo(Guid.Empty));
+		Assert.That(saved!.Id, Is.EqualTo(id).And.EqualTo(CatalogId("EUR")));
 		Assert.That((saved.Code, saved.Name, saved.Order, saved.IsFavorite), Is.EqualTo(("EUR", "EUR", 2, false)));
 		Assert.That((saved.EditRevision, saved.DeleteRevision, saved.ModificationType), Is.EqualTo(((long?)null, (long?)null, ModificationType.None)));
 		AvailableCurrencyInfo profile = (await Service.GetAvailableCurrencies()).Single(item => item.Code == "EUR");
@@ -88,23 +88,74 @@ public sealed class CurrenciesAddServiceTests : CurrenciesServiceTestsBase
 		AssertNoWrites();
 	}
 
-	[TestCase(0L)]
-	[TestCase(9L)]
-	public async Task Add_AllowsDeletedCodeWithoutChangingDeletedRecord(long deleteRevision)
+	[TestCase(0L, null)]
+	[TestCase(0L, 0L)]
+	[TestCase(0L, 7L)]
+	[TestCase(9L, 7L)]
+	public async Task Add_RestoresDeletedCurrencyAndInitialRateWithoutChangingIdentities(long deleteRevision, long? editRevision)
 	{
 		Currency.DeleteRevision = deleteRevision;
-		Currency? saved = null;
-		Unit.CurrencyRepo.When(repo => repo.Add(Arg.Any<Currency>())).Do(call => saved = call.Arg<Currency>());
+		Currency.EditRevision = editRevision;
+		Currency.Name = "Pound";
+		Currency.IsFavorite = true;
+		Currency.Order = 8;
+		Currency.ModificationType = ModificationType.Order;
+		CurrencyRate initial = new()
+		{
+			Id = Guid.NewGuid(), CurrencyId = Currency.Id, Currency = Currency, Date = AppValues.InitialDate,
+			Rate = 1m, Description = "Preserved", EditRevision = editRevision, DeleteRevision = deleteRevision
+		};
+		Guid rateId = initial.Id;
+		Unit.CurrencyRateRepo.GetByCurrencyAndDate(Currency.Id, AppValues.InitialDate, Arg.Any<CancellationToken>()).Returns(initial);
 
 		Guid id = await Service.Add(" gBp ", 1.25m);
 
-		Assert.That(id, Is.Not.EqualTo(Currency.Id));
-		Assert.That(saved, Is.Not.Null);
-		Assert.That((saved!.Code, saved.Name, saved.DeleteRevision, saved.Order), Is.EqualTo(("GBP", "GBP", (long?)null, 1)));
-		Assert.That(Currency.DeleteRevision, Is.EqualTo(deleteRevision));
-		Unit.CurrencyRepo.DidNotReceiveWithAnyArgs().Update(default!);
-		Unit.CurrencyRateRepo.Received(1).Add(Arg.Is<CurrencyRate>(rate => rate.CurrencyId == id && rate.Rate == 1.25m));
+		Assert.That(id, Is.EqualTo(Currency.Id).And.EqualTo(CatalogId("GBP")));
+		Assert.That((Currency.Name, Currency.IsFavorite, Currency.Order, Currency.DeleteRevision, Currency.EditRevision),
+			Is.EqualTo(("Pound", true, 1, (long?)null, editRevision)));
+		Assert.That(Currency.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
+		Assert.That((initial.Id, initial.Rate, initial.Description, initial.DeleteRevision, initial.EditRevision, initial.ModificationType),
+			Is.EqualTo((rateId, 1.25m, "Preserved", (long?)null, editRevision, ModificationType.Content)));
+		Unit.CurrencyRepo.DidNotReceiveWithAnyArgs().Add(default!);
+		Unit.CurrencyRepo.Received(1).Update(Currency);
+		Unit.CurrencyRateRepo.DidNotReceiveWithAnyArgs().Add(default!);
+		Unit.CurrencyRateRepo.Received(1).Update(initial);
 		await Unit.Received(1).SaveChanges();
+	}
+
+	[Test]
+	public async Task Add_RestoresCurrencyWithoutModifyingUnchangedLiveInitialRate()
+	{
+		Currency.DeleteRevision = 0;
+		CurrencyRate initial = new()
+		{
+			Id = Guid.NewGuid(), CurrencyId = Currency.Id, Currency = Currency, Date = AppValues.InitialDate,
+			Rate = 1.25m, EditRevision = 4
+		};
+		Unit.CurrencyRateRepo.GetByCurrencyAndDate(Currency.Id, AppValues.InitialDate, Arg.Any<CancellationToken>()).Returns(initial);
+		await Service.Add("GBP", 1.25m);
+		Assert.That(Currency.DeleteRevision, Is.Null);
+		Unit.CurrencyRateRepo.DidNotReceiveWithAnyArgs().Update(default!);
+		Unit.CurrencyRateRepo.DidNotReceiveWithAnyArgs().Add(default!);
+	}
+
+	[Test]
+	public async Task Add_UsesSamePermanentIdentityAfterPhysicalRemoval()
+	{
+		Guid originalId = Currency.Id;
+		Currencies.Remove(Currency);
+		Guid recreatedId = await Service.Add("GBP", 1.25m);
+		Assert.That(recreatedId, Is.EqualTo(originalId));
+		Unit.CurrencyRepo.Received(1).Add(Arg.Is<Currency>(currency => currency.Id == originalId && currency.EditRevision == null));
+	}
+
+	[Test]
+	public void Add_InvalidRestorationRateLeavesDeletedRowsUntouched()
+	{
+		Currency.DeleteRevision = 9;
+		Assert.ThrowsAsync<InvalidCurrencyException>(async () => await Service.Add("GBP", 0m));
+		Assert.That(Currency.DeleteRevision, Is.EqualTo(9));
+		AssertNoWrites();
 	}
 
 	[TestCase(null)]

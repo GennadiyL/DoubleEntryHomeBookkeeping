@@ -16,7 +16,7 @@ namespace Business.Impl.Services;
 
 /// <summary>
 /// Maintains saved currencies and exposes offline currency choices.
-/// Uses the currency operation for regional ISO metadata.
+/// Uses permanent currency identities and defaults from the bundled catalog.
 /// Creates each currency and its initial fallback rate in one commit.
 /// Validates rates using the shared configuration operation.
 /// Preserves currency identities and immutable ISO codes on editing.
@@ -57,21 +57,57 @@ internal sealed class CurrencyService : ICurrencyService
 		{
 			throw new InvalidCurrencyException("The currency catalog has no available ordering position.");
 		}
-		Currency currency = new()
+		Currency? currency = currencies.SingleOrDefault(item => item.Id == profile.Id);
+		if ((currency is not null && !string.Equals(currency.Code, profile.Code, StringComparison.OrdinalIgnoreCase)) ||
+			currencies.Any(item => item.Id != profile.Id && string.Equals(item.Code, profile.Code, StringComparison.OrdinalIgnoreCase)))
 		{
-			Id = Guid.NewGuid(), Code = profile.Code, Name = profile.Code, Symbol = profile.Symbol, EnglishName = profile.EnglishName,
+			throw new InvalidCurrencyException("The stored currency identity does not match the permanent catalog identity.");
+		}
+		if (profile.Id == config.BaseCurrencyId && rate != 1m)
+		{
+			throw new InvalidCurrencyException("The base-currency rate must be one.");
+		}
+		CurrencyRate? initial = await _unitOfWork.CurrencyRateRepo.GetByCurrencyAndDate(profile.Id, AppValues.InitialDate, cancellationToken);
+		bool created = currency is null;
+		currency ??= new Currency
+		{
+			Id = profile.Id, Code = profile.Code, Name = profile.Code, Symbol = profile.Symbol, EnglishName = profile.EnglishName,
 			Order = maxOrder + 1, IsFavorite = false,
 			EditRevision = null, DeleteRevision = null, ModificationType = ModificationType.None
 		};
-		CurrencyRate initial = new()
+		if (created)
 		{
-			Id = Guid.NewGuid(), CurrencyId = currency.Id, Currency = currency,
-			Date = AppValues.InitialDate, Rate = rate,
-			EditRevision = null, DeleteRevision = null, ModificationType = ModificationType.None
-		};
-		currency.Rates.Add(initial);
-		_unitOfWork.CurrencyRepo.Add(currency);
-		_unitOfWork.CurrencyRateRepo.Add(initial);
+			_unitOfWork.CurrencyRepo.Add(currency);
+		}
+		else
+		{
+			currency.SetAlive();
+			currency.SetEditedContent();
+			if (currency.Order != maxOrder + 1)
+			{
+				currency.Order = maxOrder + 1;
+				currency.SetEditedOrder();
+			}
+			_unitOfWork.CurrencyRepo.Update(currency);
+		}
+		if (initial is null)
+		{
+			initial = new CurrencyRate
+			{
+				Id = Guid.NewGuid(), CurrencyId = currency.Id, Currency = currency,
+				Date = AppValues.InitialDate, Rate = rate,
+				EditRevision = null, DeleteRevision = null, ModificationType = ModificationType.None
+			};
+			currency.Rates.Add(initial);
+			_unitOfWork.CurrencyRateRepo.Add(initial);
+		}
+		else if (initial.IsDeleted() || initial.Rate != rate)
+		{
+			initial.SetAlive();
+			initial.Rate = rate;
+			initial.SetEditedContent();
+			_unitOfWork.CurrencyRateRepo.Update(initial);
+		}
 		await _unitOfWork.SaveChanges(cancellationToken);
 		return currency.Id;
 	}

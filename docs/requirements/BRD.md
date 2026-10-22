@@ -2367,3 +2367,9 @@ Source and authorization: the user explicitly requested these requirements and i
 
 - User approved downloading the latest consistent Master database without first submitting changes, provided Local has no unsynchronized work. This includes both changes still in the local database and captured batches retained in pending synchronization JSON.
 - A download can be newer than the revision returned by an earlier synchronization. Local acknowledges the actual revision only after successful installation, and older acknowledgements must not decrease the recorded Local revision.
+
+### 2026-10-22 — Permanent currency identities
+
+- User approved a maintained, bundled currency catalog with one permanent GUID per currency. All installations use those identities; adding a supported currency to the catalog preserves every existing identity.
+- Concurrent creation of the same currency is reconciled using its shared identity and content priority. Currency rates match by CurrencyId and Date, with conflicting values resolved using priority rather than incoming rate GUID equality.
+- Re-adding a soft-deleted currency restores its existing row. After physical deletion, adding that currency creates a row with the same permanent currency ID. The dataset's base currency is selected through SystemConfig.BaseCurrencyId rather than a global base-currency constant.

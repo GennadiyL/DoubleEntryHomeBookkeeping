@@ -47,6 +47,8 @@ public abstract class SqLiteAppDbContext : AppDbContext
 		modelBuilder.Entity<SystemConfig>().HasOne<Currency>().WithMany().HasForeignKey(config => config.BaseCurrencyId);
 		modelBuilder.Entity<LocalRegistration>().ToTable(nameof(LocalRegistration));
 		modelBuilder.Entity<LocalRegistration>().HasIndex(entity => entity.LocalDatasetKey).IsUnique();
+		modelBuilder.Entity<Transaction>().Property(entity => entity.DateTime)
+			.HasConversion(value => value, value => DateTime.SpecifyKind(value, DateTimeKind.Utc));
 		modelBuilder.Entity<LocalRegistration>().Property(entity => entity.SyncDateTime)
 			.HasConversion(value => value, value => value.HasValue ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc) : (DateTime?)null);
 		modelBuilder.Entity<LocalSyncBatch>().ToTable(nameof(LocalSyncBatch));

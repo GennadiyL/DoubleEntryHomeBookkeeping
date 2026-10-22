@@ -65,9 +65,17 @@ public abstract class UnitOfWork<TContext> : IUnitOfWork
 		}
 	}
 
-	public void SaveChangesSync() => Context.SaveChanges();
+	public void SaveChangesSync()
+	{
+		Context.SaveChanges();
+		Context.ChangeTracker.Clear();
+	}
 
-	public Task SaveChanges(CancellationToken cancellationToken = default) => Context.SaveChangesAsync(cancellationToken);
+	public async Task SaveChanges(CancellationToken cancellationToken = default)
+	{
+		await Context.SaveChangesAsync(cancellationToken);
+		Context.ChangeTracker.Clear();
+	}
 
 	private UnitOfWorkTransaction GetTransaction(IUnitOfWorkTransaction transaction)
 	{

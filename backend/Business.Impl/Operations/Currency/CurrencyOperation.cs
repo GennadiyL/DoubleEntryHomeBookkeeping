@@ -1,33 +1,31 @@
-using System.Globalization;
+using System.Text.Json;
 using Business.Models.Exceptions;
+using Shared.Contracts;
 
 namespace Business.Impl.Operations.Currency;
 
 /// <summary>
-/// Resolves currency metadata from the runtime's regional culture catalog.
-/// Enumerates local culture data without network or database access.
-/// Skips neutral cultures and invalid region representations.
-/// Retains the first name and symbol encountered for each ISO code.
-/// Normalizes lookup codes by trimming and ignoring letter case.
-/// Reports unsupported codes through a descriptive domain exception.
-/// The nonthrowing lookup returns false for the same unsupported inputs.
-/// Profiles contain display defaults rather than persisted currency state.
+/// Resolves permanent currency identities from the bundled JSON catalog.
+/// Loads Assets/currencies.json relative to the application output directory.
+/// Uses shared file and JSON services without runtime regional enumeration.
+/// Validates catalog identities and codes before exposing any profiles.
+/// The first lookup loads the catalog once for this operation instance.
+/// Returns independent lists containing immutable profile records.
+/// Resolves trimmed codes without case sensitivity and reports unavailable codes.
+/// Does not read or modify persisted currencies or exchange rates.
 /// </summary>
 internal sealed class CurrencyOperation : ICurrencyOperation
 {
-	public List<CurrencyProfile> GetListOfAvailableCurrencyData() =>
-		[.. GetRegionInfos()
-			.Where(region => region.ISOCurrencySymbol.Length == 3
-				&& region.ISOCurrencySymbol.All(character => character is >= 'A' and <= 'Z')
-				&& region.ISOCurrencySymbol != "XXX"
-				&& !string.IsNullOrWhiteSpace(region.CurrencyEnglishName))
-			.DistinctBy(region => region.ISOCurrencySymbol, StringComparer.OrdinalIgnoreCase)
-			.Select(region => new CurrencyProfile
-			{
-				Code = region.ISOCurrencySymbol,
-				Symbol = region.CurrencySymbol,
-				EnglishName = region.CurrencyEnglishName
-			})];
+	private readonly ISharedContext _sharedContext;
+	private readonly Lazy<List<CurrencyProfile>> _profiles;
+
+	public CurrencyOperation(ISharedContext sharedContext)
+	{
+		_sharedContext = sharedContext;
+		_profiles = new Lazy<List<CurrencyProfile>>(LoadProfiles);
+	}
+
+	public List<CurrencyProfile> GetListOfAvailableCurrencyData() => [.. _profiles.Value];
 
 	public CurrencyProfile GetCurrencyData(string isoCode)
 	{
@@ -37,7 +35,7 @@ internal sealed class CurrencyOperation : ICurrencyOperation
 		}
 		if (!TryGetCurrencyData(isoCode, out CurrencyProfile profile))
 		{
-			throw new InvalidCurrencyCodeException($"The ISO currency code '{isoCode.Trim()}' is not available in the regional currency catalog.");
+			throw new InvalidCurrencyCodeException($"The ISO currency code '{isoCode.Trim()}' is not available in the currency catalog.");
 		}
 		return profile;
 	}
@@ -49,7 +47,7 @@ internal sealed class CurrencyOperation : ICurrencyOperation
 		{
 			return false;
 		}
-		CurrencyProfile? profile = GetListOfAvailableCurrencyData()
+		CurrencyProfile? profile = _profiles.Value
 			.FirstOrDefault(item => string.Equals(item.Code, isoCode.Trim(), StringComparison.OrdinalIgnoreCase));
 		if (profile is null)
 		{
@@ -59,24 +57,28 @@ internal sealed class CurrencyOperation : ICurrencyOperation
 		return true;
 	}
 
-	private static IEnumerable<RegionInfo> GetRegionInfos()
+	private List<CurrencyProfile> LoadProfiles()
 	{
-		foreach (CultureInfo culture in CultureInfo.GetCultures(CultureTypes.AllCultures))
+		string path = Path.Combine(AppContext.BaseDirectory, "Assets", "currencies.json");
+		string json = _sharedContext.FileService.ReadAllText(path);
+		List<CurrencyProfile>? profiles;
+		try
 		{
-			if (culture.IsNeutralCulture || string.IsNullOrEmpty(culture.Name))
-			{
-				continue;
-			}
-			RegionInfo region;
-			try
-			{
-				region = new RegionInfo(culture.Name);
-			}
-			catch (ArgumentException)
-			{
-				continue;
-			}
-			yield return region;
+			profiles = _sharedContext.JsonService.Deserialize<List<CurrencyProfile>>(json);
 		}
+		catch (JsonException)
+		{
+			throw new InvalidCurrencyException("Assets/currencies.json must contain a valid currency profile array.");
+		}
+		if (profiles is null || profiles.Count == 0 || profiles.Any(profile => profile is null ||
+			profile.Id == Guid.Empty || string.IsNullOrWhiteSpace(profile.Code) || profile.Code.Length != 3 ||
+			profile.Code.Any(character => character is < 'A' or > 'Z') || profile.Code == "XXX" ||
+			string.IsNullOrWhiteSpace(profile.Symbol) || string.IsNullOrWhiteSpace(profile.EnglishName)) ||
+			profiles.Select(profile => profile.Id).Distinct().Count() != profiles.Count ||
+			profiles.Select(profile => profile.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count() != profiles.Count)
+		{
+			throw new InvalidCurrencyException("Assets/currencies.json requires unique nonempty IDs, unique uppercase currency codes and display metadata.");
+		}
+		return profiles;
 	}
 }

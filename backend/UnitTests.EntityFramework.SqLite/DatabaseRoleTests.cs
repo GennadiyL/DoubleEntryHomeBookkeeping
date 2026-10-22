@@ -6,6 +6,7 @@ using DataAccess.Core.Entities;
 using DataAccess.EntityFramework;
 using DataAccess.EntityFramework.SqLite;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
@@ -195,6 +196,77 @@ public sealed class DatabaseRoleTests
 		await next.ServiceProvider.GetRequiredKeyedService<ICumulativeAmountCommand>(key).Recalculate(accountId);
 		Assert.That(await ReadCumulativeCount(useMaster ? _master : _local), Is.GreaterThan(0));
 		Assert.That(await ReadCumulativeCount(useMaster ? _local : _master), Is.Zero);
+	}
+
+	[TestCase(false, false)]
+	[TestCase(false, true)]
+	[TestCase(true, false)]
+	[TestCase(true, true)]
+	public async Task Save_AllowsAnotherDetachedUpdateInSameScope(bool useMaster, bool synchronous)
+	{
+		using ServiceProvider provider = BuildProvider();
+		using IServiceScope scope = provider.CreateScope();
+		IAppUnitOfWork unit = useMaster
+			? scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>()
+			: scope.ServiceProvider.GetRequiredService<ILocalAppUnitOfWork>();
+		AppDbContext context = useMaster
+			? scope.ServiceProvider.GetRequiredService<MasterAppDbContext>()
+			: scope.ServiceProvider.GetRequiredService<LocalAppDbContext>();
+		foreach (long revision in new long[] { 12, 34 })
+		{
+			await UpdateRevision(unit, revision);
+			if (synchronous) { unit.SaveChangesSync(); }
+			else { await unit.SaveChanges(); }
+			Assert.That(context.ChangeTracker.Entries(), Is.Empty);
+			Assert.That(await ReadRevision(useMaster ? _master : _local), Is.EqualTo(revision));
+		}
+	}
+
+	[Test]
+	public async Task Update_RejectsSecondDetachedInstanceBeforeSave()
+	{
+		using ServiceProvider provider = BuildProvider();
+		using IServiceScope scope = provider.CreateScope();
+		ILocalAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<ILocalAppUnitOfWork>();
+		await UpdateRevision(unit, 12);
+		Assert.ThrowsAsync<InvalidOperationException>(async () => await UpdateRevision(unit, 34));
+		Assert.That(await ReadRevision(_local), Is.Zero);
+	}
+
+	[TestCase(false)]
+	[TestCase(true)]
+	public async Task FailedSave_PreservesPendingChanges(bool synchronous)
+	{
+		using ServiceProvider provider = BuildProvider();
+		using IServiceScope scope = provider.CreateScope();
+		ILocalAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<ILocalAppUnitOfWork>();
+		LocalAppDbContext context = scope.ServiceProvider.GetRequiredService<LocalAppDbContext>();
+		SystemConfig config = (await unit.SystemConfigRepo.GetAll()).Single();
+		config.BaseCurrencyId = Guid.NewGuid();
+		config.CurrentRevision = 12;
+		unit.SystemConfigRepo.Update(config);
+		if (synchronous) { Assert.Throws<DbUpdateException>(() => unit.SaveChangesSync()); }
+		else { Assert.ThrowsAsync<DbUpdateException>(async () => await unit.SaveChanges()); }
+		Assert.That(context.ChangeTracker.Entries().Single().State, Is.EqualTo(EntityState.Modified));
+		Assert.That(await ReadRevision(_local), Is.Zero);
+	}
+
+	[Test]
+	public async Task CancelledSave_PreservesChangesForSubsequentSave()
+	{
+		using ServiceProvider provider = BuildProvider();
+		using IServiceScope scope = provider.CreateScope();
+		ILocalAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<ILocalAppUnitOfWork>();
+		LocalAppDbContext context = scope.ServiceProvider.GetRequiredService<LocalAppDbContext>();
+		await UpdateRevision(unit, 12);
+		using CancellationTokenSource cancellation = new();
+		await cancellation.CancelAsync();
+		Assert.CatchAsync<OperationCanceledException>(async () => await unit.SaveChanges(cancellation.Token));
+		Assert.That(context.ChangeTracker.Entries().Single().State, Is.EqualTo(EntityState.Modified));
+		Assert.That(await ReadRevision(_local), Is.Zero);
+		await unit.SaveChanges();
+		Assert.That(await ReadRevision(_local), Is.EqualTo(12));
+		Assert.That(context.ChangeTracker.Entries(), Is.Empty);
 	}
 
 	private ServiceProvider BuildProvider(bool masterFirst = false)

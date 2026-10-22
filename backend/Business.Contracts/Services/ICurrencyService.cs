@@ -18,10 +18,12 @@ public interface ICurrencyService :
 	IReadEntityService<CurrencyInfo>
 {
 	/// <summary>
-	/// Creates a currency from catalog metadata, with Name equal to Code, and its initial fallback rate.
-	/// Rejects duplicate ISO codes and validates the initial rate using configured precision.
+	/// Creates a currency using its permanent catalog identity, Name equal to Code and an initial fallback rate.
+	/// Restores an existing soft-deleted currency with its name, favorites and edit revision preserved.
+	/// Rejects an already active currency and validates the initial rate using configured precision.
 	/// Initializes new tracked rows with null revisions and None modification flags.
-	/// Currency, initial rate and tracking commit together, and the new currency identity is returned.
+	/// Restoration clears deletion, marks Content, appends the currency and updates or restores its initial rate.
+	/// Currency, initial rate and tracking commit together; the permanent currency identity is returned.
 	/// </summary>
 	public Task<Guid> Add(string code, decimal initialRate, CancellationToken cancellationToken = default);
 	/// <summary>
