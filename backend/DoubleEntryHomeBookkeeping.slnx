@@ -1,6 +1,6 @@
 <Solution>
   <Folder Name="/Adapters/">
-    <Project Path="Adapter.TokenStore.WinUi/Adapter.TokenStore.WinUi.csproj" />
+    <Project Path="Adapter.WinUi/Adapter.WinUi.csproj" />
     <Project Path="Adapter.Azure/Adapter.Azure.csproj" />
   </Folder>
   <Folder Name="/Master/">

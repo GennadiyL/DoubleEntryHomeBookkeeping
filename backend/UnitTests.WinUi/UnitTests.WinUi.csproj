@@ -12,7 +12,7 @@
         <PackageReference Include="NUnit" Version="4.4.0" />
         <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
-        <ProjectReference Include="..\Adapter.TokenStore.WinUi\Adapter.TokenStore.WinUi.csproj" />
+        <ProjectReference Include="..\Adapter.WinUi\Adapter.WinUi.csproj" />
         <ProjectReference Include="..\Shared.Impl\Shared.Impl.csproj" />
     </ItemGroup>
 </Project>

@@ -59,7 +59,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Business.Impl\Business.Impl.csproj" />
-    <ProjectReference Include="..\Adapter.TokenStore.WinUi\Adapter.TokenStore.WinUi.csproj" />
+    <ProjectReference Include="..\Adapter.WinUi\Adapter.WinUi.csproj" />
     <ProjectReference Include="..\DataAccess.EntityFramework.SqLite\DataAccess.EntityFramework.SqLite.csproj" />
     <ProjectReference Include="..\Shared.Impl\Shared.Impl.csproj" />
     <ProjectReference Include="..\Messaging.InProcessBus\Messaging.InProcessBus.csproj" />

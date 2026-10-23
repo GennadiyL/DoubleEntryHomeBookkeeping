@@ -4,7 +4,7 @@ using Shared.Contracts;
 using Synchronization.Contracts.Adapters;
 using Synchronization.Contracts.Adapters.TokenStore;
 
-namespace Adapter.TokenStore.WinUi;
+namespace Adapter.WinUi.TokenStore;
 
 /// <summary>
 /// Stores Master tokens in separate files protected by current-user Windows DPAPI.

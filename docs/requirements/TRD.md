@@ -3451,7 +3451,7 @@ Implements BRD section “Quick account filters — user request 2026-10-18”; 
 
 ### 2026-10-21 — Separate Windows token-store adapter project
 
-- User required the Windows token-storage implementation in Adapter.TokenStore.WinUi rather than inside Dehb.WinUi. The new Windows-targeted adapter project owns TokenStoreAdapter, its DPAPI dependency and AddAdapterTokenStoreWinUiModule registration.
+- User required the Windows token-storage implementation in a separate adapter project rather than inside Dehb.WinUi. Renamed to Adapter.WinUi on 2026-10-23; its TokenStore folder contains TokenStoreAdapter. The Windows-targeted project owns the DPAPI dependency and registers its adapters through WinUiDiConfiguration.AddAdapterWinUiModule.
 - Dehb.WinUi references the adapter project and selects it during host composition. ITokenStoreAdapter and its scope remain in Synchronization.Contracts. The existing token-store tests now reference the adapter directly, without the application host.
 - Token protection, storage location, scope isolation and read/save/delete behavior remain unchanged.
 

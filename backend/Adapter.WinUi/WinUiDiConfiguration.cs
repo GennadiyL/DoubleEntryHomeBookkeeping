@@ -1,8 +1,9 @@
+using Adapter.WinUi.TokenStore;
 using Microsoft.Extensions.DependencyInjection;
 using Shared.Contracts;
 using Synchronization.Contracts.Adapters;
 
-namespace Adapter.TokenStore.WinUi;
+namespace Adapter.WinUi;
 
 /// <summary>
 /// Registers the Windows token-store adapter for the executable host.
@@ -14,9 +15,9 @@ namespace Adapter.TokenStore.WinUi;
 /// Registration performs no file access or token decryption.
 /// Synchronization orchestration remains in the Synchronization domain.
 /// </summary>
-public static class TokenStoreWinUiDiConfiguration
+public static class WinUiDiConfiguration
 {
-	public static void AddAdapterTokenStoreWinUiModule(this IServiceCollection services)
+	public static void AddAdapterWinUiModule(this IServiceCollection services)
 	{
 		services.AddScoped<ITokenStoreAdapter>(provider => new TokenStoreAdapter(provider.GetRequiredService<ISharedContext>(), Path.Combine(
 			Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DoubleEntryHomeBookkeeping", "Tokens")));

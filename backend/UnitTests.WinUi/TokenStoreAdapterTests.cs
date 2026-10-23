@@ -1,5 +1,5 @@
 using System.Text;
-using Adapter.TokenStore.WinUi;
+using Adapter.WinUi.TokenStore;
 using NUnit.Framework;
 using Microsoft.Extensions.DependencyInjection;
 using Shared.Contracts;
