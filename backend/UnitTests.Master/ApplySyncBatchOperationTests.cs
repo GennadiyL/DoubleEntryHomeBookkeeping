@@ -62,6 +62,7 @@ public sealed class ApplySyncBatchOperationTests
 			["ConnectionStrings:DehbMasterSqLite"] = _connection.ConnectionString
 		}).Build());
 		services.AddMasterModule();
+		services.AddLocalMasterAccess();
 		_provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 		_local = Guid.NewGuid();
 		_other = Guid.NewGuid();

@@ -17,6 +17,8 @@ public interface IMasterService
 {
 	/// <summary>
 	/// Processes every submitted batch in order, skipping batches already applied, and returns the Master revision observed after processing.
+	/// Holds exclusive access for the complete call; an occupied Master is rejected before database access rather than queued.
+	/// Caller cancellation or loss of ownership stops processing and releases access after transaction cleanup.
 	/// Successful completion confirms all submitted batches are applied; an error may follow committed earlier batches, which retries must deduplicate.
 	/// </summary>
 	public Task<SynchronizeInfo> Synchronize(SynchronizeRequest request, CancellationToken cancellationToken = default);

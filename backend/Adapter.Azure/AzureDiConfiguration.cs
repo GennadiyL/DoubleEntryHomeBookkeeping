@@ -1,0 +1,30 @@
+using Adapter.Azure.Access;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Specialized;
+using Master.Contracts.Access;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
+namespace Adapter.Azure;
+
+/// <summary>
+/// Registers Azure implementations selected by the executable host.
+/// The host supplies authenticated clients for existing Master database blobs.
+/// The mapping must return the same blob for the same dataset across all workers.
+/// Blob provisioning and credential selection remain host responsibilities.
+/// The access implementation is shared across request scopes.
+/// Each acquired handle owns an independent lease and renewal lifetime.
+/// Registration performs no network access or synchronization workflow.
+/// MasterService remains responsible for acquiring and disposing access handles.
+/// </summary>
+public static class AzureDiConfiguration
+{
+	public static void AddAdapterAzureModule(this IServiceCollection services, Func<string, BlobClient> getMasterBlob)
+	{
+		ArgumentNullException.ThrowIfNull(getMasterBlob);
+		services.AddSingleton<IMasterLock>(provider => new AzureMasterLock(
+			key => getMasterBlob(key).GetBlobLeaseClient(Guid.NewGuid().ToString()), TimeProvider.System,
+			provider.GetService<ILogger<AzureMasterLockHandle>>() ?? NullLogger<AzureMasterLockHandle>.Instance));
+	}
+}

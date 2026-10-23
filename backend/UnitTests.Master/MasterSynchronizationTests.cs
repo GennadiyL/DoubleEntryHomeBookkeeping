@@ -319,6 +319,7 @@ public sealed class MasterSynchronizationTests
 			["ConnectionStrings:DehbMasterSqLite"] = _connection.ConnectionString
 		}).Build());
 		services.AddMasterModule();
+		services.AddLocalMasterAccess();
 		return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 	}
 

@@ -5,6 +5,7 @@ using Business.Models.Exceptions;
 using DataAccess.Contracts;
 using DataAccess.Core.Entities;
 using Exchange.Models.Synchronizations;
+using Master.Contracts.Access;
 using Master.Contracts.Services;
 using Master.Contracts.Services.Synchronizations;
 using Master.Impl.Operations.ApplySyncBatch;
@@ -17,6 +18,7 @@ namespace Master.Impl.Services;
 /// Coordinates ordered Local submissions against the scoped Master database.
 /// Infrastructure authorizes identities before entering this business service.
 /// Validates exchange versions, dataset identity and Local registration.
+/// Holds exclusive Master access across every batch and links ownership loss to cancellation.
 /// Each batch uses its own serializable database transaction, acquired before reads.
 /// The database transaction serializes receipt checks and revision allocation.
 /// Business changes, their receipt and the Master revision commit together.
@@ -30,20 +32,26 @@ internal sealed class MasterService : IMasterService
 	private readonly ISharedContext _sharedContext;
 	private readonly IMasterAppUnitOfWork _unitOfWork;
 	private readonly IApplySyncBatchOperation _applySyncBatchOperation;
+	private readonly IMasterLock _masterLock;
 
 	public MasterService(ISharedContext sharedContext, IMasterAppUnitOfWork unitOfWork,
-		IApplySyncBatchOperation applySyncBatchOperation)
+		IApplySyncBatchOperation applySyncBatchOperation, IMasterLock masterLock)
 	{
 		_sharedContext = sharedContext;
 		_unitOfWork = unitOfWork;
 		_applySyncBatchOperation = applySyncBatchOperation;
+		_masterLock = masterLock;
 	}
 
 	public async Task<SynchronizeInfo> Synchronize(SynchronizeRequest request, CancellationToken cancellationToken = default)
 	{
 		ValidateRequest(request, cancellationToken);
 		SyncContainer container = CopyContainer(request.Container);
-		long revision = await ProcessBatches(container, cancellationToken);
+		await using IMasterLockHandle handle = await _masterLock.TryAcquire(container.MasterDatasetKey, cancellationToken)
+			?? throw new MasterBusyException();
+		using CancellationTokenSource cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, handle.LockLost);
+		long revision = await ProcessBatches(container, cancellation.Token);
+		cancellation.Token.ThrowIfCancellationRequested();
 		return new SynchronizeInfo { Revision = revision };
 	}
 

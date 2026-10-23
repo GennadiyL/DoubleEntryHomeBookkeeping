@@ -1,6 +1,8 @@
 using DataAccess.Contracts;
 using DataAccess.Contracts.Commands;
+using Master.Contracts.Access;
 using Master.Contracts.Services;
+using Master.Impl.Access;
 using Master.Impl.Operations.ApplySyncBatch;
 using Master.Impl.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +22,11 @@ namespace Master.Impl;
 /// </summary>
 public static class MasterDiConfiguration
 {
+	public static void AddLocalMasterAccess(this IServiceCollection services)
+	{
+		services.AddSingleton<IMasterLock, LocalMasterLock>();
+	}
+
 	public static void AddMasterModule(this IServiceCollection services)
 	{
 		services.AddScoped<IMasterService, MasterService>();
