@@ -6,6 +6,8 @@ using DataAccess.Contracts;
 using DataAccess.Core.Entities;
 using Exchange.Models.Synchronizations;
 using Master.Contracts.Access;
+using Master.Contracts.Adapters;
+using Master.Contracts.Adapters.MasterStorage;
 using Master.Contracts.Services;
 using Master.Contracts.Services.Synchronizations;
 using Master.Impl.Operations.ApplySyncBatch;
@@ -19,11 +21,13 @@ namespace Master.Impl.Services;
 /// Infrastructure authorizes identities before entering this business service.
 /// Validates exchange versions, dataset identity and Local registration.
 /// Holds exclusive Master access across every batch and links ownership loss to cancellation.
+/// Opens storage under that access and publishes each new committed batch before continuing.
 /// Each batch uses its own serializable database transaction, acquired before reads.
 /// The database transaction serializes receipt checks and revision allocation.
 /// Business changes, their receipt and the Master revision commit together.
 /// Retries skip matching receipts and reject changed content under the same key.
-/// Cancellation or failure rolls back the current batch, preserving earlier commits.
+/// Merge failure rolls back the active transaction; publication failure stops further batches.
+/// A failed remote publication requires a new scope and storage session for retry.
 /// Download and acknowledgement are implemented separately.
 /// </summary>
 internal sealed class MasterService : IMasterService
@@ -33,14 +37,16 @@ internal sealed class MasterService : IMasterService
 	private readonly IMasterAppUnitOfWork _unitOfWork;
 	private readonly IApplySyncBatchOperation _applySyncBatchOperation;
 	private readonly IMasterLock _masterLock;
+	private readonly IMasterStorageAdapter _storage;
 
 	public MasterService(ISharedContext sharedContext, IMasterAppUnitOfWork unitOfWork,
-		IApplySyncBatchOperation applySyncBatchOperation, IMasterLock masterLock)
+		IApplySyncBatchOperation applySyncBatchOperation, IMasterLock masterLock, IMasterStorageAdapter storage)
 	{
 		_sharedContext = sharedContext;
 		_unitOfWork = unitOfWork;
 		_applySyncBatchOperation = applySyncBatchOperation;
 		_masterLock = masterLock;
+		_storage = storage;
 	}
 
 	public async Task<SynchronizeInfo> Synchronize(SynchronizeRequest request, CancellationToken cancellationToken = default)
@@ -50,9 +56,24 @@ internal sealed class MasterService : IMasterService
 		await using IMasterLockHandle handle = await _masterLock.TryAcquire(container.MasterDatasetKey, cancellationToken)
 			?? throw new MasterBusyException();
 		using CancellationTokenSource cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, handle.LockLost);
-		long revision = await ProcessBatches(container, cancellation.Token);
+		cancellation.Token.ThrowIfCancellationRequested();
+		await using IMasterStorageSession storage = await _storage.Open(container.MasterDatasetKey, handle, cancellation.Token);
+		long revision = await ProcessDatabase(container, storage, cancellation.Token);
 		cancellation.Token.ThrowIfCancellationRequested();
 		return new SynchronizeInfo { Revision = revision };
+	}
+
+	private async Task<long> ProcessDatabase(SyncContainer container, IMasterStorageSession storage, CancellationToken cancellationToken)
+	{
+		try
+		{
+			await _unitOfWork.OpenSession(storage.StoragePath, cancellationToken);
+			return await ProcessBatches(container, storage, cancellationToken);
+		}
+		finally
+		{
+			await _unitOfWork.CloseSession();
+		}
 	}
 
 	private static void ValidateRequest(SynchronizeRequest request, CancellationToken cancellationToken)
@@ -81,25 +102,30 @@ internal sealed class MasterService : IMasterService
 		}
 	}
 
-	private async Task<long> ProcessBatches(SyncContainer container, CancellationToken cancellationToken)
+	private async Task<long> ProcessBatches(SyncContainer container, IMasterStorageSession storage, CancellationToken cancellationToken)
 	{
 		long revision = 0;
 		for (int index = 0; index < Math.Max(1, container.Batches.Count); index++)
 		{
-			revision = await ProcessBatchTransaction(container, index, cancellationToken);
+			(long currentRevision, bool applied) = await ProcessBatchTransaction(container, index, cancellationToken);
+			revision = currentRevision;
+			if (applied)
+			{
+				await PublishBatch(storage, cancellationToken);
+			}
 		}
 		return revision;
 	}
 
-	private async Task<long> ProcessBatchTransaction(SyncContainer container, int index, CancellationToken cancellationToken)
+	private async Task<(long Revision, bool Applied)> ProcessBatchTransaction(SyncContainer container, int index, CancellationToken cancellationToken)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		await using IUnitOfWorkTransaction transaction = await _unitOfWork.BeginTransaction(cancellationToken);
 		try
 		{
-			long revision = await ProcessSubmission(container, index, cancellationToken);
+			(long revision, bool applied) = await ProcessSubmission(container, index, cancellationToken);
 			await CommitBatch(transaction, cancellationToken);
-			return revision;
+			return (revision, applied);
 		}
 		catch
 		{
@@ -108,12 +134,35 @@ internal sealed class MasterService : IMasterService
 		}
 	}
 
-	private async Task<long> ProcessSubmission(SyncContainer container, int index, CancellationToken cancellationToken)
+	private async Task<(long Revision, bool Applied)> ProcessSubmission(SyncContainer container, int index, CancellationToken cancellationToken)
 	{
 		SystemConfig config = await GetConfiguration(container, cancellationToken);
 		LocalRegistration local = await GetRegistration(container, cancellationToken);
+		long previousRevision = config.CurrentRevision;
 		if (container.Batches.Count != 0) { await ApplyBatch(container.Batches[index], config, local, cancellationToken); }
-		return config.CurrentRevision;
+		return (config.CurrentRevision, config.CurrentRevision != previousRevision);
+	}
+
+	private async Task PublishBatch(IMasterStorageSession storage, CancellationToken cancellationToken)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		string snapshotPath = storage.StoragePath + $".snapshot-{Guid.NewGuid():N}.db";
+		try
+		{
+			await _unitOfWork.CreateSnapshot(snapshotPath, cancellationToken);
+			await storage.Publish(snapshotPath, cancellationToken);
+		}
+		finally
+		{
+			DeleteSnapshot(snapshotPath);
+		}
+	}
+
+	private void DeleteSnapshot(string snapshotPath)
+	{
+		try { _sharedContext.FileService.Delete(snapshotPath); }
+		catch (IOException exception) { _sharedContext.LogService.Error("Master database snapshot cleanup failed.", exception); }
+		catch (UnauthorizedAccessException exception) { _sharedContext.LogService.Error("Master database snapshot cleanup failed.", exception); }
 	}
 
 	private async Task ApplyBatch(SyncBatch batch, SystemConfig config, LocalRegistration local, CancellationToken cancellationToken)

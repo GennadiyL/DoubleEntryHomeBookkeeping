@@ -14,23 +14,26 @@ using Windows.System;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System.Xml.Linq;
+using Shared.Contracts;
 
 namespace Dehb.WinUi;
 
 public sealed partial class MainWindow : IDisposable
 {
+	private readonly ISharedContext _sharedContext;
 	private readonly Dictionary<string, (Button Button, Image Icon)> _navigation = new();
 	private UiSession? _session;
 	private readonly Dictionary<string, FrameworkElement> _screens = new();
 	private readonly ContentControl _screen = new() { IsTabStop = false, TabFocusNavigation = KeyboardNavigationMode.Cycle, HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
 	private readonly TextBlock _error = Ui.Text("");
-	public MainWindow()
+	public MainWindow(ISharedContext sharedContext)
 	{
+		_sharedContext = sharedContext;
 		InitializeComponent();
 		Ui.ApplyPickerFocus(Root);
 		Root.Background = Ui.Background;
 		Root.Resources["SidebarBackground"] = new SolidColorBrush(Ui.ParseColor(((App)Application.Current).UiSettings.MainWindow.SideBarBackColor));
-		WindowPlacement.Attach(this, ((App)Application.Current).UiSettings.MainWindow);
+		WindowPlacement.Attach(_sharedContext, this, ((App)Application.Current).UiSettings.MainWindow);
 		Start();
 		Activated += (_, args) =>
 		{
@@ -54,7 +57,7 @@ public sealed partial class MainWindow : IDisposable
 
 		try
 		{
-			_session = new();
+			_session = new(_sharedContext);
 			Root.ColumnDefinitions.Clear();
 			Root.Children.Clear();
 			Root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(280) });
@@ -79,7 +82,7 @@ public sealed partial class MainWindow : IDisposable
 				Button guide = Ui.Button("User guide", () =>
 				{
 					string path = Path.Combine(AppContext.BaseDirectory, "Assets", "UserGuide.md");
-					if (!File.Exists(path)) { throw new FileNotFoundException("User guide file was not found.", path); }
+					if (!_sharedContext.FileService.Exists(path)) { throw new FileNotFoundException("User guide file was not found.", path); }
 					System.Diagnostics.ProcessStartInfo start = new("notepad.exe") { UseShellExecute = false };
 					start.ArgumentList.Add(path);
 					using System.Diagnostics.Process? process = System.Diagnostics.Process.Start(start);
@@ -212,7 +215,8 @@ public sealed partial class MainWindow : IDisposable
 		try
 		{
 			string path = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Icons", name.ToLowerInvariant() + "-enabled.svg");
-			XDocument svg = XDocument.Load(path);
+			using FileStream source = _sharedContext.FileService.OpenRead(path);
+			XDocument svg = XDocument.Load(source);
 			svg.Root!.SetAttributeValue("stroke", "#FFFFFF");
 			using MemoryStream stream = new(System.Text.Encoding.UTF8.GetBytes(svg.ToString()));
 			SvgImageSourceLoadStatus status = await selectedSource.SetSourceAsync(stream.AsRandomAccessStream());

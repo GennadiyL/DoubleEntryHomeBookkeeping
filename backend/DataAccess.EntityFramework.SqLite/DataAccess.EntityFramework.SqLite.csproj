@@ -12,6 +12,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\DataAccess.EntityFramework\DataAccess.EntityFramework.csproj" />
+        <ProjectReference Include="..\Shared.Contracts\Shared.Contracts.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Shared.Contracts;
 
 namespace Dehb.WinUi.UiSettingsTypes;
 
@@ -23,11 +24,11 @@ public static class UiSettingsLoader
 	};
 
 
-	public static UiSettings Load(string path)
+	public static UiSettings Load(IFileService fileService, string path)
 	{
 		try
 		{
-			using FileStream stream = File.OpenRead(path);
+			using FileStream stream = fileService.OpenRead(path);
 			UiSettings settings = JsonSerializer.Deserialize<UiSettings>(stream, SerializerOptions) ??
 								  throw new InvalidDataException("The root must be a settings object.");
 			Validate(settings);

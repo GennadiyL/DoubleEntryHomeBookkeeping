@@ -9,19 +9,22 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shared.Impl;
+using Shared.Contracts;
 
 namespace Dehb.WinUi.Hosting;
 
 internal sealed partial class BusinessHost : IDisposable
 {
+	private readonly ISharedContext _sharedContext;
 	private readonly ServiceProvider _services;
-	public BusinessHost()
+	public BusinessHost(ISharedContext sharedContext)
 	{
+		_sharedContext = sharedContext;
 		IConfigurationRoot configuration = new ConfigurationBuilder().SetBasePath(AppContext.BaseDirectory)
 			.AddJsonFile("appsettings.json", false).Build();
 		SqliteConnectionStringBuilder connection = new(configuration.GetConnectionString("DehbSqLite"));
 		connection.DataSource = Path.GetFullPath(connection.DataSource, AppContext.BaseDirectory);
-		if (!File.Exists(connection.DataSource))
+		if (!_sharedContext.FileService.Exists(connection.DataSource))
 		{
 			throw new FileNotFoundException("The configured Local database was not found.", connection.DataSource);
 		}

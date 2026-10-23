@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
+using Shared.Impl;
 
 namespace UnitTests.EntityFramework.SqLite;
 
@@ -99,6 +100,7 @@ public sealed class DatabaseRoleTests
 	public async Task EachModule_WorksIndependently(bool masterOnly)
 	{
 		ServiceCollection services = new();
+		services.AddSharedModule();
 		if (masterOnly) { services.AddMasterDataAccessSqLiteModule(_configuration); }
 		else { services.AddLocalDataAccessSqLiteModule(_configuration); }
 		using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
@@ -272,6 +274,7 @@ public sealed class DatabaseRoleTests
 	private ServiceProvider BuildProvider(bool masterFirst = false)
 	{
 		ServiceCollection services = new();
+		services.AddSharedModule();
 		if (masterFirst) { services.AddMasterDataAccessSqLiteModule(_configuration); }
 		services.AddLocalDataAccessSqLiteModule(_configuration);
 		if (!masterFirst) { services.AddMasterDataAccessSqLiteModule(_configuration); }

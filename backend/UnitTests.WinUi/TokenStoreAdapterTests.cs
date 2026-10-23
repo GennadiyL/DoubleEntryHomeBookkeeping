@@ -1,6 +1,9 @@
 using System.Text;
 using Adapter.TokenStore.WinUi;
 using NUnit.Framework;
+using Microsoft.Extensions.DependencyInjection;
+using Shared.Contracts;
+using Shared.Impl;
 using Synchronization.Contracts.Adapters.TokenStore;
 
 namespace UnitTests.WinUi;
@@ -21,12 +24,18 @@ public sealed class TokenStoreAdapterTests
 	private string _directory = null!;
 	private TokenStoreAdapter _store = null!;
 	private TokenStoreScope _scope = null!;
+	private ServiceProvider _provider = null!;
+	private IServiceScope _services = null!;
 
 	[SetUp]
 	public void SetUp()
 	{
 		_directory = Path.Combine(Path.GetTempPath(), "Dehb.TokenStore.Tests", Guid.NewGuid().ToString("N"));
-		_store = new TokenStoreAdapter(_directory);
+		ServiceCollection services = new();
+		services.AddSharedModule();
+		_provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+		_services = _provider.CreateScope();
+		_store = new TokenStoreAdapter(_services.ServiceProvider.GetRequiredService<ISharedContext>(), _directory);
 		_scope = new TokenStoreScope
 		{
 			MasterAddress = new Uri("https://master.example.test/api/"),
@@ -38,6 +47,8 @@ public sealed class TokenStoreAdapterTests
 	[TearDown]
 	public void TearDown()
 	{
+		_services?.Dispose();
+		_provider?.Dispose();
 		if (Directory.Exists(_directory))
 		{
 			Directory.Delete(_directory, true);

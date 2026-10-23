@@ -9,7 +9,7 @@ namespace DataAccess.EntityFramework.SqLite;
 
 /// <summary>
 /// Composes the Master SQLite data-access implementation.
-/// Reads the DehbMasterSqLite connection string from host configuration.
+/// Requires the DehbMasterSqLite connection string from host configuration.
 /// Registers typed context options and the role-specific unit of work.
 /// Keyed repository factories resolve this context within the current scope.
 /// Cumulative commands use the same context and transaction boundary.
@@ -24,6 +24,11 @@ public static class MasterSqLiteDiConfiguration
 		ArgumentNullException.ThrowIfNull(configuration);
 		string connectionString = configuration.GetConnectionString("DehbMasterSqLite")
 			?? throw new InvalidOperationException("Connection string 'DehbMasterSqLite' is not configured.");
+		AddMasterDataAccessSqLite(services, connectionString);
+	}
+
+	private static void AddMasterDataAccessSqLite(IServiceCollection services, string connectionString)
+	{
 		services.AddMasterDataAccessEntityFrameworkModule();
 		services.AddDbContext<MasterAppDbContext>(options => options.UseSqlite(connectionString));
 		services.AddScoped<IMasterAppUnitOfWork, MasterAppUnitOfWork>();

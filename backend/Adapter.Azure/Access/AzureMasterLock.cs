@@ -23,16 +23,16 @@ internal sealed class AzureMasterLock(
 		ArgumentException.ThrowIfNullOrWhiteSpace(masterDatasetKey);
 		cancellationToken.ThrowIfCancellationRequested();
 		BlobLeaseClient lease = createLease(masterDatasetKey);
-		return await Acquire(lease, cancellationToken);
+		return await Acquire(masterDatasetKey, lease, cancellationToken);
 	}
 
-	private async Task<IMasterLockHandle?> Acquire(BlobLeaseClient lease, CancellationToken cancellationToken)
+	private async Task<IMasterLockHandle?> Acquire(string masterDatasetKey, BlobLeaseClient lease, CancellationToken cancellationToken)
 	{
 		long started = clock.GetTimestamp();
 		try
 		{
 			await lease.AcquireAsync(TimeSpan.FromSeconds(60), cancellationToken: cancellationToken);
-			return new AzureMasterLockHandle(lease, clock, logger, started);
+			return new AzureMasterLockHandle(masterDatasetKey, lease, clock, logger, started);
 		}
 		catch (RequestFailedException exception) when (IsBusy(exception))
 		{

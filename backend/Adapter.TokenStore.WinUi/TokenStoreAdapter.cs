@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Shared.Contracts;
 using Synchronization.Contracts.Adapters;
 using Synchronization.Contracts.Adapters.TokenStore;
 
@@ -15,8 +16,17 @@ namespace Adapter.TokenStore.WinUi;
 /// Replacement writes publish only encrypted bytes through a temporary file.
 /// This adapter neither authenticates users nor decides whether tokens are expired.
 /// </summary>
-internal sealed class TokenStoreAdapter(string directory) : ITokenStoreAdapter
+internal sealed class TokenStoreAdapter : ITokenStoreAdapter
 {
+	private readonly ISharedContext _sharedContext;
+	private readonly string _directory;
+
+	public TokenStoreAdapter(ISharedContext sharedContext, string directory)
+	{
+		_sharedContext = sharedContext;
+		_directory = directory;
+	}
+
 	private static readonly UTF8Encoding TokenEncoding = new(false, true);
 
 	public async Task<string?> Read(TokenStoreScope scope, CancellationToken cancellationToken = default)
@@ -26,7 +36,7 @@ internal sealed class TokenStoreAdapter(string directory) : ITokenStoreAdapter
 		byte[]? plaintext = null;
 		try
 		{
-			byte[] encrypted = await File.ReadAllBytesAsync(GetPath(entropy), cancellationToken).ConfigureAwait(false);
+			byte[] encrypted = await _sharedContext.FileService.ReadAllBytesAsync(GetPath(entropy), cancellationToken).ConfigureAwait(false);
 			plaintext = ProtectedData.Unprotect(encrypted, entropy, DataProtectionScope.CurrentUser);
 			cancellationToken.ThrowIfCancellationRequested();
 			string token = TokenEncoding.GetString(plaintext);
@@ -62,23 +72,26 @@ internal sealed class TokenStoreAdapter(string directory) : ITokenStoreAdapter
 			CryptographicOperations.ZeroMemory(plaintext);
 		}
 		cancellationToken.ThrowIfCancellationRequested();
-		Directory.CreateDirectory(directory);
+		_sharedContext.DirectoryService.CreateDirectory(_directory);
 		string path = GetPath(entropy);
-		string temporaryPath = Path.Combine(directory, Guid.NewGuid().ToString("N") + ".tmp");
+		string temporaryPath = Path.Combine(_directory, Guid.NewGuid().ToString("N") + ".tmp");
 		try
 		{
-			await using (FileStream stream = new(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
-				4096, FileOptions.Asynchronous | FileOptions.WriteThrough))
+			await using (FileStream stream = _sharedContext.FileService.Open(temporaryPath, new FileStreamOptions
+			{
+				Mode = FileMode.CreateNew, Access = FileAccess.Write, Share = FileShare.None,
+				BufferSize = 4096, Options = FileOptions.Asynchronous | FileOptions.WriteThrough
+			}))
 			{
 				await stream.WriteAsync(encrypted, cancellationToken).ConfigureAwait(false);
 				stream.Flush(true);
 			}
 			cancellationToken.ThrowIfCancellationRequested();
-			File.Move(temporaryPath, path, true);
+			_sharedContext.FileService.Move(temporaryPath, path, true);
 		}
 		finally
 		{
-			File.Delete(temporaryPath);
+			_sharedContext.FileService.Delete(temporaryPath);
 		}
 	}
 
@@ -88,7 +101,7 @@ internal sealed class TokenStoreAdapter(string directory) : ITokenStoreAdapter
 		byte[] entropy = GetScopeBytes(scope);
 		try
 		{
-			File.Delete(GetPath(entropy));
+			_sharedContext.FileService.Delete(GetPath(entropy));
 		}
 		catch (DirectoryNotFoundException)
 		{
@@ -96,7 +109,7 @@ internal sealed class TokenStoreAdapter(string directory) : ITokenStoreAdapter
 		return Task.CompletedTask;
 	}
 
-	private string GetPath(byte[] entropy) => Path.Combine(directory, Convert.ToHexString(SHA256.HashData(entropy)) + ".bin");
+	private string GetPath(byte[] entropy) => Path.Combine(_directory, Convert.ToHexString(SHA256.HashData(entropy)) + ".bin");
 
 	private static byte[] GetScopeBytes(TokenStoreScope scope)
 	{

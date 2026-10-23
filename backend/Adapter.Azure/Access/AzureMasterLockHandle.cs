@@ -12,7 +12,7 @@ namespace Adapter.Azure.Access;
 /// Failed renewal cancels LockLost so the business workflow can stop immediately.
 /// Disposal stops and observes renewal before attempting bounded lease release.
 /// Cleanup uses an independent token and logs failures without masking business errors.
-/// Future blob publication must include LeaseId to reject writes from stale owners.
+/// Blob storage sessions use the internal dataset, blob and lease identities to validate ownership.
 /// </summary>
 internal sealed class AzureMasterLockHandle : IMasterLockHandle
 {
@@ -29,9 +29,10 @@ internal sealed class AzureMasterLockHandle : IMasterLockHandle
 	private static readonly Action<ILogger, Exception?> ReleaseFailed = LoggerMessage.Define(
 		LogLevel.Warning, new EventId(2, nameof(ReleaseFailed)), "Master blob lease release failed; the finite lease will expire if still held.");
 
-	internal AzureMasterLockHandle(BlobLeaseClient lease, TimeProvider clock,
+	internal AzureMasterLockHandle(string masterDatasetKey, BlobLeaseClient lease, TimeProvider clock,
 		ILogger<AzureMasterLockHandle> logger, long acquisitionStarted)
 	{
+		MasterDatasetKey = masterDatasetKey;
 		_lease = lease;
 		_clock = clock;
 		_logger = logger;
@@ -42,6 +43,8 @@ internal sealed class AzureMasterLockHandle : IMasterLockHandle
 	}
 
 	public CancellationToken LockLost { get; }
+	internal string MasterDatasetKey { get; }
+	internal Uri BlobUri => _lease.Uri;
 	internal string LeaseId => _lease.LeaseId;
 
 	public ValueTask DisposeAsync()

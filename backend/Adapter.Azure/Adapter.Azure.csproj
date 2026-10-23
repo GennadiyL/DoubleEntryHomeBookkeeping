@@ -6,6 +6,7 @@
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="..\Master.Contracts\Master.Contracts.csproj" />
+        <ProjectReference Include="..\Shared.Contracts\Shared.Contracts.csproj" />
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Azure.Storage.Blobs" Version="12.30.1" />

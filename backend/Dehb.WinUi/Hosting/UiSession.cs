@@ -12,16 +12,18 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using Microsoft.UI.Xaml.Automation.Peers;
+using Shared.Contracts;
 
 namespace Dehb.WinUi.Hosting;
 
 internal sealed partial class UiSession : IDisposable
 {
-	public BusinessHost Host { get; } = new();
+	public BusinessHost Host { get; }
 	public PopupCoordinator Coordinator { get; } = new();
 	public SystemConfig Settings { get; }
-	public UiSession()
+	public UiSession(ISharedContext sharedContext)
 	{
+		Host = new BusinessHost(sharedContext);
 		try { Settings = Host.ReadSettings(); } catch { Host.Dispose(); throw; }
 	}
 	public List<CurrencyInfo> Currencies() => Host.Call<ICurrencyService, List<CurrencyInfo>>(s => s.GetAllCurrencies());

@@ -4,6 +4,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using System.Text.Json;
 using Windows.Graphics;
+using Shared.Contracts;
 
 namespace Dehb.WinUi.WindowManagement;
 
@@ -16,7 +17,7 @@ internal sealed partial class WindowPlacement
 	public int Height { get; set; } = 820;
 	public bool Maximized { get; set; }
 	private static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DoubleEntryHomeBookkeeping", "window.json");
-	public static void Attach(Window window, UiMainWindowSettings settings)
+	public static void Attach(ISharedContext sharedContext, Window window, UiMainWindowSettings settings)
 	{
 		SizeInt32 ConfiguredSize()
 		{
@@ -26,9 +27,9 @@ internal sealed partial class WindowPlacement
 		SizeInt32 minimum = ConfiguredSize();
 		WindowPlacement state = new();
 		try
-		{ if (File.Exists(FilePath))
+		{ if (sharedContext.FileService.Exists(FilePath))
 			{
-				state = JsonSerializer.Deserialize<WindowPlacement>(File.ReadAllText(FilePath)) ?? state;
+				state = JsonSerializer.Deserialize<WindowPlacement>(sharedContext.FileService.ReadAllText(FilePath)) ?? state;
 			}
 		}
 		catch (IOException) { }
@@ -97,7 +98,10 @@ internal sealed partial class WindowPlacement
 			RemoveWindowSubclass(handle, callback, 1);
 			GC.KeepAlive(state._subclass);
 			try
-			{ Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!); File.WriteAllText(FilePath, JsonSerializer.Serialize(state)); }
+			{
+				sharedContext.DirectoryService.CreateDirectory(Path.GetDirectoryName(FilePath)!);
+				sharedContext.FileService.WriteAllText(FilePath, JsonSerializer.Serialize(state));
+			}
 			catch (IOException) { }
 		};
 	}

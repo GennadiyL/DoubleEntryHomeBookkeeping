@@ -7,6 +7,9 @@ using DataAccess.Contracts;
 using DataAccess.EntityFramework.SqLite;
 using Exchange.Models.Enums;
 using Exchange.Models.Synchronizations;
+using Master.Contracts.Access;
+using Master.Contracts.Adapters;
+using Master.Contracts.Adapters.MasterStorage;
 using Master.Contracts.Services;
 using Master.Contracts.Services.Synchronizations;
 using Master.Impl;
@@ -14,6 +17,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 using NUnit.Framework;
 using Shared.Impl;
 
@@ -34,6 +38,7 @@ namespace UnitTests.Master;
 public sealed class MasterSynchronizationTests
 {
 	private SqliteConnection _connection = null!;
+	private DirectoryInfo _directory = null!;
 	private ServiceProvider _provider = null!;
 	private string _masterKey = null!;
 	private Guid _localId;
@@ -42,7 +47,8 @@ public sealed class MasterSynchronizationTests
 	[SetUp]
 	public async Task SetUp()
 	{
-		_connection = new SqliteConnection($"Data Source=coordinator-{Guid.NewGuid():N};Mode=Memory;Cache=Shared;Pooling=False;Default Timeout=10");
+		_directory = Directory.CreateTempSubdirectory("dehb-master-sync-");
+		_connection = new SqliteConnection($"Data Source={Path.Combine(_directory.FullName, "master.db")};Pooling=False;Default Timeout=10");
 		await _connection.OpenAsync();
 		foreach (string script in new[] { "001-schema.sql", "002-initial-data.sql" })
 		{
@@ -62,6 +68,68 @@ public sealed class MasterSynchronizationTests
 	{
 		_provider?.Dispose();
 		_connection?.Dispose();
+		if (_directory is not null && Directory.Exists(_directory.FullName)) { _directory.Delete(true); }
+	}
+
+	[Test]
+	public async Task StorageWorkingCopyPublishesStandaloneSnapshotsAfterEachCommit()
+	{
+		string workingPath = await CopyMasterDatabase();
+		List<long> published = [];
+		List<string> snapshots = [];
+		IMasterStorageAdapter storage = CreatePublishingStorage(workingPath, published, snapshots);
+		using ServiceProvider provider = BuildProvider(storage);
+		using IServiceScope scope = provider.CreateScope();
+		SynchronizeInfo result = await scope.ServiceProvider.GetRequiredService<IMasterService>()
+			.Synchronize(Request(Batch("first"), Batch("second")));
+		Assert.That(result.Revision, Is.EqualTo(2));
+		Assert.That(published, Is.EqualTo(new long[] { 1, 2 }));
+		Assert.That(await Scalar("SELECT CurrentRevision FROM SystemConfig"), Is.Zero);
+		Assert.That(snapshots, Has.Count.EqualTo(2));
+		Assert.That(snapshots.Any(File.Exists), Is.False);
+	}
+
+	private async Task<string> CopyMasterDatabase()
+	{
+		string path = Path.Combine(_directory.FullName, "working.db");
+		await using SqliteConnection copy = new($"Data Source={path};Pooling=False");
+		await copy.OpenAsync();
+		_connection.BackupDatabase(copy);
+		await using SqliteCommand command = copy.CreateCommand();
+		command.CommandText = "PRAGMA journal_mode=WAL;";
+		await command.ExecuteNonQueryAsync();
+		return path;
+	}
+
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2012", Justification = "Configures substitute ValueTask returns; no asynchronous operation starts here.")]
+	private static IMasterStorageAdapter CreatePublishingStorage(string workingPath, List<long> published, List<string> snapshots)
+	{
+		IMasterStorageAdapter storage = Substitute.For<IMasterStorageAdapter>();
+		IMasterStorageSession session = Substitute.For<IMasterStorageSession>();
+		session.StoragePath.Returns(workingPath);
+		storage.Open(Arg.Any<string>(), Arg.Any<IMasterLockHandle>(), Arg.Any<CancellationToken>()).Returns(session);
+		session.Publish(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
+			VerifyPublishedSnapshot(call.Arg<string>(), published, snapshots));
+		session.DisposeAsync().Returns(_ =>
+		{
+			using FileStream exclusive = File.Open(workingPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+			return ValueTask.CompletedTask;
+		});
+		return storage;
+	}
+
+	private static async Task VerifyPublishedSnapshot(string path, List<long> published, List<string> snapshots)
+	{
+		snapshots.Add(path);
+		Assert.That(File.Exists(path + "-wal"), Is.False);
+		await using SqliteConnection snapshot = new($"Data Source={path};Mode=ReadOnly;Pooling=False");
+		await snapshot.OpenAsync();
+		await using SqliteCommand command = snapshot.CreateCommand();
+		command.CommandText = "SELECT CurrentRevision FROM SystemConfig;";
+		long revision = (long)(await command.ExecuteScalarAsync())!;
+		command.CommandText = "SELECT COUNT(*) FROM LocalSyncBatch;";
+		Assert.That((long)(await command.ExecuteScalarAsync())!, Is.EqualTo(revision));
+		published.Add(revision);
 	}
 
 	[Test]
@@ -310,17 +378,30 @@ public sealed class MasterSynchronizationTests
 		Assert.That(await Scalar("SELECT COUNT(*) FROM LocalSyncBatch"), Is.Zero);
 	}
 
-	private ServiceProvider BuildProvider()
+	private ServiceProvider BuildProvider(IMasterStorageAdapter? storage = null)
 	{
 		ServiceCollection services = new();
 		services.AddSharedModule();
+		ConfigureDatabase(services);
+		if (storage is null)
+		{
+			services.AddLocalMasterStorageAdapter(_ => _connection.DataSource);
+		}
+		else
+		{
+			services.AddSingleton(storage);
+		}
+		services.AddMasterModule();
+		services.AddLocalMasterAccess();
+		return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+	}
+
+	private void ConfigureDatabase(IServiceCollection services)
+	{
 		services.AddMasterDataAccessSqLiteModule(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
 		{
 			["ConnectionStrings:DehbMasterSqLite"] = _connection.ConnectionString
 		}).Build());
-		services.AddMasterModule();
-		services.AddLocalMasterAccess();
-		return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 	}
 
 	private async Task<SynchronizeInfo> Synchronize(SynchronizeRequest request)

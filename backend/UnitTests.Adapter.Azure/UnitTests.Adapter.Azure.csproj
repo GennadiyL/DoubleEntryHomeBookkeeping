@@ -15,5 +15,6 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\Adapter.Azure\Adapter.Azure.csproj" />
+        <ProjectReference Include="..\Shared.Impl\Shared.Impl.csproj" />
     </ItemGroup>
 </Project>
