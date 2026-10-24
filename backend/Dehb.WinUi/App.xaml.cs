@@ -3,6 +3,7 @@ using Dehb.WinUi.UiSettingsTypes;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Shared.Contracts;
 using Shared.Impl;
 
@@ -46,6 +47,8 @@ public partial class App : Application
 	private ISharedContext InitializeSharedContext()
 	{
 		ServiceCollection services = new();
+		services.AddSingleton<IConfiguration>(_ => new ConfigurationBuilder().SetBasePath(AppContext.BaseDirectory)
+			.AddJsonFile("appsettings.json", false).Build());
 		services.AddSharedModule();
 		_sharedServices = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 		_sharedScope = _sharedServices.CreateScope();

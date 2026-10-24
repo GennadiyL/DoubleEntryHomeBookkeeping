@@ -15,6 +15,8 @@ namespace Master.Contracts.Adapters;
 /// </summary>
 public interface IMasterStorageAdapter
 {
-	public Task<IMasterStorageSession> Open(string masterDatasetKey, IMasterLockHandle access,
+	public Task<IMasterStorageSession> Open(
+		string masterDatasetKey,
+		IMasterLockHandle access,
 		CancellationToken cancellationToken = default);
 }

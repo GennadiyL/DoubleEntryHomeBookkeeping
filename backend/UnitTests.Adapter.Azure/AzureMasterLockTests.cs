@@ -42,7 +42,7 @@ public sealed class AzureMasterLockTests
 	public async Task AcquisitionUsesFiniteLeaseAndReleasesOnce()
 	{
 		IMasterLockHandle handle = (await _masterLock.TryAcquire("master"))!;
-		Assert.That(handle.LockLost.IsCancellationRequested, Is.False);
+		Assert.That(handle.CancellationToken.IsCancellationRequested, Is.False);
 		await _lease.Received(1).AcquireAsync(TimeSpan.FromSeconds(60), cancellationToken: Arg.Any<CancellationToken>());
 		await Task.WhenAll(handle.DisposeAsync().AsTask(), handle.DisposeAsync().AsTask());
 		await _lease.Received(1).ReleaseAsync(cancellationToken: Arg.Any<CancellationToken>());
@@ -97,7 +97,7 @@ public sealed class AzureMasterLockTests
 		_clock.Advance(TimeSpan.FromSeconds(20));
 		await WaitFor(() => RenewalCount == 1);
 		_clock.Advance(TimeSpan.FromSeconds(31));
-		Assert.That(handle!.LockLost.IsCancellationRequested, Is.False);
+		Assert.That(handle!.CancellationToken.IsCancellationRequested, Is.False);
 	}
 
 	[Test]
@@ -106,7 +106,7 @@ public sealed class AzureMasterLockTests
 		_lease.RenewAsync(cancellationToken: Arg.Any<CancellationToken>()).ThrowsAsync(new RequestFailedException(412, "Lease lost"));
 		await using IMasterLockHandle? handle = await _masterLock.TryAcquire("master");
 		_clock.Advance(TimeSpan.FromSeconds(20));
-		await WaitFor(() => handle!.LockLost.IsCancellationRequested);
+		await WaitFor(() => handle!.CancellationToken.IsCancellationRequested);
 		Assert.That(RenewalCount, Is.EqualTo(1));
 	}
 
@@ -121,7 +121,7 @@ public sealed class AzureMasterLockTests
 			_clock.Advance(TimeSpan.FromSeconds(20));
 			await WaitFor(() => RenewalCount == 1);
 			_clock.Advance(TimeSpan.FromSeconds(31));
-			Assert.That(handle!.LockLost.IsCancellationRequested, Is.True);
+			Assert.That(handle!.CancellationToken.IsCancellationRequested, Is.True);
 		}
 		finally
 		{
@@ -138,7 +138,7 @@ public sealed class AzureMasterLockTests
 		_clock.Advance(TimeSpan.FromSeconds(20));
 		await WaitFor(() => RenewalCount == 1);
 		_clock.Advance(TimeSpan.FromSeconds(10));
-		await WaitFor(() => handle!.LockLost.IsCancellationRequested);
+		await WaitFor(() => handle!.CancellationToken.IsCancellationRequested);
 	}
 
 	[Test]
@@ -162,7 +162,7 @@ public sealed class AzureMasterLockTests
 			return Task.FromResult<Response<BlobLease>>(null!);
 		});
 		await using IMasterLockHandle? handle = await _masterLock.TryAcquire("master");
-		Assert.That(handle!.LockLost.IsCancellationRequested, Is.True);
+		Assert.That(handle!.CancellationToken.IsCancellationRequested, Is.True);
 	}
 
 	[Test]

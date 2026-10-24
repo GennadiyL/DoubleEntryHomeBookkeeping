@@ -55,20 +55,20 @@ internal sealed class MasterService : IMasterService
 		SyncContainer container = CopyContainer(request.Container);
 		await using IMasterLockHandle handle = await _masterLock.TryAcquire(container.MasterDatasetKey, cancellationToken)
 			?? throw new MasterBusyException();
-		using CancellationTokenSource cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, handle.LockLost);
+		using CancellationTokenSource cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, handle.CancellationToken);
 		cancellation.Token.ThrowIfCancellationRequested();
-		await using IMasterStorageSession storage = await _storage.Open(container.MasterDatasetKey, handle, cancellation.Token);
-		long revision = await ProcessDatabase(container, storage, cancellation.Token);
+		await using IMasterStorageSession session = await _storage.Open(container.MasterDatasetKey, handle, cancellation.Token);
+		long revision = await ProcessDatabase(container, session, cancellation.Token);
 		cancellation.Token.ThrowIfCancellationRequested();
 		return new SynchronizeInfo { Revision = revision };
 	}
 
-	private async Task<long> ProcessDatabase(SyncContainer container, IMasterStorageSession storage, CancellationToken cancellationToken)
+	private async Task<long> ProcessDatabase(SyncContainer container, IMasterStorageSession session, CancellationToken cancellationToken)
 	{
 		try
 		{
-			await _unitOfWork.OpenSession(storage.StoragePath, cancellationToken);
-			return await ProcessBatches(container, storage, cancellationToken);
+			await _unitOfWork.OpenSession(session.StoragePath, cancellationToken);
+			return await ProcessBatches(container, session, cancellationToken);
 		}
 		finally
 		{
@@ -102,7 +102,7 @@ internal sealed class MasterService : IMasterService
 		}
 	}
 
-	private async Task<long> ProcessBatches(SyncContainer container, IMasterStorageSession storage, CancellationToken cancellationToken)
+	private async Task<long> ProcessBatches(SyncContainer container, IMasterStorageSession session, CancellationToken cancellationToken)
 	{
 		long revision = 0;
 		for (int index = 0; index < Math.Max(1, container.Batches.Count); index++)
@@ -111,7 +111,7 @@ internal sealed class MasterService : IMasterService
 			revision = currentRevision;
 			if (applied)
 			{
-				await PublishBatch(storage, cancellationToken);
+				await PublishBatch(session, cancellationToken);
 			}
 		}
 		return revision;
@@ -139,18 +139,21 @@ internal sealed class MasterService : IMasterService
 		SystemConfig config = await GetConfiguration(container, cancellationToken);
 		LocalRegistration local = await GetRegistration(container, cancellationToken);
 		long previousRevision = config.CurrentRevision;
-		if (container.Batches.Count != 0) { await ApplyBatch(container.Batches[index], config, local, cancellationToken); }
+		if (container.Batches.Count != 0)
+		{
+			await ApplyBatch(container.Batches[index], config, local, cancellationToken);
+		}
 		return (config.CurrentRevision, config.CurrentRevision != previousRevision);
 	}
 
-	private async Task PublishBatch(IMasterStorageSession storage, CancellationToken cancellationToken)
+	private async Task PublishBatch(IMasterStorageSession session, CancellationToken cancellationToken)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		string snapshotPath = storage.StoragePath + $".snapshot-{Guid.NewGuid():N}.db";
+		string snapshotPath = session.StoragePath + $".snapshot-{Guid.NewGuid():N}.db";
 		try
 		{
 			await _unitOfWork.CreateSnapshot(snapshotPath, cancellationToken);
-			await storage.Publish(snapshotPath, cancellationToken);
+			await session.Publish(snapshotPath, cancellationToken);
 		}
 		finally
 		{
@@ -160,17 +163,32 @@ internal sealed class MasterService : IMasterService
 
 	private void DeleteSnapshot(string snapshotPath)
 	{
-		try { _sharedContext.FileService.Delete(snapshotPath); }
-		catch (IOException exception) { _sharedContext.LogService.Error("Master database snapshot cleanup failed.", exception); }
-		catch (UnauthorizedAccessException exception) { _sharedContext.LogService.Error("Master database snapshot cleanup failed.", exception); }
+		try
+		{
+			_sharedContext.FileService.Delete(snapshotPath);
+		}
+		catch (IOException exception)
+		{
+			_sharedContext.LogService.Error("Master database snapshot cleanup failed.", exception);
+		}
+		catch (UnauthorizedAccessException exception)
+		{
+			_sharedContext.LogService.Error("Master database snapshot cleanup failed.", exception);
+		}
 	}
 
 	private async Task ApplyBatch(SyncBatch batch, SystemConfig config, LocalRegistration local, CancellationToken cancellationToken)
 	{
 		string hash = GetBatchHash(batch);
 		LocalSyncBatch? receipt = await _unitOfWork.LocalSyncBatchRepo.GetBySyncKey(local.Id, batch.SyncKey, cancellationToken);
-		if (receipt is not null) { ValidateReceipt(receipt, hash); }
-		else { await ApplyNewBatch(batch, config, local, hash, cancellationToken); }
+		if (receipt is not null)
+		{
+			ValidateReceipt(receipt, hash);
+		}
+		else
+		{
+			await ApplyNewBatch(batch, config, local, hash, cancellationToken);
+		}
 	}
 
 	private string GetBatchHash(SyncBatch batch)
@@ -201,7 +219,10 @@ internal sealed class MasterService : IMasterService
 
 	private static long AllocateRevision(SystemConfig config)
 	{
-		if (config.CurrentRevision == long.MaxValue) { throw new InvalidSyncBatchException("The Master revision is exhausted."); }
+		if (config.CurrentRevision == long.MaxValue)
+		{
+			throw new InvalidSyncBatchException("The Master revision is exhausted.");
+		}
 		return config.CurrentRevision + 1;
 	}
 
@@ -224,8 +245,14 @@ internal sealed class MasterService : IMasterService
 
 	private async Task RollbackBatch(IUnitOfWorkTransaction transaction)
 	{
-		try { await _unitOfWork.RollbackTransaction(transaction, CancellationToken.None); }
-		catch (Exception exception) { _sharedContext.LogService.Error("Master synchronization rollback failed.", exception); }
+		try
+		{
+			await _unitOfWork.RollbackTransaction(transaction, CancellationToken.None);
+		}
+		catch (Exception exception)
+		{
+			_sharedContext.LogService.Error("Master synchronization rollback failed.", exception);
+		}
 	}
 
 	public Task<DownloadInfo> Download(DownloadRequest request, CancellationToken cancellationToken = default) =>
@@ -248,7 +275,10 @@ internal sealed class MasterService : IMasterService
 	private async Task<LocalRegistration> GetRegistration(SyncContainer container, CancellationToken cancellationToken)
 	{
 		LocalRegistration? local = await _unitOfWork.LocalRegistrationRepo.GetByLocalDatasetKey(container.LocalDatasetKey, cancellationToken);
-		if (local is null) { throw new InvalidSyncBatchException("The submitting Local is not registered on this Master."); }
+		if (local is null)
+		{
+			throw new InvalidSyncBatchException("The submitting Local is not registered on this Master.");
+		}
 		return local;
 	}
 }

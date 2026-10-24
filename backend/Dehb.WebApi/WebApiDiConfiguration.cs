@@ -19,6 +19,7 @@ public static class WebApiDiConfiguration
 	public static void AddWebApiDiConfiguration(this IServiceCollection services, IConfiguration configuration)
 	{
 		ConfigureJsonSerializerOptions(services);
+		services.AddSingleton<IConfiguration>(configuration);
 		services.AddSharedModule();
 		services.AddBusinessModule();
 		services.AddLocalDataAccessSqLiteModule(configuration);

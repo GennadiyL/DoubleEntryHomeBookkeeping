@@ -24,7 +24,7 @@ internal sealed class LocalMasterStorageSession(string databasePath, IMasterLock
 		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 		ArgumentException.ThrowIfNullOrWhiteSpace(snapshotPath);
 		cancellationToken.ThrowIfCancellationRequested();
-		access.LockLost.ThrowIfCancellationRequested();
+		access.CancellationToken.ThrowIfCancellationRequested();
 		return Task.CompletedTask;
 	}
 

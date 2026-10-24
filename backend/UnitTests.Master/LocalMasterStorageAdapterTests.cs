@@ -92,7 +92,7 @@ public sealed class LocalMasterStorageAdapterTests
 	[Test]
 	public void LostAccessPreventsOpen()
 	{
-		_access.LockLost.Returns(new CancellationToken(true));
+		_access.CancellationToken.Returns(new CancellationToken(true));
 		Assert.CatchAsync<OperationCanceledException>(() => _storage.Open("master", _access));
 	}
 
@@ -100,7 +100,7 @@ public sealed class LocalMasterStorageAdapterTests
 	public async Task LostAccessPreventsPublication()
 	{
 		await using IMasterStorageSession session = await _storage.Open("master", _access);
-		_access.LockLost.Returns(new CancellationToken(true));
+		_access.CancellationToken.Returns(new CancellationToken(true));
 		Assert.CatchAsync<OperationCanceledException>(() => session.Publish(_databasePath));
 	}
 

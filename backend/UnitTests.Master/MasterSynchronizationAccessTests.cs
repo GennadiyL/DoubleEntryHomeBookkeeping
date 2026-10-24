@@ -59,7 +59,7 @@ public sealed class MasterSynchronizationAccessTests
 		_handle = Substitute.For<IMasterLockHandle>();
 		_lost = new CancellationTokenSource();
 		_releasedBeforeRollback = false;
-		_handle.LockLost.Returns(_lost.Token);
+		_handle.CancellationToken.Returns(_lost.Token);
 		_masterLock.TryAcquire("master", Arg.Any<CancellationToken>()).Returns(_handle);
 		ConfigureStorage();
 		ConfigurePersistence();

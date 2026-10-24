@@ -1,8 +1,11 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shared.Contracts;
+using Shared.Contracts.Storage;
 using Shared.Impl.Logging;
 using Shared.Impl.Messaging;
 using Shared.Impl.Services;
+using Shared.Impl.Storage;
 
 namespace Shared.Impl;
 
@@ -22,6 +25,7 @@ public static class SharedDiConfiguration
 		services.AddSingleton<IDateTimeService, DateTimeService>();
 		services.AddSingleton<IDirectoryService, DirectoryService>();
 		services.AddSingleton<IFileService, FileService>();
+		services.AddLocalStorageModule();
 		services.AddSingleton<IZipService, ZipService>();
 		services.AddSingleton<ITlsService, TlsService>();
 		services.AddSingleton<IXmlService, XmlService>();
@@ -29,5 +33,11 @@ public static class SharedDiConfiguration
 
 		services.AddSingleton<ILogService, NullLogService>();
 		services.AddSingleton<IMessageService, InProcessBusMessageService>();
+	}
+
+	public static void AddLocalStorageModule(this IServiceCollection services)
+	{
+		services.AddScoped<IStorageProcessorFactory>(provider => new LocalStorageProcessorFactory(
+			provider.GetRequiredService<IFileService>(), provider.GetRequiredService<IConfiguration>()));
 	}
 }

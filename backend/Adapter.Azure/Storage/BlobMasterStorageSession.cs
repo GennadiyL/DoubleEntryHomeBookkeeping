@@ -30,7 +30,12 @@ internal sealed class BlobMasterStorageSession : IMasterStorageSession
 	private static readonly Action<ILogger, Exception?> CleanupFailed = LoggerMessage.Define(
 		LogLevel.Warning, new EventId(3, nameof(CleanupFailed)), "Master storage temporary directory cleanup failed.");
 
-	internal BlobMasterStorageSession(ISharedContext sharedContext, BlobClient blob, AzureMasterLockHandle access, DirectoryInfo directory, ILogger logger)
+	internal BlobMasterStorageSession(
+		ISharedContext sharedContext,
+		BlobClient blob,
+		AzureMasterLockHandle access,
+		DirectoryInfo directory,
+		ILogger logger)
 	{
 		_sharedContext = sharedContext;
 		_blob = blob;
@@ -69,7 +74,10 @@ internal sealed class BlobMasterStorageSession : IMasterStorageSession
 			_faulted = true;
 			throw;
 		}
-		finally { _gate.Release(); }
+		finally
+		{
+			_gate.Release();
+		}
 	}
 
 	private async Task UploadSnapshot(string snapshotPath, CancellationToken cancellationToken)
@@ -79,10 +87,16 @@ internal sealed class BlobMasterStorageSession : IMasterStorageSession
 		cancellation.Token.ThrowIfCancellationRequested();
 		await using FileStream snapshot = _sharedContext.FileService.Open(snapshotPath, new FileStreamOptions
 		{
-			Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read,
-			BufferSize = 81920, Options = FileOptions.Asynchronous | FileOptions.SequentialScan
+			Mode = FileMode.Open,
+			Access = FileAccess.Read,
+			Share = FileShare.Read,
+			BufferSize = 81920,
+			Options = FileOptions.Asynchronous | FileOptions.SequentialScan
 		});
-		BlobUploadOptions options = new() { Conditions = LeaseConditions() };
+		BlobUploadOptions options = new()
+		{
+			Conditions = LeaseConditions()
+		};
 		await _blob.UploadAsync(snapshot, options, cancellation.Token);
 		cancellation.Token.ThrowIfCancellationRequested();
 	}
@@ -107,7 +121,7 @@ internal sealed class BlobMasterStorageSession : IMasterStorageSession
 	}
 
 	private CancellationTokenSource LinkCancellation(CancellationToken cancellationToken) =>
-		CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _access.LockLost);
+		CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _access.CancellationToken);
 
 	private BlobRequestConditions LeaseConditions() => new() { LeaseId = _access.LeaseId };
 
@@ -116,11 +130,17 @@ internal sealed class BlobMasterStorageSession : IMasterStorageSession
 		await _gate.WaitAsync();
 		try
 		{
-			if (_disposed) { return; }
+			if (_disposed)
+			{
+				return;
+			}
 			_disposed = true;
 			DeleteTemporaryDirectory();
 		}
-		finally { _gate.Release(); }
+		finally
+		{
+			_gate.Release();
+		}
 	}
 
 	private void DeleteTemporaryDirectory()

@@ -31,6 +31,7 @@ internal sealed partial class BusinessHost : IDisposable
 		configuration["ConnectionStrings:DehbSqLite"] = connection.ToString();
 		ServiceCollection services = new();
 		services.AddLogging();
+		services.AddSingleton<IConfiguration>(configuration);
 		services.AddSharedModule();
 		services.AddAdapterWinUiModule();
 		services.AddBusinessModule();

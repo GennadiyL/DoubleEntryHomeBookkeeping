@@ -53,6 +53,7 @@
       <Build Project="true" />
     </Project>
     <Project Path="Shared.Contracts/Shared.Contracts.csproj" />
+    <Project Path="Shared.Azure/Shared.Azure.csproj" />
     <Project Path="Shared.Impl/Shared.Impl.csproj" />
   </Folder>
   <Folder Name="/Synchronization/">
@@ -69,6 +70,7 @@
     <Project Path="ServiceTests.Business/ServiceTests.Business.csproj" />
   </Folder>
   <Folder Name="/Tests/UnitTests/">
+    <Project Path="UnitTests.Shared/UnitTests.Shared.csproj" />
     <Project Path="UnitTests.Adapter.Azure/UnitTests.Adapter.Azure.csproj" />
     <Project Path="UnitTests.Master/UnitTests.Master.csproj" />
     <Project Path="UnitTests.WinUi/UnitTests.WinUi.csproj">

@@ -41,7 +41,7 @@ public sealed class LocalMasterLockTests
 		await using IMasterLockHandle? second = await masterLock.TryAcquire("two");
 		Assert.That(first, Is.Not.Null);
 		Assert.That(second, Is.Not.Null);
-		Assert.That(first!.LockLost.CanBeCanceled, Is.False);
+		Assert.That(first!.CancellationToken.CanBeCanceled, Is.False);
 	}
 
 	[Test]

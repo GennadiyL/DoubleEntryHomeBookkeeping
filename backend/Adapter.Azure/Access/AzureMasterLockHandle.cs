@@ -9,7 +9,7 @@ namespace Adapter.Azure.Access;
 /// Renewal runs every twenty seconds for a sixty-second lease.
 /// A fifty-second ownership budget leaves a safety margin before server expiration.
 /// The budget starts before each request and expires even when renewal is stalled.
-/// Failed renewal cancels LockLost so the business workflow can stop immediately.
+/// Failed renewal cancels CancellationToken so the business workflow can stop immediately.
 /// Disposal stops and observes renewal before attempting bounded lease release.
 /// Cleanup uses an independent token and logs failures without masking business errors.
 /// Blob storage sessions use the internal dataset, blob and lease identities to validate ownership.
@@ -29,20 +29,24 @@ internal sealed class AzureMasterLockHandle : IMasterLockHandle
 	private static readonly Action<ILogger, Exception?> ReleaseFailed = LoggerMessage.Define(
 		LogLevel.Warning, new EventId(2, nameof(ReleaseFailed)), "Master blob lease release failed; the finite lease will expire if still held.");
 
-	internal AzureMasterLockHandle(string masterDatasetKey, BlobLeaseClient lease, TimeProvider clock,
-		ILogger<AzureMasterLockHandle> logger, long acquisitionStarted)
+	internal AzureMasterLockHandle(
+		string masterDatasetKey,
+		BlobLeaseClient lease,
+		TimeProvider clock,
+		ILogger<AzureMasterLockHandle> logger,
+		long acquisitionStarted)
 	{
 		MasterDatasetKey = masterDatasetKey;
 		_lease = lease;
 		_clock = clock;
 		_logger = logger;
 		_lost = new CancellationTokenSource(Timeout.InfiniteTimeSpan, clock);
-		LockLost = _lost.Token;
+		CancellationToken = _lost.Token;
 		RefreshOwnership(acquisitionStarted);
 		_renewal = RenewUntilStopped();
 	}
 
-	public CancellationToken LockLost { get; }
+	public CancellationToken CancellationToken { get; }
 	internal string MasterDatasetKey { get; }
 	internal Uri BlobUri => _lease.Uri;
 	internal string LeaseId => _lease.LeaseId;
@@ -57,7 +61,7 @@ internal sealed class AzureMasterLockHandle : IMasterLockHandle
 
 	private async Task RenewUntilStopped()
 	{
-		using CancellationTokenSource cancellation = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token, LockLost);
+		using CancellationTokenSource cancellation = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token, CancellationToken);
 		try
 		{
 			await RenewPeriodically(cancellation.Token);
@@ -95,7 +99,7 @@ internal sealed class AzureMasterLockHandle : IMasterLockHandle
 		{
 			_lost.Cancel();
 		}
-		else if (!LockLost.IsCancellationRequested)
+		else if (!CancellationToken.IsCancellationRequested)
 		{
 			_lost.CancelAfter(remaining);
 		}

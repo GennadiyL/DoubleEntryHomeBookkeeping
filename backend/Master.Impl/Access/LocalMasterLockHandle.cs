@@ -9,14 +9,14 @@ namespace Master.Impl.Access;
 /// The semaphore remains owned by the shared lock registry and is not disposed here.
 /// Request cancellation does not release ownership before workflow cleanup.
 /// Local ownership has no lease duration and cannot expire while held.
-/// LockLost therefore remains an uncancelled token.
+/// CancellationToken therefore remains an uncancelled token.
 /// This handle performs no database or synchronization operations.
 /// </summary>
 internal sealed class LocalMasterLockHandle(SemaphoreSlim semaphore) : IMasterLockHandle
 {
 	private SemaphoreSlim? _semaphore = semaphore;
 
-	public CancellationToken LockLost => CancellationToken.None;
+	public CancellationToken CancellationToken => CancellationToken.None;
 
 	public ValueTask DisposeAsync()
 	{

@@ -23,7 +23,7 @@ internal sealed class LocalMasterStorageAdapter(ISharedContext sharedContext, Fu
 		ArgumentException.ThrowIfNullOrWhiteSpace(masterDatasetKey);
 		ArgumentNullException.ThrowIfNull(access);
 		cancellationToken.ThrowIfCancellationRequested();
-		access.LockLost.ThrowIfCancellationRequested();
+		access.CancellationToken.ThrowIfCancellationRequested();
 		string path = Path.GetFullPath(getDatabasePath(masterDatasetKey));
 		if (!sharedContext.FileService.Exists(path))
 		{
