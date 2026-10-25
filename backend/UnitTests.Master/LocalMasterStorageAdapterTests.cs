@@ -59,8 +59,8 @@ public sealed class LocalMasterStorageAdapterTests
 		await File.WriteAllTextAsync(snapshot, "snapshot");
 		IMasterStorageSession session = await _storage.Open("master", _access);
 		Assert.That(session.StoragePath, Is.EqualTo(_databasePath));
-		await session.Publish(snapshot);
-		await session.DisposeAsync();
+		await _storage.Publish(session, snapshot);
+		await _storage.Close(session);
 		await session.DisposeAsync();
 		Assert.That(await File.ReadAllTextAsync(_databasePath), Is.EqualTo("database"));
 		Assert.That(await File.ReadAllTextAsync(snapshot), Is.EqualTo("snapshot"));
@@ -71,7 +71,7 @@ public sealed class LocalMasterStorageAdapterTests
 	public async Task NoSnapshotFileIsNeededForLocalPublication()
 	{
 		await using IMasterStorageSession session = await _storage.Open("master", _access);
-		await session.Publish(Path.Combine(_directory.FullName, "not-created.db"));
+		await _storage.Publish(session, Path.Combine(_directory.FullName, "not-created.db"));
 		Assert.That(Directory.GetFiles(_directory.FullName), Has.Length.EqualTo(1));
 	}
 
@@ -101,15 +101,15 @@ public sealed class LocalMasterStorageAdapterTests
 	{
 		await using IMasterStorageSession session = await _storage.Open("master", _access);
 		_access.CancellationToken.Returns(new CancellationToken(true));
-		Assert.CatchAsync<OperationCanceledException>(() => session.Publish(_databasePath));
+		Assert.CatchAsync<OperationCanceledException>(() => _storage.Publish(session, _databasePath));
 	}
 
 	[Test]
 	public async Task DisposedSessionRejectsPublication()
 	{
 		IMasterStorageSession session = await _storage.Open("master", _access);
-		await session.DisposeAsync();
-		Assert.ThrowsAsync<ObjectDisposedException>(() => session.Publish(_databasePath));
+		await _storage.Close(session);
+		Assert.ThrowsAsync<ObjectDisposedException>(() => _storage.Publish(session, _databasePath));
 		Assert.That(File.Exists(_databasePath), Is.True);
 	}
 
@@ -117,7 +117,7 @@ public sealed class LocalMasterStorageAdapterTests
 	public async Task CancelledPublicationDoesNotModifyDatabase()
 	{
 		await using IMasterStorageSession session = await _storage.Open("master", _access);
-		Assert.CatchAsync<OperationCanceledException>(() => session.Publish(_databasePath, new CancellationToken(true)));
+		Assert.CatchAsync<OperationCanceledException>(() => _storage.Publish(session, _databasePath, new CancellationToken(true)));
 		Assert.That(await File.ReadAllTextAsync(_databasePath), Is.EqualTo("database"));
 	}
 }

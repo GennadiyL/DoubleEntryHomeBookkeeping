@@ -4,29 +4,28 @@ using Shared.Contracts.Storage;
 namespace Master.Impl.Adapters;
 
 /// <summary>
-/// Represents direct persistence to an existing local Master database.
-/// StoragePath remains the authoritative file for the lifetime of the session.
-/// SQLite transaction commits already persist changes to this file.
-/// Publish therefore performs lifetime and cancellation checks without copying files.
-/// The supplied snapshot remains owned by the caller and is never opened or deleted.
+/// Holds state for direct persistence to an existing local Master database.
+/// StoragePath remains the authoritative file for the session lifetime.
+/// The adapter performs publication checks; the session has no publication behavior.
+/// The supplied access lock remains owned by the business workflow.
 /// Disposal marks the session unusable without removing the persistent database.
+/// Repeated disposal is safe and preserves caller-owned snapshot files.
 /// Database connections must be closed separately by the persistence caller.
-/// The acquired Master access handle remains owned by the business workflow.
+/// No working copy, storage processor or temporary directory is owned here.
 /// </summary>
-internal sealed class LocalMasterStorageSession(string databasePath, IStorageLock access) : IMasterStorageSession
+internal sealed class LocalMasterStorageSession : IMasterStorageSession
 {
 	private int _disposed;
 
-	public string StoragePath { get; } = databasePath;
-
-	public Task Publish(string snapshotPath, CancellationToken cancellationToken = default)
+	internal LocalMasterStorageSession(string databasePath, IStorageLock access)
 	{
-		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
-		ArgumentException.ThrowIfNullOrWhiteSpace(snapshotPath);
-		cancellationToken.ThrowIfCancellationRequested();
-		access.CancellationToken.ThrowIfCancellationRequested();
-		return Task.CompletedTask;
+		StoragePath = databasePath;
+		Access = access;
 	}
+
+	public string StoragePath { get; }
+	internal IStorageLock Access { get; }
+	internal bool IsDisposed => Volatile.Read(ref _disposed) != 0;
 
 	public ValueTask DisposeAsync()
 	{

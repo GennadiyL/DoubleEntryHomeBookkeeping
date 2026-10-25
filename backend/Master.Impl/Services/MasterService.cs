@@ -161,7 +161,7 @@ internal sealed class MasterService : IMasterService
 		try
 		{
 			await _unitOfWork.CreateSnapshot(snapshotPath, cancellationToken);
-			await session.Publish(snapshotPath, cancellationToken);
+			await _storage.Publish(session, snapshotPath, cancellationToken);
 		}
 		finally
 		{

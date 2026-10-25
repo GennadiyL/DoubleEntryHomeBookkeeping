@@ -108,7 +108,7 @@ public sealed class MasterSynchronizationTests
 		IMasterStorageSession session = Substitute.For<IMasterStorageSession>();
 		session.StoragePath.Returns(workingPath);
 		storage.Open(Arg.Any<string>(), Arg.Any<IStorageLock>(), Arg.Any<CancellationToken>()).Returns(session);
-		session.Publish(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
+		storage.Publish(session, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
 			VerifyPublishedSnapshot(call.Arg<string>(), published, snapshots));
 		session.DisposeAsync().Returns(_ =>
 		{

@@ -109,7 +109,7 @@ public sealed class BlobMasterStorageAdapterTests : IAsyncDisposable
 			await call.Arg<Stream>().CopyToAsync(copy);
 			uploaded = copy.ToArray();
 		});
-		await session.Publish(path);
+		await _storage.Publish(session, path);
 		Assert.That(uploaded, Is.EqualTo(await File.ReadAllBytesAsync(path)));
 		_factory.Received(1).CreateProcessor();
 		await _processor.Received(1).Write("Master_master.db", Arg.Any<Stream>(), true, _access, Arg.Any<CancellationToken>());
@@ -121,11 +121,11 @@ public sealed class BlobMasterStorageAdapterTests : IAsyncDisposable
 		IMasterStorageSession session = await Open();
 		string path = await Snapshot();
 		await File.WriteAllTextAsync(session.StoragePath + "-wal", "sidecar");
-		await session.Publish(path);
-		await Task.WhenAll(session.DisposeAsync().AsTask(), session.DisposeAsync().AsTask());
+		await _storage.Publish(session, path);
+		await Task.WhenAll(_storage.Close(session).AsTask(), session.DisposeAsync().AsTask());
 		Assert.That(Directory.Exists(Path.GetDirectoryName(session.StoragePath)), Is.False);
 		Assert.That(File.Exists(path), Is.True);
-		Assert.ThrowsAsync<ObjectDisposedException>(() => session.Publish(path));
+		Assert.ThrowsAsync<ObjectDisposedException>(() => _storage.Publish(session, path));
 		await _access.DidNotReceive().DisposeAsync();
 	}
 
@@ -188,7 +188,7 @@ public sealed class BlobMasterStorageAdapterTests : IAsyncDisposable
 	public async Task WorkingDatabaseCannotBePublishedDirectly()
 	{
 		IMasterStorageSession session = await Open();
-		Assert.ThrowsAsync<ArgumentException>(() => session.Publish(session.StoragePath));
+		Assert.ThrowsAsync<ArgumentException>(() => _storage.Publish(session, session.StoragePath));
 		await VerifyNoPublication();
 	}
 
@@ -199,8 +199,8 @@ public sealed class BlobMasterStorageAdapterTests : IAsyncDisposable
 		string path = await Snapshot();
 		IOException failure = new("Publication outcome unknown.");
 		_processor.Write(Arg.Any<string>(), Arg.Any<Stream>(), true, _access, Arg.Any<CancellationToken>()).ThrowsAsync(failure);
-		Assert.That(Assert.ThrowsAsync<IOException>(() => session.Publish(path)), Is.SameAs(failure));
-		Assert.ThrowsAsync<InvalidOperationException>(() => session.Publish(path));
+		Assert.That(Assert.ThrowsAsync<IOException>(() => _storage.Publish(session, path)), Is.SameAs(failure));
+		Assert.ThrowsAsync<InvalidOperationException>(() => _storage.Publish(session, path));
 		await _processor.Received(1).Write("Master_master.db", Arg.Any<Stream>(), true, _access, Arg.Any<CancellationToken>());
 	}
 
@@ -213,17 +213,17 @@ public sealed class BlobMasterStorageAdapterTests : IAsyncDisposable
 		using CancellationTokenSource caller = new();
 		TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
 		WaitDuringUpload(entered);
-		Task publication = session.Publish(path, caller.Token);
+		Task publication = _storage.Publish(session, path, caller.Token);
 		await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
 		await (loseOwnership ? _ownership : caller).CancelAsync();
 		Assert.CatchAsync<OperationCanceledException>(() => publication.WaitAsync(TimeSpan.FromSeconds(5)));
 		if (loseOwnership)
 		{
-			Assert.CatchAsync<OperationCanceledException>(() => session.Publish(path));
+			Assert.CatchAsync<OperationCanceledException>(() => _storage.Publish(session, path));
 		}
 		else
 		{
-			Assert.ThrowsAsync<InvalidOperationException>(() => session.Publish(path));
+			Assert.ThrowsAsync<InvalidOperationException>(() => _storage.Publish(session, path));
 		}
 		await _processor.Received(1).Write("Master_master.db", Arg.Any<Stream>(), true, _access, Arg.Any<CancellationToken>());
 	}
@@ -234,7 +234,7 @@ public sealed class BlobMasterStorageAdapterTests : IAsyncDisposable
 		IMasterStorageSession session = await Open();
 		string path = await Snapshot();
 		await _ownership.CancelAsync();
-		Assert.CatchAsync<OperationCanceledException>(() => session.Publish(path));
+		Assert.CatchAsync<OperationCanceledException>(() => _storage.Publish(session, path));
 		await VerifyNoPublication();
 	}
 
@@ -253,6 +253,64 @@ public sealed class BlobMasterStorageAdapterTests : IAsyncDisposable
 			Is.EqualTo("Shared.Azure"));
 		Assert.That(scope.ServiceProvider.GetRequiredService<IStorageLockFactory>().GetType().Assembly.GetName().Name,
 			Is.EqualTo("Shared.Azure"));
+	}
+
+
+	[TestCase(false)]
+	[TestCase(true)]
+	public async Task CloseOrDisposeWaitsForPublication(bool closeThroughAdapter)
+	{
+		IMasterStorageSession session = await Open();
+		string path = await Snapshot();
+		TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+		TaskCompletionSource finish = new(TaskCreationOptions.RunContinuationsAsynchronously);
+		BlockPublication(entered, finish);
+		Task publication = _storage.Publish(session, path);
+		await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+		Task closing = closeThroughAdapter ? _storage.Close(session).AsTask() : session.DisposeAsync().AsTask();
+		try
+		{
+			Assert.That(closing.IsCompleted, Is.False);
+			Assert.That(File.Exists(session.StoragePath), Is.True);
+		}
+		finally
+		{
+			finish.TrySetResult();
+			await Task.WhenAll(publication, closing).WaitAsync(TimeSpan.FromSeconds(5));
+		}
+		Assert.That(Directory.Exists(Path.GetDirectoryName(session.StoragePath)), Is.False);
+		await _access.DidNotReceive().DisposeAsync();
+	}
+
+	[Test]
+	public async Task FaultedSessionDoesNotAffectAnotherSession()
+	{
+		IMasterStorageSession first = await Open();
+		IMasterStorageSession second = await Open();
+		string path = await Snapshot();
+		Assert.ThrowsAsync<ArgumentException>(() => _storage.Publish(first, first.StoragePath));
+		await _storage.Publish(second, path);
+		await _storage.Close(first);
+		await _storage.Publish(second, path);
+		Assert.That(File.Exists(second.StoragePath), Is.True);
+		await _processor.Received(2).Write("Master_master.db", Arg.Any<Stream>(), true, _access, Arg.Any<CancellationToken>());
+	}
+
+	[Test]
+	public async Task UnsupportedSessionIsRejectedWithoutPublication()
+	{
+		IMasterStorageSession foreign = Substitute.For<IMasterStorageSession>();
+		Assert.ThrowsAsync<ArgumentException>(() => _storage.Publish(foreign, "snapshot.db"));
+		await VerifyNoPublication();
+	}
+
+	private void BlockPublication(TaskCompletionSource entered, TaskCompletionSource finish)
+	{
+		_processor.Write(Arg.Any<string>(), Arg.Any<Stream>(), true, _access, Arg.Any<CancellationToken>()).Returns(async call =>
+		{
+			entered.TrySetResult();
+			await finish.Task.WaitAsync(call.Arg<CancellationToken>());
+		});
 	}
 
 	private async Task Download(Stream destination, CancellationToken cancellationToken)

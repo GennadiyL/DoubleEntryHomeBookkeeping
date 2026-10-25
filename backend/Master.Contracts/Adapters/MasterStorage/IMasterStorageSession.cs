@@ -1,18 +1,16 @@
 namespace Master.Contracts.Adapters.MasterStorage;
 
 /// <summary>
-/// Exposes the usable database file and publication boundary for one storage session.
+/// Holds the state and local database path for one opened Master storage session.
 /// StoragePath is consumed by the DAL when constructing its SQLite connection.
-/// Publish receives a completed standalone snapshot with no required WAL sidecar.
-/// MasterService coordinates snapshot creation and transactions through its unit of work.
-/// Local publication is a no-op because transactions already update the authoritative file.
-/// Remote publication replaces the authoritative object under the acquired access ownership.
-/// A failed remote publication invalidates the session; reopen and inspect receipts on retry.
-/// Disposal cleans up owned temporary files but neither releases access nor deletes the Local database.
+/// The adapter owns opening and publication behavior; the session owns cleanup.
+/// Implementations retain their storage target, borrowed lock and lifecycle state.
+/// Remote sessions coordinate publication and disposal using a per-session gate.
+/// A failed remote publication invalidates that session without affecting other sessions.
+/// Disposal cleans up owned temporary files but never deletes the authoritative Local database.
+/// Database connections must close first; the caller releases the storage lock afterward.
 /// </summary>
 public interface IMasterStorageSession : IAsyncDisposable
 {
 	public string StoragePath { get; }
-
-	public Task Publish(string snapshotPath, CancellationToken cancellationToken = default);
 }
