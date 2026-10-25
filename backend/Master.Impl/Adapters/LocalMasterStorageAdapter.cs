@@ -1,6 +1,6 @@
 using Master.Contracts.Adapters;
 using Master.Contracts.Adapters.MasterStorage;
-using Master.Contracts.Access;
+using Shared.Contracts.Storage;
 using Shared.Contracts;
 
 namespace Master.Impl.Adapters;
@@ -17,7 +17,7 @@ namespace Master.Impl.Adapters;
 /// </summary>
 internal sealed class LocalMasterStorageAdapter(ISharedContext sharedContext, Func<string, string> getDatabasePath) : IMasterStorageAdapter
 {
-	public Task<IMasterStorageSession> Open(string masterDatasetKey, IMasterLockHandle access,
+	public Task<IMasterStorageSession> Open(string masterDatasetKey, IStorageLock access,
 		CancellationToken cancellationToken = default)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(masterDatasetKey);

@@ -1,9 +1,7 @@
 using DataAccess.Contracts;
 using DataAccess.Contracts.Commands;
-using Master.Contracts.Access;
 using Master.Contracts.Adapters;
 using Master.Contracts.Services;
-using Master.Impl.Access;
 using Master.Impl.Adapters;
 using Master.Impl.Operations.ApplySyncBatch;
 using Master.Impl.Services;
@@ -29,11 +27,6 @@ public static class MasterDiConfiguration
 		ArgumentNullException.ThrowIfNull(getDatabasePath);
 		services.AddScoped<IMasterStorageAdapter>(provider => new LocalMasterStorageAdapter(
 			provider.GetRequiredService<ISharedContext>(), getDatabasePath));
-	}
-
-	public static void AddLocalMasterAccess(this IServiceCollection services)
-	{
-		services.AddSingleton<IMasterLock, LocalMasterLock>();
 	}
 
 	public static void AddMasterModule(this IServiceCollection services)

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Shared.Contracts;
 using Shared.Contracts.Storage;
 using Shared.Impl.Logging;
@@ -37,6 +38,7 @@ public static class SharedDiConfiguration
 
 	public static void AddLocalStorageModule(this IServiceCollection services)
 	{
+		services.TryAddSingleton<IStorageLockFactory, LocalStorageLockFactory>();
 		services.AddScoped<IStorageProcessorFactory>(provider => new LocalStorageProcessorFactory(
 			provider.GetRequiredService<IFileService>(), provider.GetRequiredService<IConfiguration>()));
 	}

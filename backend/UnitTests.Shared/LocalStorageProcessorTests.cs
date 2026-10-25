@@ -174,7 +174,7 @@ public class LocalStorageProcessorTests
 		IConfiguration configuration = _scope.ServiceProvider.GetRequiredService<IConfiguration>();
 		IStorageProcessorFactory factory = _scope.ServiceProvider.GetRequiredService<IStorageProcessorFactory>();
 		string secondRoot = Directory.CreateDirectory(Path.Combine(_root, "second")).FullName;
-		configuration["masterFileStorage:Root"] = secondRoot;
+		configuration["fileStorage:Root"] = secondRoot;
 		IStorageProcessor second = factory.CreateProcessor();
 		using MemoryStream firstSource = new([1]);
 		using MemoryStream secondSource = new([2]);
@@ -189,7 +189,7 @@ public class LocalStorageProcessorTests
 	public void Factory_RejectsMissingOrBlankRoot(string? root)
 	{
 		IConfiguration configuration = _scope.ServiceProvider.GetRequiredService<IConfiguration>();
-		configuration["masterFileStorage:Root"] = root;
+		configuration["fileStorage:Root"] = root;
 		IStorageProcessorFactory factory = _scope.ServiceProvider.GetRequiredService<IStorageProcessorFactory>();
 		Assert.Throws<InvalidOperationException>(() => factory.CreateProcessor());
 	}
@@ -235,7 +235,7 @@ public class LocalStorageProcessorTests
 
 	private static IConfigurationRoot CreateConfiguration(string root)
 	{
-		string json = JsonSerializer.Serialize(new { masterFileStorage = new { Root = root } });
+		string json = JsonSerializer.Serialize(new { fileStorage = new { Root = root } });
 		using MemoryStream stream = new(Encoding.UTF8.GetBytes(json));
 		return new ConfigurationBuilder().AddJsonStream(stream).Build();
 	}

@@ -1,5 +1,5 @@
 using Adapter.Azure;
-using Adapter.Azure.Access;
+using Shared.Azure.Storage;
 using Adapter.Azure.Storage;
 using Azure;
 using Azure.Storage.Blobs;
@@ -7,7 +7,7 @@ using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using Master.Contracts.Adapters;
 using Master.Contracts.Adapters.MasterStorage;
-using Master.Contracts.Access;
+using Shared.Contracts.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
@@ -30,12 +30,11 @@ namespace UnitTests.Adapter.Azure;
 /// No Azure account, network connection or application database is used.
 /// </summary>
 [TestFixture(Category = "Local")]
-public sealed class BlobMasterStorageAdapterTests
+public sealed class BlobMasterStorageAdapterTests : IAsyncDisposable
 {
 	private BlobClient _blob = null!;
 	private BlobLeaseClient _lease = null!;
-	private AzureMasterLock _masterLock = null!;
-	private IMasterLockHandle _access = null!;
+	private BlobStorageLock _access = null!;
 	private BlobMasterStorageAdapter _storage = null!;
 	private DirectoryInfo _snapshots = null!;
 	private readonly List<IMasterStorageSession> _sessions = new();
@@ -47,14 +46,16 @@ public sealed class BlobMasterStorageAdapterTests
 	public async Task SetUp()
 	{
 		_blob = Substitute.For<BlobClient>();
-		Uri masterUri = new("https://example.blob.core.windows.net/masters/master.db");
+		Uri masterUri = new("https://example.blob.core.windows.net/masters/Master_master.db");
 		_blob.Uri.Returns(masterUri);
 		_lease = Substitute.For<BlobLeaseClient>();
 		_lease.Uri.Returns(masterUri);
 		_lease.LeaseId.Returns("lease-id");
-		_masterLock = new AzureMasterLock(_ => _lease, new FakeTimeProvider(), NullLogger<AzureMasterLockHandle>.Instance);
-		_access = (await _masterLock.TryAcquire("master"))!;
-		_storage = new BlobMasterStorageAdapter(CreateSharedContext(), _ => _blob, NullLogger<BlobMasterStorageAdapter>.Instance);
+		ISharedContext sharedContext = CreateSharedContext();
+		await _lease.AcquireAsync(TimeSpan.FromSeconds(60));
+		FakeTimeProvider clock = new();
+		_access = new BlobStorageLock("Master_master.db", _lease, clock, sharedContext, clock.GetTimestamp());
+		_storage = new BlobMasterStorageAdapter(sharedContext, _ => _blob, NullLogger<BlobMasterStorageAdapter>.Instance);
 		_snapshots = Directory.CreateTempSubdirectory("dehb-storage-tests-");
 		_sessions.Clear();
 		ConfigureDownload();
@@ -63,14 +64,26 @@ public sealed class BlobMasterStorageAdapterTests
 	[TearDown]
 	public async Task TearDown()
 	{
+		await DisposeAsync();
+	}
+
+	public async ValueTask DisposeAsync()
+	{
 		foreach (IMasterStorageSession session in _sessions)
 		{
 			await session.DisposeAsync();
 		}
-		if (_access is not null) { await _access.DisposeAsync(); }
+		if (_access is not null)
+		{
+			await _access.DisposeAsync();
+		}
 		_scope?.Dispose();
 		_provider?.Dispose();
-		if (_snapshots is not null && Directory.Exists(_snapshots.FullName)) { _snapshots.Delete(true); }
+		if (_snapshots is not null && Directory.Exists(_snapshots.FullName))
+		{
+			_snapshots.Delete(true);
+		}
+		GC.SuppressFinalize(this);
 	}
 
 	[Test]
@@ -149,7 +162,7 @@ public sealed class BlobMasterStorageAdapterTests
 	[Test]
 	public async Task WrongProviderHandleIsRejectedBeforeDownload()
 	{
-		IMasterLockHandle foreign = Substitute.For<IMasterLockHandle>();
+		IStorageLock foreign = Substitute.For<IStorageLock>();
 		Assert.ThrowsAsync<ArgumentException>(() => _storage.Open("master", foreign));
 		await VerifyNoDownload();
 	}
@@ -157,7 +170,9 @@ public sealed class BlobMasterStorageAdapterTests
 	[Test]
 	public async Task WrongDatasetHandleIsRejectedBeforeDownload()
 	{
-		await using IMasterLockHandle? other = await _masterLock.TryAcquire("other-master");
+		FakeTimeProvider clock = new();
+		await using IStorageLock other = new BlobStorageLock("Master_other-master.db", _lease, clock,
+			_scope.ServiceProvider.GetRequiredService<ISharedContext>(), clock.GetTimestamp());
 		Assert.ThrowsAsync<ArgumentException>(() => _storage.Open("master", other!));
 		await VerifyNoDownload();
 	}

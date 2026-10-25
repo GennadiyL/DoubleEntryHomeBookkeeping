@@ -12,5 +12,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\Shared.Contracts\Shared.Contracts.csproj" />
 		<InternalsVisibleTo Include="UnitTests.Shared" />
+		<InternalsVisibleTo Include="Adapter.Azure" />
+		<InternalsVisibleTo Include="UnitTests.Adapter.Azure" />
 	</ItemGroup>
 </Project>

@@ -1,5 +1,5 @@
 using Master.Contracts.Adapters.MasterStorage;
-using Master.Contracts.Access;
+using Shared.Contracts.Storage;
 
 namespace Master.Impl.Adapters;
 
@@ -13,7 +13,7 @@ namespace Master.Impl.Adapters;
 /// Database connections must be closed separately by the persistence caller.
 /// The acquired Master access handle remains owned by the business workflow.
 /// </summary>
-internal sealed class LocalMasterStorageSession(string databasePath, IMasterLockHandle access) : IMasterStorageSession
+internal sealed class LocalMasterStorageSession(string databasePath, IStorageLock access) : IMasterStorageSession
 {
 	private int _disposed;
 

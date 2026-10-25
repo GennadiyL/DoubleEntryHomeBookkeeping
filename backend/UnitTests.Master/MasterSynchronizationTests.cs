@@ -7,7 +7,7 @@ using DataAccess.Contracts;
 using DataAccess.EntityFramework.SqLite;
 using Exchange.Models.Enums;
 using Exchange.Models.Synchronizations;
-using Master.Contracts.Access;
+using Shared.Contracts.Storage;
 using Master.Contracts.Adapters;
 using Master.Contracts.Adapters.MasterStorage;
 using Master.Contracts.Services;
@@ -107,7 +107,7 @@ public sealed class MasterSynchronizationTests
 		IMasterStorageAdapter storage = Substitute.For<IMasterStorageAdapter>();
 		IMasterStorageSession session = Substitute.For<IMasterStorageSession>();
 		session.StoragePath.Returns(workingPath);
-		storage.Open(Arg.Any<string>(), Arg.Any<IMasterLockHandle>(), Arg.Any<CancellationToken>()).Returns(session);
+		storage.Open(Arg.Any<string>(), Arg.Any<IStorageLock>(), Arg.Any<CancellationToken>()).Returns(session);
 		session.Publish(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
 			VerifyPublishedSnapshot(call.Arg<string>(), published, snapshots));
 		session.DisposeAsync().Returns(_ =>
@@ -392,7 +392,7 @@ public sealed class MasterSynchronizationTests
 			services.AddSingleton(storage);
 		}
 		services.AddMasterModule();
-		services.AddLocalMasterAccess();
+		services.AddLocalStorageModule();
 		return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 	}
 

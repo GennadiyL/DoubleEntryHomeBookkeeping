@@ -1,5 +1,5 @@
 using Master.Contracts.Adapters.MasterStorage;
-using Master.Contracts.Access;
+using Shared.Contracts.Storage;
 
 namespace Master.Contracts.Adapters;
 
@@ -17,6 +17,6 @@ public interface IMasterStorageAdapter
 {
 	public Task<IMasterStorageSession> Open(
 		string masterDatasetKey,
-		IMasterLockHandle access,
+		IStorageLock access,
 		CancellationToken cancellationToken = default);
 }

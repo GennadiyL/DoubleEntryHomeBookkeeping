@@ -3,7 +3,7 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Shared.Contracts.Storage;
 
-namespace Shared.Azure.Blob;
+namespace Shared.Azure.Storage;
 
 /// <summary>
 /// Stores objects in the Azure Blob container supplied by its factory.

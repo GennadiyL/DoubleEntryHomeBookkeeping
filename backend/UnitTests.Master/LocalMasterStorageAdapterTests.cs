@@ -1,7 +1,7 @@
 using Master.Contracts.Adapters;
 using Master.Contracts.Adapters.MasterStorage;
 using Master.Impl;
-using Master.Contracts.Access;
+using Shared.Contracts.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using NUnit.Framework;
@@ -26,7 +26,7 @@ public sealed class LocalMasterStorageAdapterTests
 	private ServiceProvider _provider = null!;
 	private IServiceScope _scope = null!;
 	private IMasterStorageAdapter _storage = null!;
-	private IMasterLockHandle _access = null!;
+	private IStorageLock _access = null!;
 	private string _databasePath = null!;
 
 	[SetUp]
@@ -41,7 +41,7 @@ public sealed class LocalMasterStorageAdapterTests
 		_provider = services.BuildServiceProvider(true);
 		_scope = _provider.CreateScope();
 		_storage = _scope.ServiceProvider.GetRequiredService<IMasterStorageAdapter>();
-		_access = Substitute.For<IMasterLockHandle>();
+		_access = Substitute.For<IStorageLock>();
 	}
 
 	[TearDown]

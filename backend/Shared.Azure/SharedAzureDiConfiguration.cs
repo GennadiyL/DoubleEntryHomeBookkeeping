@@ -3,13 +3,14 @@ using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Shared.Azure.Blob;
+using Shared.Azure.Storage;
+using Shared.Contracts;
 using Shared.Contracts.Storage;
 
 namespace Shared.Azure;
 
 /// <summary>
-/// Registers the Azure storage factory selected by the executable host.
+/// Registers Azure storage and lock factories selected by the executable host.
 /// Register after AddSharedModule to replace the Local factory.
 /// The host supplies IConfiguration loaded from appsettings.json and any overrides.
 /// DefaultAzureCredential is reused unless the host registers another TokenCredential.
@@ -20,6 +21,10 @@ public static class SharedAzureDiConfiguration
 {
 	public static void AddSharedAzureModule(this IServiceCollection services)
 	{
+		services.TryAddSingleton(TimeProvider.System);
+		services.AddScoped<IStorageLockFactory>(provider => new BlobStorageLockFactory(
+			provider.GetRequiredService<ISharedContext>(), provider.GetRequiredService<IConfiguration>(),
+			provider.GetRequiredService<TokenCredential>(), provider.GetRequiredService<TimeProvider>()));
 		services.TryAddSingleton<TokenCredential>(_ => new DefaultAzureCredential());
 		services.AddScoped<IStorageProcessorFactory>(provider => new BlobStorageProcessorFactory(
 			provider.GetRequiredService<IConfiguration>(),

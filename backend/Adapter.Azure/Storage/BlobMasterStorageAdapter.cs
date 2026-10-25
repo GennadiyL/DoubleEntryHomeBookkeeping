@@ -1,8 +1,8 @@
-using Adapter.Azure.Access;
+using Shared.Azure.Storage;
 using Azure.Storage.Blobs;
 using Master.Contracts.Adapters;
 using Master.Contracts.Adapters.MasterStorage;
-using Master.Contracts.Access;
+using Shared.Contracts.Storage;
 using Microsoft.Extensions.Logging;
 using Shared.Contracts;
 
@@ -34,7 +34,10 @@ internal sealed class BlobMasterStorageAdapter : IMasterStorageAdapter
 	/// Provider details remain inside the Azure assembly and are not exposed to business code.
 	/// Database creation, SQLite backups and transaction orchestration are excluded.
 	/// </summary>
-	public BlobMasterStorageAdapter(ISharedContext sharedContext, Func<string, BlobClient> getMasterBlob, ILogger<BlobMasterStorageAdapter> logger)
+	public BlobMasterStorageAdapter(
+		ISharedContext sharedContext,
+		Func<string, BlobClient> getMasterBlob,
+		ILogger<BlobMasterStorageAdapter> logger)
 	{
 		_sharedContext = sharedContext;
 		_getMasterBlob = getMasterBlob;
@@ -43,7 +46,7 @@ internal sealed class BlobMasterStorageAdapter : IMasterStorageAdapter
 
 	public async Task<IMasterStorageSession> Open(
 		string masterDatasetKey,
-		IMasterLockHandle access,
+		IStorageLock access,
 		CancellationToken cancellationToken = default)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(masterDatasetKey);
@@ -51,7 +54,7 @@ internal sealed class BlobMasterStorageAdapter : IMasterStorageAdapter
 		cancellationToken.ThrowIfCancellationRequested();
 		access.CancellationToken.ThrowIfCancellationRequested();
 		BlobClient blob = _getMasterBlob(masterDatasetKey);
-		AzureMasterLockHandle ownership = ValidateAccess(masterDatasetKey, blob, access);
+		BlobStorageLock ownership = ValidateAccess(masterDatasetKey, blob, access);
 		BlobMasterStorageSession session = new(
 			_sharedContext,
 			blob,
@@ -61,9 +64,9 @@ internal sealed class BlobMasterStorageAdapter : IMasterStorageAdapter
 		return await DownloadSession(session, cancellationToken);
 	}
 
-	private static AzureMasterLockHandle ValidateAccess(string masterDatasetKey, BlobClient blob, IMasterLockHandle access)
+	private static BlobStorageLock ValidateAccess(string masterDatasetKey, BlobClient blob, IStorageLock access)
 	{
-		if (access is not AzureMasterLockHandle ownership || ownership.MasterDatasetKey != masterDatasetKey ||
+		if (access is not BlobStorageLock ownership || ownership.ObjectName != MasterStorageNames.Database(masterDatasetKey) ||
 			ownership.BlobUri != blob.Uri || string.IsNullOrWhiteSpace(ownership.LeaseId))
 		{
 			throw new ArgumentException("The access handle does not own the requested Master blob.", nameof(access));

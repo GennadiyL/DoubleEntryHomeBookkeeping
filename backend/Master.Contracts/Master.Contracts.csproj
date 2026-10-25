@@ -6,5 +6,6 @@
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="..\Exchange.Models\Exchange.Models.csproj" />
+        <ProjectReference Include="..\Shared.Contracts\Shared.Contracts.csproj" />
     </ItemGroup>
 </Project>

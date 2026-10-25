@@ -5,7 +5,7 @@ using Shared.Contracts.Storage;
 namespace Shared.Impl.Storage;
 
 /// <summary>
-/// Creates Local processors using the host's masterFileStorage configuration.
+/// Creates Local processors using the host's fileStorage configuration.
 /// Reads the root for each creation and resolves relative paths against the application directory.
 /// Each processor keeps its own resolved root for its lifetime.
 /// The factory retains dependencies only and does not cache processors or perform file access.
@@ -24,10 +24,10 @@ internal sealed class LocalStorageProcessorFactory : IStorageProcessorFactory
 
 	public IStorageProcessor CreateProcessor()
 	{
-		string? root = _configuration["masterFileStorage:Root"];
+		string? root = _configuration["fileStorage:Root"];
 		if (string.IsNullOrWhiteSpace(root))
 		{
-			throw new InvalidOperationException("Configure masterFileStorage:Root before creating a Local storage processor.");
+			throw new InvalidOperationException("Configure fileStorage:Root before creating a Local storage processor.");
 		}
 
 		string fullRoot = Path.GetFullPath(root, AppContext.BaseDirectory);

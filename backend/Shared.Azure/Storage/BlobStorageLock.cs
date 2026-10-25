@@ -1,45 +1,40 @@
 using Azure.Storage.Blobs.Specialized;
-using Master.Contracts.Access;
-using Microsoft.Extensions.Logging;
+using Shared.Contracts.Storage;
+using Shared.Contracts;
 
-namespace Adapter.Azure.Access;
+namespace Shared.Azure.Storage;
 
 /// <summary>
-/// Maintains one acquired Azure lease until the business owner disposes the handle.
+/// Maintains one acquired Azure lease until the caller disposes the handle.
 /// Renewal runs every twenty seconds for a sixty-second lease.
 /// A fifty-second ownership budget leaves a safety margin before server expiration.
 /// The budget starts before each request and expires even when renewal is stalled.
-/// Failed renewal cancels CancellationToken so the business workflow can stop immediately.
+/// Failed renewal cancels CancellationToken so the protected workflow can stop immediately.
 /// Disposal stops and observes renewal before attempting bounded lease release.
 /// Cleanup uses an independent token and logs failures without masking business errors.
-/// Blob storage sessions use the internal dataset, blob and lease identities to validate ownership.
+/// Provider integrations can validate the internal object, blob and lease identities before protected I/O.
 /// </summary>
-internal sealed class AzureMasterLockHandle : IMasterLockHandle
+internal sealed class BlobStorageLock : IStorageLock
 {
 	private readonly BlobLeaseClient _lease;
 	private readonly TimeProvider _clock;
-	private readonly ILogger<AzureMasterLockHandle> _logger;
+	private readonly ISharedContext _sharedContext;
 	private readonly CancellationTokenSource _stop = new();
 	private readonly CancellationTokenSource _lost;
 	private readonly Task _renewal;
 	private readonly object _disposeGate = new();
 	private Task? _disposal;
-	private static readonly Action<ILogger, Exception?> RenewalFailed = LoggerMessage.Define(
-		LogLevel.Warning, new EventId(1, nameof(RenewalFailed)), "Master blob lease renewal failed; ownership is no longer guaranteed.");
-	private static readonly Action<ILogger, Exception?> ReleaseFailed = LoggerMessage.Define(
-		LogLevel.Warning, new EventId(2, nameof(ReleaseFailed)), "Master blob lease release failed; the finite lease will expire if still held.");
-
-	internal AzureMasterLockHandle(
-		string masterDatasetKey,
+	internal BlobStorageLock(
+		string objectName,
 		BlobLeaseClient lease,
 		TimeProvider clock,
-		ILogger<AzureMasterLockHandle> logger,
+		ISharedContext sharedContext,
 		long acquisitionStarted)
 	{
-		MasterDatasetKey = masterDatasetKey;
+		ObjectName = objectName;
 		_lease = lease;
 		_clock = clock;
-		_logger = logger;
+		_sharedContext = sharedContext;
 		_lost = new CancellationTokenSource(Timeout.InfiniteTimeSpan, clock);
 		CancellationToken = _lost.Token;
 		RefreshOwnership(acquisitionStarted);
@@ -47,7 +42,7 @@ internal sealed class AzureMasterLockHandle : IMasterLockHandle
 	}
 
 	public CancellationToken CancellationToken { get; }
-	internal string MasterDatasetKey { get; }
+	internal string ObjectName { get; }
 	internal Uri BlobUri => _lease.Uri;
 	internal string LeaseId => _lease.LeaseId;
 
@@ -66,11 +61,13 @@ internal sealed class AzureMasterLockHandle : IMasterLockHandle
 		{
 			await RenewPeriodically(cancellation.Token);
 		}
-		catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+		catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+		{
+		}
 		catch (Exception exception)
 		{
 			await _lost.CancelAsync();
-			RenewalFailed(_logger, exception);
+			_sharedContext.LogService.Warn("Blob lease renewal failed; ownership is no longer guaranteed.", exception);
 		}
 	}
 
@@ -112,7 +109,7 @@ internal sealed class AzureMasterLockHandle : IMasterLockHandle
 		try
 		{
 			await _renewal;
-			await Release(_lease, _clock, _logger);
+			await Release(_lease, _clock, _sharedContext.LogService);
 		}
 		finally
 		{
@@ -121,7 +118,7 @@ internal sealed class AzureMasterLockHandle : IMasterLockHandle
 		}
 	}
 
-	internal static async Task Release(BlobLeaseClient lease, TimeProvider clock, ILogger logger)
+	internal static async Task Release(BlobLeaseClient lease, TimeProvider clock, ILogService logService)
 	{
 		using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10), clock);
 		try
@@ -130,7 +127,7 @@ internal sealed class AzureMasterLockHandle : IMasterLockHandle
 		}
 		catch (Exception exception)
 		{
-			ReleaseFailed(logger, exception);
+			logService.Warn("Blob lease release failed; the finite lease will expire if still held.", exception);
 		}
 	}
 }

@@ -1,4 +1,4 @@
-using Adapter.Azure.Access;
+using Shared.Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Master.Contracts.Adapters.MasterStorage;
@@ -21,7 +21,7 @@ internal sealed class BlobMasterStorageSession : IMasterStorageSession
 {
 	private readonly ISharedContext _sharedContext;
 	private readonly BlobClient _blob;
-	private readonly AzureMasterLockHandle _access;
+	private readonly BlobStorageLock _access;
 	private readonly DirectoryInfo _directory;
 	private readonly ILogger _logger;
 	private readonly SemaphoreSlim _gate = new(1, 1);
@@ -33,7 +33,7 @@ internal sealed class BlobMasterStorageSession : IMasterStorageSession
 	internal BlobMasterStorageSession(
 		ISharedContext sharedContext,
 		BlobClient blob,
-		AzureMasterLockHandle access,
+		BlobStorageLock access,
 		DirectoryInfo directory,
 		ILogger logger)
 	{

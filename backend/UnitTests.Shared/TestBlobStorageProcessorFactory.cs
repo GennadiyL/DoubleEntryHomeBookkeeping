@@ -1,5 +1,5 @@
 using Azure.Storage.Blobs;
-using Shared.Azure.Blob;
+using Shared.Azure.Storage;
 using Shared.Contracts.Storage;
 
 namespace UnitTests.Shared;

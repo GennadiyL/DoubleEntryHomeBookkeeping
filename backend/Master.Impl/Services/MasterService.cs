@@ -5,7 +5,7 @@ using Business.Models.Exceptions;
 using DataAccess.Contracts;
 using DataAccess.Core.Entities;
 using Exchange.Models.Synchronizations;
-using Master.Contracts.Access;
+using Shared.Contracts.Storage;
 using Master.Contracts.Adapters;
 using Master.Contracts.Adapters.MasterStorage;
 using Master.Contracts.Services;
@@ -36,30 +36,38 @@ internal sealed class MasterService : IMasterService
 	private readonly ISharedContext _sharedContext;
 	private readonly IMasterAppUnitOfWork _unitOfWork;
 	private readonly IApplySyncBatchOperation _applySyncBatchOperation;
-	private readonly IMasterLock _masterLock;
+	private readonly IStorageLockFactory _storageLockFactory;
 	private readonly IMasterStorageAdapter _storage;
 
 	public MasterService(ISharedContext sharedContext, IMasterAppUnitOfWork unitOfWork,
-		IApplySyncBatchOperation applySyncBatchOperation, IMasterLock masterLock, IMasterStorageAdapter storage)
+		IApplySyncBatchOperation applySyncBatchOperation, IStorageLockFactory storageLockFactory, IMasterStorageAdapter storage)
 	{
 		_sharedContext = sharedContext;
 		_unitOfWork = unitOfWork;
 		_applySyncBatchOperation = applySyncBatchOperation;
-		_masterLock = masterLock;
+		_storageLockFactory = storageLockFactory;
 		_storage = storage;
 	}
 
 	public async Task<SynchronizeInfo> Synchronize(SynchronizeRequest request, CancellationToken cancellationToken = default)
 	{
 		ValidateRequest(request, cancellationToken);
+
 		SyncContainer container = CopyContainer(request.Container);
-		await using IMasterLockHandle handle = await _masterLock.TryAcquire(container.MasterDatasetKey, cancellationToken)
-			?? throw new MasterBusyException();
-		using CancellationTokenSource cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, handle.CancellationToken);
+
+		await using IStorageLock storageLock =
+			await _storageLockFactory.TryAcquire(MasterStorageNames.Database(container.MasterDatasetKey), cancellationToken) ??
+			throw new MasterBusyException();
+
+		using CancellationTokenSource cancellation =
+			CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, storageLock.CancellationToken);
 		cancellation.Token.ThrowIfCancellationRequested();
-		await using IMasterStorageSession session = await _storage.Open(container.MasterDatasetKey, handle, cancellation.Token);
+
+		await using IMasterStorageSession session = await _storage.Open(container.MasterDatasetKey, storageLock, cancellation.Token);
+
 		long revision = await ProcessDatabase(container, session, cancellation.Token);
 		cancellation.Token.ThrowIfCancellationRequested();
+
 		return new SynchronizeInfo { Revision = revision };
 	}
 

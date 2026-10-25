@@ -5,7 +5,7 @@ using DataAccess.Contracts;
 using DataAccess.Core.Entities;
 using Exchange.Models.Enums;
 using Exchange.Models.Synchronizations;
-using Master.Contracts.Access;
+using Shared.Contracts.Storage;
 using Master.Contracts.Adapters;
 using Master.Contracts.Adapters.MasterStorage;
 using Master.Contracts.Services;
@@ -37,8 +37,8 @@ public sealed class MasterSynchronizationAccessTests
 	private ServiceProvider _provider = null!;
 	private IMasterAppUnitOfWork _unit = null!;
 	private IApplySyncBatchOperation _apply = null!;
-	private IMasterLock _masterLock = null!;
-	private IMasterLockHandle _handle = null!;
+	private IStorageLockFactory _storageLockFactory = null!;
+	private IStorageLock _handle = null!;
 	private CancellationTokenSource _lost = null!;
 	private bool _releasedBeforeRollback;
 	private IMasterStorageAdapter _storage = null!;
@@ -55,12 +55,12 @@ public sealed class MasterSynchronizationAccessTests
 	{
 		_unit = Substitute.For<IMasterAppUnitOfWork>();
 		_apply = Substitute.For<IApplySyncBatchOperation>();
-		_masterLock = Substitute.For<IMasterLock>();
-		_handle = Substitute.For<IMasterLockHandle>();
+		_storageLockFactory = Substitute.For<IStorageLockFactory>();
+		_handle = Substitute.For<IStorageLock>();
 		_lost = new CancellationTokenSource();
 		_releasedBeforeRollback = false;
 		_handle.CancellationToken.Returns(_lost.Token);
-		_masterLock.TryAcquire("master", Arg.Any<CancellationToken>()).Returns(_handle);
+		_storageLockFactory.TryAcquire("Master_master.db", Arg.Any<CancellationToken>()).Returns(_handle);
 		ConfigureStorage();
 		ConfigurePersistence();
 		_provider = BuildProvider();
@@ -76,7 +76,7 @@ public sealed class MasterSynchronizationAccessTests
 	[Test]
 	public async Task BusyMasterIsRejectedBeforeDatabaseAccess()
 	{
-		_masterLock.TryAcquire("master", Arg.Any<CancellationToken>()).Returns((IMasterLockHandle?)null);
+		_storageLockFactory.TryAcquire("Master_master.db", Arg.Any<CancellationToken>()).Returns((IStorageLock?)null);
 		Assert.ThrowsAsync<MasterBusyException>(() => Synchronize(Request("first")));
 		await _unit.DidNotReceive().BeginTransaction(Arg.Any<CancellationToken>());
 		await _apply.DidNotReceiveWithAnyArgs().Run(default!, default, default, default);
@@ -153,7 +153,7 @@ public sealed class MasterSynchronizationAccessTests
 			return Task.CompletedTask;
 		});
 		Assert.That((await Synchronize(Request("first", "second"))).Revision, Is.EqualTo(2));
-		await _masterLock.Received(1).TryAcquire("master", Arg.Any<CancellationToken>());
+		await _storageLockFactory.Received(1).TryAcquire("Master_master.db", Arg.Any<CancellationToken>());
 		await _unit.Received(2).CommitTransaction(Arg.Any<IUnitOfWorkTransaction>(), Arg.Any<CancellationToken>());
 		await _handle.Received(1).DisposeAsync();
 	}
@@ -209,7 +209,7 @@ public sealed class MasterSynchronizationAccessTests
 	public async Task AcquisitionFailurePropagatesWithoutDatabaseAccess()
 	{
 		InvalidOperationException failure = new("Storage unavailable.");
-		_masterLock.TryAcquire("master", Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+		_storageLockFactory.TryAcquire("Master_master.db", Arg.Any<CancellationToken>()).ThrowsAsync(failure);
 		Assert.That(Assert.ThrowsAsync<InvalidOperationException>(() => Synchronize(Request("first"))), Is.SameAs(failure));
 		await _unit.DidNotReceive().BeginTransaction(Arg.Any<CancellationToken>());
 		await _handle.DidNotReceive().DisposeAsync();
@@ -219,7 +219,7 @@ public sealed class MasterSynchronizationAccessTests
 	public async Task PreCancelledRequestDoesNotAcquireAccess()
 	{
 		Assert.CatchAsync<OperationCanceledException>(() => Synchronize(Request("first"), new CancellationToken(true)));
-		await _masterLock.DidNotReceiveWithAnyArgs().TryAcquire(default!, default);
+		await _storageLockFactory.DidNotReceiveWithAnyArgs().TryAcquire(default!, default);
 	}
 
 	[Test]
@@ -263,11 +263,11 @@ public sealed class MasterSynchronizationAccessTests
 		services.AddSingleton(_storage);
 		if (localAccess)
 		{
-			services.AddLocalMasterAccess();
+			services.AddLocalStorageModule();
 		}
 		else
 		{
-			services.AddSingleton(_masterLock);
+			services.AddSingleton(_storageLockFactory);
 		}
 		return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 	}
@@ -288,14 +288,14 @@ public sealed class MasterSynchronizationAccessTests
 		_storage = Substitute.For<IMasterStorageAdapter>();
 		_session = Substitute.For<IMasterStorageSession>();
 		_session.StoragePath.Returns(Path.Combine(Path.GetTempPath(), "mock-master.db"));
-		_storage.Open("master", Arg.Any<IMasterLockHandle>(), Arg.Any<CancellationToken>()).Returns(_session);
+		_storage.Open("master", Arg.Any<IStorageLock>(), Arg.Any<CancellationToken>()).Returns(_session);
 	}
 
 	[System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2012", Justification = "Configures substitute ValueTask returns; no asynchronous operation starts here.")]
 	private List<string> RecordStorageLifecycle()
 	{
 		List<string> events = [];
-		_masterLock.TryAcquire("master", Arg.Any<CancellationToken>()).Returns(_ => { events.Add("acquire"); return _handle; });
+		_storageLockFactory.TryAcquire("Master_master.db", Arg.Any<CancellationToken>()).Returns(_ => { events.Add("acquire"); return _handle; });
 		_storage.Open("master", _handle, Arg.Any<CancellationToken>()).Returns(_ => { events.Add("storage-open"); return _session; });
 		_unit.OpenSession(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ => Record(events, "database-open"));
 		_unit.CommitTransaction(Arg.Any<IUnitOfWorkTransaction>(), Arg.Any<CancellationToken>()).Returns(_ => Record(events, "commit"));

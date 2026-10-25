@@ -1,20 +1,23 @@
-using Adapter.Azure;
-using Adapter.Azure.Access;
+using Shared.Azure;
+using Shared.Impl;
+using Shared.Contracts;
+using Azure.Core;
+using Microsoft.Extensions.Configuration;
+using Shared.Azure.Storage;
 using Azure;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
-using Master.Contracts.Access;
+using Shared.Contracts.Storage;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using NUnit.Framework;
 
-namespace UnitTests.Adapter.Azure;
+namespace UnitTests.Shared;
 
 /// <summary>
-/// Verifies Azure Master access without connecting to a storage account.
+/// Verifies Azure object access without connecting to a storage account.
 /// Azure SDK lease clients are substituted at the provider boundary.
 /// A controlled clock drives renewal and expiration without production delays.
 /// Contention is distinguished from authorization and storage failures.
@@ -24,24 +27,28 @@ namespace UnitTests.Adapter.Azure;
 /// These tests do not prove storage permissions or deployed Azure connectivity.
 /// </summary>
 [TestFixture(Category = "Local")]
-public sealed class AzureMasterLockTests
+public sealed class BlobStorageLockFactoryTests
 {
 	private BlobLeaseClient _lease = null!;
 	private FakeTimeProvider _clock = null!;
-	private AzureMasterLock _masterLock = null!;
+	private TestBlobStorageLockFactory _storageLockFactory = null!;
+	private ILogService _log = null!;
 
 	[SetUp]
 	public void SetUp()
 	{
 		_lease = Substitute.For<BlobLeaseClient>();
 		_clock = new FakeTimeProvider();
-		_masterLock = new AzureMasterLock(_ => _lease, _clock, NullLogger<AzureMasterLockHandle>.Instance);
+		_log = Substitute.For<ILogService>();
+		ISharedContext context = Substitute.For<ISharedContext>();
+		context.LogService.Returns(_log);
+		_storageLockFactory = new TestBlobStorageLockFactory(_lease, _clock, context);
 	}
 
 	[Test]
 	public async Task AcquisitionUsesFiniteLeaseAndReleasesOnce()
 	{
-		IMasterLockHandle handle = (await _masterLock.TryAcquire("master"))!;
+		IStorageLock handle = (await _storageLockFactory.TryAcquire("folder/object.bin"))!;
 		Assert.That(handle.CancellationToken.IsCancellationRequested, Is.False);
 		await _lease.Received(1).AcquireAsync(TimeSpan.FromSeconds(60), cancellationToken: Arg.Any<CancellationToken>());
 		await Task.WhenAll(handle.DisposeAsync().AsTask(), handle.DisposeAsync().AsTask());
@@ -55,7 +62,7 @@ public sealed class AzureMasterLockTests
 	public async Task ContentionReturnsNullWithoutRelease(string errorCode)
 	{
 		FailAcquisition(new RequestFailedException(409, "Busy", errorCode, null));
-		Assert.That(await _masterLock.TryAcquire("master"), Is.Null);
+		Assert.That(await _storageLockFactory.TryAcquire("folder/object.bin"), Is.Null);
 		await _lease.DidNotReceive().ReleaseAsync(cancellationToken: Arg.Any<CancellationToken>());
 	}
 
@@ -67,13 +74,13 @@ public sealed class AzureMasterLockTests
 	{
 		RequestFailedException failure = new(status, "Failure", errorCode, null);
 		FailAcquisition(failure);
-		Assert.That(Assert.ThrowsAsync<RequestFailedException>(() => _masterLock.TryAcquire("master")), Is.SameAs(failure));
+		Assert.That(Assert.ThrowsAsync<RequestFailedException>(() => _storageLockFactory.TryAcquire("folder/object.bin")), Is.SameAs(failure));
 	}
 
 	[Test]
 	public async Task PreCancelledRequestDoesNotContactStorage()
 	{
-		Assert.ThrowsAsync<OperationCanceledException>(() => _masterLock.TryAcquire("master", new CancellationToken(true)));
+		Assert.ThrowsAsync<OperationCanceledException>(() => _storageLockFactory.TryAcquire("folder/object.bin", new CancellationToken(true)));
 		await _lease.DidNotReceive().AcquireAsync(Arg.Any<TimeSpan>(), cancellationToken: Arg.Any<CancellationToken>());
 	}
 
@@ -86,14 +93,14 @@ public sealed class AzureMasterLockTests
 			cancellation.Cancel();
 			return Task.FromException<Response<BlobLease>>(new OperationCanceledException(cancellation.Token));
 		});
-		Assert.ThrowsAsync<OperationCanceledException>(() => _masterLock.TryAcquire("master", cancellation.Token));
+		Assert.ThrowsAsync<OperationCanceledException>(() => _storageLockFactory.TryAcquire("folder/object.bin", cancellation.Token));
 		await _lease.Received(1).ReleaseAsync(cancellationToken: Arg.Is<CancellationToken>(token => !token.IsCancellationRequested));
 	}
 
 	[Test]
 	public async Task SuccessfulRenewalExtendsOwnershipBudget()
 	{
-		await using IMasterLockHandle? handle = await _masterLock.TryAcquire("master");
+		await using IStorageLock? handle = await _storageLockFactory.TryAcquire("folder/object.bin");
 		_clock.Advance(TimeSpan.FromSeconds(20));
 		await WaitFor(() => RenewalCount == 1);
 		_clock.Advance(TimeSpan.FromSeconds(31));
@@ -104,7 +111,7 @@ public sealed class AzureMasterLockTests
 	public async Task FailedRenewalSignalsOwnershipLoss()
 	{
 		_lease.RenewAsync(cancellationToken: Arg.Any<CancellationToken>()).ThrowsAsync(new RequestFailedException(412, "Lease lost"));
-		await using IMasterLockHandle? handle = await _masterLock.TryAcquire("master");
+		await using IStorageLock? handle = await _storageLockFactory.TryAcquire("folder/object.bin");
 		_clock.Advance(TimeSpan.FromSeconds(20));
 		await WaitFor(() => handle!.CancellationToken.IsCancellationRequested);
 		Assert.That(RenewalCount, Is.EqualTo(1));
@@ -115,7 +122,7 @@ public sealed class AzureMasterLockTests
 	{
 		TaskCompletionSource<Response<BlobLease>> stalled = new(TaskCreationOptions.RunContinuationsAsynchronously);
 		_lease.RenewAsync(cancellationToken: Arg.Any<CancellationToken>()).Returns(stalled.Task);
-		await using IMasterLockHandle? handle = await _masterLock.TryAcquire("master");
+		await using IStorageLock? handle = await _storageLockFactory.TryAcquire("folder/object.bin");
 		try
 		{
 			_clock.Advance(TimeSpan.FromSeconds(20));
@@ -134,7 +141,7 @@ public sealed class AzureMasterLockTests
 	{
 		_lease.RenewAsync(cancellationToken: Arg.Any<CancellationToken>())
 			.Returns(call => WaitUntilCancelled(call.Arg<CancellationToken>()));
-		await using IMasterLockHandle? handle = await _masterLock.TryAcquire("master");
+		await using IStorageLock? handle = await _storageLockFactory.TryAcquire("folder/object.bin");
 		_clock.Advance(TimeSpan.FromSeconds(20));
 		await WaitFor(() => RenewalCount == 1);
 		_clock.Advance(TimeSpan.FromSeconds(10));
@@ -146,7 +153,7 @@ public sealed class AzureMasterLockTests
 	{
 		_lease.RenewAsync(cancellationToken: Arg.Any<CancellationToken>())
 			.Returns(call => WaitUntilCancelled(call.Arg<CancellationToken>()));
-		IMasterLockHandle handle = (await _masterLock.TryAcquire("master"))!;
+		IStorageLock handle = (await _storageLockFactory.TryAcquire("folder/object.bin"))!;
 		_clock.Advance(TimeSpan.FromSeconds(20));
 		await WaitFor(() => RenewalCount == 1);
 		await handle.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
@@ -161,7 +168,7 @@ public sealed class AzureMasterLockTests
 			_clock.Advance(TimeSpan.FromSeconds(51));
 			return Task.FromResult<Response<BlobLease>>(null!);
 		});
-		await using IMasterLockHandle? handle = await _masterLock.TryAcquire("master");
+		await using IStorageLock? handle = await _storageLockFactory.TryAcquire("folder/object.bin");
 		Assert.That(handle!.CancellationToken.IsCancellationRequested, Is.True);
 	}
 
@@ -169,7 +176,7 @@ public sealed class AzureMasterLockTests
 	public async Task CancellationAfterAcquisitionDoesNotCancelRelease()
 	{
 		using CancellationTokenSource cancellation = new();
-		IMasterLockHandle handle = (await _masterLock.TryAcquire("master", cancellation.Token))!;
+		IStorageLock handle = (await _storageLockFactory.TryAcquire("folder/object.bin", cancellation.Token))!;
 		await cancellation.CancelAsync();
 		await handle.DisposeAsync();
 		await _lease.Received(1).ReleaseAsync(cancellationToken: Arg.Is<CancellationToken>(token => !token.IsCancellationRequested));
@@ -179,21 +186,36 @@ public sealed class AzureMasterLockTests
 	public async Task ReleaseFailureDoesNotMaskBusinessOutcome()
 	{
 		_lease.ReleaseAsync(cancellationToken: Arg.Any<CancellationToken>()).ThrowsAsync(new RequestFailedException(503, "Unavailable"));
-		IMasterLockHandle handle = (await _masterLock.TryAcquire("master"))!;
+		IStorageLock handle = (await _storageLockFactory.TryAcquire("folder/object.bin"))!;
 		Assert.DoesNotThrowAsync(async () => await handle.DisposeAsync());
+		_log.Received(1).Warn(Arg.Any<string>(), Arg.Any<Exception>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<string>());
 	}
 
 	[Test]
-	public void RegistrationSharesLockWithoutAccessingStorage()
+	public void RegistrationResolvesScopedFactoryWithoutAccessingStorage()
 	{
 		ServiceCollection services = new();
-		services.AddAdapterAzureModule(_ => throw new InvalidOperationException("Registration must not request a blob."));
+		services.AddSharedModule();
+		services.AddSharedAzureModule();
+		services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+		services.AddSingleton(Substitute.For<TokenCredential>());
 		using ServiceProvider provider = services.BuildServiceProvider(true);
 		using IServiceScope first = provider.CreateScope();
 		using IServiceScope second = provider.CreateScope();
-		Assert.That(first.ServiceProvider.GetRequiredService<IMasterLock>(), Is.SameAs(second.ServiceProvider.GetRequiredService<IMasterLock>()));
+		Assert.That(first.ServiceProvider.GetRequiredService<IStorageLockFactory>(),
+			Is.Not.SameAs(second.ServiceProvider.GetRequiredService<IStorageLockFactory>()));
 	}
 
+	[Test]
+	public void ClientCreationUsesConfiguredContainerAndFreshLeaseIdentity()
+	{
+		BlobLeaseClient first = _storageLockFactory.CreateConfiguredLease("folder/report.json");
+		BlobLeaseClient second = _storageLockFactory.CreateConfiguredLease("folder/report.json");
+		Assert.That(first.Uri.AbsoluteUri, Is.EqualTo("https://example.blob.core.windows.net/objects/folder/report.json"));
+		Assert.That(second.Uri, Is.EqualTo(first.Uri));
+		Assert.That(Guid.TryParse(first.LeaseId, out _), Is.True);
+		Assert.That(second.LeaseId, Is.Not.EqualTo(first.LeaseId));
+	}
 	private int RenewalCount => _lease.ReceivedCalls().Count(call => call.GetMethodInfo().Name == nameof(BlobLeaseClient.RenewAsync));
 
 	private void FailAcquisition(Exception failure) =>
