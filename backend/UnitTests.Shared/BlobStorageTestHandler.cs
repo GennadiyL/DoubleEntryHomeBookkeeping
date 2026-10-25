@@ -13,7 +13,9 @@ namespace UnitTests.Shared;
 /// </summary>
 internal sealed class BlobStorageTestHandler : HttpMessageHandler
 {
-	public ConcurrentQueue<(Uri Uri, HttpMethod Method, byte[] Content, string? IfNoneMatch, string? Authorization)> Requests { get; } = new();
+	public ConcurrentQueue<(Uri Uri, HttpMethod Method, byte[] Content, string? IfNoneMatch, string? Authorization, string? LeaseId)> Requests { get; } = new();
+
+	public Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>>? AsyncResponseFactory { get; set; }
 
 	public Func<HttpRequestMessage, HttpResponseMessage> ResponseFactory { get; set; } = Success;
 
@@ -24,8 +26,11 @@ internal sealed class BlobStorageTestHandler : HttpMessageHandler
 			? []
 			: await request.Content.ReadAsByteArrayAsync(cancellationToken);
 		Requests.Enqueue((request.RequestUri!, request.Method, content,
-			request.Headers.IfNoneMatch.FirstOrDefault()?.Tag, request.Headers.Authorization?.ToString()));
-		return ResponseFactory(request);
+			request.Headers.IfNoneMatch.FirstOrDefault()?.Tag, request.Headers.Authorization?.ToString(),
+			request.Headers.TryGetValues("x-ms-lease-id", out var leaseIds) ? leaseIds.Single() : null));
+		return AsyncResponseFactory == null
+			? ResponseFactory(request)
+			: await AsyncResponseFactory(request, cancellationToken);
 	}
 
 	public static HttpResponseMessage Success(HttpRequestMessage request)

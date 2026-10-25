@@ -1,47 +1,29 @@
-using Shared.Azure.Storage;
-using Azure.Storage.Blobs;
 using Master.Contracts.Adapters;
 using Master.Contracts.Adapters.MasterStorage;
-using Shared.Contracts.Storage;
-using Microsoft.Extensions.Logging;
 using Shared.Contracts;
+using Shared.Contracts.Storage;
 
 namespace Adapter.Azure.Storage;
 
 /// <summary>
-/// Prepares a temporary Master database from an existing Azure blob.
-/// The host supplies the same authenticated blob mapping used by the Azure lock.
-/// Only a live Azure access handle for the requested dataset and blob is accepted.
-/// Each opened session owns a unique temporary directory on the worker filesystem.
+/// Prepares a temporary Master database through the selected storage processor.
+/// Maps the dataset key to the same object name used by MasterService locking.
+/// Each opened session retains one processor and the caller-owned storage lock.
+/// The processor validates provider-specific ownership and applies request conditions.
+/// Each session owns a unique temporary directory on the worker filesystem.
 /// Download failures clean up partial files without releasing caller-owned access.
-/// The session publishes standalone snapshots using the existing lease identity.
-/// Provider details remain inside the Azure assembly and are not exposed to business code.
 /// Database creation, SQLite backups and transaction orchestration are excluded.
+/// Provider configuration and implementation selection belong to the host.
 /// </summary>
 internal sealed class BlobMasterStorageAdapter : IMasterStorageAdapter
 {
 	private readonly ISharedContext _sharedContext;
-	private readonly Func<string, BlobClient> _getMasterBlob;
-	private readonly ILogger<BlobMasterStorageAdapter> _logger;
+	private readonly IStorageProcessorFactory _storageProcessorFactory;
 
-	/// <summary>
-	/// Prepares a temporary Master database from an existing Azure blob.
-	/// The host supplies the same authenticated blob mapping used by the Azure lock.
-	/// Only a live Azure access handle for the requested dataset and blob is accepted.
-	/// Each opened session owns a unique temporary directory on the worker filesystem.
-	/// Download failures clean up partial files without releasing caller-owned access.
-	/// The session publishes standalone snapshots using the existing lease identity.
-	/// Provider details remain inside the Azure assembly and are not exposed to business code.
-	/// Database creation, SQLite backups and transaction orchestration are excluded.
-	/// </summary>
-	public BlobMasterStorageAdapter(
-		ISharedContext sharedContext,
-		Func<string, BlobClient> getMasterBlob,
-		ILogger<BlobMasterStorageAdapter> logger)
+	public BlobMasterStorageAdapter(ISharedContext sharedContext, IStorageProcessorFactory storageProcessorFactory)
 	{
 		_sharedContext = sharedContext;
-		_getMasterBlob = getMasterBlob;
-		_logger = logger;
+		_storageProcessorFactory = storageProcessorFactory;
 	}
 
 	public async Task<IMasterStorageSession> Open(
@@ -53,25 +35,16 @@ internal sealed class BlobMasterStorageAdapter : IMasterStorageAdapter
 		ArgumentNullException.ThrowIfNull(access);
 		cancellationToken.ThrowIfCancellationRequested();
 		access.CancellationToken.ThrowIfCancellationRequested();
-		BlobClient blob = _getMasterBlob(masterDatasetKey);
-		BlobStorageLock ownership = ValidateAccess(masterDatasetKey, blob, access);
-		BlobMasterStorageSession session = new(
-			_sharedContext,
-			blob,
-			ownership,
-			_sharedContext.DirectoryService.CreateTempSubdirectory("dehb-master-"),
-			_logger);
+		BlobMasterStorageSession session = CreateSession(masterDatasetKey, access);
 		return await DownloadSession(session, cancellationToken);
 	}
 
-	private static BlobStorageLock ValidateAccess(string masterDatasetKey, BlobClient blob, IStorageLock access)
+	private BlobMasterStorageSession CreateSession(string masterDatasetKey, IStorageLock access)
 	{
-		if (access is not BlobStorageLock ownership || ownership.ObjectName != MasterStorageNames.Database(masterDatasetKey) ||
-			ownership.BlobUri != blob.Uri || string.IsNullOrWhiteSpace(ownership.LeaseId))
-		{
-			throw new ArgumentException("The access handle does not own the requested Master blob.", nameof(access));
-		}
-		return ownership;
+		IStorageProcessor processor = _storageProcessorFactory.CreateProcessor();
+		string objectName = MasterStorageNames.Database(masterDatasetKey);
+		return new BlobMasterStorageSession(_sharedContext, processor, objectName, access,
+			_sharedContext.DirectoryService.CreateTempSubdirectory("dehb-master-"));
 	}
 
 	private static async Task<IMasterStorageSession> DownloadSession(BlobMasterStorageSession session, CancellationToken cancellationToken)

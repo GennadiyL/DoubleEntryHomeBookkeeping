@@ -7,9 +7,10 @@ namespace Shared.Impl.Storage;
 /// Stores objects as files below the root supplied by its factory.
 /// Delegates file access to IFileService and owns only the streams it opens.
 /// The requested directory and any object parent directories must already exist.
+/// Optional locks are borrowed and their ownership-loss tokens are observed.
+/// Local locking is cooperative; the caller selects and retains the appropriate lock.
 /// Uses file attributes to distinguish missing objects from access failures.
 /// Receives IFileService directly to avoid a dependency cycle through ISharedContext.
-/// Retains its resolved root while each operation owns its own file streams.
 /// </summary>
 internal sealed class LocalStorageProcessor : IStorageProcessor
 {
@@ -23,36 +24,50 @@ internal sealed class LocalStorageProcessor : IStorageProcessor
 		_root = Path.GetFullPath(root);
 	}
 
-	public async Task Read(string objectName, Stream destination, CancellationToken cancellationToken = default)
+	public async Task Read(string objectName, Stream destination, IStorageLock? storageLock = null,
+		CancellationToken cancellationToken = default)
 	{
-		ArgumentNullException.ThrowIfNull(destination);
-		if (!destination.CanWrite)
-		{
-			throw new ArgumentException("The destination must be writable.", nameof(destination));
-		}
-
-		string path = PreparePath(objectName, cancellationToken);
+		ValidateStream(destination, true);
+		using CancellationTokenSource cancellation = LinkCancellation(storageLock, cancellationToken);
+		string path = PreparePath(objectName, cancellation.Token);
 		await using FileStream source = Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-		await source.CopyToAsync(destination, cancellationToken);
+		await source.CopyToAsync(destination, cancellation.Token);
+		cancellation.Token.ThrowIfCancellationRequested();
 	}
 
-	public async Task Write(string objectName, Stream source, bool overwrite, CancellationToken cancellationToken = default)
+	public async Task Write(string objectName, Stream source, bool overwrite, IStorageLock? storageLock = null,
+		CancellationToken cancellationToken = default)
 	{
-		ArgumentNullException.ThrowIfNull(source);
-		if (!source.CanRead)
-		{
-			throw new ArgumentException("The source must be readable.", nameof(source));
-		}
-
-		string path = PreparePath(objectName, cancellationToken);
+		ValidateStream(source, false);
+		using CancellationTokenSource cancellation = LinkCancellation(storageLock, cancellationToken);
+		string path = PreparePath(objectName, cancellation.Token);
 		FileMode mode = overwrite ? FileMode.Create : FileMode.CreateNew;
 		await using FileStream destination = Open(path, mode, FileAccess.Write, FileShare.None);
-		await source.CopyToAsync(destination, cancellationToken);
+		await source.CopyToAsync(destination, cancellation.Token);
+		await destination.FlushAsync(cancellation.Token);
+		cancellation.Token.ThrowIfCancellationRequested();
 	}
 
-	public Task Delete(string objectName, CancellationToken cancellationToken = default)
+	public Task Delete(string objectName, IStorageLock? storageLock = null, CancellationToken cancellationToken = default)
 	{
-		string path = PreparePath(objectName, cancellationToken);
+		using CancellationTokenSource cancellation = LinkCancellation(storageLock, cancellationToken);
+		string path = PreparePath(objectName, cancellation.Token);
+		DeleteFile(path);
+		cancellation.Token.ThrowIfCancellationRequested();
+		return Task.CompletedTask;
+	}
+
+	public Task<bool> Exists(string objectName, IStorageLock? storageLock = null, CancellationToken cancellationToken = default)
+	{
+		using CancellationTokenSource cancellation = LinkCancellation(storageLock, cancellationToken);
+		string path = PreparePath(objectName, cancellation.Token);
+		bool exists = FileExists(path);
+		cancellation.Token.ThrowIfCancellationRequested();
+		return Task.FromResult(exists);
+	}
+
+	private void DeleteFile(string path)
+	{
 		try
 		{
 			_fileService.Delete(path);
@@ -61,22 +76,19 @@ internal sealed class LocalStorageProcessor : IStorageProcessor
 		{
 			EnsureRootAvailable(_root);
 		}
-
-		return Task.CompletedTask;
 	}
 
-	public Task<bool> Exists(string objectName, CancellationToken cancellationToken = default)
+	private bool FileExists(string path)
 	{
-		string path = PreparePath(objectName, cancellationToken);
 		try
 		{
 			EnsureFile(_fileService.GetAttributes(path));
-			return Task.FromResult(true);
+			return true;
 		}
 		catch (IOException exception) when (IsMissing(exception))
 		{
 			EnsureRootAvailable(_root);
-			return Task.FromResult(false);
+			return false;
 		}
 	}
 
@@ -86,6 +98,7 @@ internal sealed class LocalStorageProcessor : IStorageProcessor
 		ArgumentException.ThrowIfNullOrWhiteSpace(objectName);
 		string path = ResolveObjectPath(_root, objectName);
 		EnsureRootAvailable(_root);
+		cancellationToken.ThrowIfCancellationRequested();
 		return path;
 	}
 
@@ -129,8 +142,21 @@ internal sealed class LocalStorageProcessor : IStorageProcessor
 		});
 	}
 
-	private static bool IsMissing(IOException exception)
+	private static CancellationTokenSource LinkCancellation(IStorageLock? storageLock, CancellationToken cancellationToken)
 	{
-		return exception is FileNotFoundException or DirectoryNotFoundException;
+		return CancellationTokenSource.CreateLinkedTokenSource(
+			cancellationToken, storageLock?.CancellationToken ?? CancellationToken.None);
 	}
+
+	private static void ValidateStream(Stream stream, bool destination)
+	{
+		ArgumentNullException.ThrowIfNull(stream);
+		if (destination ? !stream.CanWrite : !stream.CanRead)
+		{
+			throw new ArgumentException(destination ? "The destination must be writable." : "The source must be readable.", nameof(stream));
+		}
+	}
+
+	private static bool IsMissing(IOException exception) =>
+		exception is FileNotFoundException or DirectoryNotFoundException;
 }

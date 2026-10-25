@@ -1,32 +1,23 @@
 using Adapter.Azure.Storage;
-using Azure.Storage.Blobs;
 using Master.Contracts.Adapters;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-using Shared.Contracts;
-using Shared.Azure;
 
 namespace Adapter.Azure;
 
 /// <summary>
-/// Registers Azure implementations selected by the executable host.
-/// The host supplies authenticated clients for existing Master database blobs.
-/// The mapping must target Master_{datasetKey}.db in the configured blobStorage container.
-/// Blob provisioning and credential selection remain host responsibilities.
-/// Shared.Azure supplies configured object locks; this adapter supplies Master database storage.
-/// Storage sessions reuse the acquired access handle and the same blob mapping.
-/// Each acquired handle owns an independent lease and renewal lifetime.
-/// Registration performs no network access or synchronization workflow.
-/// MasterService remains responsible for acquiring and disposing access handles.
+/// Registers Master storage adapters selected by the executable host.
+/// Consumes storage abstractions without choosing their provider.
+/// The host separately registers shared services and its storage factories.
+/// Sessions use the processor configuration captured when they are opened.
+/// MasterService remains responsible for acquiring and disposing storage locks.
+/// Registration performs no storage access or synchronization workflow.
+/// Azure SDK dependencies remain inside the Shared.Azure provider.
+/// Temporary database management remains the responsibility of the adapter.
 /// </summary>
 public static class AzureDiConfiguration
 {
-	public static void AddAdapterAzureModule(this IServiceCollection services, Func<string, BlobClient> getMasterBlob)
+	public static void AddAdapterAzureModule(this IServiceCollection services)
 	{
-		ArgumentNullException.ThrowIfNull(getMasterBlob);
-		services.AddSharedAzureModule();
-		services.AddScoped<IMasterStorageAdapter>(provider => new BlobMasterStorageAdapter(provider.GetRequiredService<ISharedContext>(), getMasterBlob,
-			provider.GetService<ILogger<BlobMasterStorageAdapter>>() ?? NullLogger<BlobMasterStorageAdapter>.Instance));
+		services.AddScoped<IMasterStorageAdapter, BlobMasterStorageAdapter>();
 	}
 }

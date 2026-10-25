@@ -14,6 +14,9 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\Master.Impl\Master.Impl.csproj" />
+        <ProjectReference Include="..\Shared.Impl\Shared.Impl.csproj" />
+        <ProjectReference Include="..\Shared.Azure\Shared.Azure.csproj" />
+        <ProjectReference Include="..\Adapter.Azure\Adapter.Azure.csproj" />
     </ItemGroup>
     <ItemGroup>
         <None Update="host.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

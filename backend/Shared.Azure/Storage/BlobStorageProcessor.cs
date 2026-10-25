@@ -7,9 +7,11 @@ namespace Shared.Azure.Storage;
 
 /// <summary>
 /// Stores objects in the Azure Blob container supplied by its factory.
-/// Streams content without taking ownership of caller-provided streams.
+/// Streams content without taking ownership of caller-provided streams or locks.
+/// Optional Blob locks supply lease conditions and ownership-loss cancellation.
+/// A supplied lock must identify this exact object and container.
 /// Treats only BlobNotFound responses as an absent object.
-/// Missing containers, authorization failures and service errors propagate.
+/// Missing containers, authorization failures and lease errors propagate.
 /// Retains its container client and creates an object client for each operation.
 /// </summary>
 internal sealed class BlobStorageProcessor : IStorageProcessor
@@ -21,50 +23,82 @@ internal sealed class BlobStorageProcessor : IStorageProcessor
 		_blobContainerClient = blobContainerClient;
 	}
 
-	public async Task Read(string objectName, Stream destination, CancellationToken cancellationToken = default)
+	public async Task Read(string objectName, Stream destination, IStorageLock? storageLock = null,
+		CancellationToken cancellationToken = default)
 	{
-		ArgumentNullException.ThrowIfNull(destination);
-		if (!destination.CanWrite)
-		{
-			throw new ArgumentException("The destination must be writable.", nameof(destination));
-		}
-
-		BlobClient blob = GetBlob(objectName, cancellationToken);
-		Response<BlobDownloadStreamingResult> response = await blob.DownloadStreamingAsync(new BlobDownloadOptions(), cancellationToken);
+		ValidateStream(destination, true);
+		using CancellationTokenSource cancellation = LinkCancellation(storageLock, cancellationToken);
+		BlobClient blob = GetBlob(objectName, cancellation.Token);
+		BlobDownloadOptions options = new() { Conditions = GetConditions(blob, objectName, storageLock) };
+		Response<BlobDownloadStreamingResult> response = await blob.DownloadStreamingAsync(options, cancellation.Token);
 		await using Stream source = response.Value.Content;
-		await source.CopyToAsync(destination, cancellationToken);
+		await source.CopyToAsync(destination, cancellation.Token);
+		cancellation.Token.ThrowIfCancellationRequested();
 	}
 
-	public async Task Write(string objectName, Stream source, bool overwrite, CancellationToken cancellationToken = default)
+	public async Task Write(string objectName, Stream source, bool overwrite, IStorageLock? storageLock = null,
+		CancellationToken cancellationToken = default)
 	{
-		ArgumentNullException.ThrowIfNull(source);
-		if (!source.CanRead)
+		ValidateStream(source, false);
+		using CancellationTokenSource cancellation = LinkCancellation(storageLock, cancellationToken);
+		BlobClient blob = GetBlob(objectName, cancellation.Token);
+		BlobRequestConditions conditions = GetConditions(blob, objectName, storageLock);
+		conditions.IfNoneMatch = overwrite ? null : ETag.All;
+		await blob.UploadAsync(source, new BlobUploadOptions { Conditions = conditions }, cancellation.Token);
+		cancellation.Token.ThrowIfCancellationRequested();
+	}
+
+	public async Task Delete(string objectName, IStorageLock? storageLock = null, CancellationToken cancellationToken = default)
+	{
+		using CancellationTokenSource cancellation = LinkCancellation(storageLock, cancellationToken);
+		BlobClient blob = GetBlob(objectName, cancellation.Token);
+		BlobRequestConditions conditions = GetConditions(blob, objectName, storageLock);
+		await DeleteBlob(blob, conditions, cancellation.Token);
+		cancellation.Token.ThrowIfCancellationRequested();
+	}
+
+	public async Task<bool> Exists(string objectName, IStorageLock? storageLock = null, CancellationToken cancellationToken = default)
+	{
+		using CancellationTokenSource cancellation = LinkCancellation(storageLock, cancellationToken);
+		BlobClient blob = GetBlob(objectName, cancellation.Token);
+		BlobRequestConditions conditions = GetConditions(blob, objectName, storageLock);
+		bool exists = await BlobExists(blob, conditions, cancellation.Token);
+		cancellation.Token.ThrowIfCancellationRequested();
+		return exists;
+	}
+
+	private static BlobRequestConditions GetConditions(BlobClient blob, string objectName, IStorageLock? storageLock)
+	{
+		if (storageLock == null)
 		{
-			throw new ArgumentException("The source must be readable.", nameof(source));
+			return new BlobRequestConditions();
 		}
 
-		BlobClient blob = GetBlob(objectName, cancellationToken);
-		await blob.UploadAsync(source, overwrite, cancellationToken);
+		if (storageLock is not BlobStorageLock ownership || ownership.ObjectName != objectName ||
+			ownership.BlobUri != blob.Uri || string.IsNullOrWhiteSpace(ownership.LeaseId))
+		{
+			throw new ArgumentException("The storage lock does not own the requested blob.", nameof(storageLock));
+		}
+
+		return new BlobRequestConditions { LeaseId = ownership.LeaseId };
 	}
 
-	public async Task Delete(string objectName, CancellationToken cancellationToken = default)
+	private static async Task DeleteBlob(BlobClient blob, BlobRequestConditions conditions, CancellationToken cancellationToken)
 	{
-		BlobClient blob = GetBlob(objectName, cancellationToken);
 		try
 		{
-			await blob.DeleteAsync(cancellationToken: cancellationToken);
+			await blob.DeleteAsync(DeleteSnapshotsOption.None, conditions, cancellationToken);
 		}
 		catch (RequestFailedException exception) when (IsMissing(exception))
 		{
 		}
 	}
 
-	public async Task<bool> Exists(string objectName, CancellationToken cancellationToken = default)
+	private static async Task<bool> BlobExists(BlobClient blob, BlobRequestConditions conditions, CancellationToken cancellationToken)
 	{
-		BlobClient blob = GetBlob(objectName, cancellationToken);
 		try
 		{
-			await blob.GetPropertiesAsync(cancellationToken: cancellationToken);
+			await blob.GetPropertiesAsync(conditions, cancellationToken);
 			return true;
 		}
 		catch (RequestFailedException exception) when (IsMissing(exception))
@@ -80,5 +114,21 @@ internal sealed class BlobStorageProcessor : IStorageProcessor
 		return _blobContainerClient.GetBlobClient(objectName);
 	}
 
-	private static bool IsMissing(RequestFailedException exception) => exception.Status == 404 && exception.ErrorCode == BlobErrorCode.BlobNotFound;
+	private static CancellationTokenSource LinkCancellation(IStorageLock? storageLock, CancellationToken cancellationToken)
+	{
+		return CancellationTokenSource.CreateLinkedTokenSource(
+			cancellationToken, storageLock?.CancellationToken ?? CancellationToken.None);
+	}
+
+	private static void ValidateStream(Stream stream, bool destination)
+	{
+		ArgumentNullException.ThrowIfNull(stream);
+		if (destination ? !stream.CanWrite : !stream.CanRead)
+		{
+			throw new ArgumentException(destination ? "The destination must be writable." : "The source must be readable.", nameof(stream));
+		}
+	}
+
+	private static bool IsMissing(RequestFailedException exception) =>
+		exception.Status == 404 && exception.ErrorCode == BlobErrorCode.BlobNotFound;
 }

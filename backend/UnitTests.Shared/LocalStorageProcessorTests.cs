@@ -16,7 +16,7 @@ namespace UnitTests.Shared;
 /// Uses isolated temporary directories for each test.
 /// Replaces the file service only when deterministic error injection is required.
 /// </summary>
-[TestFixture]
+[TestFixture(Category = "Local")]
 public class LocalStorageProcessorTests
 {
 	private string _root = null!;
@@ -161,10 +161,10 @@ public class LocalStorageProcessorTests
 		File.WriteAllBytes(Path.Combine(_root, "data.bin"), [1, 2]);
 		using var stream = new MemoryStream([3]);
 		var token = new CancellationToken(true);
-		Assert.ThrowsAsync<OperationCanceledException>(() => _storage.Read("data.bin", stream, token));
-		Assert.ThrowsAsync<OperationCanceledException>(() => _storage.Write("data.bin", stream, true, token));
-		Assert.ThrowsAsync<OperationCanceledException>(() => _storage.Delete("data.bin", token));
-		Assert.ThrowsAsync<OperationCanceledException>(async () => await _storage.Exists("data.bin", token));
+		Assert.ThrowsAsync<OperationCanceledException>(() => _storage.Read("data.bin", stream, null, token));
+		Assert.ThrowsAsync<OperationCanceledException>(() => _storage.Write("data.bin", stream, true, null, token));
+		Assert.ThrowsAsync<OperationCanceledException>(() => _storage.Delete("data.bin", null, token));
+		Assert.ThrowsAsync<OperationCanceledException>(async () => await _storage.Exists("data.bin", null, token));
 		Assert.That(File.ReadAllBytes(Path.Combine(_root, "data.bin")), Is.EqualTo(new byte[] { 1, 2 }));
 	}
 
@@ -216,6 +216,58 @@ public class LocalStorageProcessorTests
 	{
 		Assert.ThrowsAsync<ArgumentNullException>(async () => await _storage.Exists(null!));
 	}
+
+	[Test]
+	public async Task LockedRoundTrip_DoesNotReleaseCallerLock()
+	{
+		IStorageLockFactory factory = _scope.ServiceProvider.GetRequiredService<IStorageLockFactory>();
+		await using IStorageLock ownership = (await factory.TryAcquire("data.bin"))!;
+		using MemoryStream source = new([1, 2, 3]);
+		using MemoryStream destination = new();
+		await _storage.Write("data.bin", source, false, ownership);
+		Assert.That(await _storage.Exists("data.bin", ownership), Is.True);
+		await _storage.Read("data.bin", destination, ownership);
+		await _storage.Delete("data.bin", ownership);
+		Assert.That(destination.ToArray(), Is.EqualTo(new byte[] { 1, 2, 3 }));
+		Assert.That(await _storage.Exists("data.bin", ownership), Is.False);
+		await using IStorageLock? competing = await factory.TryAcquire("data.bin");
+		Assert.That(competing, Is.Null);
+	}
+
+	[Test]
+	public void CancelledOwnership_PreventsAllOperations()
+	{
+		File.WriteAllBytes(Path.Combine(_root, "data.bin"), [1, 2]);
+		IStorageLock ownership = Substitute.For<IStorageLock>();
+		ownership.CancellationToken.Returns(new CancellationToken(true));
+		using MemoryStream stream = new([3]);
+		Assert.CatchAsync<OperationCanceledException>(() => _storage.Read("data.bin", stream, ownership));
+		Assert.CatchAsync<OperationCanceledException>(() => _storage.Write("data.bin", stream, true, ownership));
+		Assert.CatchAsync<OperationCanceledException>(() => _storage.Delete("data.bin", ownership));
+		Assert.CatchAsync<OperationCanceledException>(async () => await _storage.Exists("data.bin", ownership));
+		Assert.That(File.ReadAllBytes(Path.Combine(_root, "data.bin")), Is.EqualTo(new byte[] { 1, 2 }));
+	}
+
+	[Test]
+	public async Task InFlightTransfer_ObservesCancellation(
+		[Values(false, true)] bool read,
+		[Values(false, true)] bool cancelOwnership)
+	{
+		await File.WriteAllBytesAsync(Path.Combine(_root, "data.bin"), [1, 2]);
+		using CancellationTokenSource ownershipCancellation = new();
+		using CancellationTokenSource caller = new();
+		IStorageLock ownership = Substitute.For<IStorageLock>();
+		ownership.CancellationToken.Returns(ownershipCancellation.Token);
+		using BlockingStorageStream stream = new();
+		Task pending = read
+			? _storage.Read("data.bin", stream, ownership, caller.Token)
+			: _storage.Write("data.bin", stream, true, ownership, caller.Token);
+		await stream.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+		await (cancelOwnership ? ownershipCancellation : caller).CancelAsync();
+		Assert.CatchAsync<OperationCanceledException>(() => pending.WaitAsync(TimeSpan.FromSeconds(5)));
+		Assert.That(stream.CanWrite, Is.True);
+	}
+
 	private ServiceProvider CreateProvider(IFileService? fileService = null, string? root = null)
 	{
 		var services = new ServiceCollection();
