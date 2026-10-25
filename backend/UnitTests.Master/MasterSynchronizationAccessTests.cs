@@ -6,8 +6,6 @@ using DataAccess.Core.Entities;
 using Exchange.Models.Enums;
 using Exchange.Models.Synchronizations;
 using Shared.Contracts.Storage;
-using Master.Contracts.Adapters;
-using Master.Contracts.Adapters.MasterStorage;
 using Master.Contracts.Services;
 using Master.Contracts.Services.Synchronizations;
 using Master.Impl;
@@ -17,6 +15,7 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using NUnit.Framework;
 using Shared.Impl;
+using Master.Impl.Operations.MasterStorage;
 
 namespace UnitTests.Master;
 
@@ -41,7 +40,7 @@ public sealed class MasterSynchronizationAccessTests
 	private IStorageLock _handle = null!;
 	private CancellationTokenSource _lost = null!;
 	private bool _releasedBeforeRollback;
-	private IMasterStorageAdapter _storage = null!;
+	private IMasterStorageOperation _storage = null!;
 	private IMasterStorageSession _session = null!;
 	private static readonly string[] CleanupEvents = ["database-close", "storage-dispose", "release"];
 	private static readonly string[] StorageEvents =
@@ -291,7 +290,7 @@ public sealed class MasterSynchronizationAccessTests
 
 	private void ConfigureStorage()
 	{
-		_storage = Substitute.For<IMasterStorageAdapter>();
+		_storage = Substitute.For<IMasterStorageOperation>();
 		_session = Substitute.For<IMasterStorageSession>();
 		_session.StoragePath.Returns(Path.Combine(Path.GetTempPath(), "mock-master.db"));
 		_storage.Open("master", Arg.Any<IStorageLock>(), Arg.Any<CancellationToken>()).Returns(_session);

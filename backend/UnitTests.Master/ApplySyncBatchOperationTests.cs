@@ -63,7 +63,7 @@ public sealed class ApplySyncBatchOperationTests
 		}).Build());
 		services.AddMasterModule();
 		services.AddLocalStorageModule();
-		services.AddLocalMasterStorageAdapter(_ => _connection.DataSource);
+		services.AddLocalMasterStorage(_ => _connection.DataSource);
 		_provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 		_local = Guid.NewGuid();
 		_other = Guid.NewGuid();

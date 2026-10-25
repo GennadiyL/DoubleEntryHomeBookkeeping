@@ -1,7 +1,6 @@
 <Solution>
   <Folder Name="/Adapters/">
     <Project Path="Adapter.WinUi/Adapter.WinUi.csproj" />
-    <Project Path="Adapter.Azure/Adapter.Azure.csproj" />
   </Folder>
   <Folder Name="/Master/">
     <Project Path="Exchange.Models/Exchange.Models.csproj" />
@@ -71,7 +70,6 @@
   </Folder>
   <Folder Name="/Tests/UnitTests/">
     <Project Path="UnitTests.Shared/UnitTests.Shared.csproj" />
-    <Project Path="UnitTests.Adapter.Azure/UnitTests.Adapter.Azure.csproj" />
     <Project Path="UnitTests.Master/UnitTests.Master.csproj" />
     <Project Path="UnitTests.WinUi/UnitTests.WinUi.csproj">
       <Platform Project="x64" />

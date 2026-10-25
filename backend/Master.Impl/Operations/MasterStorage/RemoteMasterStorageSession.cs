@@ -1,25 +1,24 @@
-using Master.Contracts.Adapters.MasterStorage;
 using Shared.Contracts;
 using Shared.Contracts.Storage;
 
-namespace Adapter.Azure.Storage;
+namespace Master.Impl.Operations.MasterStorage;
 
 /// <summary>
 /// Holds state and owns temporary files for one Master database working copy.
-/// Retains the processor and object name selected by the adapter at opening.
+/// Retains the processor and object name selected by the operation at opening.
 /// The caller-owned storage lock is retained without transferring ownership.
-/// The adapter reads and updates lifecycle state while holding the session gate.
+/// The operation reads and updates lifecycle state while holding the session gate.
 /// Disposal uses the same gate so files cannot be removed during publication.
 /// Repeated disposal is safe and does not delete caller-owned snapshot files.
 /// Cleanup failures are logged without hiding an earlier processing exception.
 /// The caller closes database connections before disposal and releases its lock afterward.
 /// </summary>
-internal sealed class BlobMasterStorageSession : IMasterStorageSession
+internal sealed class RemoteMasterStorageSession : IMasterStorageSession
 {
 	private readonly ISharedContext _sharedContext;
 	private readonly DirectoryInfo _directory;
 
-	internal BlobMasterStorageSession(
+	internal RemoteMasterStorageSession(
 		ISharedContext sharedContext,
 		IStorageProcessor storage,
 		string objectName,

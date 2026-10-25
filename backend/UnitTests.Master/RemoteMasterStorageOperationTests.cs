@@ -1,35 +1,32 @@
-using Adapter.Azure;
-using Master.Contracts.Adapters;
-using Master.Contracts.Adapters.MasterStorage;
-using Microsoft.Extensions.Configuration;
+using Master.Impl;
+using Master.Impl.Operations.MasterStorage;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using NUnit.Framework;
-using Shared.Azure;
 using Shared.Contracts.Storage;
 using Shared.Impl;
 
-namespace UnitTests.Adapter.Azure;
+namespace UnitTests.Master;
 
 /// <summary>
 /// Verifies Master storage through shared processor and lock contracts.
-/// Each fixture uses production adapter registration with a substituted processor factory.
+/// Each fixture uses production operation registration with a substituted processor factory.
 /// Real temporary files exercise download, publication and directory cleanup.
-/// The adapter forwards object names and caller-owned locks without provider casts.
+/// The operation forwards object names and caller-owned locks without provider casts.
 /// Provider-specific lease validation is covered by Shared storage tests.
 /// Failed publication prevents reuse after an uncertain storage outcome.
 /// Cancellation and ownership loss interrupt active publication.
 /// No Azure account or network connection is used.
 /// </summary>
 [TestFixture(Category = "Local")]
-public sealed class BlobMasterStorageAdapterTests : IAsyncDisposable
+public sealed class RemoteMasterStorageOperationTests : IAsyncDisposable
 {
 	private IStorageProcessor _processor = null!;
 	private IStorageProcessorFactory _factory = null!;
 	private IStorageLock _access = null!;
 	private CancellationTokenSource _ownership = null!;
-	private IMasterStorageAdapter _storage = null!;
+	private IMasterStorageOperation _storage = null!;
 	private DirectoryInfo _snapshots = null!;
 	private readonly List<IMasterStorageSession> _sessions = new();
 	private string? _downloadPath;
@@ -57,11 +54,11 @@ public sealed class BlobMasterStorageAdapterTests : IAsyncDisposable
 	{
 		ServiceCollection services = new();
 		services.AddSharedModule();
-		services.AddAdapterAzureModule();
+		services.AddRemoteMasterStorage();
 		services.AddScoped<IStorageProcessorFactory>(_ => _factory);
 		_provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 		_scope = _provider.CreateScope();
-		_storage = _scope.ServiceProvider.GetRequiredService<IMasterStorageAdapter>();
+		_storage = _scope.ServiceProvider.GetRequiredService<IMasterStorageOperation>();
 	}
 
 	[TearDown]
@@ -239,26 +236,25 @@ public sealed class BlobMasterStorageAdapterTests : IAsyncDisposable
 	}
 
 	[Test]
-	public void HostRegistersAzureProviderAndAdapterSeparatelyWithoutNetworkAccess()
+	public void RemoteStorageRegistrationPreservesSelectedProviders()
 	{
+		IStorageLockFactory locks = Substitute.For<IStorageLockFactory>();
 		ServiceCollection services = new();
-		services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
 		services.AddSharedModule();
-		services.AddSharedAzureModule();
-		services.AddAdapterAzureModule();
+		services.AddScoped<IStorageProcessorFactory>(_ => _factory);
+		services.AddSingleton(locks);
+		services.AddRemoteMasterStorage();
 		using ServiceProvider provider = services.BuildServiceProvider(true);
 		using IServiceScope scope = provider.CreateScope();
-		Assert.That(scope.ServiceProvider.GetRequiredService<IMasterStorageAdapter>(), Is.Not.Null);
-		Assert.That(scope.ServiceProvider.GetRequiredService<IStorageProcessorFactory>().GetType().Assembly.GetName().Name,
-			Is.EqualTo("Shared.Azure"));
-		Assert.That(scope.ServiceProvider.GetRequiredService<IStorageLockFactory>().GetType().Assembly.GetName().Name,
-			Is.EqualTo("Shared.Azure"));
+		Assert.That(scope.ServiceProvider.GetRequiredService<IMasterStorageOperation>(), Is.TypeOf<RemoteMasterStorageOperation>());
+		Assert.That(scope.ServiceProvider.GetRequiredService<IStorageProcessorFactory>(), Is.SameAs(_factory));
+		Assert.That(scope.ServiceProvider.GetRequiredService<IStorageLockFactory>(), Is.SameAs(locks));
+		_factory.DidNotReceive().CreateProcessor();
 	}
-
 
 	[TestCase(false)]
 	[TestCase(true)]
-	public async Task CloseOrDisposeWaitsForPublication(bool closeThroughAdapter)
+	public async Task CloseOrDisposeWaitsForPublication(bool closeThroughOperation)
 	{
 		IMasterStorageSession session = await Open();
 		string path = await Snapshot();
@@ -267,7 +263,7 @@ public sealed class BlobMasterStorageAdapterTests : IAsyncDisposable
 		BlockPublication(entered, finish);
 		Task publication = _storage.Publish(session, path);
 		await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-		Task closing = closeThroughAdapter ? _storage.Close(session).AsTask() : session.DisposeAsync().AsTask();
+		Task closing = closeThroughOperation ? _storage.Close(session).AsTask() : session.DisposeAsync().AsTask();
 		try
 		{
 			Assert.That(closing.IsCompleted, Is.False);

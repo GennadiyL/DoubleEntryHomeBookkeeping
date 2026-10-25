@@ -1,4 +1,4 @@
-using Adapter.Azure;
+using Master.Impl;
 using Shared.Azure;
 using Shared.Impl;
 using Microsoft.Azure.Functions.Worker.Builder;
@@ -8,5 +8,5 @@ FunctionsApplicationBuilder builder = FunctionsApplication.CreateBuilder(args);
 builder.ConfigureFunctionsWebApplication();
 builder.Services.AddSharedModule();
 builder.Services.AddSharedAzureModule();
-builder.Services.AddAdapterAzureModule();
+builder.Services.AddRemoteMasterStorage();
 builder.Build().Run();

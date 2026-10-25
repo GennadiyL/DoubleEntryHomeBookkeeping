@@ -1,19 +1,18 @@
-using Master.Contracts.Adapters.MasterStorage;
 using Shared.Contracts.Storage;
 
-namespace Master.Contracts.Adapters;
+namespace Master.Impl.Operations.MasterStorage;
 
 /// <summary>
 /// Prepares and publishes the persisted database for one Master dataset.
 /// The caller acquires exclusive Master access before opening a storage session.
-/// Operations receive session state explicitly; the adapter retains only dependencies.
+/// Operations receive session state explicitly; the operation retains only dependencies.
 /// Local storage uses the existing database without copying it.
 /// Remote storage prepares an owned working copy and publishes completed snapshots.
 /// The caller closes database connections before closing or disposing the session.
 /// Access ownership outlives the session and remains the caller's responsibility.
-/// Business validation, SQLite transactions and snapshot creation are outside this adapter.
+/// Business validation, SQLite transactions and snapshot creation are outside this operation.
 /// </summary>
-public interface IMasterStorageAdapter
+internal interface IMasterStorageOperation
 {
 	/// <summary>
 	/// Opens an existing database and returns session state with its usable local path for the DAL.

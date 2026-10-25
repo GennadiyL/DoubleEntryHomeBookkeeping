@@ -1,11 +1,10 @@
-using Master.Contracts.Adapters;
-using Master.Contracts.Adapters.MasterStorage;
 using Master.Impl;
 using Shared.Contracts.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using NUnit.Framework;
 using Shared.Impl;
+using Master.Impl.Operations.MasterStorage;
 
 namespace UnitTests.Master;
 
@@ -20,12 +19,12 @@ namespace UnitTests.Master;
 /// No user database, real Master lock or Azure resource is accessed.
 /// </summary>
 [TestFixture(Category = "Local")]
-public sealed class LocalMasterStorageAdapterTests
+public sealed class LocalMasterStorageOperationTests
 {
 	private DirectoryInfo _directory = null!;
 	private ServiceProvider _provider = null!;
 	private IServiceScope _scope = null!;
-	private IMasterStorageAdapter _storage = null!;
+	private IMasterStorageOperation _storage = null!;
 	private IStorageLock _access = null!;
 	private string _databasePath = null!;
 
@@ -37,10 +36,10 @@ public sealed class LocalMasterStorageAdapterTests
 		await File.WriteAllTextAsync(_databasePath, "database");
 		ServiceCollection services = new();
 		services.AddSharedModule();
-		services.AddLocalMasterStorageAdapter(_ => _databasePath);
+		services.AddLocalMasterStorage(_ => _databasePath);
 		_provider = services.BuildServiceProvider(true);
 		_scope = _provider.CreateScope();
-		_storage = _scope.ServiceProvider.GetRequiredService<IMasterStorageAdapter>();
+		_storage = _scope.ServiceProvider.GetRequiredService<IMasterStorageOperation>();
 		_access = Substitute.For<IStorageLock>();
 	}
 

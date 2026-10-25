@@ -8,8 +8,6 @@ using DataAccess.EntityFramework.SqLite;
 using Exchange.Models.Enums;
 using Exchange.Models.Synchronizations;
 using Shared.Contracts.Storage;
-using Master.Contracts.Adapters;
-using Master.Contracts.Adapters.MasterStorage;
 using Master.Contracts.Services;
 using Master.Contracts.Services.Synchronizations;
 using Master.Impl;
@@ -20,6 +18,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using NUnit.Framework;
 using Shared.Impl;
+using Master.Impl.Operations.MasterStorage;
 
 namespace UnitTests.Master;
 
@@ -77,7 +76,7 @@ public sealed class MasterSynchronizationTests
 		string workingPath = await CopyMasterDatabase();
 		List<long> published = [];
 		List<string> snapshots = [];
-		IMasterStorageAdapter storage = CreatePublishingStorage(workingPath, published, snapshots);
+		IMasterStorageOperation storage = CreatePublishingStorage(workingPath, published, snapshots);
 		using ServiceProvider provider = BuildProvider(storage);
 		using IServiceScope scope = provider.CreateScope();
 		SynchronizeInfo result = await scope.ServiceProvider.GetRequiredService<IMasterService>()
@@ -102,9 +101,9 @@ public sealed class MasterSynchronizationTests
 	}
 
 	[System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2012", Justification = "Configures substitute ValueTask returns; no asynchronous operation starts here.")]
-	private static IMasterStorageAdapter CreatePublishingStorage(string workingPath, List<long> published, List<string> snapshots)
+	private static IMasterStorageOperation CreatePublishingStorage(string workingPath, List<long> published, List<string> snapshots)
 	{
-		IMasterStorageAdapter storage = Substitute.For<IMasterStorageAdapter>();
+		IMasterStorageOperation storage = Substitute.For<IMasterStorageOperation>();
 		IMasterStorageSession session = Substitute.For<IMasterStorageSession>();
 		session.StoragePath.Returns(workingPath);
 		storage.Open(Arg.Any<string>(), Arg.Any<IStorageLock>(), Arg.Any<CancellationToken>()).Returns(session);
@@ -378,14 +377,14 @@ public sealed class MasterSynchronizationTests
 		Assert.That(await Scalar("SELECT COUNT(*) FROM LocalSyncBatch"), Is.Zero);
 	}
 
-	private ServiceProvider BuildProvider(IMasterStorageAdapter? storage = null)
+	private ServiceProvider BuildProvider(IMasterStorageOperation? storage = null)
 	{
 		ServiceCollection services = new();
 		services.AddSharedModule();
 		ConfigureDatabase(services);
 		if (storage is null)
 		{
-			services.AddLocalMasterStorageAdapter(_ => _connection.DataSource);
+			services.AddLocalMasterStorage(_ => _connection.DataSource);
 		}
 		else
 		{

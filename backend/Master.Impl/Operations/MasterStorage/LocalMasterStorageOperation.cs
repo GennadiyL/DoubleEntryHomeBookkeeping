@@ -1,9 +1,7 @@
-using Master.Contracts.Adapters;
-using Master.Contracts.Adapters.MasterStorage;
 using Shared.Contracts;
 using Shared.Contracts.Storage;
 
-namespace Master.Impl.Adapters;
+namespace Master.Impl.Operations.MasterStorage;
 
 /// <summary>
 /// Opens storage sessions over existing local Master database files.
@@ -15,12 +13,12 @@ namespace Master.Impl.Adapters;
 /// SQLite transaction commits already persist changes to the authoritative file.
 /// Closing delegates to session disposal and never releases the caller's lock.
 /// </summary>
-internal sealed class LocalMasterStorageAdapter : IMasterStorageAdapter
+internal sealed class LocalMasterStorageOperation : IMasterStorageOperation
 {
 	private readonly ISharedContext _sharedContext;
 	private readonly Func<string, string> _getDatabasePath;
 
-	public LocalMasterStorageAdapter(ISharedContext sharedContext, Func<string, string> getDatabasePath)
+	public LocalMasterStorageOperation(ISharedContext sharedContext, Func<string, string> getDatabasePath)
 	{
 		_sharedContext = sharedContext;
 		_getDatabasePath = getDatabasePath;

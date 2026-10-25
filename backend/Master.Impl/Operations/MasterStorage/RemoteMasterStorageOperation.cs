@@ -1,9 +1,7 @@
-using Master.Contracts.Adapters;
-using Master.Contracts.Adapters.MasterStorage;
 using Shared.Contracts;
 using Shared.Contracts.Storage;
 
-namespace Adapter.Azure.Storage;
+namespace Master.Impl.Operations.MasterStorage;
 
 /// <summary>
 /// Opens and publishes Master database working copies through shared object storage.
@@ -13,14 +11,14 @@ namespace Adapter.Azure.Storage;
 /// The processor validates provider ownership and applies request conditions.
 /// Publication and disposal share the session gate to protect temporary files.
 /// Download failures dispose the partial session without releasing caller-owned access.
-/// Database transactions, snapshot creation and provider selection remain outside this adapter.
+/// Database transactions, snapshot creation and provider selection remain outside this operation.
 /// </summary>
-internal sealed class BlobMasterStorageAdapter : IMasterStorageAdapter
+internal sealed class RemoteMasterStorageOperation : IMasterStorageOperation
 {
 	private readonly ISharedContext _sharedContext;
 	private readonly IStorageProcessorFactory _storageProcessorFactory;
 
-	public BlobMasterStorageAdapter(ISharedContext sharedContext, IStorageProcessorFactory storageProcessorFactory)
+	public RemoteMasterStorageOperation(ISharedContext sharedContext, IStorageProcessorFactory storageProcessorFactory)
 	{
 		_sharedContext = sharedContext;
 		_storageProcessorFactory = storageProcessorFactory;
@@ -35,13 +33,13 @@ internal sealed class BlobMasterStorageAdapter : IMasterStorageAdapter
 		ArgumentNullException.ThrowIfNull(access);
 		cancellationToken.ThrowIfCancellationRequested();
 		access.CancellationToken.ThrowIfCancellationRequested();
-		BlobMasterStorageSession session = CreateSession(masterDatasetKey, access);
+		RemoteMasterStorageSession session = CreateSession(masterDatasetKey, access);
 		return await DownloadSession(session, cancellationToken);
 	}
 
 	public async Task Publish(IMasterStorageSession session, string snapshotPath, CancellationToken cancellationToken = default)
 	{
-		BlobMasterStorageSession state = GetSession(session);
+		RemoteMasterStorageSession state = GetSession(session);
 		using CancellationTokenSource cancellation = CancellationTokenSource.CreateLinkedTokenSource(
 			cancellationToken, state.Access.CancellationToken);
 		await state.Gate.WaitAsync(cancellation.Token);
@@ -61,15 +59,15 @@ internal sealed class BlobMasterStorageAdapter : IMasterStorageAdapter
 		return session.DisposeAsync();
 	}
 
-	private BlobMasterStorageSession CreateSession(string masterDatasetKey, IStorageLock access)
+	private RemoteMasterStorageSession CreateSession(string masterDatasetKey, IStorageLock access)
 	{
 		IStorageProcessor processor = _storageProcessorFactory.CreateProcessor();
 		string objectName = MasterStorageNames.Database(masterDatasetKey);
-		return new BlobMasterStorageSession(_sharedContext, processor, objectName, access,
+		return new RemoteMasterStorageSession(_sharedContext, processor, objectName, access,
 			_sharedContext.DirectoryService.CreateTempSubdirectory("dehb-master-"));
 	}
 
-	private async Task<IMasterStorageSession> DownloadSession(BlobMasterStorageSession session, CancellationToken cancellationToken)
+	private async Task<IMasterStorageSession> DownloadSession(RemoteMasterStorageSession session, CancellationToken cancellationToken)
 	{
 		try
 		{
@@ -83,7 +81,7 @@ internal sealed class BlobMasterStorageAdapter : IMasterStorageAdapter
 		}
 	}
 
-	private async Task Download(BlobMasterStorageSession session, CancellationToken cancellationToken)
+	private async Task Download(RemoteMasterStorageSession session, CancellationToken cancellationToken)
 	{
 		using CancellationTokenSource cancellation = CancellationTokenSource.CreateLinkedTokenSource(
 			cancellationToken, session.Access.CancellationToken);
@@ -93,7 +91,7 @@ internal sealed class BlobMasterStorageAdapter : IMasterStorageAdapter
 		cancellation.Token.ThrowIfCancellationRequested();
 	}
 
-	private async Task PublishSnapshot(BlobMasterStorageSession session, string snapshotPath, CancellationToken cancellationToken)
+	private async Task PublishSnapshot(RemoteMasterStorageSession session, string snapshotPath, CancellationToken cancellationToken)
 	{
 		try
 		{
@@ -107,7 +105,7 @@ internal sealed class BlobMasterStorageAdapter : IMasterStorageAdapter
 		}
 	}
 
-	private async Task UploadSnapshot(BlobMasterStorageSession session, string snapshotPath, CancellationToken cancellationToken)
+	private async Task UploadSnapshot(RemoteMasterStorageSession session, string snapshotPath, CancellationToken cancellationToken)
 	{
 		ValidateSnapshotPath(session.StoragePath, snapshotPath);
 		cancellationToken.ThrowIfCancellationRequested();
@@ -116,14 +114,14 @@ internal sealed class BlobMasterStorageAdapter : IMasterStorageAdapter
 		cancellationToken.ThrowIfCancellationRequested();
 	}
 
-	private static BlobMasterStorageSession GetSession(IMasterStorageSession session)
+	private static RemoteMasterStorageSession GetSession(IMasterStorageSession session)
 	{
 		ArgumentNullException.ThrowIfNull(session);
-		return session as BlobMasterStorageSession ??
+		return session as RemoteMasterStorageSession ??
 			throw new ArgumentException("The session is not a Master storage working copy.", nameof(session));
 	}
 
-	private static void EnsureUsable(BlobMasterStorageSession session)
+	private static void EnsureUsable(RemoteMasterStorageSession session)
 	{
 		ObjectDisposedException.ThrowIf(session.IsDisposed, session);
 		if (session.IsFaulted)

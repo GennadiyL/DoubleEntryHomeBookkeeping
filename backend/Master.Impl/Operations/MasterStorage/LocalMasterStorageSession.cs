@@ -1,12 +1,11 @@
-using Master.Contracts.Adapters.MasterStorage;
 using Shared.Contracts.Storage;
 
-namespace Master.Impl.Adapters;
+namespace Master.Impl.Operations.MasterStorage;
 
 /// <summary>
 /// Holds state for direct persistence to an existing local Master database.
 /// StoragePath remains the authoritative file for the session lifetime.
-/// The adapter performs publication checks; the session has no publication behavior.
+/// The operation performs publication checks; the session has no publication behavior.
 /// The supplied access lock remains owned by the business workflow.
 /// Disposal marks the session unusable without removing the persistent database.
 /// Repeated disposal is safe and preserves caller-owned snapshot files.

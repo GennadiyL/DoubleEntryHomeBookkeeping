@@ -6,13 +6,12 @@ using DataAccess.Contracts;
 using DataAccess.Core.Entities;
 using Exchange.Models.Synchronizations;
 using Shared.Contracts.Storage;
-using Master.Contracts.Adapters;
-using Master.Contracts.Adapters.MasterStorage;
 using Master.Contracts.Services;
 using Master.Contracts.Services.Synchronizations;
 using Master.Impl.Operations.ApplySyncBatch;
 using Master.Impl.Utils;
 using Shared.Contracts;
+using Master.Impl.Operations.MasterStorage;
 
 namespace Master.Impl.Services;
 
@@ -36,17 +35,21 @@ internal sealed class MasterService : IMasterService
 	private readonly ISharedContext _sharedContext;
 	private readonly IMasterAppUnitOfWork _unitOfWork;
 	private readonly IApplySyncBatchOperation _applySyncBatchOperation;
+	private readonly IMasterStorageOperation _masterStorageOperation;
 	private readonly IStorageLockFactory _storageLockFactory;
-	private readonly IMasterStorageAdapter _storage;
 
-	public MasterService(ISharedContext sharedContext, IMasterAppUnitOfWork unitOfWork,
-		IApplySyncBatchOperation applySyncBatchOperation, IStorageLockFactory storageLockFactory, IMasterStorageAdapter storage)
+	public MasterService(
+		ISharedContext sharedContext,
+		IMasterAppUnitOfWork unitOfWork,
+		IApplySyncBatchOperation applySyncBatchOperation,
+		IMasterStorageOperation masterStorageOperation,
+		IStorageLockFactory storageLockFactory)
 	{
 		_sharedContext = sharedContext;
 		_unitOfWork = unitOfWork;
 		_applySyncBatchOperation = applySyncBatchOperation;
+		_masterStorageOperation = masterStorageOperation;
 		_storageLockFactory = storageLockFactory;
-		_storage = storage;
 	}
 
 	public async Task<SynchronizeInfo> Synchronize(SynchronizeRequest request, CancellationToken cancellationToken = default)
@@ -63,7 +66,7 @@ internal sealed class MasterService : IMasterService
 			CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, storageLock.CancellationToken);
 		cancellation.Token.ThrowIfCancellationRequested();
 
-		await using IMasterStorageSession session = await _storage.Open(container.MasterDatasetKey, storageLock, cancellation.Token);
+		await using IMasterStorageSession session = await _masterStorageOperation.Open(container.MasterDatasetKey, storageLock, cancellation.Token);
 
 		long revision = await ProcessDatabase(container, session, cancellation.Token);
 		cancellation.Token.ThrowIfCancellationRequested();
@@ -161,7 +164,7 @@ internal sealed class MasterService : IMasterService
 		try
 		{
 			await _unitOfWork.CreateSnapshot(snapshotPath, cancellationToken);
-			await _storage.Publish(session, snapshotPath, cancellationToken);
+			await _masterStorageOperation.Publish(session, snapshotPath, cancellationToken);
 		}
 		finally
 		{

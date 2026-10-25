@@ -1,9 +1,8 @@
 using DataAccess.Contracts;
 using DataAccess.Contracts.Commands;
-using Master.Contracts.Adapters;
 using Master.Contracts.Services;
-using Master.Impl.Adapters;
 using Master.Impl.Operations.ApplySyncBatch;
+using Master.Impl.Operations.MasterStorage;
 using Master.Impl.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shared.Contracts;
@@ -22,11 +21,16 @@ namespace Master.Impl;
 /// </summary>
 public static class MasterDiConfiguration
 {
-	public static void AddLocalMasterStorageAdapter(this IServiceCollection services, Func<string, string> getDatabasePath)
+	public static void AddLocalMasterStorage(this IServiceCollection services, Func<string, string> getDatabasePath)
 	{
 		ArgumentNullException.ThrowIfNull(getDatabasePath);
-		services.AddScoped<IMasterStorageAdapter>(provider => new LocalMasterStorageAdapter(
+		services.AddScoped<IMasterStorageOperation>(provider => new LocalMasterStorageOperation(
 			provider.GetRequiredService<ISharedContext>(), getDatabasePath));
+	}
+
+	public static void AddRemoteMasterStorage(this IServiceCollection services)
+	{
+		services.AddScoped<IMasterStorageOperation, RemoteMasterStorageOperation>();
 	}
 
 	public static void AddMasterModule(this IServiceCollection services)
