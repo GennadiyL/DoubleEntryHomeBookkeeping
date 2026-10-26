@@ -14,5 +14,5 @@ namespace Synchronization.Impl.Operations.Download;
 /// </summary>
 internal sealed class DownloadOperation : IDownloadOperation
 {
-	public Task<long> Run(MasterIdentity identity, DownloadSnapshot command, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+	public Task<long> Run(DownloadRequest command, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 }

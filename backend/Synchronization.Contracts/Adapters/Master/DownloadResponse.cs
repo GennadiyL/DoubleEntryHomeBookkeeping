@@ -1,4 +1,4 @@
-namespace Master.Contracts.Services.Synchronizations;
+namespace Synchronization.Contracts.Adapters.Master;
 
 /// <summary>
 /// Returns a consistent Master database snapshot and its actual revision.
@@ -10,7 +10,7 @@ namespace Master.Contracts.Services.Synchronizations;
 /// Client validates and installs the snapshot before acknowledging this revision.
 /// Receiving the response alone does not confirm successful local installation.
 /// </summary>
-public record DownloadInfo
+public record DownloadResponse
 {
 	public long Revision { get; set; }
 	public required Stream Content { get; set; }

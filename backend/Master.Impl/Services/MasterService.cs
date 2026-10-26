@@ -52,7 +52,7 @@ internal sealed class MasterService : IMasterService
 		_storageLockFactory = storageLockFactory;
 	}
 
-	public async Task<SynchronizeInfo> Synchronize(SynchronizeRequest request, CancellationToken cancellationToken = default)
+	public async Task<SynchronizeResponse> Synchronize(SynchronizeRequest request, CancellationToken cancellationToken = default)
 	{
 		ValidateRequest(request, cancellationToken);
 
@@ -71,7 +71,7 @@ internal sealed class MasterService : IMasterService
 		long revision = await ProcessDatabase(container, session, cancellation.Token);
 		cancellation.Token.ThrowIfCancellationRequested();
 
-		return new SynchronizeInfo { Revision = revision };
+		return new SynchronizeResponse { Revision = revision };
 	}
 
 	private async Task<long> ProcessDatabase(SyncContainer container, IMasterStorageSession session, CancellationToken cancellationToken)
@@ -271,7 +271,7 @@ internal sealed class MasterService : IMasterService
 		return local;
 	}
 
-	public async Task<DownloadInfo> Download(DownloadRequest request, CancellationToken cancellationToken = default)
+	public async Task<DownloadResponse> Download(DownloadRequest request, CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(request);
 		cancellationToken.ThrowIfCancellationRequested();
@@ -287,7 +287,7 @@ internal sealed class MasterService : IMasterService
 		{
 			long revision = await PrepareDownload(download, snapshotPath, cancellationToken);
 			cancellationToken.ThrowIfCancellationRequested();
-			return new DownloadInfo
+			return new DownloadResponse
 			{
 				Revision = revision,
 				Content = _sharedContext.FileService.Open(snapshotPath, new FileStreamOptions
@@ -335,7 +335,7 @@ internal sealed class MasterService : IMasterService
 		}
 	}
 
-	public async Task<AcknowledgeInfo> Acknowledge(AcknowledgeRequest request, CancellationToken cancellationToken = default)
+	public async Task<AcknowledgeResponse> Acknowledge(AcknowledgeRequest request, CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(request);
 		cancellationToken.ThrowIfCancellationRequested();
@@ -361,7 +361,7 @@ internal sealed class MasterService : IMasterService
 				await PublishBatch(session, cancellation.Token);
 			}
 			cancellation.Token.ThrowIfCancellationRequested();
-			return new AcknowledgeInfo { IsSuccess = true };
+			return new AcknowledgeResponse { IsSuccess = true };
 		}
 		finally
 		{

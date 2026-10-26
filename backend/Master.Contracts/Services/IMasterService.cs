@@ -21,18 +21,18 @@ public interface IMasterService
 	/// Caller cancellation or loss of ownership stops processing and releases access after transaction cleanup.
 	/// Successful completion confirms all submitted batches are applied; an error may follow committed earlier batches, which retries must deduplicate.
 	/// </summary>
-	public Task<SynchronizeInfo> Synchronize(SynchronizeRequest request, CancellationToken cancellationToken = default);
+	public Task<SynchronizeResponse> Synchronize(SynchronizeRequest request, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Opens the latest consistent Master snapshot selected when this call creates the snapshot; its revision must meet the requested minimum.
 	/// No preceding Synchronize call or transfer descriptor is required. The caller owns and disposes the returned stream.
 	/// Client must preserve unsynchronized work in its database and pending JSON before installing a replacement.
 	/// </summary>
-	public Task<DownloadInfo> Download(DownloadRequest request, CancellationToken cancellationToken = default);
+	public Task<DownloadResponse> Download(DownloadRequest request, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Records the revision successfully installed by Local and the Master acknowledgement time, and returns whether acknowledgement succeeded.
 	/// Repeated acknowledgements are idempotent; older receipts must not decrease SyncRevision.
 	/// </summary>
-	public Task<AcknowledgeInfo> Acknowledge(AcknowledgeRequest request, CancellationToken cancellationToken = default);
+	public Task<AcknowledgeResponse> Acknowledge(AcknowledgeRequest request, CancellationToken cancellationToken = default);
 }

@@ -234,7 +234,7 @@ public sealed class MasterSynchronizationAccessTests
 		TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
 		TaskCompletionSource resume = new(TaskCreationOptions.RunContinuationsAsynchronously);
 		PauseMerge(entered, resume);
-		Task<SynchronizeInfo> first = Synchronize(provider, Request("first"));
+		Task<SynchronizeResponse> first = Synchronize(provider, Request("first"));
 		try
 		{
 			await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -336,10 +336,10 @@ public sealed class MasterSynchronizationAccessTests
 		});
 	}
 
-	private Task<SynchronizeInfo> Synchronize(SynchronizeRequest request, CancellationToken cancellationToken = default) =>
+	private Task<SynchronizeResponse> Synchronize(SynchronizeRequest request, CancellationToken cancellationToken = default) =>
 		Synchronize(_provider, request, cancellationToken);
 
-	private static async Task<SynchronizeInfo> Synchronize(ServiceProvider provider, SynchronizeRequest request,
+	private static async Task<SynchronizeResponse> Synchronize(ServiceProvider provider, SynchronizeRequest request,
 		CancellationToken cancellationToken = default)
 	{
 		using IServiceScope scope = provider.CreateScope();

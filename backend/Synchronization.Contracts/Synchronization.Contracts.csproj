@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Business.Models\Business.Models.csproj" />
+    <ProjectReference Include="..\Exchange.Models\Exchange.Models.csproj" />
   </ItemGroup>
 
 </Project>

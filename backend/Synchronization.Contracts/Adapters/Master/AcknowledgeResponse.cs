@@ -1,4 +1,4 @@
-namespace Master.Contracts.Services.Synchronizations;
+namespace Synchronization.Contracts.Adapters.Master;
 
 /// <summary>
 /// Returns the business result of acknowledging an installed Local snapshot.
@@ -10,7 +10,7 @@ namespace Master.Contracts.Services.Synchronizations;
 /// Client uses successful acknowledgement to complete its pending workflow.
 /// Transport failures remain separate from this business result.
 /// </summary>
-public record AcknowledgeInfo
+public record AcknowledgeResponse
 {
 	public bool IsSuccess { get; set; }
 }

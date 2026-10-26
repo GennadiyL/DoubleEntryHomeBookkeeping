@@ -190,7 +190,7 @@ public sealed class MasterAcknowledgeAccessTests
 		return Task.CompletedTask;
 	}
 
-	private async Task<AcknowledgeInfo> Acknowledge(CancellationToken cancellationToken = default)
+	private async Task<AcknowledgeResponse> Acknowledge(CancellationToken cancellationToken = default)
 	{
 		using IServiceScope scope = _provider.CreateScope();
 		return await scope.ServiceProvider.GetRequiredService<IMasterService>().Acknowledge(

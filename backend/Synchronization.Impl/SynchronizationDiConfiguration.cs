@@ -1,3 +1,5 @@
+using Synchronization.Contracts.Adapters;
+using Synchronization.Impl.Adapters;
 using Synchronization.Impl.Operations.Acknowledge;
 using Synchronization.Impl.Operations.Download;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +20,8 @@ namespace Synchronization.Impl;
 /// </summary>
 public static class SynchronizationDiConfiguration
 {
+	public static void AddLocalMasterAdapter(this IServiceCollection services) => services.AddScoped<IMasterAdapter, LocalMasterAdapter>();
+
 	public static void AddSynchronizationModule(this IServiceCollection services)
 	{
 		services.AddScoped<ICaptureChangesOperation, CaptureChangesOperation>();

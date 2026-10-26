@@ -79,7 +79,7 @@ public sealed class MasterSynchronizationTests
 		IMasterStorageOperation storage = CreatePublishingStorage(workingPath, published, snapshots);
 		using ServiceProvider provider = BuildProvider(storage);
 		using IServiceScope scope = provider.CreateScope();
-		SynchronizeInfo result = await scope.ServiceProvider.GetRequiredService<IMasterService>()
+		SynchronizeResponse result = await scope.ServiceProvider.GetRequiredService<IMasterService>()
 			.Synchronize(Request(Batch("first"), Batch("second")));
 		Assert.That(result.Revision, Is.EqualTo(2));
 		Assert.That(published, Is.EqualTo(new long[] { 1, 2 }));
@@ -140,7 +140,7 @@ public sealed class MasterSynchronizationTests
 		SyncBatch second = Batch("second");
 		second.CreatedAt = first.CreatedAt.AddDays(-1);
 		second.Updated.Add(Category(category.Id, "Second", 0));
-		SynchronizeInfo result = await Synchronize(Request(first, second));
+		SynchronizeResponse result = await Synchronize(Request(first, second));
 		Assert.That(result.Revision, Is.EqualTo(2));
 		using IServiceScope scope = _provider.CreateScope();
 		IMasterAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
@@ -331,14 +331,14 @@ public sealed class MasterSynchronizationTests
 		SyncBatch second = sameBatch ? first : Batch("second");
 		if (!sameBatch) { second.Added.Add(Category(Guid.NewGuid(), "Second")); }
 		using Barrier barrier = new(2);
-		Task<SynchronizeInfo> Run(ServiceProvider provider, SyncBatch batch) => Task.Run(async () =>
+		Task<SynchronizeResponse> Run(ServiceProvider provider, SyncBatch batch) => Task.Run(async () =>
 		{
 			using IServiceScope scope = provider.CreateScope();
 			IMasterService service = scope.ServiceProvider.GetRequiredService<IMasterService>();
 			if (!barrier.SignalAndWait(TimeSpan.FromSeconds(10))) { throw new TimeoutException(); }
 			return await service.Synchronize(Request(batch));
 		});
-		SynchronizeInfo[] results = await Task.WhenAll(Run(_provider, first), Run(otherProvider, second));
+		SynchronizeResponse[] results = await Task.WhenAll(Run(_provider, first), Run(otherProvider, second));
 		Assert.That(results.Max(item => item.Revision), Is.EqualTo(sameBatch ? 1 : 2));
 		Assert.That(await Scalar("SELECT CurrentRevision FROM SystemConfig"), Is.EqualTo(sameBatch ? 1 : 2));
 		Assert.That(await Scalar("SELECT COUNT(*) FROM LocalSyncBatch"), Is.EqualTo(sameBatch ? 1 : 2));
@@ -403,7 +403,7 @@ public sealed class MasterSynchronizationTests
 		}).Build());
 	}
 
-	private async Task<SynchronizeInfo> Synchronize(SynchronizeRequest request)
+	private async Task<SynchronizeResponse> Synchronize(SynchronizeRequest request)
 	{
 		using IServiceScope scope = _provider.CreateScope();
 		return await scope.ServiceProvider.GetRequiredService<IMasterService>().Synchronize(request);

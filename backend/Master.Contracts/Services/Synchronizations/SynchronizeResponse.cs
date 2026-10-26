@@ -10,7 +10,7 @@ namespace Master.Contracts.Services.Synchronizations;
 /// Download reports the actual revision represented by its returned bytes.
 /// Failures propagate instead of being encoded as progress states.
 /// </summary>
-public record SynchronizeInfo
+public record SynchronizeResponse
 {
 	public long Revision { get; set; }
 }

@@ -191,7 +191,7 @@ public sealed class MasterAcknowledgeTests
 	private static AcknowledgeRequest Request(long revision) =>
 		new() { MasterDatasetKey = "master", LocalDatasetKey = "local", InstalledRevision = revision };
 
-	private static async Task<AcknowledgeInfo> Acknowledge(ServiceProvider provider, AcknowledgeRequest request)
+	private static async Task<AcknowledgeResponse> Acknowledge(ServiceProvider provider, AcknowledgeRequest request)
 	{
 		using IServiceScope scope = provider.CreateScope();
 		return await scope.ServiceProvider.GetRequiredService<IMasterService>().Acknowledge(request);

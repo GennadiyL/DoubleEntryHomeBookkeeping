@@ -69,7 +69,7 @@ public sealed class MasterDownloadTests
 	public async Task SnapshotSurvivesScopeAndMasterChangesAndDeletesOnDispose(bool remote)
 	{
 		using ServiceProvider provider = BuildProvider(remote);
-		DownloadInfo result = await Download(provider, Request());
+		DownloadResponse result = await Download(provider, Request());
 		await using Stream content = result.Content;
 		string snapshotPath = ((FileStream)content).Name;
 		Assert.That(result.Revision, Is.EqualTo(7));
@@ -123,7 +123,7 @@ public sealed class MasterDownloadTests
 	public async Task MinimumRevisionIsALowerBound(long minimum)
 	{
 		using ServiceProvider provider = BuildProvider();
-		DownloadInfo result = await Download(provider, Request() with { MinimumRevision = minimum });
+		DownloadResponse result = await Download(provider, Request() with { MinimumRevision = minimum });
 		await using Stream content = result.Content;
 		Assert.That(result.Revision, Is.EqualTo(7));
 	}
@@ -137,7 +137,7 @@ public sealed class MasterDownloadTests
 		{
 			Assert.ThrowsAsync<MasterBusyException>(() => Download(provider, Request()));
 		}
-		DownloadInfo result = await Download(provider, Request());
+		DownloadResponse result = await Download(provider, Request());
 		await result.Content.DisposeAsync();
 	}
 
@@ -231,7 +231,7 @@ public sealed class MasterDownloadTests
 	private static DownloadRequest Request() =>
 		new() { MasterDatasetKey = "master", LocalDatasetKey = "local", MinimumRevision = 7 };
 
-	private static async Task<DownloadInfo> Download(ServiceProvider provider, DownloadRequest request, CancellationToken cancellationToken = default)
+	private static async Task<DownloadResponse> Download(ServiceProvider provider, DownloadRequest request, CancellationToken cancellationToken = default)
 	{
 		using IServiceScope scope = provider.CreateScope();
 		return await scope.ServiceProvider.GetRequiredService<IMasterService>().Download(request, cancellationToken);

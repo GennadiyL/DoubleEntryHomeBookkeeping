@@ -14,5 +14,5 @@ namespace Synchronization.Impl.Operations.Acknowledge;
 /// </summary>
 internal sealed class AcknowledgeOperation : IAcknowledgeOperation
 {
-	public Task<OperationStatusInfo> Run(MasterIdentity identity, AcknowledgeSnapshot command, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+	public Task<AcknowledgeResponse> Run(AcknowledgeRequest command, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 }

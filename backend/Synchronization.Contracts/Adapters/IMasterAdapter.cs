@@ -3,43 +3,36 @@ using Synchronization.Contracts.Adapters.Master;
 namespace Synchronization.Contracts.Adapters;
 
 /// <summary>
-/// Defines the Local application's provider-independent Master boundary.
-/// Synchronization services use this contract to reach the selected provider.
-/// Its DTOs are independent of every provider service contract.
-/// In-process implementations map these DTOs and call the provider service.
-/// Remote implementations retrieve scoped tokens through ITokenStoreAdapter for each request.
-/// Provider authorization and ownership checks apply in both environments.
-/// Download returns a caller-owned stream outside JSON serialization.
-/// Implementations do not own Local change capture or database installation.
+/// Defines the provider-independent Master synchronization boundary.
+/// The host authenticates callers and authorizes requested dataset identities.
+/// In-process adapters map independent DTOs to the Master service contracts.
+/// The business service validates registration state, schema and synchronization rules.
+/// Synchronization deduplicates captured batches using their immutable identities.
+/// Download returns a consistent snapshot independently of a preceding synchronization.
+/// Snapshot metadata identifies the actual revision represented by its bytes.
+/// Acknowledgement records successful installation rather than completed downloading.
+/// Initial dataset provisioning remains outside this synchronization contract.
 /// </summary>
 public interface IMasterAdapter
 {
 	/// <summary>
-	/// Verifies existing owner credentials, validates the returned identities and securely stores the issued token before reporting success.
-	/// Returns registration and expiry metadata without exposing the token to the caller.
+	/// Processes every submitted batch in order, skipping batches already applied, and returns the Master revision observed after processing.
+	/// Holds exclusive access for the complete call; an occupied Master is rejected before database access rather than queued.
+	/// Caller cancellation or loss of ownership stops processing and releases access after transaction cleanup.
+	/// Successful completion confirms all submitted batches are applied; an error may follow committed earlier batches, which retries must deduplicate.
 	/// </summary>
-	public Task<AuthenticateInfo> Authenticate(Authenticate command, CancellationToken cancellationToken = default);
+	public Task<SynchronizeResponse> Synchronize(SynchronizeRequest request, CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// Checks synchronization authorization before capture; false means credentials are required, while transport failures propagate as errors.
-	/// Retrieves authorization for the configured Master address and supplied identity; missing or unreadable tokens require credentials.
-	/// Every protected request must still validate authorization independently of this check.
+	/// Opens the latest consistent Master snapshot selected when this call creates the snapshot; its revision must meet the requested minimum.
+	/// No preceding Synchronize call or transfer descriptor is required. The caller owns and disposes the returned stream.
+	/// Client must preserve unsynchronized work in its database and pending JSON before installing a replacement.
 	/// </summary>
-	public Task<bool> CheckAuthorization(MasterIdentity identity, CancellationToken cancellationToken = default);
+	public Task<DownloadResponse> Download(DownloadRequest request, CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// Merges pending batches in document order, skipping already merged batch identities, and returns a snapshot for Local download.
-	/// Repeating the same durable attempt resolves its outcome without merging its changes again; cancellation does not undo publication.
+	/// Records the revision successfully installed by Local and the Master acknowledgement time, and returns whether acknowledgement succeeded.
+	/// Repeated acknowledgements are idempotent; older receipts must not decrease SyncRevision.
 	/// </summary>
-	public Task<SynchronizeInfo> Synchronize(MasterIdentity identity, Synchronize command, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	/// Opens the selected immutable business snapshot for download; the caller owns and disposes the returned stream.
-	/// </summary>
-	public Task<DownloadSnapshotInfo> Download(MasterIdentity identity, DownloadSnapshot command, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	/// Records the Local copy's actual installed version for completion and deletion acknowledgement; retries are idempotent.
-	/// </summary>
-	public Task<OperationStatusInfo> Acknowledge(MasterIdentity identity, AcknowledgeSnapshot command, CancellationToken cancellationToken = default);
+	public Task<AcknowledgeResponse> Acknowledge(AcknowledgeRequest request, CancellationToken cancellationToken = default);
 }
