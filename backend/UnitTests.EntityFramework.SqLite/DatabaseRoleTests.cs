@@ -1,3 +1,5 @@
+using Business.Models.Constants;
+using Business.Models.Entities.Synchronizations;
 using System.Reflection;
 using Business.Models.Entities.Config;
 using DataAccess.Contracts;
@@ -269,6 +271,39 @@ public sealed class DatabaseRoleTests
 		await unit.SaveChanges();
 		Assert.That(await ReadRevision(_local), Is.EqualTo(12));
 		Assert.That(context.ChangeTracker.Entries(), Is.Empty);
+	}
+
+	[Test]
+	public async Task LocalJson_RoundTripsAndRollsBackWithOtherLocalChanges()
+	{
+		using ServiceProvider provider = BuildProvider();
+		using IServiceScope scope = provider.CreateScope();
+		ILocalAppUnitOfWork local = scope.ServiceProvider.GetRequiredService<ILocalAppUnitOfWork>();
+		IMasterAppUnitOfWork master = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
+		const string json = "{\"batches\":[],\"label\":\"Żółć\"}";
+		local.LocalJsonRepo.Add(new LocalJson { Json = json });
+		await local.SaveChanges();
+		LocalJson stored = (await local.LocalJsonRepo.GetById(EntitiesIds.LocalJsonId))!;
+		Assert.That(stored.Json, Is.EqualTo(json));
+		Assert.That(await master.LocalJsonRepo.GetById(EntitiesIds.LocalJsonId), Is.Null);
+
+		await using (IUnitOfWorkTransaction transaction = await local.BeginTransaction())
+		{
+			stored.Json = "{\"batches\":[1]}";
+			local.LocalJsonRepo.Update(stored);
+			await UpdateRevision(local, 12);
+			await local.SaveChanges();
+			await local.RollbackTransaction(transaction);
+		}
+		using IServiceScope retryScope = provider.CreateScope();
+		local = retryScope.ServiceProvider.GetRequiredService<ILocalAppUnitOfWork>();
+		Assert.That((await local.LocalJsonRepo.GetById(EntitiesIds.LocalJsonId))!.Json, Is.EqualTo(json));
+		Assert.That(await ReadRevision(_local), Is.Zero);
+
+		stored.Json = "{\"batches\":[]}";
+		local.LocalJsonRepo.Update(stored);
+		await local.SaveChanges();
+		Assert.That((await local.LocalJsonRepo.GetById(EntitiesIds.LocalJsonId))!.Json, Is.EqualTo(stored.Json));
 	}
 
 	private ServiceProvider BuildProvider(bool masterFirst = false)

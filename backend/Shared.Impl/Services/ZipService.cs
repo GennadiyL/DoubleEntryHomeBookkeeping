@@ -86,7 +86,7 @@ internal class ZipService : IZipService
 			try
 			{
 				string outputPath = Path.Combine(destinationFolder, entry.FullName);
-				entry.ExtractToFile(outputPath, overwrite: true);
+				entry.ExtractToFile(outputPath, true);
 				unzippedFiles.Add(outputPath);
 				_logService.Info($"File restored from zip {outputPath}");
 			}

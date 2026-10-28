@@ -50,6 +50,7 @@ public static class EntityFrameworkDiConfiguration
 		AddRepository<ITransactionRepository>(services, databaseKey, (context, mapper) => new TransactionRepository(context, mapper));
 		AddRepository<ITransactionEntryRepository>(services, databaseKey, (context, mapper) => new TransactionEntryRepository(context, mapper));
 		AddRepository<ISystemConfigRepository>(services, databaseKey, (context, mapper) => new SystemConfigRepository(context, mapper));
+		AddRepository<ILocalJsonRepository>(services, databaseKey, (context, mapper) => new LocalJsonRepository(context, mapper));
 		AddRepository<ILocalConfigRepository>(services, databaseKey, (context, mapper) => new LocalConfigRepository(context, mapper));
 		AddRepository<ILocalRegistrationRepository>(services, databaseKey, (context, mapper) => new LocalRegistrationRepository(context, mapper));
 		AddRepository<ILocalSyncBatchRepository>(services, databaseKey, (context, mapper) => new LocalSyncBatchRepository(context, mapper));

@@ -1,5 +1,4 @@
 using Synchronization.Contracts.Services.Diagnostics;
-using Synchronization.Contracts.Services.Synchronizations;
 
 namespace Synchronization.Contracts.Services;
 

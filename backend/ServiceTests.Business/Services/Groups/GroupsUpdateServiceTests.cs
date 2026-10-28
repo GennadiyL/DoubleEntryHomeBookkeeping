@@ -61,7 +61,7 @@ public sealed class GroupsUpdateServiceTests<TGroup, TElement, TService, TReposi
 		services.AddBusinessModule();
 		services.AddSharedMockModule();
 		services.AddScoped<IAppUnitOfWork>(_ => _unitOfWork);
-		_provider = services.BuildServiceProvider(validateScopes: true);
+		_provider = services.BuildServiceProvider(true);
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<TService>();
 		_parent = new TGroup { Id = Guid.NewGuid(), Name = "Parent" };

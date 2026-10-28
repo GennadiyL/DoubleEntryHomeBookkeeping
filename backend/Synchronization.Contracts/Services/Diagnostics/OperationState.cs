@@ -1,4 +1,4 @@
-namespace Synchronization.Contracts.Services.Synchronizations;
+namespace Synchronization.Contracts.Services.Diagnostics;
 
 /// <summary>
 /// Identifies the visible stage of setup or synchronization.

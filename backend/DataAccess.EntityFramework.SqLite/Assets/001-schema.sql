@@ -57,6 +57,11 @@ CREATE TABLE "Currency" (
 );
 
 
+CREATE TABLE "LocalJson" (
+    "Id" BLOB NOT NULL CONSTRAINT "PK_LocalJson" PRIMARY KEY,
+    "Json" TEXT NOT NULL
+);
+
 CREATE TABLE "LocalConfig" (
     "Id" BLOB NOT NULL CONSTRAINT "PK_LocalConfig" PRIMARY KEY,
     "LocalDatasetKey" TEXT NOT NULL,

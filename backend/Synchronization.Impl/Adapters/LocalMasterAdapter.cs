@@ -1,3 +1,5 @@
+using Business.Models.Enums;
+using Microsoft.Extensions.DependencyInjection;
 using Master.Contracts.Services;
 using Synchronization.Contracts.Adapters;
 using Synchronization.Contracts.Adapters.Master;
@@ -7,7 +9,7 @@ namespace Synchronization.Impl.Adapters;
 
 /// <summary>
 /// Maps the local synchronization boundary to the in-process Master service.
-/// The host selects this adapter and supplies the Master service in the same scope.
+/// Each operation resolves Master in a fresh scope because its database session is disposed after use.
 /// Adapter and service DTOs remain separate contract types.
 /// The shared exchange container passes through without changing batch identities.
 /// Cancellation and service failures propagate to the caller.
@@ -17,13 +19,22 @@ namespace Synchronization.Impl.Adapters;
 /// </summary>
 internal sealed class LocalMasterAdapter : IMasterAdapter
 {
-	private readonly IMasterService _masterService;
+	private readonly IServiceScopeFactory _scopeFactory;
 
-	public LocalMasterAdapter(IMasterService masterService) => _masterService = masterService;
+	public LocalMasterAdapter(IServiceScopeFactory scopeFactory) => _scopeFactory = scopeFactory;
 
+	public Task<AuthorizationResult> CheckAuthorization(
+		string masterDatasetKey,
+		string localDatasetKey,
+		CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		return Task.FromResult(AuthorizationResult.Authorized);
+	}
 	public async Task<SynchronizeResponse> Synchronize(SynchronizeRequest request, CancellationToken cancellationToken = default)
 	{
-		MasterDtos.SynchronizeResponse result = await _masterService.Synchronize(new MasterDtos.SynchronizeRequest
+		await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
+		MasterDtos.SynchronizeResponse result = await scope.ServiceProvider.GetRequiredService<IMasterService>().Synchronize(new MasterDtos.SynchronizeRequest
 		{
 			Container = request.Container,
 		}, cancellationToken).ConfigureAwait(false);
@@ -32,7 +43,8 @@ internal sealed class LocalMasterAdapter : IMasterAdapter
 
 	public async Task<DownloadResponse> Download(DownloadRequest request, CancellationToken cancellationToken = default)
 	{
-		MasterDtos.DownloadResponse result = await _masterService.Download(new MasterDtos.DownloadRequest
+		await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
+		MasterDtos.DownloadResponse result = await scope.ServiceProvider.GetRequiredService<IMasterService>().Download(new MasterDtos.DownloadRequest
 		{
 			MasterDatasetKey = request.MasterDatasetKey,
 			LocalDatasetKey = request.LocalDatasetKey,
@@ -43,7 +55,8 @@ internal sealed class LocalMasterAdapter : IMasterAdapter
 
 	public async Task<AcknowledgeResponse> Acknowledge(AcknowledgeRequest request, CancellationToken cancellationToken = default)
 	{
-		MasterDtos.AcknowledgeResponse result = await _masterService.Acknowledge(new MasterDtos.AcknowledgeRequest
+		await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
+		MasterDtos.AcknowledgeResponse result = await scope.ServiceProvider.GetRequiredService<IMasterService>().Acknowledge(new MasterDtos.AcknowledgeRequest
 		{
 			MasterDatasetKey = request.MasterDatasetKey,
 			LocalDatasetKey = request.LocalDatasetKey,

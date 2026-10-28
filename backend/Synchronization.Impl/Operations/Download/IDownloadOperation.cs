@@ -1,3 +1,4 @@
+using Exchange.Models.Synchronizations;
 using Synchronization.Contracts.Adapters.Master;
 
 namespace Synchronization.Impl.Operations.Download;
@@ -14,5 +15,5 @@ namespace Synchronization.Impl.Operations.Download;
 /// </summary>
 internal interface IDownloadOperation
 {
-	public Task<long> Run(DownloadRequest command, CancellationToken cancellationToken = default);
+	public Task<long> Run(DownloadRequest command, SyncContainer pending, CancellationToken cancellationToken = default);
 }

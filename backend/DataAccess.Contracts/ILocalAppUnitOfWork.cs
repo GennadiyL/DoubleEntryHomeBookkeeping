@@ -1,3 +1,6 @@
+using Business.Models.Entities.Config;
+using Business.Models.Entities.Synchronizations;
+
 namespace DataAccess.Contracts;
 
 /// <summary>
@@ -7,9 +10,12 @@ namespace DataAccess.Contracts;
 /// Its repositories must use the same context as its transaction operations.
 /// Implementations retain scoped lifetime and lazy repository resolution.
 /// The contract exposes business models without EF Core dependencies.
-/// It does not select database files or create dependency scopes.
-/// Infrastructure registers the matching provider implementation.
+/// Snapshot preparation binds an unused scope to a supplied candidate database.
+/// Activation atomically copies a prepared snapshot into the active Local database.
 /// </summary>
 public interface ILocalAppUnitOfWork : IAppUnitOfWork
 {
+	public Task OpenSnapshot(string snapshotPath, CancellationToken cancellationToken = default);
+	public Task ReplaceLocalState(LocalConfig configuration, LocalJson pending, CancellationToken cancellationToken = default);
+	public Task InstallSnapshot(string snapshotPath, CancellationToken cancellationToken = default);
 }

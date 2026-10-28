@@ -1,3 +1,4 @@
+using Business.Models.Enums;
 using Synchronization.Contracts.Adapters.Master;
 
 namespace Synchronization.Contracts.Adapters;
@@ -15,6 +16,17 @@ namespace Synchronization.Contracts.Adapters;
 /// </summary>
 public interface IMasterAdapter
 {
+	/// <summary>
+	/// Checks provider authorization before new Local changes are captured.
+	/// Missing, expired or rejected tokens return LoginRequired; valid authorization returns Authorized.
+	/// Network and server failures use MasterRequestException; cancellation and dataset access denial remain exceptions.
+	/// Every protected provider request must independently enforce authorization afterward.
+	/// </summary>
+	public Task<AuthorizationResult> CheckAuthorization(
+		string masterDatasetKey,
+		string localDatasetKey,
+		CancellationToken cancellationToken = default);
+
 	/// <summary>
 	/// Processes every submitted batch in order, skipping batches already applied, and returns the Master revision observed after processing.
 	/// Holds exclusive access for the complete call; an occupied Master is rejected before database access rather than queued.

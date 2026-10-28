@@ -42,6 +42,7 @@ public interface IAppUnitOfWork : IUnitOfWork
 	public ISystemConfigRepository SystemConfigRepo { get; }
 
 	public ILocalConfigRepository LocalConfigRepo { get; }
+	public ILocalJsonRepository LocalJsonRepo { get; }
 	public ILocalRegistrationRepository LocalRegistrationRepo { get; }
 
 	public ILocalSyncBatchRepository LocalSyncBatchRepo { get; }

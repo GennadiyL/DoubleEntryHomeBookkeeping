@@ -1,3 +1,4 @@
+using LocalJsonEntity = Business.Models.Entities.Synchronizations.LocalJson;
 using LocalSyncBatchEntity = Business.Models.Entities.Synchronizations.LocalSyncBatch;
 using LocalRegistrationEntity = Business.Models.Entities.Synchronizations.LocalRegistration;
 using Business.Core.Entities;
@@ -107,6 +108,7 @@ internal class AppMapper : IMapper
 		TemplateGroupEntity value => Map(value),
 		TransactionEntity value => Map(value),
 		TransactionEntryEntity value => Map(value),
+		LocalJsonEntity value => Map(value),
 		LocalConfigEntity value => Map(value),
 		LocalSyncBatchEntity value => Map(value),
 		LocalRegistrationEntity value => Map(value),
@@ -133,6 +135,7 @@ internal class AppMapper : IMapper
 		TemplateGroup value => Map(value, cache),
 		Transaction value => Map(value, cache),
 		TransactionEntry value => Map(value, cache),
+		LocalJson value => Map(value, cache),
 		LocalConfig value => Map(value, cache),
 		LocalSyncBatch value => Map(value, cache),
 		LocalRegistration value => Map(value, cache),
@@ -829,6 +832,27 @@ internal class AppMapper : IMapper
 		cache.Add(value, mapped);
 		mapped.Transaction = value.Transaction is null ? null! : Map(value.Transaction, cache);
 		mapped.Account = value.Account is null ? null! : Map(value.Account, cache);
+		return mapped;
+	}
+
+	private static LocalJson Map(LocalJsonEntity value) => new()
+	{
+		Id = value.Id,
+		Json = value.Json
+	};
+
+	private static LocalJsonEntity Map(LocalJson value, Dictionary<IDalEntity, IBaseEntity> cache)
+	{
+		if (cache.TryGetValue(value, out IBaseEntity? existing))
+		{
+			return (LocalJsonEntity)existing;
+		}
+		LocalJsonEntity mapped = new()
+		{
+			Id = value.Id,
+			Json = value.Json
+		};
+		cache.Add(value, mapped);
 		return mapped;
 	}
 

@@ -68,7 +68,7 @@ public sealed class ElementsCombineElementsServiceTests<TGroup, TElement, TServi
 		services.AddBusinessModule();
 		services.AddSharedMockModule();
 		services.AddScoped<IAppUnitOfWork>(_ => _unitOfWork);
-		_provider = services.BuildServiceProvider(validateScopes: true);
+		_provider = services.BuildServiceProvider(true);
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<TService>();
 		_group = new TGroup { Id = Guid.NewGuid(), Name = "Group" };

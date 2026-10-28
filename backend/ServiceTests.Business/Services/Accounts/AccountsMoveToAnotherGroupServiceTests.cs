@@ -44,7 +44,7 @@ public sealed class AccountsMoveToAnotherGroupServiceTests
 		services.AddScoped<ICumulativeAmountCommand>(_ => Substitute.For<ICumulativeAmountCommand>());
 		services.AddSharedMockModule();
 		services.AddScoped<IAppUnitOfWork>(_ => _unitOfWork);
-		_provider = services.BuildServiceProvider(validateScopes: true);
+		_provider = services.BuildServiceProvider(true);
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<IAccountService>();
 		_destination = new AccountGroup { Id = Guid.NewGuid(), Name = "Destination" };

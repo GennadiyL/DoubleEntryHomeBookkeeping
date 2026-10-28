@@ -44,6 +44,7 @@ public abstract class SqLiteAppDbContext : AppDbContext
 		modelBuilder.Entity<TransactionEntry>().ToTable(nameof(TransactionEntry));
 		modelBuilder.Entity<SystemConfig>().ToTable(nameof(SystemConfig));
 		modelBuilder.Entity<LocalConfig>().ToTable(nameof(LocalConfig));
+		modelBuilder.Entity<LocalJson>().ToTable(nameof(LocalJson));
 		modelBuilder.Entity<SystemConfig>().HasOne<Currency>().WithMany().HasForeignKey(config => config.BaseCurrencyId);
 		modelBuilder.Entity<LocalRegistration>().ToTable(nameof(LocalRegistration));
 		modelBuilder.Entity<LocalRegistration>().HasIndex(entity => entity.LocalDatasetKey).IsUnique();

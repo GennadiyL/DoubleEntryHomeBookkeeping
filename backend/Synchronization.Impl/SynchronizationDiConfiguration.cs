@@ -1,3 +1,5 @@
+using Synchronization.Contracts.Services;
+using Synchronization.Impl.Services;
 using Synchronization.Contracts.Adapters;
 using Synchronization.Impl.Adapters;
 using Synchronization.Impl.Operations.Acknowledge;
@@ -24,6 +26,8 @@ public static class SynchronizationDiConfiguration
 
 	public static void AddSynchronizationModule(this IServiceCollection services)
 	{
+		services.AddSingleton<SynchronizationGate>();
+		services.AddScoped<ISynchronizationService, SynchronizationService>();
 		services.AddScoped<ICaptureChangesOperation, CaptureChangesOperation>();
 		services.AddScoped<IAcceptCaptureOperation, AcceptCaptureOperation>();
 		services.AddScoped<IDownloadOperation, DownloadOperation>();

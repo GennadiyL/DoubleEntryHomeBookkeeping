@@ -49,7 +49,7 @@ public sealed class AccountsAddServiceTests
 		services.AddScoped<ICumulativeAmountCommand>(_ => Substitute.For<ICumulativeAmountCommand>());
 		services.AddSharedMockModule();
 		services.AddScoped<IAppUnitOfWork>(_ => _unitOfWork);
-		_provider = services.BuildServiceProvider(validateScopes: true);
+		_provider = services.BuildServiceProvider(true);
 		_scope = _provider.CreateScope();
 		_service = _scope.ServiceProvider.GetRequiredService<IAccountService>();
 		_group = new AccountGroup { Id = Guid.NewGuid(), Name = "Group" };

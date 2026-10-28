@@ -43,6 +43,7 @@ public abstract class AppUnitOfWork : UnitOfWork<AppDbContext>, IAppUnitOfWork
 	public ITransactionRepository TransactionRepo => ServiceProvider.Value.GetRequiredKeyedService<ITransactionRepository>(_databaseKey);
 	public ITransactionEntryRepository TransactionEntryRepo => ServiceProvider.Value.GetRequiredKeyedService<ITransactionEntryRepository>(_databaseKey);
 	public ISystemConfigRepository SystemConfigRepo => ServiceProvider.Value.GetRequiredKeyedService<ISystemConfigRepository>(_databaseKey);
+	public ILocalJsonRepository LocalJsonRepo => ServiceProvider.Value.GetRequiredKeyedService<ILocalJsonRepository>(_databaseKey);
 	public ILocalConfigRepository LocalConfigRepo => ServiceProvider.Value.GetRequiredKeyedService<ILocalConfigRepository>(_databaseKey);
 	public ILocalRegistrationRepository LocalRegistrationRepo => ServiceProvider.Value.GetRequiredKeyedService<ILocalRegistrationRepository>(_databaseKey);
 	public ILocalSyncBatchRepository LocalSyncBatchRepo => ServiceProvider.Value.GetRequiredKeyedService<ILocalSyncBatchRepository>(_databaseKey);

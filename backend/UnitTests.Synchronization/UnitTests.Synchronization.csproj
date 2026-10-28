@@ -8,7 +8,7 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
         <PackageReference Include="NSubstitute" Version="5.3.0" />
         <PackageReference Include="NUnit" Version="4.4.0" />
         <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
@@ -17,6 +17,11 @@
     <ItemGroup>
         <ProjectReference Include="..\Shared.Impl\Shared.Impl.csproj" />
         <ProjectReference Include="..\Synchronization.Impl\Synchronization.Impl.csproj" />
+        <ProjectReference Include="..\DataAccess.EntityFramework.SqLite\DataAccess.EntityFramework.SqLite.csproj" />
+        <ProjectReference Include="..\Master.Impl\Master.Impl.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <None Include="..\DataAccess.EntityFramework.SqLite\Assets\*.sql" Link="SqlAssets\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
 </Project>

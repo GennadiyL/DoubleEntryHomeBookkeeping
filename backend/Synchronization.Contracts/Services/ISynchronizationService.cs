@@ -7,8 +7,8 @@ namespace Synchronization.Contracts.Services;
 /// Checks authorization before preparing new changes for remote submission.
 /// Retains original batch identities and omits empty batches from the saved document.
 /// Owns capture, publication, download, installation and acknowledgement sequencing.
-/// Resumes durable pending work, including acknowledgement after installation.
-/// Clears saved synchronization data only after acknowledgement succeeds.
+/// Restarts capture and submission on each attempt while preserving saved batch identities.
+/// Installation removes receipted batches and retains the container with its installed revision.
 /// Cancellation respects atomic Local persistence and installation boundaries.
 /// Registered Local copies can submit pending changes regardless of inactivity.
 /// Local settings remain outside synchronized business content.

@@ -1,4 +1,4 @@
-namespace Synchronization.Contracts.Services.Synchronizations;
+namespace Synchronization.Contracts.Services.Diagnostics;
 
 /// <summary>
 /// Describes an observable setup or synchronization outcome.
