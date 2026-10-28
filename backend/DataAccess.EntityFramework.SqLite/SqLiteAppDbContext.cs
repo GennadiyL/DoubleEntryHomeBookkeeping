@@ -25,6 +25,11 @@ public abstract class SqLiteAppDbContext : AppDbContext
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		base.OnModelCreating(modelBuilder);
+		ConfigureModel(modelBuilder);
+	}
+
+	internal static void ConfigureModel(ModelBuilder modelBuilder)
+	{
 		modelBuilder.Entity<Account>().ToTable(nameof(Account));
 		modelBuilder.Entity<AccountGroup>().ToTable(nameof(AccountGroup));
 		modelBuilder.Entity<Category>().ToTable(nameof(Category));

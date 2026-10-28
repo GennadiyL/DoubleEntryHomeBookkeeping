@@ -202,7 +202,7 @@ public sealed partial class MainWindow : IDisposable
 
 	private async void SelectSidebarItem(string name)
 	{
-		foreach (var item in _navigation)
+		foreach (KeyValuePair<string, (Button Button, Image Icon)> item in _navigation)
 		{
 			bool selected = item.Key == name;
 			item.Value.Button.Background = selected ? (Brush)Root.Resources["SidebarSelection"] : null;

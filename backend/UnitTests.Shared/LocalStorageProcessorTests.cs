@@ -44,9 +44,9 @@ public class LocalStorageProcessorTests
 	[Test]
 	public async Task RoundTrip_PreservesCallerStreamsAndUsesTheirCurrentPositions()
 	{
-		using var source = new MemoryStream([9, 1, 2, 3]);
+		using MemoryStream source = new MemoryStream([9, 1, 2, 3]);
 		source.Position = 1;
-		using var destination = new MemoryStream();
+		using MemoryStream destination = new MemoryStream();
 		destination.WriteByte(8);
 		await _storage.Write("data.bin", source, false);
 		await _storage.Read("data.bin", destination);
@@ -62,9 +62,9 @@ public class LocalStorageProcessorTests
 	[Test]
 	public async Task Read_AcceptsFileStreamAndLeavesItOpen()
 	{
-		using var source = new MemoryStream([1, 2, 3]);
+		using MemoryStream source = new MemoryStream([1, 2, 3]);
 		await _storage.Write("data.bin", source, false);
-		await using var destination = File.Create(Path.Combine(_root, "copy.bin"));
+		await using FileStream destination = File.Create(Path.Combine(_root, "copy.bin"));
 		await _storage.Read("data.bin", destination);
 		Assert.That(destination.Length, Is.EqualTo(3));
 		Assert.That(destination.CanWrite, Is.True);
@@ -74,7 +74,7 @@ public class LocalStorageProcessorTests
 	public async Task Write_RejectsOverwriteWithoutChangingOriginal_AndTruncatesWhenAllowed()
 	{
 		await File.WriteAllBytesAsync(Path.Combine(_root, "data.bin"), [1, 2, 3]);
-		using var source = new MemoryStream([4]);
+		using MemoryStream source = new MemoryStream([4]);
 		Assert.ThrowsAsync<IOException>(() => _storage.Write("data.bin", source, false));
 		Assert.That(await File.ReadAllBytesAsync(Path.Combine(_root, "data.bin")),
 			Is.EqualTo(new byte[] { 1, 2, 3 }));
@@ -104,7 +104,7 @@ public class LocalStorageProcessorTests
 	[Test]
 	public void MissingRead_Throws_AndKeepsDestinationOpen()
 	{
-		using var destination = new MemoryStream();
+		using MemoryStream destination = new MemoryStream();
 		Assert.ThrowsAsync<FileNotFoundException>(() => _storage.Read("missing.bin", destination));
 		Assert.That(destination.CanWrite, Is.True);
 	}
@@ -145,13 +145,13 @@ public class LocalStorageProcessorTests
 	[TestCase(false)]
 	public void Exists_PropagatesAccessAndIoErrors(bool accessDenied)
 	{
-		var files = Substitute.For<IFileService>();
+		IFileService? files = Substitute.For<IFileService>();
 		files.GetAttributes(_root).Returns(FileAttributes.Directory);
 		Exception error = accessDenied ? new UnauthorizedAccessException() : new IOException();
 		files.GetAttributes(Path.Combine(_root, "data.bin")).Returns(_ => throw error);
-		using var provider = CreateProvider(files);
-		using var scope = provider.CreateScope();
-		var storage = scope.ServiceProvider.GetRequiredService<IStorageProcessorFactory>().CreateProcessor();
+		using ServiceProvider provider = CreateProvider(files);
+		using IServiceScope scope = provider.CreateScope();
+		IStorageProcessor storage = scope.ServiceProvider.GetRequiredService<IStorageProcessorFactory>().CreateProcessor();
 		Assert.That(Assert.CatchAsync(async () => await storage.Exists("data.bin")), Is.SameAs(error));
 	}
 
@@ -159,8 +159,8 @@ public class LocalStorageProcessorTests
 	public void PreCancelledOperations_DoNotReadWriteOrDelete()
 	{
 		File.WriteAllBytes(Path.Combine(_root, "data.bin"), [1, 2]);
-		using var stream = new MemoryStream([3]);
-		var token = new CancellationToken(true);
+		using MemoryStream stream = new MemoryStream([3]);
+		CancellationToken token = new CancellationToken(true);
 		Assert.ThrowsAsync<OperationCanceledException>(() => _storage.Read("data.bin", stream, null, token));
 		Assert.ThrowsAsync<OperationCanceledException>(() => _storage.Write("data.bin", stream, true, null, token));
 		Assert.ThrowsAsync<OperationCanceledException>(() => _storage.Delete("data.bin", null, token));
@@ -270,7 +270,7 @@ public class LocalStorageProcessorTests
 
 	private ServiceProvider CreateProvider(IFileService? fileService = null, string? root = null)
 	{
-		var services = new ServiceCollection();
+		ServiceCollection services = new ServiceCollection();
 		services.AddSharedModule();
 		services.AddSingleton<IConfiguration>(_ => CreateConfiguration(root ?? _root));
 		if (fileService != null)

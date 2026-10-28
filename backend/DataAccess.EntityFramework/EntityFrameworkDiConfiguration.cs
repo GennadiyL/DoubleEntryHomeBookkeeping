@@ -29,6 +29,11 @@ public static class EntityFrameworkDiConfiguration
 		AddRepositories(services, typeof(IMasterAppUnitOfWork));
 	}
 
+	public static void AddFactoryDataAccessEntityFrameworkModule(this IServiceCollection services)
+	{
+		AddRepositories(services, typeof(IUnitOfWorkFactory));
+	}
+
 	private static void AddRepositories(IServiceCollection services, Type databaseKey)
 	{
 		services.TryAddScoped<IMapper, AppMapper>();
@@ -57,9 +62,17 @@ public static class EntityFrameworkDiConfiguration
 	}
 
 	private static void AddRepository<TRepository>(
-		IServiceCollection services, Type databaseKey, Func<AppDbContext, IMapper, TRepository> factory)
+		IServiceCollection services,
+		Type databaseKey,
+		Func<AppDbContext, IMapper, TRepository> factory)
 		where TRepository : class
 	{
+		if (databaseKey == typeof(IUnitOfWorkFactory))
+		{
+			services.AddScoped<Func<AppDbContext, TRepository>>(provider =>
+				context => factory(context, provider.GetRequiredService<IMapper>()));
+			return;
+		}
 		services.AddKeyedScoped<TRepository>(databaseKey, (provider, _) =>
 			factory(provider.GetRequiredKeyedService<AppDbContext>(databaseKey), provider.GetRequiredService<IMapper>()));
 		if (databaseKey == typeof(ILocalAppUnitOfWork))

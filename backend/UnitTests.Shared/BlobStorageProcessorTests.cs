@@ -53,7 +53,7 @@ public sealed class BlobStorageProcessorTests : IDisposable
 	[Test]
 	public async Task Read_CopiesContentAtCurrentPosition_AndKeepsDestinationOpen()
 	{
-		using var destination = new MemoryStream();
+		using MemoryStream destination = new MemoryStream();
 		destination.WriteByte(8);
 		await _storage.Read("data.bin", destination);
 		Assert.That(destination.ToArray(), Is.EqualTo(new byte[] { 8, 1, 2, 3 }));
@@ -65,10 +65,10 @@ public sealed class BlobStorageProcessorTests : IDisposable
 	[TestCase(true)]
 	public async Task Write_UsesSourcePositionAndOverwrite_AndKeepsSourceOpen(bool overwrite)
 	{
-		using var source = new MemoryStream([9, 1, 2]);
+		using MemoryStream source = new MemoryStream([9, 1, 2]);
 		source.Position = 1;
 		await _storage.Write("data.bin", source, overwrite);
-		var request = _handler.Requests.Single();
+		(Uri Uri, HttpMethod Method, byte[] Content, string? IfNoneMatch, string? Authorization, string? LeaseId) request = _handler.Requests.Single();
 		Assert.That(request.Method, Is.EqualTo(HttpMethod.Put));
 		Assert.That(request.Content, Is.EqualTo(new byte[] { 1, 2 }));
 		Assert.That(request.IfNoneMatch, Is.EqualTo(overwrite ? null : "*"));
@@ -79,8 +79,8 @@ public sealed class BlobStorageProcessorTests : IDisposable
 	public void Write_PropagatesConflict_AndKeepsSourceOpen()
 	{
 		_handler.ResponseFactory = _ => BlobStorageTestHandler.Failure(409, "BlobAlreadyExists");
-		using var source = new MemoryStream([1]);
-		var error = Assert.ThrowsAsync<RequestFailedException>(() => _storage.Write("data.bin", source, false));
+		using MemoryStream source = new MemoryStream([1]);
+		RequestFailedException? error = Assert.ThrowsAsync<RequestFailedException>(() => _storage.Write("data.bin", source, false));
 		Assert.That(error!.ErrorCode, Is.EqualTo("BlobAlreadyExists"));
 		Assert.That(source.CanRead, Is.True);
 	}
@@ -108,9 +108,9 @@ public sealed class BlobStorageProcessorTests : IDisposable
 	public void ExistsAndDelete_PropagateStorageFailures(int status, string? code)
 	{
 		_handler.ResponseFactory = _ => BlobStorageTestHandler.Failure(status, code);
-		var existsError = Assert.ThrowsAsync<RequestFailedException>(async () =>
+		RequestFailedException? existsError = Assert.ThrowsAsync<RequestFailedException>(async () =>
 			await _storage.Exists("data.bin"));
-		var deleteError = Assert.ThrowsAsync<RequestFailedException>(() =>
+		RequestFailedException? deleteError = Assert.ThrowsAsync<RequestFailedException>(() =>
 			_storage.Delete("data.bin"));
 		Assert.That(existsError!.Status, Is.EqualTo(status));
 		Assert.That(deleteError!.Status, Is.EqualTo(status));
@@ -120,8 +120,8 @@ public sealed class BlobStorageProcessorTests : IDisposable
 	public void Read_PropagatesMissingObject()
 	{
 		_handler.ResponseFactory = _ => BlobStorageTestHandler.Failure(404, "BlobNotFound");
-		using var destination = new MemoryStream();
-		var error = Assert.ThrowsAsync<RequestFailedException>(() => _storage.Read("data.bin", destination));
+		using MemoryStream destination = new MemoryStream();
+		RequestFailedException? error = Assert.ThrowsAsync<RequestFailedException>(() => _storage.Read("data.bin", destination));
 		Assert.That(error!.ErrorCode, Is.EqualTo("BlobNotFound"));
 		Assert.That(destination.CanWrite, Is.True);
 	}
@@ -129,8 +129,8 @@ public sealed class BlobStorageProcessorTests : IDisposable
 	[Test]
 	public void PreCancelledOperations_DoNotContactAzure()
 	{
-		using var stream = new MemoryStream([1]);
-		var token = new CancellationToken(true);
+		using MemoryStream stream = new MemoryStream([1]);
+		CancellationToken token = new CancellationToken(true);
 		Assert.ThrowsAsync<OperationCanceledException>(() => _storage.Read("data.bin", stream, null, token));
 		Assert.ThrowsAsync<OperationCanceledException>(() => _storage.Write("data.bin", stream, true, null, token));
 		Assert.ThrowsAsync<OperationCanceledException>(() => _storage.Delete("data.bin", null, token));
@@ -208,7 +208,7 @@ public sealed class BlobStorageProcessorTests : IDisposable
 	{
 		await using BlobStorageLock ownership = CreateLock();
 		_handler.ResponseFactory = _ => BlobStorageTestHandler.Failure(412, "LeaseIdMismatchWithBlobOperation");
-		var error = Assert.ThrowsAsync<RequestFailedException>(() => RunOperation(operation, ownership));
+		RequestFailedException? error = Assert.ThrowsAsync<RequestFailedException>(() => RunOperation(operation, ownership));
 		Assert.That(error!.ErrorCode, Is.EqualTo("LeaseIdMismatchWithBlobOperation"));
 	}
 
@@ -282,7 +282,7 @@ public sealed class BlobStorageProcessorTests : IDisposable
 
 	private ServiceProvider CreateProvider()
 	{
-		var services = new ServiceCollection();
+		ServiceCollection services = new ServiceCollection();
 		services.AddSharedModule();
 		services.AddSharedAzureModule();
 		services.AddScoped<IStorageProcessorFactory>(_ =>

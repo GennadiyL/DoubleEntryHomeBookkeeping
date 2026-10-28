@@ -222,7 +222,7 @@ internal sealed partial class CatalogView : UserControl
 					}
 				}
 
-				var roots = data.Groups.Where(g => g.IsRoot).Select(g => _nodes[g.Id]).ToList();
+				List<TreeGridNode> roots = data.Groups.Where(g => g.IsRoot).Select(g => _nodes[g.Id]).ToList();
 				if (!Tree.ItemsSource.SequenceEqual(roots))
 				{
 					Tree.ItemsSource = new ObservableCollection<TreeGridNode>(roots);

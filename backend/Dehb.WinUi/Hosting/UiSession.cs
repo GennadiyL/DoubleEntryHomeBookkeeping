@@ -97,8 +97,8 @@ internal sealed partial class UiSession : IDisposable
 		Windows.Graphics.SizeInt32? fixedSize = null;
 		if (fixedEditor)
 		{
-			var settings = ((App)Application.Current).UiSettings;
-			var popup = group ? settings.GroupEditor : catalog == "Accounts" ? settings.AccountEditor : settings.ElementEditor;
+			UiSettings settings = ((App)Application.Current).UiSettings;
+			UiEditorPopupSettings popup = group ? settings.GroupEditor : catalog == "Accounts" ? settings.AccountEditor : settings.ElementEditor;
 			fixedSize = new Windows.Graphics.SizeInt32(popup.Width, popup.Height);
 		}
 		using EditorWindow window = new(owner, Coordinator, catalog + (group ? ".GroupEditor" : ".ElementEditor"), (id.HasValue ? "Edit " : "Add ") + (group ? "group" : catalog), fixedSize);

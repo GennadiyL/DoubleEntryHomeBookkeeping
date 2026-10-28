@@ -86,7 +86,9 @@ internal sealed class LocalAppUnitOfWork : AppUnitOfWork, ILocalAppUnitOfWork
 		}
 		await using SqliteConnection source = new(new SqliteConnectionStringBuilder
 		{
-			DataSource = Path.GetFullPath(snapshotPath), Mode = SqliteOpenMode.ReadOnly, Pooling = false
+			DataSource = Path.GetFullPath(snapshotPath),
+			Mode = SqliteOpenMode.ReadOnly,
+			Pooling = false
 		}.ToString());
 		await source.OpenAsync(cancellationToken);
 		await Context.Database.OpenConnectionAsync(cancellationToken);

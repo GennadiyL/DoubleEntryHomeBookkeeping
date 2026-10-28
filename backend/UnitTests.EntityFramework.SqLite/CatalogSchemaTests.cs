@@ -18,6 +18,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using Shared.Impl;
 using System.Text.Json;
+using Business.Contracts.Services.Currencies;
 
 namespace UnitTests.EntityFramework.SqLite;
 
@@ -144,7 +145,7 @@ public sealed class CatalogSchemaTests
 		using (IServiceScope scope = _provider.CreateScope())
 		{
 			ICurrencyService service = scope.ServiceProvider.GetRequiredService<ICurrencyService>();
-			var profile = (await service.GetAvailableCurrencies()).Single(item => item.Code == "EUR");
+			AvailableCurrencyInfo profile = (await service.GetAvailableCurrencies()).Single(item => item.Code == "EUR");
 			englishName = profile.EnglishName;
 			symbol = profile.Symbol;
 			id = await service.Add("EUR", 40m);
@@ -152,16 +153,16 @@ public sealed class CatalogSchemaTests
 		using (IServiceScope scope = _provider.CreateScope())
 		{
 			ICurrencyService service = scope.ServiceProvider.GetRequiredService<ICurrencyService>();
-			var currency = await service.GetById(id);
+			CurrencyInfo currency = await service.GetById(id);
 			Assert.That((currency.Code, currency.Name, currency.EnglishName, currency.Symbol), Is.EqualTo(("EUR", "EUR", englishName, symbol)));
 			await service.Update(id, new Business.Contracts.Services.Currencies.CurrencyParam { Name = "Euro" });
 		}
 		using (IServiceScope scope = _provider.CreateScope())
 		{
 			ICurrencyService service = scope.ServiceProvider.GetRequiredService<ICurrencyService>();
-			var currency = await service.GetById(id);
+			CurrencyInfo currency = await service.GetById(id);
 			Assert.That((currency.Code, currency.Name, currency.EnglishName, currency.Symbol), Is.EqualTo(("EUR", "Euro", englishName, symbol)));
-			var rates = await scope.ServiceProvider.GetRequiredService<ICurrencyRateService>().GetRates(id);
+			List<CurrencyRateInfo> rates = await scope.ServiceProvider.GetRequiredService<ICurrencyRateService>().GetRates(id);
 			Assert.That(rates.Single().Rate, Is.EqualTo(40m));
 		}
 	}
@@ -192,7 +193,7 @@ public sealed class CatalogSchemaTests
 			Assert.That((await unit.CurrencyRepo.GetById(deletedId))!.DeleteRevision, Is.Null);
 			Assert.That((await unit.CurrencyRepo.GetAll()).Count(currency => currency.Code == "EUR"), Is.EqualTo(1));
 			Assert.That((await unit.CurrencyRateRepo.GetAll()).Count(rate => rate.CurrencyId == deletedId), Is.EqualTo(1));
-			var rates = await scope.ServiceProvider.GetRequiredService<ICurrencyRateService>().GetRates(newId);
+			List<CurrencyRateInfo> rates = await scope.ServiceProvider.GetRequiredService<ICurrencyRateService>().GetRates(newId);
 			Assert.That(rates.Single().Rate, Is.EqualTo(54.2654m));
 			Assert.That(rates.Single().IsInitial, Is.True);
 			Assert.ThrowsAsync<Business.Models.Exceptions.InvalidCurrencyException>(async () => await service.Add("EUR", 1m));
