@@ -31,7 +31,7 @@ public static class LocalSqLiteDiConfiguration
 		services.AddKeyedScoped<AppDbContext>(typeof(ILocalAppUnitOfWork),
 			(provider, _) => provider.GetRequiredService<LocalAppDbContext>());
 		services.AddKeyedScoped<ICumulativeAmountCommand>(typeof(ILocalAppUnitOfWork),
-			(provider, _) => new CumulativeAmountCommand(provider.GetRequiredService<LocalAppDbContext>()));
+			(provider, _) => new CumulativeAmountCommand(provider.GetRequiredService<IUnitOfWorkFactory>()));
 
 		services.AddScoped<AppDbContext>(provider => provider.GetRequiredService<LocalAppDbContext>());
 		services.AddScoped<ICumulativeAmountCommand>(provider =>

@@ -18,10 +18,7 @@ internal sealed class BlobStorageProcessor : IStorageProcessor
 {
 	private readonly BlobContainerClient _blobContainerClient;
 
-	public BlobStorageProcessor(BlobContainerClient blobContainerClient)
-	{
-		_blobContainerClient = blobContainerClient;
-	}
+	public BlobStorageProcessor(BlobContainerClient blobContainerClient) => _blobContainerClient = blobContainerClient;
 
 	public async Task Read(string objectName, Stream destination, IStorageLock? storageLock = null,
 		CancellationToken cancellationToken = default)

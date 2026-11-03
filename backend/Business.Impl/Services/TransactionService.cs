@@ -10,7 +10,7 @@ using Business.Models.Entities.Config;
 using Business.Models.Enums;
 using Business.Models.Exceptions;
 using DataAccess.Contracts;
-using DataAccess.Contracts.Queries;
+using DataAccess.Contracts.Dtos;
 using DataAccess.Core.Entities;
 using Shared.Contracts;
 

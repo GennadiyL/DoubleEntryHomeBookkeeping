@@ -1,7 +1,10 @@
+using Shared.Contracts.Config;
+
 namespace Shared.Contracts;
 
 public interface ISharedContext
 {
+	public IConfigurationService ConfigurationService { get; }
 	public IDateTimeService DateTimeService { get; }
 	public ITlsService TlsService { get; }
 	public ILogService LogService { get; }

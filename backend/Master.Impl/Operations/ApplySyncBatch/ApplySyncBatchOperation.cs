@@ -6,7 +6,6 @@ using Business.Models.Entities.Interfaces;
 using Business.Models.Entities.Synchronizations;
 using Business.Models.Exceptions;
 using DataAccess.Contracts;
-using DataAccess.Contracts.Commands;
 using DataAccess.Core.Behaviors;
 using Exchange.Models.Enums;
 using Exchange.Models.Synchronizations;
@@ -22,29 +21,40 @@ namespace Master.Impl.Operations.ApplySyncBatch;
 /// Repairs dependencies, hierarchy and naming before writing accepted rows.
 /// Transaction and template entries remain indivisible content aggregates.
 /// Content changes receive the caller's allocated revision; ordering alone does not.
-/// Saves through the Master unit of work inside the caller-owned transaction.
+/// Resolves the Master unit from the scoped factory using the supplied dataset key.
+/// The cached unit shares the transaction already opened by the caller.
 /// Receipt creation, deduplication, publication and transaction completion are excluded.
 /// </summary>
 internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 {
-	private readonly IMasterAppUnitOfWork _unitOfWork;
 	private readonly ISharedContext _sharedContext;
-	private readonly ICumulativeAmountCommand _cumulativeAmountCommand;
+	private readonly IUnitOfWorkFactory _unitOfWorkFactory;
+	private IMasterUnitOfWork _unitOfWork = null!;
 
-	public ApplySyncBatchOperation(ISharedContext sharedContext, IMasterAppUnitOfWork unitOfWork,
-		ICumulativeAmountCommand cumulativeAmountCommand)
+	public ApplySyncBatchOperation(ISharedContext sharedContext, IUnitOfWorkFactory unitOfWorkFactory)
 	{
 		_sharedContext = sharedContext;
-		_unitOfWork = unitOfWork;
-		_cumulativeAmountCommand = cumulativeAmountCommand;
+		_unitOfWorkFactory = unitOfWorkFactory;
 	}
 
-	public async Task Run(SyncBatch syncBatch, Guid localRegistrationId, long revision,
+	public async Task Run(
+		string masterDatasetKey,
+		SyncBatch syncBatch,
+		Guid localRegistrationId,
+		long revision,
 		CancellationToken cancellationToken = default)
 	{
 		ValidateBatch(syncBatch, localRegistrationId, revision, cancellationToken);
-		SystemConfig configuration = await LoadConfiguration(localRegistrationId, revision, cancellationToken);
-		Dictionary<long, Guid> sources = await LoadRevisionSources(syncBatch, localRegistrationId, revision, cancellationToken);
+		_unitOfWork = _unitOfWorkFactory.CreateMaster(masterDatasetKey);
+		SystemConfig configuration = await LoadConfiguration(
+			localRegistrationId,
+			revision,
+			cancellationToken);
+		Dictionary<long, Guid> sources = await LoadRevisionSources(
+			syncBatch,
+			localRegistrationId,
+			revision,
+			cancellationToken);
 		Dictionary<string, SyncEntitySet> sets = await LoadSets(cancellationToken);
 		(ICollection<TransactionEntry> transactions, ICollection<TemplateEntry> templates) = await LoadEntries(cancellationToken);
 		AttachEntries(sets, transactions, templates);
@@ -52,7 +62,11 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		ValidateResult(sets, configuration, syncBatch.Priority, cancellationToken);
 		List<(SyncEntitySet Set, SyncMergeRow Row)> changed = PrepareChanges(sets, revision);
 		ValidateEntryOwners(changed, transactions, templates);
-		await PersistChanges(changed, transactions, templates, cancellationToken);
+		await PersistChanges(
+			changed,
+			transactions,
+			templates,
+			cancellationToken);
 	}
 
 	private static void ValidateBatch(SyncBatch batch, Guid localRegistrationId, long revision, CancellationToken cancellationToken)
@@ -66,7 +80,10 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		}
 	}
 
-	private async Task<SystemConfig> LoadConfiguration(Guid localRegistrationId, long revision, CancellationToken cancellationToken)
+	private async Task<SystemConfig> LoadConfiguration(
+		Guid localRegistrationId,
+		long revision,
+		CancellationToken cancellationToken)
 	{
 		if (await _unitOfWork.LocalRegistrationRepo.GetById(localRegistrationId, cancellationToken) is null)
 		{
@@ -80,8 +97,11 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		return configurations.Single();
 	}
 
-	private async Task<Dictionary<long, Guid>> LoadRevisionSources(SyncBatch batch, Guid localRegistrationId,
-		long revision, CancellationToken cancellationToken)
+	private async Task<Dictionary<long, Guid>> LoadRevisionSources(
+		SyncBatch batch,
+		Guid localRegistrationId,
+		long revision,
+		CancellationToken cancellationToken)
 	{
 		ICollection<LocalSyncBatch> receipts = await _unitOfWork.LocalSyncBatchRepo.GetAll(cancellationToken);
 		if (receipts.Any(receipt => receipt.Revision >= revision ||
@@ -100,8 +120,7 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		return sets;
 	}
 
-	private async Task<(ICollection<TransactionEntry> Transactions, ICollection<TemplateEntry> Templates)> LoadEntries(
-		CancellationToken cancellationToken)
+	private async Task<(ICollection<TransactionEntry> Transactions, ICollection<TemplateEntry> Templates)> LoadEntries(CancellationToken cancellationToken)
 	{
 		ICollection<TransactionEntry> transactions = await _unitOfWork.TransactionEntryRepo.GetAll(cancellationToken);
 		ICollection<TemplateEntry> templates = await _unitOfWork.TemplateEntryRepo.GetAll(cancellationToken);
@@ -162,7 +181,7 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 
 	private static bool StampChanges(SyncEntitySet set, SyncMergeRow row, long revision)
 	{
-		bool contentChanged = set.ContentChanged(row) || row.IsLive != (row.OriginalDeleteRevision is null);
+		bool contentChanged = set.ContentChanged(row) || row.IsLive != row.OriginalDeleteRevision is null;
 		row.Tracking.EditRevision = contentChanged ? revision : row.OriginalEditRevision;
 		row.Tracking.DeleteRevision = row.IsLive ? null : contentChanged ? revision : row.OriginalDeleteRevision;
 		row.Tracking.ModificationType = StoredModificationType.None;
@@ -191,59 +210,90 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		_ => false
 	};
 
-	private async Task PersistChanges(List<(SyncEntitySet Set, SyncMergeRow Row)> changed,
-		ICollection<TransactionEntry> transactions, ICollection<TemplateEntry> templates, CancellationToken cancellationToken)
+	private async Task PersistChanges(
+		List<(SyncEntitySet Set, SyncMergeRow Row)> changed,
+		ICollection<TransactionEntry> transactions,
+		ICollection<TemplateEntry> templates,
+		CancellationToken cancellationToken)
 	{
-		await SaveEntities(changed, cancellationToken);
-		HashSet<Guid> affectedAccounts = await SaveEntries(changed, transactions, templates, cancellationToken);
-		await RecalculateAccounts(affectedAccounts, cancellationToken);
+		await SaveEntities(
+			changed,
+			cancellationToken);
+		await SaveEntries(
+			changed,
+			transactions,
+			templates,
+			cancellationToken);
 	}
 
-	private async Task SaveEntities(List<(SyncEntitySet Set, SyncMergeRow Row)> changed, CancellationToken cancellationToken)
+	private async Task SaveEntities(
+		List<(SyncEntitySet Set, SyncMergeRow Row)> changed,
+		CancellationToken cancellationToken)
 	{
-		foreach ((SyncEntitySet set, SyncMergeRow row) in changed) { set.Persist(row); }
+		foreach ((SyncEntitySet set, SyncMergeRow row) in changed)
+		{
+			set.Persist(row);
+		}
 		await _unitOfWork.SaveChanges(cancellationToken);
 	}
 
-	private async Task<HashSet<Guid>> SaveEntries(List<(SyncEntitySet Set, SyncMergeRow Row)> changed,
-		ICollection<TransactionEntry> transactions, ICollection<TemplateEntry> templates, CancellationToken cancellationToken)
+	private async Task SaveEntries(
+		List<(SyncEntitySet Set, SyncMergeRow Row)> changed,
+		ICollection<TransactionEntry> transactions,
+		ICollection<TemplateEntry> templates,
+		CancellationToken cancellationToken)
 	{
 		ILookup<Guid, TransactionEntry> transactionsByParent = transactions.ToLookup(entry => entry.TransactionId);
 		ILookup<Guid, TemplateEntry> templatesByParent = templates.ToLookup(entry => entry.TemplateId);
-		HashSet<Guid> affectedAccounts = new();
 		foreach ((SyncEntitySet set, SyncMergeRow row) in changed)
 		{
-			await SaveAggregateEntries(set, row, transactionsByParent, templatesByParent, affectedAccounts, cancellationToken);
+			await SaveAggregateEntries(
+				set,
+				row,
+				transactionsByParent,
+				templatesByParent,
+				cancellationToken);
 		}
 		await _unitOfWork.SaveChanges(cancellationToken);
-		return affectedAccounts;
 	}
 
-	private async Task SaveAggregateEntries(SyncEntitySet set, SyncMergeRow row,
-		ILookup<Guid, TransactionEntry> transactions, ILookup<Guid, TemplateEntry> templates,
-		HashSet<Guid> affectedAccounts, CancellationToken cancellationToken)
+	private async Task SaveAggregateEntries(
+		SyncEntitySet set,
+		SyncMergeRow row,
+		ILookup<Guid, TransactionEntry> transactions,
+		ILookup<Guid, TemplateEntry> templates,
+		CancellationToken cancellationToken)
 	{
 		if (row.Entity is Transaction transaction)
 		{
-			await SaveTransactionEntries(transaction, transactions[transaction.Id].ToList(), affectedAccounts, cancellationToken);
+			await SaveTransactionEntries(
+				transaction,
+				transactions[transaction.Id].ToList(),
+				cancellationToken);
 		}
 		else if (row.Entity is Template template && set.ContentChanged(row))
 		{
-			await SaveTemplateEntries(template, templates[template.Id].ToList(), cancellationToken);
+			await SaveTemplateEntries(
+				template,
+				templates[template.Id].ToList(),
+				cancellationToken);
 		}
 	}
 
-	private async Task SaveTransactionEntries(Transaction transaction, List<TransactionEntry> old,
-		HashSet<Guid> affectedAccounts, CancellationToken cancellationToken)
+	private async Task SaveTransactionEntries(
+		Transaction transaction,
+		List<TransactionEntry> old,
+		CancellationToken cancellationToken)
 	{
-		affectedAccounts.UnionWith(old.Select(entry => entry.AccountId));
-		affectedAccounts.UnionWith(transaction.Entries.Select(entry => entry.AccountId));
 		await _unitOfWork.TransactionEntryRepo.RemoveRange(
 			old.Where(entry => transaction.Entries.All(current => current.Id != entry.Id)), cancellationToken);
 		SaveCurrentEntries(_unitOfWork.TransactionEntryRepo, transaction.Entries, old.Select(entry => entry.Id).ToHashSet());
 	}
 
-	private async Task SaveTemplateEntries(Template template, List<TemplateEntry> old, CancellationToken cancellationToken)
+	private async Task SaveTemplateEntries(
+		Template template,
+		List<TemplateEntry> old,
+		CancellationToken cancellationToken)
 	{
 		await _unitOfWork.TemplateEntryRepo.RemoveRange(
 			old.Where(entry => template.Entries.All(current => current.Id != entry.Id)), cancellationToken);
@@ -258,11 +308,6 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 			if (oldIds.Contains(entry.Id)) { repository.Update(entry); }
 			else { repository.Add(entry); }
 		}
-	}
-
-	private async Task RecalculateAccounts(HashSet<Guid> affectedAccounts, CancellationToken cancellationToken)
-	{
-		foreach (Guid accountId in affectedAccounts) { await _cumulativeAmountCommand.Recalculate(accountId, cancellationToken); }
 	}
 
 	private Dictionary<string, SyncEntitySet> CreateSets() =>

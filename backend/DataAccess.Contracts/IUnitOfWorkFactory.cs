@@ -15,6 +15,11 @@ public interface IUnitOfWorkFactory
 	public IMasterUnitOfWork CreateMaster(string masterDatasetKey);
 
 	/// <summary>
+	/// Gets the Master copy in an operation-specific directory, including isolated downloads.
+	/// </summary>
+	public IMasterUnitOfWork CreateMaster(string masterDatasetKey, string directoryPath);
+
+	/// <summary>
 	/// Gets the unit of work for an existing snapshot identified by dataset and revision.
 	/// This creates no snapshot file; its lifetime is owned by the factory's dependency scope.
 	/// </summary>

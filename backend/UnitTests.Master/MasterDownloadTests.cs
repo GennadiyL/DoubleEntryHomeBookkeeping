@@ -1,239 +1,164 @@
-using Business.Models.Entities.Config;
-using Business.Models.Entities.Synchronizations;
 using Business.Models.Exceptions;
-using DataAccess.Contracts;
-using DataAccess.EntityFramework.SqLite;
 using Master.Contracts.Services;
 using Master.Contracts.Services.Synchronizations;
-using Master.Impl;
-using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using NSubstitute;
 using NUnit.Framework;
 using Shared.Contracts.Storage;
-using Shared.Impl;
+using NSubstitute;
 
 namespace UnitTests.Master;
 
 /// <summary>
-/// Verifies standalone Master downloads through the public service boundary.
-/// Uses the production SQLite backup and host-selected storage registrations.
-/// Local and Remote modes share a local storage root without Azure dependencies.
-/// Snapshot bytes must retain their revision after subsequent Master changes.
-/// Returned streams survive service-scope disposal and release temporary files.
-/// Invalid requests and busy ownership must prevent snapshot creation.
-/// Controlled persistence failures verify cancellation and cleanup behavior.
-/// Each test owns its database and removes its temporary files during teardown.
+/// Exercises memory-backed downloads from published Master snapshots.
+/// Uses real SQLite metadata and the production Local storage processor.
+/// Download reads the current published revision rather than choosing orphan snapshots.
+/// Parallel requests have isolated directories and do not acquire the Master write lock.
+/// Returned streams outlive their dependency scopes and temporary files.
+/// Validation failures and interrupted transfers must remove working directories.
+/// Missing published snapshots fail rather than silently substituting different data.
+/// Each test owns its persistent files and disposes its providers before cleanup.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001", Justification = "NUnit TearDown disposes the temporary store.")]
 [TestFixture(Category = "Local")]
 public sealed class MasterDownloadTests
 {
-	private DirectoryInfo _directory = null!;
-	private string DatabasePath => Path.Combine(_directory.FullName, "Master_master.db");
+	private MasterTestStore _store = null!;
 
 	[SetUp]
 	public async Task SetUp()
 	{
-		_directory = Directory.CreateTempSubdirectory("dehb-master-download-tests-");
-		await using SqliteConnection connection = new($"Data Source={DatabasePath};Pooling=False");
-		await connection.OpenAsync();
-		foreach (string script in new[] { "001-schema.sql", "002-initial-data.sql" })
-		{
-			await using SqliteCommand command = connection.CreateCommand();
-			command.CommandText = await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory, "SqlAssets", script));
-			await command.ExecuteNonQueryAsync();
-		}
-		using ServiceProvider provider = BuildProvider();
-		using IServiceScope scope = provider.CreateScope();
-		IMasterAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
-		SystemConfig config = (await unit.SystemConfigRepo.GetAll()).Single();
-		config.MasterDatasetKey = "master";
-		config.CurrentRevision = 7;
-		unit.SystemConfigRepo.Update(config);
-		unit.LocalRegistrationRepo.Add(new LocalRegistration { Id = Guid.NewGuid(), LocalDatasetKey = "local" });
-		await unit.SaveChanges();
+		_store = new MasterTestStore();
+		await _store.Initialize(7);
+		_store.Snapshot(7);
 	}
 
 	[TearDown]
-	public void TearDown()
+	public void TearDown() => _store.Dispose();
+
+	[Test]
+	public async Task DownloadReturnsMemoryAndCleansDirectoryBeforeReturning()
 	{
-		if (_directory is not null && Directory.Exists(_directory.FullName))
-		{
-			_directory.Delete(true);
-		}
+		using ServiceProvider provider = _store.CreateProvider();
+		DownloadResponse result = await Download(provider, Request());
+		using Stream content = result.Content;
+		Assert.That(content, Is.TypeOf<MemoryStream>());
+		Assert.That(content.Position, Is.Zero);
+		Assert.That(result.Revision, Is.EqualTo(7));
+		Assert.That(Directory.GetDirectories(_store.TempRoot), Is.Empty);
+		byte[] expected = await File.ReadAllBytesAsync(Path.Combine(_store.DatasetDirectory, "snapshot_7.db"));
+		Assert.That(((MemoryStream)content).ToArray(), Is.EqualTo(expected));
+		await _store.Execute("UPDATE SystemConfig SET CurrentRevision = 8");
+		Assert.That(((MemoryStream)content).ToArray(), Is.EqualTo(expected));
 	}
 
-	[TestCase(false)]
-	[TestCase(true)]
-	public async Task SnapshotSurvivesScopeAndMasterChangesAndDeletesOnDispose(bool remote)
+	[Test]
+	public async Task ParallelDownloadsRemainIndependentWhileMasterIsLocked()
 	{
-		using ServiceProvider provider = BuildProvider(remote);
+		using ServiceProvider provider = _store.CreateProvider();
+		await using IStorageLock access = (await provider.GetRequiredService<IStorageLockFactory>().TryAcquire("Master_master/master.db"))!;
+		DownloadResponse[] results = await Task.WhenAll(Download(provider, Request()), Download(provider, Request()));
+		using Stream first = results[0].Content;
+		using Stream second = results[1].Content;
+		Assert.That(first, Is.Not.SameAs(second));
+		Assert.That(((MemoryStream)first).ToArray(), Is.EqualTo(((MemoryStream)second).ToArray()));
+		Assert.That(Directory.GetDirectories(_store.TempRoot), Is.Empty);
+	}
+
+	[Test]
+	public async Task OrphanSnapshotDoesNotAdvanceDownloadRevision()
+	{
+		await File.WriteAllBytesAsync(Path.Combine(_store.DatasetDirectory, "snapshot_8.db"), [9]);
+		using ServiceProvider provider = _store.CreateProvider();
 		DownloadResponse result = await Download(provider, Request());
-		await using Stream content = result.Content;
-		string snapshotPath = ((FileStream)content).Name;
+		using Stream content = result.Content;
 		Assert.That(result.Revision, Is.EqualTo(7));
-		Assert.That(content.CanWrite, Is.False);
-		await using (IStorageLock? access = await provider.GetRequiredService<IStorageLockFactory>().TryAcquire("Master_master.db"))
-		{
-			Assert.That(access, Is.Not.Null);
-		}
-		using (IServiceScope scope = provider.CreateScope())
-		{
-			IMasterAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
-			SystemConfig config = (await unit.SystemConfigRepo.GetAll()).Single();
-			config.CurrentRevision = 8;
-			unit.SystemConfigRepo.Update(config);
-			await unit.SaveChanges();
-		}
-		string copyPath = Path.Combine(_directory.FullName, "download.db");
-		await using (FileStream copy = File.Create(copyPath))
-		{
-			await content.CopyToAsync(copy);
-		}
-		await using (SqliteConnection copy = new($"Data Source={copyPath};Pooling=False"))
-		{
-			await copy.OpenAsync();
-			await using SqliteCommand command = copy.CreateCommand();
-			command.CommandText = "SELECT CurrentRevision FROM SystemConfig";
-			Assert.That((long)(await command.ExecuteScalarAsync())!, Is.EqualTo(result.Revision));
-			command.CommandText = "PRAGMA integrity_check";
-			Assert.That(await command.ExecuteScalarAsync(), Is.EqualTo("ok"));
-		}
-		await content.DisposeAsync();
-		Assert.That(File.Exists(snapshotPath), Is.False);
-		Assert.That(File.Exists(DatabasePath), Is.True);
+		Assert.That(content.Length, Is.GreaterThan(1));
+	}
+
+	[TestCase(0)]
+	[TestCase(7)]
+	public async Task MinimumRevisionRemainsALowerBound(long minimum)
+	{
+		using ServiceProvider provider = _store.CreateProvider();
+		DownloadResponse result = await Download(provider, Request() with { MinimumRevision = minimum });
+		using Stream content = result.Content;
+		Assert.That(result.Revision, Is.EqualTo(7));
 	}
 
 	[TestCase("", "local", 0)]
 	[TestCase("master", "", 0)]
 	[TestCase("master", "local", -1)]
-	[TestCase("wrong", "local", 0)]
 	[TestCase("master", "unknown", 0)]
 	[TestCase("master", "local", 8)]
 	public void InvalidDownloadIsRejected(string masterKey, string localKey, long minimum)
 	{
-		using ServiceProvider provider = BuildProvider();
+		using ServiceProvider provider = _store.CreateProvider();
 		Assert.ThrowsAsync<InvalidSyncBatchException>(() => Download(provider,
 			new DownloadRequest { MasterDatasetKey = masterKey, LocalDatasetKey = localKey, MinimumRevision = minimum }));
-	}
-
-	[TestCase(0)]
-	[TestCase(7)]
-	public async Task MinimumRevisionIsALowerBound(long minimum)
-	{
-		using ServiceProvider provider = BuildProvider();
-		DownloadResponse result = await Download(provider, Request() with { MinimumRevision = minimum });
-		await using Stream content = result.Content;
-		Assert.That(result.Revision, Is.EqualTo(7));
+		Assert.That(Directory.GetDirectories(_store.TempRoot), Is.Empty);
 	}
 
 	[Test]
-	public async Task BusyMasterIsRejectedAndCanBeRetriedAfterRelease()
+	public void MissingPublishedSnapshotFailsAndCleansDirectory()
 	{
-		using ServiceProvider provider = BuildProvider();
-		IStorageLock access = (await provider.GetRequiredService<IStorageLockFactory>().TryAcquire("Master_master.db"))!;
-		await using (access)
-		{
-			Assert.ThrowsAsync<MasterBusyException>(() => Download(provider, Request()));
-		}
+		File.Delete(Path.Combine(_store.DatasetDirectory, "snapshot_7.db"));
+		using ServiceProvider provider = _store.CreateProvider();
+		Assert.ThrowsAsync<FileNotFoundException>(() => Download(provider, Request()));
+		Assert.That(Directory.GetDirectories(_store.TempRoot), Is.Empty);
+	}
+
+	[Test]
+	public async Task InitialRevisionZeroCanBeDownloadedBeforeFirstBatch()
+	{
+		await _store.Execute("UPDATE SystemConfig SET CurrentRevision = 0");
+		using ServiceProvider provider = _store.CreateProvider();
 		DownloadResponse result = await Download(provider, Request());
-		await result.Content.DisposeAsync();
+		using Stream content = result.Content;
+		Assert.That(result.Revision, Is.Zero);
+		Assert.That(content.Length, Is.GreaterThan(0));
+		Assert.That(Directory.GetDirectories(_store.TempRoot), Is.Empty);
 	}
 
-	[TestCase(0)]
-	[TestCase(1)]
-	[TestCase(2)]
-	public async Task CancelledOrFailedSnapshotIsDeletedAndDatabaseClosed(int failure)
+	[TestCase(false)]
+	[TestCase(true)]
+	public async Task FailedSnapshotReadClosesFileAndCleansDirectory(bool cancelled)
 	{
-		using CancellationTokenSource cancellation = new();
-		IMasterAppUnitOfWork unit = Substitute.For<IMasterAppUnitOfWork>();
-		unit.SystemConfigRepo.GetAll(Arg.Any<CancellationToken>())
-			.Returns(new List<SystemConfig> { new() { MasterDatasetKey = "master", CurrentRevision = 7 } });
-		unit.LocalRegistrationRepo.GetByLocalDatasetKey("local", Arg.Any<CancellationToken>())
-			.Returns(new LocalRegistration { LocalDatasetKey = "local" });
-		string? snapshotPath = null;
-		unit.CreateSnapshot(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(async call =>
+		using ServiceProvider baseline = _store.CreateProvider();
+		using IServiceScope baselineScope = baseline.CreateScope();
+		IStorageProcessor real = baselineScope.ServiceProvider.GetRequiredService<IStorageProcessorFactory>().CreateProcessor();
+		IStorageProcessor storage = Substitute.For<IStorageProcessor>();
+		IStorageProcessorFactory factory = Substitute.For<IStorageProcessorFactory>();
+		factory.CreateProcessor().Returns(storage);
+		Stream? temporaryFile = null;
+		storage.Read(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<IStorageLock?>(), Arg.Any<CancellationToken>()).Returns(async call =>
 		{
-			snapshotPath = call.ArgAt<string>(0);
-			await File.WriteAllTextAsync(snapshotPath, "partial");
-			if (failure != 0)
+			string name = call.ArgAt<string>(0);
+			Stream destination = call.ArgAt<Stream>(1);
+			if (name.EndsWith("snapshot_7.db", StringComparison.Ordinal))
 			{
-				await cancellation.CancelAsync();
-				return;
+				temporaryFile = destination;
+				Assert.That(call.ArgAt<IStorageLock?>(2), Is.Null);
+				await destination.WriteAsync(new byte[] { 1 });
+				if (cancelled)
+				{
+					throw new OperationCanceledException();
+				}
+				throw new IOException("Interrupted snapshot.");
 			}
-			throw new IOException("Snapshot failed.");
+			await real.Read(name, destination, null, call.ArgAt<CancellationToken>(3));
 		});
-		IStorageLockFactory? locks = null;
-		if (failure == 2)
-		{
-			locks = Substitute.For<IStorageLockFactory>();
-			IStorageLock handle = Substitute.For<IStorageLock>();
-			handle.CancellationToken.Returns(cancellation.Token);
-			locks.TryAcquire("Master_master.db", Arg.Any<CancellationToken>()).Returns(handle);
-		}
-		using ServiceProvider provider = BuildProvider(unit: unit, locks: locks);
-		if (failure != 0)
-		{
-			Assert.CatchAsync<OperationCanceledException>(() => Download(provider, Request(), failure == 2 ? CancellationToken.None : cancellation.Token));
-		}
-		else
-		{
-			Assert.ThrowsAsync<IOException>(() => Download(provider, Request()));
-		}
-		Assert.That(snapshotPath, Is.Not.Null);
-		Assert.That(File.Exists(snapshotPath), Is.False);
-		await unit.Received(1).CloseSession();
-		await using IStorageLock? access = await provider.GetRequiredService<IStorageLockFactory>().TryAcquire("Master_master.db");
-		Assert.That(access, Is.Not.Null);
+		using ServiceProvider provider = _store.CreateProvider(services => services.AddSingleton(factory));
+		Assert.CatchAsync(() => Download(provider, Request()));
+		Assert.That(temporaryFile, Is.TypeOf<FileStream>());
+		Assert.That(temporaryFile!.CanWrite, Is.False);
+		Assert.That(Directory.GetDirectories(_store.TempRoot), Is.Empty);
 	}
 
-	[Test]
-	public void PreCancelledDownloadDoesNotAccessDatabase()
-	{
-		using CancellationTokenSource cancellation = new();
-		cancellation.Cancel();
-		using ServiceProvider provider = BuildProvider();
-		Assert.CatchAsync<OperationCanceledException>(() => Download(provider, Request(), cancellation.Token));
-	}
+	private static DownloadRequest Request() => new() { MasterDatasetKey = "master", LocalDatasetKey = "local" };
 
-	private ServiceProvider BuildProvider(bool remote = false, IMasterAppUnitOfWork? unit = null, IStorageLockFactory? locks = null)
-	{
-		IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-		{
-			["ConnectionStrings:DehbMasterSqLite"] = $"Data Source={DatabasePath};Pooling=False",
-			["fileStorage:Root"] = _directory.FullName
-		}).Build();
-		ServiceCollection services = new();
-		services.AddSingleton(configuration);
-		services.AddSharedModule();
-		services.AddMasterDataAccessSqLiteModule(configuration);
-		services.AddMasterModule();
-		if (remote)
-		{
-			services.AddRemoteMasterStorage();
-		}
-		else
-		{
-			services.AddLocalMasterStorage(_ => DatabasePath);
-		}
-		if (unit is not null)
-		{
-			services.AddSingleton(unit);
-		}
-		if (locks is not null)
-		{
-			services.AddSingleton(locks);
-		}
-		return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
-	}
-
-	private static DownloadRequest Request() =>
-		new() { MasterDatasetKey = "master", LocalDatasetKey = "local", MinimumRevision = 7 };
-
-	private static async Task<DownloadResponse> Download(ServiceProvider provider, DownloadRequest request, CancellationToken cancellationToken = default)
+	private static async Task<DownloadResponse> Download(ServiceProvider provider, DownloadRequest request)
 	{
 		using IServiceScope scope = provider.CreateScope();
-		return await scope.ServiceProvider.GetRequiredService<IMasterService>().Download(request, cancellationToken);
+		return await scope.ServiceProvider.GetRequiredService<IMasterService>().Download(request);
 	}
 }

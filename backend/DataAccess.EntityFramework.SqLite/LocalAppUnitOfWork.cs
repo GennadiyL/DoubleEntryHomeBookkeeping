@@ -18,6 +18,7 @@ namespace DataAccess.EntityFramework.SqLite;
 /// This class does not create containers or own application configuration.
 /// The dependency scope manages the context lifetime.
 /// </summary>
+[Obsolete]
 internal sealed class LocalAppUnitOfWork : AppUnitOfWork, ILocalAppUnitOfWork
 {
 	public LocalAppUnitOfWork(

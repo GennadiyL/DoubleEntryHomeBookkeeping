@@ -67,6 +67,7 @@ public sealed partial class TreeGrid : UserControl
 	private TreeGridNode? _dragSource;
 	private TreeGridNode? _hoverTarget;
 	private string? _dragToken;
+	private long _lastDragOverLog;
 	private string _dropReason = "Not allowed";
 	private Point _dragPoint;
 	private bool _dragShift;
@@ -347,9 +348,11 @@ public sealed partial class TreeGrid : UserControl
 
 	internal void BeginDrag(TreeGridNode node, DragStartingEventArgs e)
 	{
+		TreeGridDragLog.Write($"BeginDrag node={TreeGridDragLog.Node(node)} allowDrag={AllowDragDrop} hasDropHandler={DropRequested is not null}");
 		if (!AllowDragDrop || node.Parent is null || DropRequested is null)
 		{
 			e.Cancel = true;
+			TreeGridDragLog.Write("BeginDrag canceled: allowDrag=false, root node, or missing DropRequested handler (see preceding entry)");
 			return;
 		}
 		EndDrag();
@@ -358,12 +361,17 @@ public sealed partial class TreeGrid : UserControl
 		e.Data.Properties["TreeGridDragToken"] = _dragToken;
 		e.Data.SetData("application/x-treegrid-row", _dragToken);
 		e.Data.RequestedOperation = DataPackageOperation.Move;
+		TreeGridDragLog.Write($"BeginDrag accepted token={_dragToken}");
 		_dragScrollViewer = FindDragScrollViewer(RowsList);
 		SelectedNode = node;
 	}
 
 	internal void EndDrag()
 	{
+		if (_dragSource is not null)
+		{
+			TreeGridDragLog.Write($"EndDrag node={TreeGridDragLog.Node(_dragSource)}");
+		}
 		_dragTimer.Stop();
 		_hoverWatch.Reset();
 		_hoverTarget = null;
@@ -379,6 +387,11 @@ public sealed partial class TreeGrid : UserControl
 
 	private void OnRowsDragOver(object sender, DragEventArgs e)
 	{
+		if (Environment.TickCount64 - _lastDragOverLog >= 500)
+		{
+			_lastDragOverLog = Environment.TickCount64;
+			TreeGridDragLog.Write($"DragOver ownDrag={IsOwnDrag(e)} source={TreeGridDragLog.Node(_dragSource)} position={e.GetPosition(RowsList)}");
+		}
 		e.Handled = true;
 		e.AcceptedOperation = DataPackageOperation.None;
 		if (!IsOwnDrag(e))
@@ -504,6 +517,7 @@ public sealed partial class TreeGrid : UserControl
 
 	private void OnRowsDrop(object sender, DragEventArgs e)
 	{
+		TreeGridDragLog.Write($"Drop ownDrag={IsOwnDrag(e)}");
 		e.Handled = true;
 		e.AcceptedOperation = DataPackageOperation.None;
 		if (!IsOwnDrag(e))
@@ -517,6 +531,7 @@ public sealed partial class TreeGrid : UserControl
 		if (request is not null)
 		{
 			e.AcceptedOperation = DataPackageOperation.Move;
+			TreeGridDragLog.Write($"DropRequested operation={request.Operation} source={TreeGridDragLog.Node(request.Source)} target={TreeGridDragLog.Node(request.Target)}");
 			DropRequested?.Invoke(this, request);
 		}
 	}

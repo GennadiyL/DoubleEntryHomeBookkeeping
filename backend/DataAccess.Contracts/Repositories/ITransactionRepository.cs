@@ -1,5 +1,5 @@
 using Business.Models.Entities;
-using DataAccess.Contracts.Queries;
+using DataAccess.Contracts.Dtos;
 using DataAccess.Contracts.Repositories.Base;
 
 namespace DataAccess.Contracts.Repositories;

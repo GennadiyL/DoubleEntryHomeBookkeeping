@@ -1,4 +1,6 @@
 using DataAccess.Contracts;
+using DataAccess.Contracts.Commands;
+using DataAccess.EntityFramework.SqLite.Commands;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DataAccess.EntityFramework.SqLite;
@@ -13,11 +15,13 @@ namespace DataAccess.EntityFramework.SqLite;
 /// Repository creation delegates use the current scoped service provider.
 /// Existing context and unit-of-work registrations remain unchanged.
 /// </summary>
-public static class UnitOfWorkFactorySqLiteDiConfiguration
+public static class EntityFrameworkSqLiteDiConfiguration
 {
-	public static void AddUnitOfWorkFactorySqLiteModule(this IServiceCollection services)
+	public static void AddEntityFrameworkSqLiteModule(this IServiceCollection services)
 	{
 		services.AddScoped<IUnitOfWorkFactory, UnitOfWorkFactory>();
-		services.AddFactoryDataAccessEntityFrameworkModule();
+		services.AddScoped<ICreateSnapshotCommand, CreateSnapshotCommand>();
+		services.AddScoped<ICumulativeAmountCommand, CumulativeAmountCommand>();
+		services.AddDataAccessEntityFrameworkModule();
 	}
 }

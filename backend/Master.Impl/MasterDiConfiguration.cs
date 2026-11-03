@@ -1,5 +1,3 @@
-using DataAccess.Contracts;
-using DataAccess.Contracts.Commands;
 using Master.Contracts.Services;
 using Master.Impl.Operations.ApplySyncBatch;
 using Master.Impl.Operations.MasterStorage;
@@ -13,7 +11,7 @@ namespace Master.Impl;
 /// Registers Master-owned business operations in the host container.
 /// Implementations remain internal to the Master implementation assembly.
 /// Operations resolve the typed Master unit of work in the current scope.
-/// The cumulative command uses the same Master role registration.
+/// Batch operations resolve the same Master unit from the scoped factory.
 /// Provider-specific registration remains the infrastructure host's choice.
 /// No nested container, database file or transaction is created here.
 /// Shared services must be registered by the composing host.
@@ -21,23 +19,10 @@ namespace Master.Impl;
 /// </summary>
 public static class MasterDiConfiguration
 {
-	public static void AddLocalMasterStorage(this IServiceCollection services, Func<string, string> getDatabasePath)
-	{
-		ArgumentNullException.ThrowIfNull(getDatabasePath);
-		services.AddScoped<IMasterStorageOperation>(provider => new LocalMasterStorageOperation(
-			provider.GetRequiredService<ISharedContext>(), getDatabasePath));
-	}
-
-	public static void AddRemoteMasterStorage(this IServiceCollection services)
-	{
-		services.AddScoped<IMasterStorageOperation, RemoteMasterStorageOperation>();
-	}
-
 	public static void AddMasterModule(this IServiceCollection services)
 	{
 		services.AddScoped<IMasterService, MasterService>();
-		services.AddScoped<IApplySyncBatchOperation>(provider => new ApplySyncBatchOperation(
-			provider.GetRequiredService<ISharedContext>(), provider.GetRequiredService<IMasterAppUnitOfWork>(),
-			provider.GetRequiredKeyedService<ICumulativeAmountCommand>(typeof(IMasterAppUnitOfWork))));
+		services.AddScoped<IApplySyncBatchOperation, ApplySyncBatchOperation>();
+		services.AddScoped<IMasterStorageOperation, MasterStorageOperation>();
 	}
 }

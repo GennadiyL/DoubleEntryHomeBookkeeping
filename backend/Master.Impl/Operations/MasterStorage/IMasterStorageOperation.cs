@@ -2,38 +2,47 @@ using Shared.Contracts.Storage;
 
 namespace Master.Impl.Operations.MasterStorage;
 
-/// <summary>
-/// Prepares and publishes the persisted database for one Master dataset.
-/// The caller acquires exclusive Master access before opening a storage session.
-/// Operations receive session state explicitly; the operation retains only dependencies.
-/// Local storage uses the existing database without copying it.
-/// Remote storage prepares an owned working copy and publishes completed snapshots.
-/// The caller closes database connections before closing or disposing the session.
-/// Access ownership outlives the session and remains the caller's responsibility.
-/// Business validation, SQLite transactions and snapshot creation are outside this operation.
-/// </summary>
 internal interface IMasterStorageOperation
 {
 	/// <summary>
-	/// Opens an existing database and returns session state with its usable local path for the DAL.
+	/// Copies the published Master into the supplied temporary file, creating its parent directory.
 	/// </summary>
-	public Task<IMasterStorageSession> Open(
+	public Task DownloadMaster(
 		string masterDatasetKey,
+		string destinationFilePath,
+		IStorageLock? access,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// Copies a published revision into the supplied temporary file without a storage lock, creating its parent directory.
+	/// </summary>
+	public Task DownloadSnapshot(
+		string masterDatasetKey,
+		long revision,
+		string destinationFilePath,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// Uploads the supplied standalone database file as the persistent Master.
+	/// </summary>
+	public Task UploadMaster(
+		string masterDatasetKey,
+		string sourceFilePath,
 		IStorageLock access,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// Publishes a completed standalone snapshot using the opened session's storage and access ownership.
-	/// Local publication is a no-op; a failed remote publication prevents reuse of that session.
+	/// Uploads the supplied standalone database file as the revision snapshot without a storage lock.
 	/// </summary>
-	public Task Publish(
-		IMasterStorageSession session,
-		string snapshotPath,
+	public Task UploadSnapshot(
+		string masterDatasetKey,
+		long revision,
+		string sourceFilePath,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// Disposes the session after database connections close, releasing owned temporary files.
-	/// Equivalent to session disposal; does not release the caller's storage lock.
+	/// Removes the operation's temporary directory after database connections close.
+	/// Cleanup does not release storage ownership or delete persistent objects.
 	/// </summary>
-	public ValueTask Close(IMasterStorageSession session);
+	public void Close(string directoryPath);
 }

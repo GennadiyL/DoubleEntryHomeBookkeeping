@@ -1,5 +1,5 @@
 using Business.Models.Enums;
-using DataAccess.Contracts.Queries;
+using DataAccess.Contracts.Dtos;
 using DataAccess.Contracts.Repositories;
 using DataAccess.Core.Behaviors;
 using DataAccess.EntityFramework.Repositories.Base;

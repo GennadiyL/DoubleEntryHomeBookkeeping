@@ -24,6 +24,7 @@ public sealed partial class TreeGridRowPresenter : UserControl
 	private readonly SolidColorBrush _selectionBorderBrush = new(Windows.UI.Color.FromArgb(255, 96, 96, 96));
 	private TreeGrid? _owner;
 	private bool _pressedOnControl;
+	private long _lastPointerMoveLog;
 	private TreeGrid? _dragOwner;
 	private TreeGridNode? _node;
 	private Button? _expander;
@@ -39,18 +40,40 @@ public sealed partial class TreeGridRowPresenter : UserControl
 		IsTabStop = false;
 		CanDrag = true;
 		AddHandler(PointerPressedEvent, new PointerEventHandler(OnDragPointerPressed), true);
+		AddHandler(PointerMovedEvent, new PointerEventHandler(OnDragPointerMoved), true);
+		AddHandler(PointerReleasedEvent, new PointerEventHandler((_, e) => LogPointer("PointerReleased", e)), true);
+		AddHandler(PointerCanceledEvent, new PointerEventHandler((_, e) => LogPointer("PointerCanceled", e)), true);
+		AddHandler(PointerCaptureLostEvent, new PointerEventHandler((_, e) => LogPointer("PointerCaptureLost", e)), true);
 		DragStarting += (_, e) =>
 		{
-			if (_pressedOnControl || _node is null || _owner is null)
+			TreeGridDragLog.Write($"DragStarting node={TreeGridDragLog.Node(_node)} pressedOnControl={_pressedOnControl} ownerPresent={_owner is not null}");
+			bool completed = false;
+			try
 			{
-				e.Cancel = true;
-				return;
+				if (_pressedOnControl || _node is null || _owner is null)
+				{
+					e.Cancel = true;
+					TreeGridDragLog.Write("DragStarting canceled by presenter");
+					completed = true;
+					return;
+				}
+				_dragOwner = _owner;
+				_dragOwner.BeginDrag(_node, e);
+				completed = true;
 			}
-			_dragOwner = _owner;
-			_dragOwner.BeginDrag(_node, e);
+			catch (Exception exception)
+			{
+				TreeGridDragLog.Write($"DragStarting exception: {exception}");
+				throw;
+			}
+			finally
+			{
+				TreeGridDragLog.Write($"DragStarting handler exit completed={completed} cancel={e.Cancel} node={TreeGridDragLog.Node(_node)}");
+			}
 		};
-		DropCompleted += (_, _) =>
+		DropCompleted += (_, e) =>
 		{
+			TreeGridDragLog.Write($"DropCompleted result={e.DropResult}");
 			_dragOwner?.EndDrag();
 			_dragOwner = null;
 		};
@@ -228,6 +251,23 @@ public sealed partial class TreeGridRowPresenter : UserControl
 			}
 			source = VisualTreeHelper.GetParent(source);
 		}
+		LogPointer("PointerPressed", e);
+	}
+
+	private void LogPointer(string eventName, PointerRoutedEventArgs e)
+	{
+		Microsoft.UI.Input.PointerPoint point = e.GetCurrentPoint(this);
+		TreeGridDragLog.Write($"{eventName} node={TreeGridDragLog.Node(_node)} pointer={e.Pointer.PointerId} device={e.Pointer.PointerDeviceType} left={point.Properties.IsLeftButtonPressed} x={point.Position.X:F1} y={point.Position.Y:F1} handled={e.Handled} source={e.OriginalSource?.GetType().Name} canDrag={CanDrag} allowDrag={_owner?.AllowDragDrop} pressedOnControl={_pressedOnControl}");
+	}
+
+	private void OnDragPointerMoved(object sender, PointerRoutedEventArgs e)
+	{
+		if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed || Environment.TickCount64 - _lastPointerMoveLog < 250)
+		{
+			return;
+		}
+		_lastPointerMoveLog = Environment.TickCount64;
+		LogPointer("PointerMoved", e);
 	}
 
 	private void OnTapped(object sender, TappedRoutedEventArgs e)

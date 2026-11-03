@@ -15,13 +15,7 @@ internal sealed class TestBlobStorageProcessorFactory : IStorageProcessorFactory
 {
 	private readonly BlobContainerClient _container;
 
-	public TestBlobStorageProcessorFactory(BlobContainerClient container)
-	{
-		_container = container;
-	}
+	public TestBlobStorageProcessorFactory(BlobContainerClient container) => _container = container;
 
-	public IStorageProcessor CreateProcessor()
-	{
-		return new BlobStorageProcessor(_container);
-	}
+	public IStorageProcessor CreateProcessor() => new BlobStorageProcessor(_container);
 }

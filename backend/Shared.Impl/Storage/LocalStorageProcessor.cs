@@ -10,6 +10,7 @@ namespace Shared.Impl.Storage;
 /// Optional locks are borrowed and their ownership-loss tokens are observed.
 /// Local locking is cooperative; the caller selects and retains the appropriate lock.
 /// Uses file attributes to distinguish missing objects from access failures.
+/// Writes flush a unique sibling candidate before publishing it by a same-directory move or replacement.
 /// Receives IFileService directly to avoid a dependency cycle through ISharedContext.
 /// </summary>
 internal sealed class LocalStorageProcessor : IStorageProcessor
@@ -24,28 +25,66 @@ internal sealed class LocalStorageProcessor : IStorageProcessor
 		_root = Path.GetFullPath(root);
 	}
 
-	public async Task Read(string objectName, Stream destination, IStorageLock? storageLock = null,
+	public async Task Read(
+		string objectName,
+		Stream destination,
+		IStorageLock? storageLock = null,
 		CancellationToken cancellationToken = default)
 	{
 		ValidateStream(destination, true);
 		using CancellationTokenSource cancellation = LinkCancellation(storageLock, cancellationToken);
 		string path = PreparePath(objectName, cancellation.Token);
-		await using FileStream source = Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+		await using FileStream source = Open(
+			path,
+			FileMode.Open,
+			FileAccess.Read,
+			FileShare.Read | FileShare.Delete);
 		await source.CopyToAsync(destination, cancellation.Token);
 		cancellation.Token.ThrowIfCancellationRequested();
 	}
 
-	public async Task Write(string objectName, Stream source, bool overwrite, IStorageLock? storageLock = null,
+	public async Task Write(
+		string objectName,
+		Stream source,
+		bool overwrite,
+		IStorageLock? storageLock = null,
 		CancellationToken cancellationToken = default)
 	{
 		ValidateStream(source, false);
 		using CancellationTokenSource cancellation = LinkCancellation(storageLock, cancellationToken);
 		string path = PreparePath(objectName, cancellation.Token);
-		FileMode mode = overwrite ? FileMode.Create : FileMode.CreateNew;
-		await using FileStream destination = Open(path, mode, FileAccess.Write, FileShare.None);
-		await source.CopyToAsync(destination, cancellation.Token);
-		await destination.FlushAsync(cancellation.Token);
-		cancellation.Token.ThrowIfCancellationRequested();
+		if (!overwrite && FileExists(path))
+		{
+			throw new IOException("The storage object already exists.");
+		}
+		string candidatePath = Path.Combine(
+			Path.GetDirectoryName(path)!,
+			$"{Path.GetFileNameWithoutExtension(path)}_{Guid.NewGuid():N}{Path.GetExtension(path)}");
+		bool candidateCreated = false;
+		try
+		{
+			await using (FileStream candidate = Open(
+				candidatePath,
+				FileMode.CreateNew,
+				FileAccess.Write,
+				FileShare.None))
+			{
+				candidateCreated = true;
+				await source.CopyToAsync(candidate, cancellation.Token);
+				cancellation.Token.ThrowIfCancellationRequested();
+				candidate.Flush(true);
+			}
+			cancellation.Token.ThrowIfCancellationRequested();
+			PublishCandidate(candidatePath, path, overwrite);
+			candidateCreated = false;
+		}
+		finally
+		{
+			if (candidateCreated)
+			{
+				_fileService.Delete(candidatePath);
+			}
+		}
 	}
 
 	public Task Delete(string objectName, IStorageLock? storageLock = null, CancellationToken cancellationToken = default)
@@ -64,6 +103,21 @@ internal sealed class LocalStorageProcessor : IStorageProcessor
 		bool exists = FileExists(path);
 		cancellation.Token.ThrowIfCancellationRequested();
 		return Task.FromResult(exists);
+	}
+
+	private void PublishCandidate(
+		string candidatePath,
+		string path,
+		bool overwrite)
+	{
+		try
+		{
+			_fileService.Move(candidatePath, path);
+		}
+		catch (IOException) when (overwrite && FileExists(path))
+		{
+			_fileService.Replace(candidatePath, path, null!);
+		}
 	}
 
 	private void DeleteFile(string path)

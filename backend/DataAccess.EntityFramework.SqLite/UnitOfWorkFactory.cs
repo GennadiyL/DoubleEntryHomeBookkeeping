@@ -1,4 +1,5 @@
 using System.Globalization;
+using Shared.Contracts.Config;
 using DataAccess.Contracts;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
@@ -9,7 +10,7 @@ namespace DataAccess.EntityFramework.SqLite;
 
 /// <summary>
 /// Creates and caches database units within one API dependency scope.
-/// Local is cached once; Master is cached by dataset key.
+/// Local is cached once; Master is cached by its working database path.
 /// Snapshots are cached by dataset key and exact revision.
 /// Each cache entry owns one directly instantiated AppDbContext.
 /// Repositories are created lazily using the current scoped service provider.
@@ -21,36 +22,41 @@ internal sealed class UnitOfWorkFactory : IUnitOfWorkFactory, IDisposable, IAsyn
 {
 	private readonly IServiceProvider _serviceProvider;
 	private readonly string _localDirectory;
-	private readonly string _masterDirectory;
-	private readonly string _snapshotDirectory;
-	private readonly Dictionary<(Type Role, string Key, long Revision), (IAppUnitOfWork Unit, AppDbContext Context)> _units = new();
+	private readonly IConfigurationService _configurationService;
+	private readonly Dictionary<(Type Role, string Path, long Revision), (IAppUnitOfWork Unit, AppDbContext Context)> _units = new();
 	private bool _disposed;
 
-	public UnitOfWorkFactory(IServiceProvider serviceProvider, IConfiguration configuration)
+	public UnitOfWorkFactory(
+		IServiceProvider serviceProvider,
+		IConfiguration configuration,
+		IConfigurationService configurationService)
 	{
 		_serviceProvider = serviceProvider;
 		_localDirectory = GetDirectory(configuration, "LocalDirectory");
-		_masterDirectory = GetDirectory(configuration, "MasterDirectory");
-		_snapshotDirectory = GetDirectory(configuration, "SnapshotDirectory");
+		_configurationService = configurationService;
 	}
 
 	public ILocalUnitOfWork CreateLocal() =>
 		GetOrCreate(
 			typeof(ILocalUnitOfWork),
-			string.Empty,
 			0,
 			Path.Combine(_localDirectory, "Local.db"),
 			(context, provider) => new LocalUnitOfWork(context, provider));
 
-	public IMasterUnitOfWork CreateMaster(string masterDatasetKey)
+	public IMasterUnitOfWork CreateMaster(string masterDatasetKey) =>
+		CreateMaster(masterDatasetKey, Path.Combine(_configurationService.GetTempDirectory(), $"Master_{masterDatasetKey}"));
+
+	public IMasterUnitOfWork CreateMaster(string masterDatasetKey, string directoryPath)
 	{
 		ValidateKey(masterDatasetKey);
 		return GetOrCreate(
 			typeof(IMasterUnitOfWork),
-			masterDatasetKey,
 			0,
-			Path.Combine(_masterDirectory, $"Master_{masterDatasetKey}.db"),
-			(context, provider) => new MasterUnitOfWork(context, provider, masterDatasetKey));
+			Path.Combine(Path.GetFullPath(directoryPath), "master.db"),
+			(context, provider) => new MasterUnitOfWork(
+				context,
+				provider,
+				masterDatasetKey));
 	}
 
 	public ISnapshotUnitOfWork CreateSnapshot(string masterDatasetKey, long revision)
@@ -60,21 +66,26 @@ internal sealed class UnitOfWorkFactory : IUnitOfWorkFactory, IDisposable, IAsyn
 		string version = revision.ToString(CultureInfo.InvariantCulture);
 		return GetOrCreate(
 			typeof(ISnapshotUnitOfWork),
-			masterDatasetKey,
 			revision,
-			Path.Combine(_snapshotDirectory, $"Master_{masterDatasetKey}_{version}.db"),
-			(context, provider) => new SnapshotUnitOfWork(context, provider, masterDatasetKey, revision));
+			Path.Combine(
+				_configurationService.GetTempDirectory(),
+				$"Master_{masterDatasetKey}",
+				$"snapshot_{version}.db"),
+			(context, provider) => new SnapshotUnitOfWork(
+				context,
+				provider,
+				masterDatasetKey,
+				revision));
 	}
 
 	private TUnit GetOrCreate<TUnit>(
 		Type role,
-		string key,
 		long revision,
 		string path,
 		Func<AppDbContext, IServiceProvider, TUnit> create) where TUnit : IAppUnitOfWork
 	{
 		ObjectDisposedException.ThrowIf(_disposed, this);
-		if (_units.TryGetValue((role, key, revision), out (IAppUnitOfWork Unit, AppDbContext Context) cached))
+		if (_units.TryGetValue((role, path, revision), out (IAppUnitOfWork Unit, AppDbContext Context) cached))
 		{
 			return (TUnit)cached.Unit;
 		}
@@ -85,15 +96,16 @@ internal sealed class UnitOfWorkFactory : IUnitOfWorkFactory, IDisposable, IAsyn
 			Pooling = false,
 			ForeignKeys = true
 		}.ToString();
-		DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
-			.UseSqlite(connectionString)
-			.ReplaceService<IModelCustomizer, SqLiteAppModelCustomizer>()
-			.Options;
+		DbContextOptions<AppDbContext> options =
+			new DbContextOptionsBuilder<AppDbContext>()
+				.UseSqlite(connectionString)
+				.ReplaceService<IModelCustomizer, SqLiteAppModelCustomizer>()
+				.Options;
 		AppDbContext context = new(options);
 		try
 		{
 			TUnit unit = create(context, _serviceProvider);
-			_units.Add((role, key, revision), (unit, context));
+			_units.Add((role, path, revision), (unit, context));
 			return unit;
 		}
 		catch

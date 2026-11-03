@@ -1,3 +1,5 @@
+using Shared.Contracts.Config;
+using NSubstitute;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Business.Models.Constants;
@@ -7,6 +9,7 @@ using Business.Models.Entities.Synchronizations;
 using Business.Models.Enums;
 using Business.Models.Exceptions;
 using DataAccess.Contracts;
+using DataAccess.Contracts.Commands;
 using DataAccess.Core.Entities;
 using DataAccess.EntityFramework.SqLite;
 using Exchange.Models.Synchronizations;
@@ -38,6 +41,7 @@ namespace UnitTests.Master;
 public sealed class ApplySyncBatchOperationTests
 {
 	private SqliteConnection _connection = null!;
+	private string _directory = null!;
 	private ServiceProvider _provider = null!;
 	private Guid _local;
 	private Guid _other;
@@ -47,7 +51,14 @@ public sealed class ApplySyncBatchOperationTests
 	[SetUp]
 	public async Task SetUp()
 	{
-		_connection = new SqliteConnection($"Data Source=master-{Guid.NewGuid():N};Mode=Memory;Cache=Shared;Pooling=False");
+		_directory = Path.Combine(Path.GetTempPath(), $"dehb-apply-master-{Guid.NewGuid():N}");
+		string workDirectory = Path.Combine(_directory, "Master_master");
+		Directory.CreateDirectory(workDirectory);
+		_connection = new SqliteConnection(new SqliteConnectionStringBuilder
+		{
+			DataSource = Path.Combine(workDirectory, "master.db"),
+			Pooling = false
+		}.ToString());
 		await _connection.OpenAsync();
 		foreach (string script in new[] { "001-schema.sql", "002-initial-data.sql" })
 		{
@@ -57,13 +68,18 @@ public sealed class ApplySyncBatchOperationTests
 		}
 		ServiceCollection services = new();
 		services.AddSharedModule();
-		services.AddMasterDataAccessSqLiteModule(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+		IConfigurationService directories = Substitute.For<IConfigurationService>();
+		directories.GetTempDirectory().Returns(_directory);
+		services.AddSingleton(directories);
+		IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
 		{
-			["ConnectionStrings:DehbMasterSqLite"] = _connection.ConnectionString
-		}).Build());
+			["DataAccess:LocalDirectory"] = _directory,
+		}).Build();
+		services.AddSingleton(configuration);
+		services.AddEntityFrameworkSqLiteModule();
 		services.AddMasterModule();
+		services.AddSingleton(Substitute.For<ICreateSnapshotCommand>());
 		services.AddLocalStorageModule();
-		services.AddLocalMasterStorage(_ => _connection.DataSource);
 		_provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 		_local = Guid.NewGuid();
 		_other = Guid.NewGuid();
@@ -86,6 +102,10 @@ public sealed class ApplySyncBatchOperationTests
 	{
 		_provider?.Dispose();
 		_connection?.Dispose();
+		if (Directory.Exists(_directory))
+		{
+			Directory.Delete(_directory, true);
+		}
 	}
 
 	[TestCase(ConflictPriority.Master, 10, false, true)]
@@ -262,7 +282,7 @@ public sealed class ApplySyncBatchOperationTests
 		await WithUnit(async unit =>
 		{
 			Assert.That((await unit.TransactionRepo.GetById(transactionId))!.State, Is.EqualTo(TransactionState.Confirmed));
-			Assert.That((await unit.TransactionEntryRepo.GetByTransactionId(transactionId)).Select(entry => entry.CumulativeAmount), Is.EquivalentTo((decimal[])[3m, 0m]));
+			Assert.That((await unit.TransactionEntryRepo.GetByTransactionId(transactionId)).Select(entry => entry.CumulativeAmount), Is.EquivalentTo((decimal[])[0m, 0m]));
 			Assert.That((await unit.TemplateEntryRepo.GetByTemplateId(templateId)).Single().Amount, Is.EqualTo(1.23m));
 			Assert.That((await unit.ReportRepo.GetById(reportId))!.Json, Is.EqualTo("{}"));
 			Assert.That((await unit.AccountRepo.GetById(accountId))!.CurrencyId, Is.EqualTo(currencyId));
@@ -406,9 +426,9 @@ public sealed class ApplySyncBatchOperationTests
 		batch.Added.Add(Catalog("category", Guid.NewGuid(), "Rollback", RootsIds.CategoryGroupId));
 		using (IServiceScope scope = _provider.CreateScope())
 		{
-			IMasterAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
+			IMasterUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateMaster("master");
 			IUnitOfWorkTransaction transaction = await unit.BeginTransaction();
-			await scope.ServiceProvider.GetRequiredService<IApplySyncBatchOperation>().Run(batch, _local, 11);
+			await scope.ServiceProvider.GetRequiredService<IApplySyncBatchOperation>().Run("master", batch, _local, 11);
 			Assert.That(await unit.CategoryRepo.GetAll(), Has.Count.EqualTo(1));
 			Assert.That((await unit.SystemConfigRepo.GetAll()).Single().CurrentRevision, Is.EqualTo(10));
 			Assert.That(await unit.LocalSyncBatchRepo.GetAll(), Has.Count.EqualTo(2));
@@ -418,7 +438,7 @@ public sealed class ApplySyncBatchOperationTests
 	}
 
 	[Test]
-	public async Task CumulativeOverflow_RollsBackAlreadySavedAggregates()
+	public async Task MasterDoesNotCalculateLocalCumulativeAmounts()
 	{
 		Guid accountId = Guid.NewGuid();
 		await WithUnit(async unit =>
@@ -432,12 +452,12 @@ public sealed class ApplySyncBatchOperationTests
 			batch.Added.Add(TransactionObject(Guid.NewGuid(), null,
 				[Entry(EntitiesIds.BalancingAccountId, 600000000000000m, 0), Entry(accountId, -600000000000000m, 1)]));
 		}
-		Assert.ThrowsAsync<SqliteException>(async () => await Apply(batch));
+		await Apply(batch);
 		await WithUnit(async unit =>
 		{
-			Assert.That(await unit.TransactionRepo.GetAll(), Is.Empty);
-			Assert.That(await unit.TransactionEntryRepo.GetAll(), Is.Empty);
-			Assert.That((await unit.SystemConfigRepo.GetAll()).Single().CurrentRevision, Is.EqualTo(10));
+			Assert.That(await unit.TransactionRepo.GetAll(), Has.Count.EqualTo(2));
+			Assert.That((await unit.TransactionEntryRepo.GetAll()).Select(entry => entry.CumulativeAmount), Is.All.Zero);
+			Assert.That((await unit.SystemConfigRepo.GetAll()).Single().CurrentRevision, Is.EqualTo(11));
 		});
 	}
 
@@ -447,7 +467,7 @@ public sealed class ApplySyncBatchOperationTests
 		using IServiceScope scope = _provider.CreateScope();
 		using CancellationTokenSource source = new();
 		source.Cancel();
-		Assert.ThrowsAsync<OperationCanceledException>(async () => await scope.ServiceProvider.GetRequiredService<IApplySyncBatchOperation>().Run(Batch(), _local, 11, source.Token));
+		Assert.ThrowsAsync<OperationCanceledException>(async () => await scope.ServiceProvider.GetRequiredService<IApplySyncBatchOperation>().Run("master", Batch(), _local, 11, source.Token));
 	}
 
 	[Test]
@@ -648,7 +668,7 @@ public sealed class ApplySyncBatchOperationTests
 			ICollection<TransactionEntry> entries = await unit.TransactionEntryRepo.GetByTransactionId(id);
 			Assert.That(entries.Select(entry => entry.Id), Is.EquivalentTo(new[] { (Guid)firstEntry["id"], (Guid)secondEntry["id"] }));
 			Assert.That(entries.Select(entry => entry.Amount), Is.EquivalentTo((decimal[])[4m, -4m]));
-			Assert.That(entries.Select(entry => entry.CumulativeAmount), Is.EquivalentTo((decimal[])[4m, 0m]));
+			Assert.That(entries.Select(entry => entry.CumulativeAmount), Is.EquivalentTo((decimal[])[0m, 0m]));
 		});
 	}
 
@@ -714,10 +734,10 @@ public sealed class ApplySyncBatchOperationTests
 		return id;
 	}
 
-	private async Task WithUnit(Func<IMasterAppUnitOfWork, Task> action)
+	private async Task WithUnit(Func<IMasterUnitOfWork, Task> action)
 	{
 		using IServiceScope scope = _provider.CreateScope();
-		await action(scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>());
+		await action(scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateMaster("master"));
 	}
 
 	private async Task Apply(SyncBatch batch, long revision = 11)
@@ -728,11 +748,11 @@ public sealed class ApplySyncBatchOperationTests
 
 	private async Task ApplyInScope(IServiceScope scope, SyncBatch batch, long revision)
 	{
-		IMasterAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
+		IMasterUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateMaster("master");
 		IUnitOfWorkTransaction transaction = await unit.BeginTransaction();
 		try
 		{
-			await scope.ServiceProvider.GetRequiredService<IApplySyncBatchOperation>().Run(batch, _local, revision);
+			await scope.ServiceProvider.GetRequiredService<IApplySyncBatchOperation>().Run("master", batch, _local, revision);
 			SystemConfig config = (await unit.SystemConfigRepo.GetAll()).Single();
 			config.CurrentRevision = revision;
 			unit.SystemConfigRepo.Update(config);

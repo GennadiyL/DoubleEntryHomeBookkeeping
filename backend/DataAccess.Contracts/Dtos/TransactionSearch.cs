@@ -1,6 +1,6 @@
 using Business.Models.Enums;
 
-namespace DataAccess.Contracts.Queries;
+namespace DataAccess.Contracts.Dtos;
 
 /// <summary>
 /// Supplies already validated criteria for a transaction database read.

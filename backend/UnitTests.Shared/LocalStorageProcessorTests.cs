@@ -268,6 +268,120 @@ public class LocalStorageProcessorTests
 		Assert.That(stream.CanWrite, Is.True);
 	}
 
+	[TestCase(false)]
+	[TestCase(true)]
+	public async Task FailedCopy_PreservesDestinationAndRemovesCandidate(bool existing)
+	{
+		string path = Path.Combine(_root, "data.bin");
+		if (existing)
+		{
+			await File.WriteAllBytesAsync(path, [1, 2, 3]);
+		}
+		using PausingStorageStream source = new([4, 5, 6]);
+		IOException failure = new("Source transfer failed.");
+		source.Failure = failure;
+		Task write = _storage.Write("data.bin", source, true);
+		await source.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+		source.Release.TrySetResult();
+		Assert.That(Assert.ThrowsAsync<IOException>(() => write), Is.SameAs(failure));
+		Assert.That(source.CanRead, Is.True);
+		if (existing)
+		{
+			Assert.That(await File.ReadAllBytesAsync(path), Is.EqualTo(new byte[] { 1, 2, 3 }));
+		}
+		else
+		{
+			Assert.That(File.Exists(path), Is.False);
+		}
+		Assert.That(Directory.GetFiles(_root, "data_*.bin"), Is.Empty);
+	}
+
+	[TestCase(false)]
+	[TestCase(true)]
+	public async Task ConcurrentWrites_UseUniqueCandidatesAndRespectOverwrite(bool overwrite)
+	{
+		string directory = Directory.CreateDirectory(Path.Combine(_root, "nested")).FullName;
+		using PausingStorageStream first = new([1, 2, 3]);
+		using PausingStorageStream second = new([4, 5, 6]);
+		Task firstWrite = _storage.Write("nested/data.bin", first, overwrite);
+		await first.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+		Task secondWrite = _storage.Write("nested/data.bin", second, overwrite);
+		await second.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+		try
+		{
+			string[] candidates = Directory.GetFiles(directory, "data_*.bin");
+			Assert.That(candidates, Has.Length.EqualTo(2));
+			foreach (string candidate in candidates)
+			{
+				Assert.That(Path.GetFileName(candidate), Does.Match(@"^data_[0-9a-f]{32}\.bin$"));
+			}
+			Assert.That(File.Exists(Path.Combine(directory, "data.bin")), Is.False);
+		}
+		finally
+		{
+			first.Release.TrySetResult();
+			await firstWrite;
+			second.Release.TrySetResult();
+			if (overwrite)
+			{
+				await secondWrite;
+			}
+			else
+			{
+				Assert.ThrowsAsync<IOException>(() => secondWrite);
+			}
+		}
+		Assert.That(await File.ReadAllBytesAsync(Path.Combine(directory, "data.bin")),
+			Is.EqualTo(overwrite ? new byte[] { 4, 5, 6 } : new byte[] { 1, 2, 3 }));
+		Assert.That(Directory.GetFiles(directory), Has.Length.EqualTo(1));
+	}
+
+	[Test]
+	public async Task Replacement_AllowsExistingReadToFinishWithOriginalContents()
+	{
+		await File.WriteAllBytesAsync(Path.Combine(_root, "data.bin"), [1, 2, 3]);
+		using PausingStorageStream reader = new([]);
+		Task read = _storage.Read("data.bin", reader);
+		await reader.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+		try
+		{
+			using MemoryStream source = new([4, 5, 6]);
+			await _storage.Write("data.bin", source, true);
+			using MemoryStream current = new();
+			await _storage.Read("data.bin", current);
+			Assert.That(current.ToArray(), Is.EqualTo(new byte[] { 4, 5, 6 }));
+		}
+		finally
+		{
+			reader.Release.TrySetResult();
+			await read;
+		}
+		Assert.That(reader.ToArray(), Is.EqualTo(new byte[] { 1, 2, 3 }));
+		Assert.That(Directory.GetFiles(_root), Has.Length.EqualTo(1));
+	}
+
+	[TestCase(false)]
+	[TestCase(true)]
+	public async Task CancelledPartialCopy_PreservesOriginalAndRemovesCandidate(bool ownershipLost)
+	{
+		await File.WriteAllBytesAsync(Path.Combine(_root, "data.bin"), [1, 2, 3]);
+		using CancellationTokenSource cancellation = new();
+		IStorageLock ownership = Substitute.For<IStorageLock>();
+		ownership.CancellationToken.Returns(ownershipLost ? cancellation.Token : CancellationToken.None);
+		using PausingStorageStream source = new([4, 5, 6]);
+		Task write = _storage.Write(
+			"data.bin",
+			source,
+			true,
+			ownership,
+			ownershipLost ? CancellationToken.None : cancellation.Token);
+		await source.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+		await cancellation.CancelAsync();
+		Assert.CatchAsync<OperationCanceledException>(() => write.WaitAsync(TimeSpan.FromSeconds(5)));
+		Assert.That(await File.ReadAllBytesAsync(Path.Combine(_root, "data.bin")), Is.EqualTo(new byte[] { 1, 2, 3 }));
+		Assert.That(Directory.GetFiles(_root), Has.Length.EqualTo(1));
+	}
+
 	private ServiceProvider CreateProvider(IFileService? fileService = null, string? root = null)
 	{
 		ServiceCollection services = new ServiceCollection();

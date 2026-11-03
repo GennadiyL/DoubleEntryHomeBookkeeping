@@ -4,6 +4,10 @@
 
 ## Document Control and BRD Reference
 
+- Revision 0.235, 2026-11-02: implement the confirmed session-free Master lifecycle: temporary working copies for both storage backends, snapshot-before-main publication, isolated memory-backed downloads, acknowledgement metadata publication, and complete temporary-directory cleanup before releasing Master access. Persistent snapshot retention cleanup remains deferred.
+
+- Revision 0.234, 2026-11-02: record the user-confirmed Master directory layout shared by server Temp and persistent Storage, revision snapshot filenames, and isolated per-request download directories. MasterDatasetKey appears only in the dataset directory name. Documentation only; no implementation changes or full-document approval inferred.
+
 - Revision 0.233, 2026-10-20: reconcile the individually confirmed Windows UI decisions for fixed popups, keyboard commands/focus, command-only tooltips, readonly/error appearance, Assets settings and the Markdown guide. Source: requesting user, this conversation, “Fix TRD”. This is documentation alignment only; no full BRD/TRD approval or business-contract changes are inferred.
 
 - Revision 0.232, 2026-10-08: define Business-only WinUI integration against an existing Local database, defer other domains, and record the accepted coordinator account-reference registry. No complete-document approval inferred.
@@ -354,7 +358,7 @@ The dimensions and colors above are configurable, not hardcoded UI constraints. 
 - Android and Windows desktop, single-user prototype, one master and multiple registered complete local copies (BR-001–BR-005, NFR-001).
 - SQLite business data locally and on Azure; first-version SQLite Admin.db. Azure Functions perform initial creation/connection. Prototype deployment address hardcoded. Version-two administration planned for Microsoft SQL Server; business datasets remain SQLite. These are explicit user technical inputs retained by BRD, not newly selected architecture.
 - Two configuration tables: System synchronizes; Local does not. Base currency and AmountPrecision/RatePrecision: selected at creation, immutable, stored in System. Display amounts/BaseAmount with AmountPrecision and rates with RatePrecision; no independent display precision. Local: default account-name order/separator, Add currency flag, sync trigger and conflict priority. LocalConfig.AccountNameAddCurrency is a required bool, default false, confirmed 2026-10-08.
-- Versioned master files such as `{Guid}.db`; prepare changes in a copy and publish a complete candidate; download a complete local replacement. Recovery selects latest published version, not original failed snapshot. SyncKey/outcome/receipt tracking is necessary to resolve lost responses without duplicate business application (BR-038–BR-040; synchronization source).
+- Master files use `Master_{MasterKey}/master.db` and revision snapshots use `Master_{MasterKey}/snapshot_{Revision}.db` (layout confirmed 2026-11-02); prepare changes in a copy and publish a complete candidate; download a complete local replacement. Recovery selects latest published version, not original failed snapshot. SyncKey/outcome/receipt tracking is necessary to resolve lost responses without duplicate business application (BR-038–BR-040; synchronization source).
 - TransactionEntry and TemplateEntry retain BOTH parent navigation/reference and parent foreign-key identity; both identify the same parent. This explicit legacy TRD requirement survives; language mapping is deferred. Group root refers to itself as parent but is excluded from its own Children. Groups have child groups and corresponding elements; every element has a group identity/reference (core source).
 - UTC transaction time; AmountPrecision/RatePrecision decimal calculation with midpoint-to-even; on-demand balances/reports. Stored entry rate is independent of rate catalog. JSON saved-report instructions preserve identities and explicit overrides; do not rewrite except user save (BR-015–BR-028).
 - Currency catalog follows the user-supplied CultureInfo/RegionInfo enumeration recorded in BRD: exclude neutral/invalid regions, map ISO code/symbol/English name, keep first entry per code. No new catalog source selected.
@@ -744,9 +748,41 @@ For each newly accepted delta batch identified by SyncKey, Master allocates the 
 
 The accepted batch outcome records the association between its merge revision, LocalDatasetKey and SyncKey, scoped to MasterDatasetKey. Entity revision equality remains the basis for detecting stale content. These records must remain available while needed to resolve the source of a current entity EditRevision and to recognize retried SyncKeys. Exact storage, safe retention/compaction and allocation/publication atomicity remain TQ-04. The confirmed same-Local exception above uses this association; BRD 0.218 BR-029 now records this previously accepted exception. No LastContentLocalDatasetKey property on every entity is required by this revision decision.
 
+#### Confirmed Master storage and temporary directory layout — 2026-11-02
+
+Source: requesting user, this conversation. This decision supersedes earlier flat Master object names, GUID snapshot filenames, and working paths that repeat MasterDatasetKey in both directory and filename. MasterKey in the paths below denotes MasterDatasetKey.
+
+Use the same dataset directory name and database filenames in the server temporary root and persistent storage root/container. MasterDatasetKey appears only in the directory name:
+
+```text
+Temp/
+├── Master_{MasterKey}/
+│   ├── master.db
+│   ├── snapshot_11.db
+│   └── snapshot_12.db
+└── Download_{RequestId}/
+    └── master.db
+
+Storage/
+└── Master_{MasterKey}/
+    ├── master.db
+    ├── snapshot_11.db
+    └── snapshot_12.db
+```
+
+- In object storage, `Master_{MasterKey}/` is the object-name prefix. The main database object is `Master_{MasterKey}/master.db`; each published snapshot object is `Master_{MasterKey}/snapshot_{Revision}.db`.
+- `Synchronize` and `Acknowledge` each use `Temp/Master_{MasterKey}/` under their scope-owned temporary root and acquire the same main-database storage lock before downloading the authoritative main database. Both filesystem and Azure storage use temporary working copies.
+- For each newly accepted SyncBatch, commit the working database transaction, create a standalone SQLite backup, call `UploadSnapshot` for `snapshot_{Revision}.db`, then `UploadMaster` to publish the same complete backup as `master.db`. MasterService controls this order. `DownloadMaster` and `DownloadSnapshot` both receive destinationFilePath and create its parent directory before writing. The caller selects the local filename. `UploadMaster` and `UploadSnapshot` both receive sourceFilePath. MasterService passes the same completed snapshot file to both operations; the storage operation selects master.db or snapshot_{Revision}.db as the destination object name. No additional Upload directory or file copy is needed; the active working database remains open for later batches. `UploadSnapshot` receives no lock; `UploadMaster` receives the Master lock without a revision parameter. An upload failure stops later batches. A snapshot left by failed main publication is uncommitted and may be overwritten by the next attempt at that revision.
+- `Acknowledge` updates only Master registration metadata without advancing the business revision. Publish a standalone backup as `master.db`; do not overwrite the published revision snapshot. Retain all persistent snapshots for now; retention cleanup is deferred.
+- Each `Download` creates its own `Temp/Download_{RequestId}/master.db`, reads the latest published CurrentRevision and validates Local registration, then downloads that revision's published snapshot into snapshot_{Revision}.db in the same temporary directory without a storage lock. MasterService reads this file into a MemoryStream and closes the file before cleanup. Ignore unpublished higher revision snapshots. For initial revision zero, return the downloaded main database. MinimumRevision remains a lower bound.
+- RequestId is generated on the server with `Guid.NewGuid().ToString("N")`. Downloads require no Master lock and never share temporary files. Close the database and delete the download directory before returning the MemoryStream positioned at zero; the response consumer owns that stream.
+- Scoped `IConfigurationService.GetTempDirectory()` owns the temporary root. It lazily allocates a unique directory under the platform temporary path, caches that path, and uses `IDirectoryService` to create or recreate it. All consumers in one dependency scope receive the same root; different scopes receive different roots. Synchronous or asynchronous scope disposal deletes the owned root and its contents after database consumers are disposed. Temporary paths are not application configuration settings. Business operations access this service through `ISharedContext`; the UOW factory uses the same scoped service. Filesystem persistent storage remains configured separately through `fileStorage:Root`. The scoped factory accepts the isolated download directory when opening that copy.
+- Session objects and their OpenSession/CloseSession APIs are removed. MasterService closes its unit of work, calls `IMasterStorageOperation.Close(directoryPath)` in finally, then releases the Master lock. Cleanup removes the complete operation directory, including all temporary snapshots. The next request recreates the directory.
+- This lifecycle supersedes the historical Local/Remote session descriptions below. One MasterStorageOperation uses the configured storage processor for either backend.
+
 #### Confirmed snapshot versions and deletion acknowledgement
 
-Published Master snapshots have positive int64 Version, starting at 1. A new snapshot gets current published Master Version + 1, never Max(SnapshotRevision) + 1. GUID filenames can remain; Version is the ordered snapshot identity. Serialized allocation/publication remains TQ-04.
+Published Master snapshots have positive int64 Version, starting at 1. A new snapshot gets current published Master Version + 1, never Max(SnapshotRevision) + 1. Snapshot filenames are `snapshot_{Revision}.db` under `Master_{MasterKey}/`, as confirmed on 2026-11-02; Version is the ordered snapshot identity. Serialized allocation/publication remains TQ-04.
 
 SnapshotRevision (renamed from AcknowledgedVersion by the requesting user on 2026-09-30) is a required signed 64-bit integer, mapped to C# long. Each LocalDb stores SnapshotRevision; Master administration stores it per registered LocalDb (PM-014). It means the snapshot successfully installed, not merely sent/published. Local durably records successful installation; Master advances the registration only after receipt confirming that actual Version. Lost receipts can be retried without moving acknowledgements backwards. SnapshotRevision is non-null, initially 0 on Local and in its Master registration before the first successful installation/receipt respectively. Zero means no snapshot acknowledged; published snapshot versions start at 1. A failed initial download leaves the value at 0.
 
@@ -3563,7 +3599,7 @@ Implements BRD section “Quick account filters — user request 2026-10-18”; 
 - Shared.Azure/Storage contains BlobStorageLockFactory and BlobStorageLock. The factory receives IConfiguration and TokenCredential rather than a lease-client delegate. It uses the same internal BlobStorageClientFactory as BlobStorageProcessorFactory, reading blobStorage:StorageUri and Retry. Each acquisition targets the exact objectName in that container and proposes a fresh lease GUID. Configuration sections are renamed from masterFileStorage/masterBlobStorage to fileStorage/blobStorage in hosts and tests.
 - Azure acquisition uses a 60-second lease, renewal every 20 seconds, a 50-second conservative ownership budget and bounded renewal/release requests. Ownership loss cancels the lock token. Contention does not release another owner's lease. Uncertain acquisition attempts release their own proposed identity when possible. Disposal is idempotent and stops renewal before release.
 - Azure factories are scoped to consume ISharedContext; lease ownership remains coordinated by Azure across scopes and processes. The lock and its factory use ISharedContext.LogService, with ILogService passed to narrow cleanup helpers. TimeProvider supplies timers and elapsed-time measurement. Tests override lease creation in a subclass and use a controlled clock; production has no test-only client factory or transport parameter.
-- MasterService translates MasterDatasetKey to Master_{key}.db through MasterStorageNames.Database before acquiring the shared object lock. RemoteMasterStorageOperation uses the same MasterStorageNames.Database mapping when calling the selected processor. BlobStorageProcessor validates object name, blob URI and lease identity; the session and processor both observe the ownership token. LocalMasterStorageOperation retains its existing dataset-to-file mapping.
+- MasterService translates MasterDatasetKey to the main database object name through MasterStorageNames.Database before acquiring the shared object lock. The original flat name Master_{key}.db is superseded by Master_{MasterKey}/master.db under the layout confirmed on 2026-11-02. RemoteMasterStorageOperation uses the same MasterStorageNames.Database mapping when calling the selected processor. BlobStorageProcessor validates object name, blob URI and lease identity; the session and processor both observe the ownership token. LocalMasterStorageOperation retains its existing dataset-to-file mapping.
 - AddLocalMasterAccess is removed; Shared registration owns Local locks. AddRemoteMasterStorage registers only the internal Master storage operation. Master.Impl consumes the foundational Shared.Contracts lock contract. Executable hosts select Shared.Azure separately; Master storage operations have no Azure implementation dependency.
 - Lock tests live in UnitTests.Shared. Master coordinator tests verify database-object naming; RemoteMasterStorageOperationTests in UnitTests.Master cover lock forwarding, download, upload, cancellation and cleanup. Azure lease request details remain covered by UnitTests.Shared.
 

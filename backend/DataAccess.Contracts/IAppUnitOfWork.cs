@@ -3,7 +3,7 @@ using DataAccess.Core.Entities;
 
 namespace DataAccess.Contracts;
 
-public interface IAppUnitOfWork : IUnitOfWork
+public interface IAppUnitOfWork : IUnitOfWork, IAsyncDisposable
 {
 	public IAccountRepository AccountRepo { get; }
 
@@ -42,7 +42,9 @@ public interface IAppUnitOfWork : IUnitOfWork
 	public ISystemConfigRepository SystemConfigRepo { get; }
 
 	public ILocalConfigRepository LocalConfigRepo { get; }
+	
 	public ILocalJsonRepository LocalJsonRepo { get; }
+	
 	public ILocalRegistrationRepository LocalRegistrationRepo { get; }
 
 	public ILocalSyncBatchRepository LocalSyncBatchRepo { get; }

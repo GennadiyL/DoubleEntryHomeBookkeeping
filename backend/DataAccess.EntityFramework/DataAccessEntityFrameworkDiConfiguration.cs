@@ -17,19 +17,15 @@ namespace DataAccess.EntityFramework;
 /// Provider modules register concrete units of work, contexts and connection options.
 /// No service provider or nested container is built during registration.
 /// </summary>
-public static class EntityFrameworkDiConfiguration
+public static class DataAccessEntityFrameworkDiConfiguration
 {
+	[Obsolete]
 	public static void AddLocalDataAccessEntityFrameworkModule(this IServiceCollection services)
 	{
 		AddRepositories(services, typeof(ILocalAppUnitOfWork));
 	}
 
-	public static void AddMasterDataAccessEntityFrameworkModule(this IServiceCollection services)
-	{
-		AddRepositories(services, typeof(IMasterAppUnitOfWork));
-	}
-
-	public static void AddFactoryDataAccessEntityFrameworkModule(this IServiceCollection services)
+	public static void AddDataAccessEntityFrameworkModule(this IServiceCollection services)
 	{
 		AddRepositories(services, typeof(IUnitOfWorkFactory));
 	}

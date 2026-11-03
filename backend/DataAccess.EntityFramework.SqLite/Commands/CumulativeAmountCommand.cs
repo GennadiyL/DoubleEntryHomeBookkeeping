@@ -1,7 +1,10 @@
 using Business.Models.Enums;
+using DataAccess.Contracts;
 using DataAccess.Contracts.Commands;
+using DataAccess.EntityFramework.Contracts;
 using DataAccess.EntityFramework.SqLite.Utils;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace DataAccess.EntityFramework.SqLite.Commands;
 
@@ -17,24 +20,28 @@ namespace DataAccess.EntityFramework.SqLite.Commands;
 /// </summary>
 internal sealed class CumulativeAmountCommand : ICumulativeAmountCommand
 {
-	private readonly AppDbContext _context;
+	private readonly IUnitOfWorkFactory _unitOfWorkFactory;
 
-	public CumulativeAmountCommand(AppDbContext context)
-	{
-		_context = context;
-	}
+	public CumulativeAmountCommand(IUnitOfWorkFactory unitOfWorkFactory) => _unitOfWorkFactory = unitOfWorkFactory;
 
 	public Task Recalculate(Guid accountId, CancellationToken cancellationToken = default) =>
 		Execute(accountId, null, 0m, cancellationToken);
 
-	public Task Recalculate(Guid accountId, DateTime fromDateTime, decimal initialAmount, CancellationToken cancellationToken = default) =>
+	public Task Recalculate(
+		Guid accountId,
+		DateTime fromDateTime,
+		decimal initialAmount,
+		CancellationToken cancellationToken = default) =>
 		Execute(accountId, fromDateTime, initialAmount, cancellationToken);
 
 	private async Task Execute(Guid accountId, DateTime? fromDateTime, decimal initialAmount, CancellationToken cancellationToken)
 	{
+		IEntityFrameworkUnitOfWork unitOfWork = (IEntityFrameworkUnitOfWork)_unitOfWorkFactory.CreateLocal();
+		DatabaseFacade database = unitOfWork.Database;
+
 		long seed = ScaledAmount.ToStorage(initialAmount);
 		int confirmed = (int)TransactionState.Confirmed;
-		await _context.Database.ExecuteSqlInterpolatedAsync($"""
+		await database.ExecuteSqlInterpolatedAsync($"""
 			WITH InputRows AS (
 				SELECT NULL AS EntryId, NULL AS DateTime, NULL AS TransactionId,
 					NULL AS Position, 1 AS IsSeed, 0 AS IsConfirmed, {seed} AS Contribution

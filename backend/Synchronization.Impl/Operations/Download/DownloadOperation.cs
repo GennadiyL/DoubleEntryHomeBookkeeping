@@ -47,7 +47,7 @@ internal sealed class DownloadOperation : IDownloadOperation
 		{
 			throw new InvalidSyncBatchException("Downloaded revision is below the required minimum.");
 		}
-		string path = Path.Combine(Path.GetTempPath(), $"dehb-install-{Guid.NewGuid():N}.db");
+		string path = Path.Combine(_shared.ConfigurationService.GetTempDirectory(), $"dehb-install-{Guid.NewGuid():N}.db");
 		try
 		{
 			await using (Stream destination = _shared.FileService.Open(path, new FileStreamOptions

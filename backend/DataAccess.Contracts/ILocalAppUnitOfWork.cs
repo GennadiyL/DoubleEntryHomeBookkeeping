@@ -13,6 +13,7 @@ namespace DataAccess.Contracts;
 /// Snapshot preparation binds an unused scope to a supplied candidate database.
 /// Activation atomically copies a prepared snapshot into the active Local database.
 /// </summary>
+[Obsolete]
 public interface ILocalAppUnitOfWork : IAppUnitOfWork
 {
 	public Task OpenSnapshot(string snapshotPath, CancellationToken cancellationToken = default);

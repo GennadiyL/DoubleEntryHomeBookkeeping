@@ -1,7 +1,9 @@
+using Shared.Contracts;
 using Business.Models.Entities.Config;
 using Business.Models.Entities.Synchronizations;
 using Business.Models.Exceptions;
 using DataAccess.Contracts;
+using DataAccess.Contracts.Commands;
 using DataAccess.Core.Entities;
 using Master.Contracts.Services;
 using Master.Contracts.Services.Synchronizations;
@@ -32,9 +34,10 @@ namespace UnitTests.Master;
 public sealed class MasterAcknowledgeAccessTests
 {
 	private ServiceProvider _provider = null!;
-	private IMasterAppUnitOfWork _unit = null!;
+	private IMasterUnitOfWork _unit = null!;
+	private IUnitOfWorkFactory _factory = null!;
+	private ICreateSnapshotCommand _snapshot = null!;
 	private IMasterStorageOperation _storage = null!;
-	private IMasterStorageSession _session = null!;
 	private IStorageLockFactory _locks = null!;
 	private IStorageLock _access = null!;
 	private CancellationTokenSource _lost = null!;
@@ -48,16 +51,18 @@ public sealed class MasterAcknowledgeAccessTests
 	public void SetUp()
 	{
 		_events.Clear();
-		_unit = Substitute.For<IMasterAppUnitOfWork>();
+		_unit = Substitute.For<IMasterUnitOfWork>();
+		_unit.MasterDatasetKey.Returns("master");
+		_factory = Substitute.For<IUnitOfWorkFactory>();
+		_factory.CreateMaster("master").Returns(_unit);
+		_snapshot = Substitute.For<ICreateSnapshotCommand>();
 		_storage = Substitute.For<IMasterStorageOperation>();
-		_session = Substitute.For<IMasterStorageSession>();
-		_session.StoragePath.Returns(Path.Combine(Path.GetTempPath(), $"ack-test-{Guid.NewGuid():N}.db"));
 		_locks = Substitute.For<IStorageLockFactory>();
 		_access = Substitute.For<IStorageLock>();
 		_lost = new CancellationTokenSource();
 		_access.CancellationToken.Returns(_lost.Token);
-		_locks.TryAcquire("Master_master.db", Arg.Any<CancellationToken>()).Returns(_access);
-		_storage.Open("master", _access, Arg.Any<CancellationToken>()).Returns(_session);
+		_locks.TryAcquire("Master_master/master.db", Arg.Any<CancellationToken>()).Returns(_access);
+		_storage.DownloadMaster("master", Arg.Any<string>(), _access, Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
 		_unit.BeginTransaction(Arg.Any<CancellationToken>()).Returns(Substitute.For<IUnitOfWorkTransaction>());
 		_unit.SystemConfigRepo.GetAll(Arg.Any<CancellationToken>())
 			.Returns(new[] { new SystemConfig { MasterDatasetKey = "master", CurrentRevision = 7 } });
@@ -67,7 +72,8 @@ public sealed class MasterAcknowledgeAccessTests
 		ServiceCollection services = new();
 		services.AddSharedModule();
 		services.AddMasterModule();
-		services.AddSingleton(_unit);
+		services.AddSingleton(_factory);
+		services.AddSingleton(_snapshot);
 		services.AddSingleton(_storage);
 		services.AddSingleton(_locks);
 		services.AddSingleton(Substitute.For<IApplySyncBatchOperation>());
@@ -84,9 +90,9 @@ public sealed class MasterAcknowledgeAccessTests
 	[Test]
 	public async Task BusyMasterDoesNotOpenStorage()
 	{
-		_locks.TryAcquire("Master_master.db", Arg.Any<CancellationToken>()).Returns((IStorageLock?)null);
+		_locks.TryAcquire("Master_master/master.db", Arg.Any<CancellationToken>()).Returns((IStorageLock?)null);
 		Assert.ThrowsAsync<MasterBusyException>(() => Acknowledge());
-		await _storage.DidNotReceiveWithAnyArgs().Open(default!, default!, default);
+		await _storage.DidNotReceiveWithAnyArgs().DownloadMaster(default!, default!, default!, default);
 		await _unit.DidNotReceiveWithAnyArgs().BeginTransaction(default);
 	}
 
@@ -110,7 +116,7 @@ public sealed class MasterAcknowledgeAccessTests
 		Assert.CatchAsync<OperationCanceledException>(() => Acknowledge(caller.Token));
 		await _unit.Received(1).RollbackTransaction(Arg.Any<IUnitOfWorkTransaction>(), CancellationToken.None);
 		await _unit.DidNotReceiveWithAnyArgs().CommitTransaction(default!, default);
-		await _storage.DidNotReceiveWithAnyArgs().Publish(default!, default!, default);
+		await _storage.DidNotReceiveWithAnyArgs().UploadMaster(default!, default!, default!, default);
 		Assert.That(_events, Is.EqualTo(RollbackEvents));
 	}
 
@@ -121,7 +127,7 @@ public sealed class MasterAcknowledgeAccessTests
 		_unit.SaveChanges(Arg.Any<CancellationToken>()).ThrowsAsync(failure);
 		Assert.That(Assert.ThrowsAsync<IOException>(() => Acknowledge()), Is.SameAs(failure));
 		await _unit.Received(1).RollbackTransaction(Arg.Any<IUnitOfWorkTransaction>(), CancellationToken.None);
-		await _storage.DidNotReceiveWithAnyArgs().Publish(default!, default!, default);
+		await _storage.DidNotReceiveWithAnyArgs().UploadMaster(default!, default!, default!, default);
 		Assert.That(_events.TakeLast(3), Is.EqualTo(CleanupEvents));
 	}
 
@@ -132,11 +138,11 @@ public sealed class MasterAcknowledgeAccessTests
 		IOException failure = new("Publication failed.");
 		if (snapshotFailure)
 		{
-			_unit.CreateSnapshot(Arg.Any<string>(), Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+			_snapshot.CreateSnapshot(Arg.Any<string>(), Arg.Any<CancellationToken>()).ThrowsAsync(failure);
 		}
 		else
 		{
-			_storage.Publish(_session, Arg.Any<string>(), Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+			_storage.UploadMaster("master", Arg.Any<string>(), Arg.Any<IStorageLock>(), Arg.Any<CancellationToken>()).ThrowsAsync(failure);
 		}
 		Assert.That(Assert.ThrowsAsync<IOException>(() => Acknowledge()), Is.SameAs(failure));
 		await _unit.Received(1).CommitTransaction(Arg.Any<IUnitOfWorkTransaction>(), Arg.Any<CancellationToken>());
@@ -152,8 +158,8 @@ public sealed class MasterAcknowledgeAccessTests
 		_local.SyncDateTime = new DateTime(2026, 10, 25, 12, 0, 0, DateTimeKind.Utc);
 		Assert.That((await Acknowledge()).IsSuccess, Is.True);
 		await _unit.DidNotReceiveWithAnyArgs().SaveChanges(default);
-		await _unit.DidNotReceiveWithAnyArgs().CreateSnapshot(default!, default);
-		await _storage.DidNotReceiveWithAnyArgs().Publish(default!, default!, default);
+		await _snapshot.DidNotReceiveWithAnyArgs().CreateSnapshot(default!, default);
+		await _storage.DidNotReceiveWithAnyArgs().UploadMaster(default!, default!, default!, default);
 	}
 
 	[Test]
@@ -166,10 +172,10 @@ public sealed class MasterAcknowledgeAccessTests
 	[Test]
 	public async Task DatabaseOpenFailureStillCleansUp()
 	{
-		_unit.OpenSession(Arg.Any<string>(), Arg.Any<CancellationToken>()).ThrowsAsync(new IOException("Open failed."));
+		_factory.CreateMaster("master").Returns(_ => throw new IOException("Open failed."));
 		Assert.ThrowsAsync<IOException>(() => Acknowledge());
 		await _unit.DidNotReceiveWithAnyArgs().BeginTransaction(default);
-		Assert.That(_events, Is.EqualTo(CleanupEvents));
+		Assert.That(_events, Is.EqualTo(CleanupEvents.Skip(1)));
 	}
 
 	[System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2012", Justification = "Configures substitute ValueTask returns; no asynchronous operation starts here.")]
@@ -177,10 +183,10 @@ public sealed class MasterAcknowledgeAccessTests
 	{
 		_unit.CommitTransaction(Arg.Any<IUnitOfWorkTransaction>(), Arg.Any<CancellationToken>()).Returns(_ => Record("commit"));
 		_unit.RollbackTransaction(Arg.Any<IUnitOfWorkTransaction>(), Arg.Any<CancellationToken>()).Returns(_ => Record("rollback"));
-		_unit.CreateSnapshot(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ => Record("snapshot"));
-		_storage.Publish(_session, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ => Record("publish"));
-		_unit.CloseSession().Returns(_ => Record("database-close"));
-		_session.DisposeAsync().Returns(_ => new ValueTask(Record("storage-dispose")));
+		_snapshot.CreateSnapshot(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ => Record("snapshot"));
+		_storage.UploadMaster("master", Arg.Any<string>(), Arg.Any<IStorageLock>(), Arg.Any<CancellationToken>()).Returns(_ => Record("publish"));
+		_unit.DisposeAsync().Returns(_ => new ValueTask(Record("database-close")));
+		_storage.When(storage => storage.Close(Arg.Any<string>())).Do(_ => _events.Add("storage-dispose"));
 		_access.DisposeAsync().Returns(_ => new ValueTask(Record("release")));
 	}
 

@@ -2,6 +2,7 @@ using Business.Models.Entities.Config;
 using Business.Models.Entities.Synchronizations;
 using Business.Models.Exceptions;
 using DataAccess.Contracts;
+using DataAccess.Contracts.Commands;
 using DataAccess.EntityFramework.SqLite;
 using Master.Contracts.Services;
 using Master.Contracts.Services.Synchronizations;
@@ -27,48 +28,31 @@ namespace UnitTests.Master;
 /// Invalid identities and future revisions cannot modify persisted state.
 /// Every test owns its database files and disposes scopes before cleanup.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001", Justification = "NUnit TearDown disposes the temporary store.")]
 [TestFixture(Category = "Local")]
 public sealed class MasterAcknowledgeTests
 {
-	private DirectoryInfo _directory = null!;
+	private MasterTestStore _store = null!;
 	private IDateTimeService _clock = null!;
 	private static readonly DateTime Now = new(2026, 10, 26, 12, 0, 0, DateTimeKind.Utc);
-	private string DatabasePath => Path.Combine(_directory.FullName, "Master_master.db");
+	private string DatabasePath => _store.DatabasePath;
 
 	[SetUp]
 	public async Task SetUp()
 	{
-		_directory = Directory.CreateTempSubdirectory("dehb-master-ack-tests-");
+		_store = new MasterTestStore();
+		await _store.Initialize(7);
 		_clock = Substitute.For<IDateTimeService>();
 		_clock.UtcNow.Returns(Now);
-		await using SqliteConnection connection = new($"Data Source={DatabasePath};Pooling=False");
-		await connection.OpenAsync();
-		foreach (string script in new[] { "001-schema.sql", "002-initial-data.sql" })
-		{
-			await using SqliteCommand command = connection.CreateCommand();
-			command.CommandText = await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory, "SqlAssets", script));
-			await command.ExecuteNonQueryAsync();
-		}
 		using ServiceProvider provider = BuildProvider();
 		using IServiceScope scope = provider.CreateScope();
-		IMasterAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
-		SystemConfig config = (await unit.SystemConfigRepo.GetAll()).Single();
-		config.MasterDatasetKey = "master";
-		config.CurrentRevision = 7;
-		unit.SystemConfigRepo.Update(config);
-		unit.LocalRegistrationRepo.Add(new LocalRegistration { Id = Guid.NewGuid(), LocalDatasetKey = "local" });
+		IMasterUnitOfWork unit = _store.OpenMaster(scope.ServiceProvider);
 		unit.LocalRegistrationRepo.Add(new LocalRegistration { Id = Guid.NewGuid(), LocalDatasetKey = "other" });
 		await unit.SaveChanges();
 	}
 
 	[TearDown]
-	public void TearDown()
-	{
-		if (_directory is not null && Directory.Exists(_directory.FullName))
-		{
-			_directory.Delete(true);
-		}
-	}
+	public void TearDown() => _store.Dispose();
 
 	[TestCase(false, 0)]
 	[TestCase(true, 0)]
@@ -81,7 +65,7 @@ public sealed class MasterAcknowledgeTests
 		using ServiceProvider provider = BuildProvider(remote);
 		Assert.That((await Acknowledge(provider, Request(installedRevision))).IsSuccess, Is.True);
 		using IServiceScope scope = provider.CreateScope();
-		IMasterAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
+		IMasterUnitOfWork unit = _store.OpenMaster(scope.ServiceProvider);
 		LocalRegistration local = (await unit.LocalRegistrationRepo.GetByLocalDatasetKey("local"))!;
 		LocalRegistration other = (await unit.LocalRegistrationRepo.GetByLocalDatasetKey("other"))!;
 		Assert.Multiple(() =>
@@ -117,7 +101,7 @@ public sealed class MasterAcknowledgeTests
 		using ServiceProvider provider = BuildProvider(remote);
 		using (IServiceScope scope = provider.CreateScope())
 		{
-			IMasterAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
+			IMasterUnitOfWork unit = _store.OpenMaster(scope.ServiceProvider);
 			SystemConfig config = (await unit.SystemConfigRepo.GetAll()).Single();
 			config.CurrentRevision = 0;
 			unit.SystemConfigRepo.Update(config);
@@ -138,6 +122,11 @@ public sealed class MasterAcknowledgeTests
 	public async Task InvalidReceiptLeavesRegistrationUnchanged(string masterKey, string localKey, long revision)
 	{
 		using ServiceProvider provider = BuildProvider();
+		if (masterKey == "wrong")
+		{
+			string directory = Directory.CreateDirectory(Path.Combine(_store.StorageRoot, "Master_wrong")).FullName;
+			File.Copy(DatabasePath, Path.Combine(directory, "master.db"));
+		}
 		Assert.ThrowsAsync<InvalidSyncBatchException>(() => Acknowledge(provider,
 			new AcknowledgeRequest { MasterDatasetKey = masterKey, LocalDatasetKey = localKey, InstalledRevision = revision }));
 		await AssertAcknowledgement(provider, 0, null);
@@ -147,7 +136,7 @@ public sealed class MasterAcknowledgeTests
 	public async Task BusyMasterCanBeRetriedAfterRelease()
 	{
 		using ServiceProvider provider = BuildProvider();
-		IStorageLock access = (await provider.GetRequiredService<IStorageLockFactory>().TryAcquire("Master_master.db"))!;
+		IStorageLock access = (await provider.GetRequiredService<IStorageLockFactory>().TryAcquire("Master_master/master.db"))!;
 		await using (access)
 		{
 			Assert.ThrowsAsync<MasterBusyException>(() => Acknowledge(provider, Request(7)));
@@ -155,34 +144,13 @@ public sealed class MasterAcknowledgeTests
 		Assert.That((await Acknowledge(provider, Request(7))).IsSuccess, Is.True);
 	}
 
-	private ServiceProvider BuildProvider(bool remote = false)
-	{
-		IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-		{
-			["ConnectionStrings:DehbMasterSqLite"] = $"Data Source={DatabasePath};Pooling=False",
-			["fileStorage:Root"] = _directory.FullName
-		}).Build();
-		ServiceCollection services = new();
-		services.AddSingleton(configuration);
-		services.AddSharedModule();
-		services.AddSingleton(_clock);
-		services.AddMasterDataAccessSqLiteModule(configuration);
-		services.AddMasterModule();
-		if (remote)
-		{
-			services.AddRemoteMasterStorage();
-		}
-		else
-		{
-			services.AddLocalMasterStorage(_ => DatabasePath);
-		}
-		return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
-	}
+	private ServiceProvider BuildProvider(bool remote = false) =>
+		_store.CreateProvider(services => services.AddSingleton(_clock));
 
-	private static async Task AssertAcknowledgement(ServiceProvider provider, long revision, DateTime? time)
+	private async Task AssertAcknowledgement(ServiceProvider provider, long revision, DateTime? time)
 	{
 		using IServiceScope scope = provider.CreateScope();
-		LocalRegistration local = (await scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>()
+		LocalRegistration local = (await _store.OpenMaster(scope.ServiceProvider)
 			.LocalRegistrationRepo.GetByLocalDatasetKey("local"))!;
 		Assert.That(local.SyncRevision, Is.EqualTo(revision));
 		Assert.That(local.SyncDateTime, Is.EqualTo(time));

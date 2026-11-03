@@ -14,6 +14,13 @@ namespace Master.Impl.Operations.ApplySyncBatch;
 /// </summary>
 internal interface IApplySyncBatchOperation
 {
-	public Task Run(SyncBatch syncBatch, Guid localRegistrationId, long revision,
+	/// <summary>
+	/// Applies a batch to the identified Master through the scoped unit-of-work factory.
+	/// </summary>
+	public Task Run(
+		string masterDatasetKey,
+		SyncBatch syncBatch,
+		Guid localRegistrationId,
+		long revision,
 		CancellationToken cancellationToken = default);
 }

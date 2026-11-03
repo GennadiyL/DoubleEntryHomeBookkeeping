@@ -1,5 +1,9 @@
+using Shared.Impl;
+using Shared.Contracts.Config;
+using Tests.Common.Mocks.Shared;
 using Business.Models.Entities.Config;
 using DataAccess.Contracts;
+using DataAccess.Contracts.Commands;
 using DataAccess.Core.Entities;
 using DataAccess.EntityFramework.SqLite;
 using Microsoft.Data.Sqlite;
@@ -33,7 +37,7 @@ public sealed class UnitOfWorkFactoryTests
 		{
 			await using SqliteConnection connection = new(new SqliteConnectionStringBuilder
 			{
-				DataSource = Path.Combine(_directory, name), Pooling = false
+				DataSource = DatabasePath(name), Pooling = false
 			}.ToString());
 			await connection.OpenAsync();
 			foreach (string script in new[] { "001-schema.sql", "002-initial-data.sql" })
@@ -43,6 +47,18 @@ public sealed class UnitOfWorkFactoryTests
 				await command.ExecuteNonQueryAsync();
 			}
 		}
+	}
+
+	private string DatabasePath(string name)
+	{
+		string directory = name.StartsWith("Master_", StringComparison.Ordinal)
+			? Path.Combine(_directory, $"Master_{name.Split('_')[1].Split('.')[0]}")
+			: _directory;
+		Directory.CreateDirectory(directory);
+		string file = name.StartsWith("Master_", StringComparison.Ordinal)
+			? name.Split('_').Length == 2 ? "master.db" : $"snapshot_{name.Split('_')[2]}"
+			: name;
+		return Path.Combine(directory, file);
 	}
 
 	[TearDown]
@@ -133,7 +149,63 @@ public sealed class UnitOfWorkFactoryTests
 		Assert.Throws<ArgumentException>(() => factory.CreateSnapshot("a/b", 1));
 		Assert.Throws<ArgumentOutOfRangeException>(() => factory.CreateSnapshot("alpha", -1));
 		Assert.ThrowsAsync<SqliteException>(async () => await GetRevision(factory.CreateMaster("missing")));
-		Assert.That(File.Exists(Path.Combine(_directory, "Master_missing.db")), Is.False);
+		Assert.That(File.Exists(Path.Combine(_directory, "Master_missing", "master.db")), Is.False);
+	}
+
+	[Test]
+	public async Task SnapshotCommandCopiesCurrentRevisionBesideMasterAndKeepsMasterUsable()
+	{
+		await using ServiceProvider provider = CreateProvider();
+		await using AsyncServiceScope scope = provider.CreateAsyncScope();
+		IUnitOfWorkFactory factory = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>();
+		IMasterUnitOfWork master = factory.CreateMaster("alpha");
+		await SetRevision(master, 25);
+
+		await scope.ServiceProvider.GetRequiredService<ICreateSnapshotCommand>().CreateSnapshot("alpha");
+
+		string snapshotPath = Path.Combine(_directory, "Master_alpha", "snapshot_25.db");
+		Assert.That(File.Exists(snapshotPath), Is.True);
+		await SetRevision(master, 26);
+		Assert.That(await GetRevision(factory.CreateSnapshot("alpha", 25)), Is.EqualTo(25));
+		Assert.That(await GetRevision(master), Is.EqualTo(26));
+	}
+
+	[Test]
+	public async Task SnapshotCommandRejectsActiveMasterTransaction()
+	{
+		await using ServiceProvider provider = CreateProvider();
+		await using AsyncServiceScope scope = provider.CreateAsyncScope();
+		IMasterUnitOfWork master = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateMaster("alpha");
+		await using IUnitOfWorkTransaction transaction = await master.BeginTransaction();
+		await SetRevision(master, 25);
+
+		ICreateSnapshotCommand command = scope.ServiceProvider.GetRequiredService<ICreateSnapshotCommand>();
+		Assert.ThrowsAsync<InvalidOperationException>(() => command.CreateSnapshot("alpha"));
+		Assert.That(File.Exists(Path.Combine(_directory, "Master_alpha", "snapshot_25.db")), Is.False);
+	}
+
+	[Test]
+	public async Task FactoryDisposalClosesDatabaseBeforeTemporaryDirectoryCleanup()
+	{
+		ServiceCollection services = new();
+		IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+		{
+			["DataAccess:LocalDirectory"] = _directory
+		}).Build();
+		services.AddSingleton(configuration);
+		services.AddSharedModule();
+		services.AddEntityFrameworkSqLiteModule();
+		using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+		string path;
+		await using (AsyncServiceScope scope = provider.CreateAsyncScope())
+		{
+			path = scope.ServiceProvider.GetRequiredService<IConfigurationService>().GetTempDirectory();
+			string directory = Directory.CreateDirectory(Path.Combine(path, "Master_alpha")).FullName;
+			File.Copy(DatabasePath("Master_alpha.db"), Path.Combine(directory, "master.db"));
+			await scope.ServiceProvider.GetRequiredService<ICreateSnapshotCommand>().CreateSnapshot("alpha");
+			Assert.That(File.Exists(Path.Combine(directory, "snapshot_0.db")), Is.True);
+		}
+		Assert.That(Directory.Exists(path), Is.False);
 	}
 
 	private ServiceProvider CreateProvider()
@@ -142,11 +214,10 @@ public sealed class UnitOfWorkFactoryTests
 		IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
 		{
 			["DataAccess:LocalDirectory"] = _directory,
-			["DataAccess:MasterDirectory"] = _directory,
-			["DataAccess:SnapshotDirectory"] = _directory
 		}).Build();
 		services.AddSingleton(configuration);
-		services.AddUnitOfWorkFactorySqLiteModule();
+		services.AddSingleton<IConfigurationService>(new MockConfigurationService(_directory));
+		services.AddEntityFrameworkSqLiteModule();
 		return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 	}
 

@@ -14,7 +14,9 @@ namespace DataAccess.EntityFramework.SqLite;
 /// </summary>
 internal sealed class LocalUnitOfWork : AppUnitOfWork, ILocalUnitOfWork
 {
-	public LocalUnitOfWork(AppDbContext context, IServiceProvider serviceProvider) :
+	public LocalUnitOfWork(
+		AppDbContext context,
+		IServiceProvider serviceProvider) :
 		base(context, serviceProvider)
 	{
 	}

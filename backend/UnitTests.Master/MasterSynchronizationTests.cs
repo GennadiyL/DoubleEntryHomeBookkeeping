@@ -1,3 +1,6 @@
+using System.Reflection;
+using DataAccess.EntityFramework;
+using DataAccess.Core.EntityFramework.Entities;
 using System.Text.Json;
 using Business.Models.Constants;
 using Business.Models.Entities.Config;
@@ -28,7 +31,7 @@ namespace UnitTests.Master;
 /// Tests ordered application, immutable receipts and revision allocation together.
 /// Injected database failures occur after the merge has saved entity changes.
 /// Cancellation cases verify rollback without a cancelled cleanup token.
-/// Concurrent independent providers test database-level write serialization.
+/// Storage access contention is covered by the companion access tests.
 /// Each test owns an isolated database and fixed acknowledgement timestamps.
 /// No existing user database or remote infrastructure is used.
 /// </summary>
@@ -36,8 +39,8 @@ namespace UnitTests.Master;
 [TestFixture(Category = "Local")]
 public sealed class MasterSynchronizationTests
 {
-	private SqliteConnection _connection = null!;
-	private DirectoryInfo _directory = null!;
+	private MasterTestStore _store = null!;
+
 	private ServiceProvider _provider = null!;
 	private string _masterKey = null!;
 	private Guid _localId;
@@ -46,17 +49,12 @@ public sealed class MasterSynchronizationTests
 	[SetUp]
 	public async Task SetUp()
 	{
-		_directory = Directory.CreateTempSubdirectory("dehb-master-sync-");
-		_connection = new SqliteConnection($"Data Source={Path.Combine(_directory.FullName, "master.db")};Pooling=False;Default Timeout=10");
-		await _connection.OpenAsync();
-		foreach (string script in new[] { "001-schema.sql", "002-initial-data.sql" })
-		{
-			await Execute(await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory, "SqlAssets", script)));
-		}
-		_provider = BuildProvider();
+		_store = new MasterTestStore();
+		await _store.Initialize();
+		_provider = _store.CreateProvider();
 		using IServiceScope scope = _provider.CreateScope();
-		IMasterAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
-		_masterKey = (await unit.SystemConfigRepo.GetAll()).Single().MasterDatasetKey;
+		IMasterUnitOfWork unit = _store.OpenMaster(scope.ServiceProvider);
+		_masterKey = "master";
 		_localId = Guid.NewGuid();
 		unit.LocalRegistrationRepo.Add(new LocalRegistration { Id = _localId, LocalDatasetKey = "local-one", SyncDateTime = Now.AddDays(-1) });
 		await unit.SaveChanges();
@@ -66,69 +64,17 @@ public sealed class MasterSynchronizationTests
 	public void TearDown()
 	{
 		_provider?.Dispose();
-		_connection?.Dispose();
-		if (_directory is not null && Directory.Exists(_directory.FullName)) { _directory.Delete(true); }
+		_store?.Dispose();
 	}
 
 	[Test]
-	public async Task StorageWorkingCopyPublishesStandaloneSnapshotsAfterEachCommit()
+	public async Task EachCommittedBatchPublishesSnapshotAndRemovesWorkingDirectory()
 	{
-		string workingPath = await CopyMasterDatabase();
-		List<long> published = [];
-		List<string> snapshots = [];
-		IMasterStorageOperation storage = CreatePublishingStorage(workingPath, published, snapshots);
-		using ServiceProvider provider = BuildProvider(storage);
-		using IServiceScope scope = provider.CreateScope();
-		SynchronizeResponse result = await scope.ServiceProvider.GetRequiredService<IMasterService>()
-			.Synchronize(Request(Batch("first"), Batch("second")));
-		Assert.That(result.Revision, Is.EqualTo(2));
-		Assert.That(published, Is.EqualTo(new long[] { 1, 2 }));
-		Assert.That(await Scalar("SELECT CurrentRevision FROM SystemConfig"), Is.Zero);
-		Assert.That(snapshots, Has.Count.EqualTo(2));
-		Assert.That(snapshots.Any(File.Exists), Is.False);
-	}
-
-	private async Task<string> CopyMasterDatabase()
-	{
-		string path = Path.Combine(_directory.FullName, "working.db");
-		await using SqliteConnection copy = new($"Data Source={path};Pooling=False");
-		await copy.OpenAsync();
-		_connection.BackupDatabase(copy);
-		await using SqliteCommand command = copy.CreateCommand();
-		command.CommandText = "PRAGMA journal_mode=WAL;";
-		await command.ExecuteNonQueryAsync();
-		return path;
-	}
-
-	[System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2012", Justification = "Configures substitute ValueTask returns; no asynchronous operation starts here.")]
-	private static IMasterStorageOperation CreatePublishingStorage(string workingPath, List<long> published, List<string> snapshots)
-	{
-		IMasterStorageOperation storage = Substitute.For<IMasterStorageOperation>();
-		IMasterStorageSession session = Substitute.For<IMasterStorageSession>();
-		session.StoragePath.Returns(workingPath);
-		storage.Open(Arg.Any<string>(), Arg.Any<IStorageLock>(), Arg.Any<CancellationToken>()).Returns(session);
-		storage.Publish(session, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
-			VerifyPublishedSnapshot(call.Arg<string>(), published, snapshots));
-		session.DisposeAsync().Returns(_ =>
-		{
-			using FileStream exclusive = File.Open(workingPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
-			return ValueTask.CompletedTask;
-		});
-		return storage;
-	}
-
-	private static async Task VerifyPublishedSnapshot(string path, List<long> published, List<string> snapshots)
-	{
-		snapshots.Add(path);
-		Assert.That(File.Exists(path + "-wal"), Is.False);
-		await using SqliteConnection snapshot = new($"Data Source={path};Mode=ReadOnly;Pooling=False");
-		await snapshot.OpenAsync();
-		await using SqliteCommand command = snapshot.CreateCommand();
-		command.CommandText = "SELECT CurrentRevision FROM SystemConfig;";
-		long revision = (long)(await command.ExecuteScalarAsync())!;
-		command.CommandText = "SELECT COUNT(*) FROM LocalSyncBatch;";
-		Assert.That((long)(await command.ExecuteScalarAsync())!, Is.EqualTo(revision));
-		published.Add(revision);
+		await Synchronize(Request(Batch("first"), Batch("second")));
+		Assert.That(File.Exists(Path.Combine(_store.DatasetDirectory, "snapshot_1.db")), Is.True);
+		Assert.That(File.Exists(Path.Combine(_store.DatasetDirectory, "snapshot_2.db")), Is.True);
+		Assert.That(Directory.GetDirectories(_store.TempRoot), Is.Empty);
+		Assert.That(await Scalar("SELECT CurrentRevision FROM SystemConfig"), Is.EqualTo(2));
 	}
 
 	[Test]
@@ -143,7 +89,7 @@ public sealed class MasterSynchronizationTests
 		SynchronizeResponse result = await Synchronize(Request(first, second));
 		Assert.That(result.Revision, Is.EqualTo(2));
 		using IServiceScope scope = _provider.CreateScope();
-		IMasterAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
+		IMasterUnitOfWork unit = _store.OpenMaster(scope.ServiceProvider);
 		Assert.That((await unit.CategoryRepo.GetById(category.Id))!.Name, Is.EqualTo("Second"));
 		Assert.That((await unit.SystemConfigRepo.GetAll()).Single().CurrentRevision, Is.EqualTo(2));
 		LocalSyncBatch[] receipts = (await unit.LocalSyncBatchRepo.GetAll()).OrderBy(item => item.Revision).ToArray();
@@ -202,7 +148,7 @@ public sealed class MasterSynchronizationTests
 	{
 		using (IServiceScope scope = _provider.CreateScope())
 		{
-			IMasterAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
+			IMasterUnitOfWork unit = _store.OpenMaster(scope.ServiceProvider);
 			unit.LocalRegistrationRepo.Add(new LocalRegistration { Id = Guid.NewGuid(), LocalDatasetKey = "local-two", SyncDateTime = Now });
 			await unit.SaveChanges();
 		}
@@ -234,7 +180,12 @@ public sealed class MasterSynchronizationTests
 		{
 			case "format": request.Container.FormatVersion = 2; break;
 			case "schema": request.Container.SchemaVersion = 2; break;
-			case "master": request.Container.MasterDatasetKey = "other-master"; break;
+			case "master":
+				request.Container.MasterDatasetKey = "other-master";
+				string otherDirectory = Path.Combine(_store.StorageRoot, "Master_other-master");
+				Directory.CreateDirectory(otherDirectory);
+				File.Copy(_store.DatabasePath, Path.Combine(otherDirectory, "master.db"));
+				break;
 			case "local": request.Container.LocalDatasetKey = "unknown-local"; break;
 		}
 		Assert.ThrowsAsync<InvalidSyncBatchException>(async () => await Synchronize(request));
@@ -255,7 +206,7 @@ public sealed class MasterSynchronizationTests
 		Assert.That((await Synchronize(Request(batch))).Revision, Is.EqualTo(1));
 		Assert.That((await Synchronize(Request(batch))).Revision, Is.EqualTo(1));
 		using IServiceScope scope = _provider.CreateScope();
-		IMasterAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
+		IMasterUnitOfWork unit = _store.OpenMaster(scope.ServiceProvider);
 		Assert.That((await unit.CategoryRepo.GetById(category.Id))!.Name, Is.EqualTo("Offline changes"));
 		Assert.That((await unit.LocalRegistrationRepo.GetById(_localId))!.SyncDateTime, Is.EqualTo(acknowledgedAt));
 		Assert.That(await Scalar("SELECT COUNT(*) FROM LocalSyncBatch"), Is.EqualTo(1));
@@ -297,7 +248,9 @@ public sealed class MasterSynchronizationTests
 		using CancellationTokenSource cancellation = new();
 		using (IServiceScope scope = _provider.CreateScope())
 		{
-			MasterAppDbContext context = scope.ServiceProvider.GetRequiredService<MasterAppDbContext>();
+			IMasterUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateMaster(_masterKey);
+			AppDbContext context = (AppDbContext)typeof(UnitOfWork<AppDbContext>)
+				.GetProperty("Context", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(unit)!;
 			((SqliteConnection)context.Database.GetDbConnection()).CreateFunction("cancel_sync", () => { cancellation.Cancel(); return 0; });
 			IMasterService service = scope.ServiceProvider.GetRequiredService<IMasterService>();
 			Assert.CatchAsync<OperationCanceledException>(async () => await service.Synchronize(Request(first, second), cancellation.Token));
@@ -321,30 +274,6 @@ public sealed class MasterSynchronizationTests
 		Assert.That(await Scalar("SELECT COUNT(*) FROM LocalSyncBatch"), Is.Zero);
 	}
 
-	[TestCase(false)]
-	[TestCase(true)]
-	public async Task ConcurrentProviders_SerializeReceiptChecksAndRevisionAllocation(bool sameBatch)
-	{
-		using ServiceProvider otherProvider = BuildProvider();
-		SyncBatch first = Batch("first");
-		first.Added.Add(Category(Guid.NewGuid(), "First"));
-		SyncBatch second = sameBatch ? first : Batch("second");
-		if (!sameBatch) { second.Added.Add(Category(Guid.NewGuid(), "Second")); }
-		using Barrier barrier = new(2);
-		Task<SynchronizeResponse> Run(ServiceProvider provider, SyncBatch batch) => Task.Run(async () =>
-		{
-			using IServiceScope scope = provider.CreateScope();
-			IMasterService service = scope.ServiceProvider.GetRequiredService<IMasterService>();
-			if (!barrier.SignalAndWait(TimeSpan.FromSeconds(10))) { throw new TimeoutException(); }
-			return await service.Synchronize(Request(batch));
-		});
-		SynchronizeResponse[] results = await Task.WhenAll(Run(_provider, first), Run(otherProvider, second));
-		Assert.That(results.Max(item => item.Revision), Is.EqualTo(sameBatch ? 1 : 2));
-		Assert.That(await Scalar("SELECT CurrentRevision FROM SystemConfig"), Is.EqualTo(sameBatch ? 1 : 2));
-		Assert.That(await Scalar("SELECT COUNT(*) FROM LocalSyncBatch"), Is.EqualTo(sameBatch ? 1 : 2));
-		Assert.That(await Scalar("SELECT COUNT(*) FROM Category"), Is.EqualTo(sameBatch ? 1 : 2));
-	}
-
 	[Test]
 	public async Task InvalidMiddleBatch_StopsBeforeFollowingBatch()
 	{
@@ -366,7 +295,7 @@ public sealed class MasterSynchronizationTests
 	{
 		using (IServiceScope scope = _provider.CreateScope())
 		{
-			IMasterAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
+			IMasterUnitOfWork unit = _store.OpenMaster(scope.ServiceProvider);
 			SystemConfig config = (await unit.SystemConfigRepo.GetAll()).Single();
 			config.CurrentRevision = long.MaxValue;
 			unit.SystemConfigRepo.Update(config);
@@ -375,32 +304,6 @@ public sealed class MasterSynchronizationTests
 		Assert.ThrowsAsync<InvalidSyncBatchException>(async () => await Synchronize(Request(Batch("overflow"))));
 		Assert.That(await Scalar("SELECT CurrentRevision FROM SystemConfig"), Is.EqualTo(long.MaxValue));
 		Assert.That(await Scalar("SELECT COUNT(*) FROM LocalSyncBatch"), Is.Zero);
-	}
-
-	private ServiceProvider BuildProvider(IMasterStorageOperation? storage = null)
-	{
-		ServiceCollection services = new();
-		services.AddSharedModule();
-		ConfigureDatabase(services);
-		if (storage is null)
-		{
-			services.AddLocalMasterStorage(_ => _connection.DataSource);
-		}
-		else
-		{
-			services.AddSingleton(storage);
-		}
-		services.AddMasterModule();
-		services.AddLocalStorageModule();
-		return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
-	}
-
-	private void ConfigureDatabase(IServiceCollection services)
-	{
-		services.AddMasterDataAccessSqLiteModule(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-		{
-			["ConnectionStrings:DehbMasterSqLite"] = _connection.ConnectionString
-		}).Build());
 	}
 
 	private async Task<SynchronizeResponse> Synchronize(SynchronizeRequest request)
@@ -432,24 +335,14 @@ public sealed class MasterSynchronizationTests
 	private async Task SetAcknowledgement(DateTime? dateTime)
 	{
 		using IServiceScope scope = _provider.CreateScope();
-		IMasterAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
+		IMasterUnitOfWork unit = _store.OpenMaster(scope.ServiceProvider);
 		LocalRegistration local = (await unit.LocalRegistrationRepo.GetById(_localId))!;
 		local.SyncDateTime = dateTime;
 		unit.LocalRegistrationRepo.Update(local);
 		await unit.SaveChanges();
 	}
 
-	private async Task Execute(string sql)
-	{
-		await using SqliteCommand command = _connection.CreateCommand();
-		command.CommandText = sql;
-		await command.ExecuteNonQueryAsync();
-	}
+	private Task Execute(string sql) => _store.Execute(sql);
 
-	private async Task<long> Scalar(string sql)
-	{
-		await using SqliteCommand command = _connection.CreateCommand();
-		command.CommandText = sql;
-		return (long)(await command.ExecuteScalarAsync())!;
-	}
+	private Task<long> Scalar(string sql) => _store.Scalar(sql);
 }

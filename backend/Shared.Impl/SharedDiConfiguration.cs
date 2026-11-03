@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Shared.Contracts;
+using Shared.Contracts.Config;
 using Shared.Contracts.Storage;
 using Shared.Impl.Logging;
 using Shared.Impl.Messaging;
@@ -22,6 +23,7 @@ public static class SharedDiConfiguration
 	public static void AddSharedModule(this IServiceCollection services)
 	{
 		services.AddScoped<ISharedContext, SharedContext>();
+		services.AddScoped<IConfigurationService, ConfigurationService>();
 
 		services.AddSingleton<IDateTimeService, DateTimeService>();
 		services.AddSingleton<IDirectoryService, DirectoryService>();

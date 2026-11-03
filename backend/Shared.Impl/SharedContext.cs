@@ -1,4 +1,5 @@
 using Shared.Contracts;
+using Shared.Contracts.Config;
 
 namespace Shared.Impl;
 
@@ -20,7 +21,8 @@ internal class SharedContext : ISharedContext
 		IXmlService xmlService,
 		IZipService zipService,
 		IFileService fileService,
-		IDirectoryService directoryService)
+		IDirectoryService directoryService,
+		IConfigurationService configurationService)
 	{
 		DateTimeService = dateTimeService;
 		TlsService = tlsService;
@@ -31,6 +33,7 @@ internal class SharedContext : ISharedContext
 		ZipService = zipService;
 		FileService = fileService;
 		DirectoryService = directoryService;
+		ConfigurationService = configurationService;
 	}
 
 	public IDateTimeService DateTimeService { get; }
@@ -50,4 +53,6 @@ internal class SharedContext : ISharedContext
 	public IFileService FileService { get; }
 
 	public IDirectoryService DirectoryService { get; }
+
+	public IConfigurationService ConfigurationService { get; }
 }

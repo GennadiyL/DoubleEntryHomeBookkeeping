@@ -1,3 +1,4 @@
+using DataAccess.EntityFramework.SqLite;
 using Master.Impl;
 using Shared.Azure;
 using Shared.Impl;
@@ -8,5 +9,6 @@ FunctionsApplicationBuilder builder = FunctionsApplication.CreateBuilder(args);
 builder.ConfigureFunctionsWebApplication();
 builder.Services.AddSharedModule();
 builder.Services.AddSharedAzureModule();
-builder.Services.AddRemoteMasterStorage();
+builder.Services.AddEntityFrameworkSqLiteModule();
+builder.Services.AddMasterModule();
 builder.Build().Run();

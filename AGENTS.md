@@ -14,6 +14,9 @@ DoubleEntryHomeBookkeeping is home accounting software based on strict double-en
 
 ## Rules
 
+- Reply in English to English questions and in Ukrainian to Ukrainian questions.
+- Write all documentation exclusively in English, regardless of the conversation language.
+- Use technical terminology exclusively in English, including in Ukrainian replies. Preserve English product names, UI labels, and code identifiers. If the user writes a Ukrainian translation or transliteration of a technical term (for example, "пермішен" or "девайс"), use the corresponding English term ("permission" or "device") in the reply.
 - Always use the `GL Dev CSharp` plugin for implementation and review work in the backend C# solution.
 - Put every AI-created artifact in `docs/`. Reuse existing artifacts when useful.
 - Never add, edit, move, or delete files in `references/`. Treat it as read-only input.

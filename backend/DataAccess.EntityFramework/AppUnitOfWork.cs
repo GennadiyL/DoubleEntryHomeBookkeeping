@@ -1,6 +1,8 @@
 using DataAccess.Contracts;
 using DataAccess.Contracts.Repositories;
 using DataAccess.Core.EntityFramework.Entities;
+using DataAccess.EntityFramework.Contracts;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DataAccess.EntityFramework;
@@ -13,9 +15,9 @@ namespace DataAccess.EntityFramework;
 /// Repository writes and unit-of-work saves use the same role-specific context.
 /// Common repository contracts remain independent of EF Core.
 /// This base does not choose connection strings or create service providers.
-/// Infrastructure owns registration and context disposal.
+/// Shared disposal closes the context for every database role.
 /// </summary>
-public abstract class AppUnitOfWork : UnitOfWork<AppDbContext>, IAppUnitOfWork
+public abstract class AppUnitOfWork : UnitOfWork<AppDbContext>, IAppUnitOfWork, IEntityFrameworkUnitOfWork, IDisposable
 {
 	private readonly Type? _databaseKey;
 	private readonly Dictionary<Type, object> _repositories = new();
@@ -24,10 +26,8 @@ public abstract class AppUnitOfWork : UnitOfWork<AppDbContext>, IAppUnitOfWork
 		AppDbContext context,
 		IServiceProvider serviceProvider,
 		Type databaseKey) :
-		base(context, new Lazy<IServiceProvider>(() => serviceProvider))
-	{
+		base(context, new Lazy<IServiceProvider>(() => serviceProvider)) =>
 		_databaseKey = databaseKey;
-	}
 
 	protected AppUnitOfWork(AppDbContext context, IServiceProvider serviceProvider) :
 		base(context, new Lazy<IServiceProvider>(() => serviceProvider))
@@ -47,6 +47,19 @@ public abstract class AppUnitOfWork : UnitOfWork<AppDbContext>, IAppUnitOfWork
 			_repositories.Add(typeof(TRepository), repository);
 		}
 		return (TRepository)repository;
+	}
+	public DatabaseFacade Database => Context.Database;
+
+	public void Dispose()
+	{
+		Context.Dispose();
+		GC.SuppressFinalize(this);
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		await Context.DisposeAsync();
+		GC.SuppressFinalize(this);
 	}
 
 	public IAccountRepository AccountRepo => GetRepository<IAccountRepository>();

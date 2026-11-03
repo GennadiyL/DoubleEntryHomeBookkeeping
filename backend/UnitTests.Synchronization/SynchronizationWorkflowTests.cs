@@ -43,12 +43,13 @@ public sealed class SynchronizationWorkflowTests
 	private LocalMasterAdapter _real = null!;
 	private Guid _categoryId;
 	private string LocalPath => Path.Combine(_directory.FullName, "local.db");
-	private string MasterPath => Path.Combine(_directory.FullName, "master.db");
+	private string MasterPath => Path.Combine(_directory.FullName, "storage", "Master_00000000-0000-0000-0000-000000000004", "master.db");
 
 	[SetUp]
 	public async Task SetUp()
 	{
 		_directory = Directory.CreateTempSubdirectory("dehb-workflow-");
+		Directory.CreateDirectory(Path.GetDirectoryName(MasterPath)!);
 		foreach (string path in new[] { LocalPath, MasterPath })
 		{
 			await using SqliteConnection connection = new($"Data Source={path};Pooling=False");
@@ -63,16 +64,15 @@ public sealed class SynchronizationWorkflowTests
 		IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
 		{
 			["ConnectionStrings:DehbSqLite"] = $"Data Source={LocalPath};Pooling=False",
-			["ConnectionStrings:DehbMasterSqLite"] = $"Data Source={MasterPath};Pooling=False",
-			["fileStorage:Root"] = _directory.FullName
+			["DataAccess:LocalDirectory"] = _directory.FullName,
+			["fileStorage:Root"] = Path.Combine(_directory.FullName, "storage")
 		}).Build();
 		ServiceCollection services = new();
 		services.AddSingleton(configuration);
 		services.AddSharedModule();
 		services.AddLocalDataAccessSqLiteModule(configuration);
-		services.AddMasterDataAccessSqLiteModule(configuration);
 		services.AddMasterModule();
-		services.AddLocalMasterStorage(_ => MasterPath);
+		services.AddEntityFrameworkSqLiteModule();
 		services.AddSynchronizationModule();
 		_adapter = Substitute.For<IMasterAdapter>();
 		services.AddSingleton(_adapter);
@@ -81,7 +81,7 @@ public sealed class SynchronizationWorkflowTests
 		ResetAdapter();
 		using IServiceScope scope = _provider.CreateScope();
 		ILocalAppUnitOfWork local = scope.ServiceProvider.GetRequiredService<ILocalAppUnitOfWork>();
-		IMasterAppUnitOfWork master = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
+		IMasterUnitOfWork master = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateMaster("00000000-0000-0000-0000-000000000004", Path.GetDirectoryName(MasterPath)!);
 		LocalConfig config = (await local.LocalConfigRepo.GetAll()).Single();
 		config.AccountNameSeparator = "|";
 		local.LocalConfigRepo.Update(config);
@@ -106,11 +106,13 @@ public sealed class SynchronizationWorkflowTests
 		_adapter.Download(Arg.Any<DownloadRequest>(), Arg.Any<CancellationToken>()).Returns(async call =>
 		{
 			using IServiceScope scope = _provider.CreateScope();
-			IMasterAppUnitOfWork master = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
+			IMasterUnitOfWork master = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateMaster("00000000-0000-0000-0000-000000000004", Path.GetDirectoryName(MasterPath)!);
 			SystemConfig config = (await master.SystemConfigRepo.GetAll()).Single();
 			config.CurrentRevision++;
 			master.SystemConfigRepo.Update(config);
 			await master.SaveChanges();
+			await master.DisposeAsync();
+			File.Copy(MasterPath, Path.Combine(Path.GetDirectoryName(MasterPath)!, "snapshot_2.db"));
 			return await _real.Download(call.Arg<DownloadRequest>(), call.Arg<CancellationToken>());
 		});
 		SynchronizeInfo result = await Run();
@@ -125,7 +127,7 @@ public sealed class SynchronizationWorkflowTests
 		Assert.That((await local.CategoryRepo.GetById(_categoryId))!.EditRevision, Is.EqualTo(1));
 		Assert.That((await ReadPending())!.Batches, Is.Empty);
 		Assert.That((await ReadPending())!.Revision, Is.EqualTo(config.SnapshotRevision));
-		IMasterAppUnitOfWork master = scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
+		IMasterUnitOfWork master = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateMaster("00000000-0000-0000-0000-000000000004", Path.GetDirectoryName(MasterPath)!);
 		Assert.That((await master.LocalRegistrationRepo.GetByLocalDatasetKey(config.LocalDatasetKey))!.SyncRevision, Is.EqualTo(2));
 	}
 
@@ -147,7 +149,7 @@ public sealed class SynchronizationWorkflowTests
 		Assert.That(completed.Revision, Is.EqualTo(1));
 		Assert.That(completed.Outcome, Is.EqualTo(SynchronizationOutcome.Complete));
 		using IServiceScope scope = _provider.CreateScope();
-		ICollection<LocalSyncBatch> receipts = await scope.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>().LocalSyncBatchRepo.GetAll();
+		ICollection<LocalSyncBatch> receipts = await scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateMaster("00000000-0000-0000-0000-000000000004", Path.GetDirectoryName(MasterPath)!).LocalSyncBatchRepo.GetAll();
 		Assert.That(receipts.Single().SyncKey, Is.EqualTo(key));
 	}
 
@@ -387,7 +389,7 @@ public sealed class SynchronizationWorkflowTests
 		ResetAdapter();
 		Assert.That((await Run()).Outcome, Is.EqualTo(SynchronizationOutcome.Complete));
 		using IServiceScope verification = _provider.CreateScope();
-		IMasterAppUnitOfWork master = verification.ServiceProvider.GetRequiredService<IMasterAppUnitOfWork>();
+		IMasterUnitOfWork master = verification.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateMaster("00000000-0000-0000-0000-000000000004", Path.GetDirectoryName(MasterPath)!);
 		ICollection<LocalSyncBatch> receipts = await master.LocalSyncBatchRepo.GetAll();
 		Assert.That(receipts.Count, Is.EqualTo(2));
 		Assert.That(receipts.Any(receipt => receipt.SyncKey == originalKey), Is.True);
@@ -400,11 +402,12 @@ public sealed class SynchronizationWorkflowTests
 	{
 		_adapter.Download(Arg.Any<DownloadRequest>(), Arg.Any<CancellationToken>()).Returns(async call =>
 		{
-			await using SqliteConnection connection = new($"Data Source={MasterPath};Pooling=False");
+			await using SqliteConnection connection = new($"Data Source={Path.Combine(Path.GetDirectoryName(MasterPath)!, "snapshot_1.db")};Pooling=False");
 			await connection.OpenAsync();
 			await using SqliteCommand command = connection.CreateCommand();
 			command.CommandText = "DELETE FROM LocalSyncBatch;";
 			await command.ExecuteNonQueryAsync();
+			await connection.CloseAsync();
 			return await _real.Download(call.Arg<DownloadRequest>(), call.Arg<CancellationToken>());
 		});
 		Assert.ThrowsAsync<InvalidSyncBatchException>(() => Run());

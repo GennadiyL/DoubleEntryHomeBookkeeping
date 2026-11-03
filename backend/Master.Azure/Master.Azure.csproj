@@ -14,6 +14,7 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\Master.Impl\Master.Impl.csproj" />
+        <ProjectReference Include="..\DataAccess.EntityFramework.SqLite\DataAccess.EntityFramework.SqLite.csproj" />
         <ProjectReference Include="..\Shared.Impl\Shared.Impl.csproj" />
         <ProjectReference Include="..\Shared.Azure\Shared.Azure.csproj" />
     </ItemGroup>

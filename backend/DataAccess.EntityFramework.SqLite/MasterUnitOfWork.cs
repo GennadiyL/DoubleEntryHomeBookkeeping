@@ -9,8 +9,7 @@ namespace DataAccess.EntityFramework.SqLite;
 /// Repository properties resolve lazily through the current scoped service provider.
 /// Every repository participates in the same context and transaction.
 /// The factory caches this unit for the current API operation.
-/// The factory disposes the context when its API scope ends.
-/// File creation, publication and deletion are outside this unit.
+/// Disposal closes the context before the synchronization lock is released.
 /// </summary>
 internal sealed class MasterUnitOfWork : AppUnitOfWork, IMasterUnitOfWork
 {
@@ -18,10 +17,8 @@ internal sealed class MasterUnitOfWork : AppUnitOfWork, IMasterUnitOfWork
 		AppDbContext context,
 		IServiceProvider serviceProvider,
 		string masterDatasetKey) :
-		base(context, serviceProvider)
-	{
+		base(context, serviceProvider) =>
 		MasterDatasetKey = masterDatasetKey;
-	}
 
 	public string MasterDatasetKey { get; }
 }

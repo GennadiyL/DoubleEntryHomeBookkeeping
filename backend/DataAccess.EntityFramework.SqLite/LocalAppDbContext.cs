@@ -12,6 +12,7 @@ namespace DataAccess.EntityFramework.SqLite;
 /// Infrastructure owns connection selection and scope creation.
 /// Scope disposal closes this context after its work completes.
 /// </summary>
+[Obsolete]
 public sealed class LocalAppDbContext : SqLiteAppDbContext
 {
 	public LocalAppDbContext(DbContextOptions<LocalAppDbContext> options) : base(options)
