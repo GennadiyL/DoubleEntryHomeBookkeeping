@@ -24,7 +24,7 @@ namespace UnitTests.EntityFramework.SqLite;
 
 /// <summary>
 /// Verifies the fresh SQLite scripts against the current persistence model.
-/// Uses the production DAL and isolated in-memory databases for every test.
+/// Uses the production DAL and isolated temporary SQLite databases for every test.
 /// Initial and optional sample data must load with foreign keys enabled.
 /// Report groups and reports round-trip through detached repository calls.
 /// Hierarchy reads preserve loaded parent, child and element relationships.
@@ -37,19 +37,21 @@ namespace UnitTests.EntityFramework.SqLite;
 public sealed class CatalogSchemaTests
 {
 	private ServiceProvider _provider = null!;
+	private string _directory = null!;
 	private SqliteConnection _lifetime = null!;
 
 	[SetUp]
 	public async Task SetUp()
 	{
-		string connectionString = $"Data Source=catalog-{Guid.NewGuid()};Mode=Memory;Cache=Shared;Pooling=False";
+		_directory = Directory.CreateTempSubdirectory("dehb-local-tests-").FullName;
+		string connectionString = $"Data Source={Path.Combine(_directory, StorageValues.LocalFileName)};Pooling=False";
 		_lifetime = new SqliteConnection(connectionString);
 		await _lifetime.OpenAsync();
 		ServiceCollection services = new();
 		services.AddSharedModule();
 		services.AddBusinessModule();
 		IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
-			new Dictionary<string, string?> { ["ConnectionStrings:DehbSqLite"] = connectionString }).Build();
+			new Dictionary<string, string?> { [StorageValues.LocalDirectoryConfigurationKey] = _directory }).Build();
 		services.AddLocalDataAccessSqLiteModule(configuration);
 		_provider = services.BuildServiceProvider(true);
 		foreach (string file in new[] { "001-schema.sql", "002-initial-data.sql", "003-test-data.sql" })
@@ -65,6 +67,7 @@ public sealed class CatalogSchemaTests
 	{
 		_provider?.Dispose();
 		_lifetime?.Dispose();
+		Directory.Delete(_directory, true);
 	}
 
 	[Test]

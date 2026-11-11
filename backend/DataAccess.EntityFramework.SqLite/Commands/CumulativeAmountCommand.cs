@@ -1,9 +1,7 @@
-using Business.Models.Enums;
 using DataAccess.Contracts;
 using DataAccess.Contracts.Commands;
 using DataAccess.EntityFramework.Contracts;
 using DataAccess.EntityFramework.SqLite.Utils;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace DataAccess.EntityFramework.SqLite.Commands;
@@ -39,35 +37,11 @@ internal sealed class CumulativeAmountCommand : ICumulativeAmountCommand
 		IEntityFrameworkUnitOfWork unitOfWork = (IEntityFrameworkUnitOfWork)_unitOfWorkFactory.CreateLocal();
 		DatabaseFacade database = unitOfWork.Database;
 
-		long seed = ScaledAmount.ToStorage(initialAmount);
-		int confirmed = (int)TransactionState.Confirmed;
-		await database.ExecuteSqlInterpolatedAsync($"""
-			WITH InputRows AS (
-				SELECT NULL AS EntryId, NULL AS DateTime, NULL AS TransactionId,
-					NULL AS Position, 1 AS IsSeed, 0 AS IsConfirmed, {seed} AS Contribution
-				UNION ALL
-				SELECT e.Id, t.DateTime, t.Id, e.Position, 0,
-					CASE WHEN t.State = {confirmed} THEN 1 ELSE 0 END,
-					CASE WHEN t.State = {confirmed} THEN e.Amount ELSE 0 END
-				FROM "TransactionEntry" AS e
-				JOIN "Transaction" AS t ON t.Id = e.TransactionId
-				WHERE e.AccountId = {accountId.ToByteArray()} AND t.DeleteRevision IS NULL
-					AND ({fromDateTime} IS NULL OR t.DateTime >= {fromDateTime})
-			),
-			Calculated AS (
-				SELECT EntryId,
-					CASE WHEN IsConfirmed = 1 THEN
-						SUM(Contribution) OVER (
-							ORDER BY IsSeed DESC, DateTime, TransactionId, Position
-							ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
-						ELSE 0 END AS NewAmount
-				FROM InputRows
-			)
-			UPDATE "TransactionEntry" AS target
-			SET CumulativeAmount = calculated.NewAmount
-			FROM Calculated AS calculated
-			WHERE target.Id = calculated.EntryId
-				AND target.CumulativeAmount IS NOT calculated.NewAmount
-			""", cancellationToken);
+		await CumulativeAmountSql.Execute(
+			database,
+			accountId,
+			fromDateTime,
+			initialAmount,
+			cancellationToken);
 	}
 }

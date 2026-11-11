@@ -1,3 +1,5 @@
+using Master.Impl.Operations.MasterStorage;
+using Business.Models.Constants;
 using Business.Models.Exceptions;
 using Master.Contracts.Services;
 using Master.Contracts.Services.Synchronizations;
@@ -45,7 +47,7 @@ public sealed class MasterDownloadTests
 		Assert.That(content.Position, Is.Zero);
 		Assert.That(result.Revision, Is.EqualTo(7));
 		Assert.That(Directory.GetDirectories(_store.TempRoot), Is.Empty);
-		byte[] expected = await File.ReadAllBytesAsync(Path.Combine(_store.DatasetDirectory, "snapshot_7.db"));
+		byte[] expected = await File.ReadAllBytesAsync(Path.Combine(_store.DatasetDirectory, StorageValues.SnapshotFileName(7)));
 		Assert.That(((MemoryStream)content).ToArray(), Is.EqualTo(expected));
 		await _store.Execute("UPDATE SystemConfig SET CurrentRevision = 8");
 		Assert.That(((MemoryStream)content).ToArray(), Is.EqualTo(expected));
@@ -55,7 +57,7 @@ public sealed class MasterDownloadTests
 	public async Task ParallelDownloadsRemainIndependentWhileMasterIsLocked()
 	{
 		using ServiceProvider provider = _store.CreateProvider();
-		await using IStorageLock access = (await provider.GetRequiredService<IStorageLockFactory>().TryAcquire("Master_master/master.db"))!;
+		await using IStorageLock access = (await provider.GetRequiredService<IStorageLockFactory>().TryAcquire(MasterStorageNames.MasterRelativePath("master")))!;
 		DownloadResponse[] results = await Task.WhenAll(Download(provider, Request()), Download(provider, Request()));
 		using Stream first = results[0].Content;
 		using Stream second = results[1].Content;
@@ -67,7 +69,7 @@ public sealed class MasterDownloadTests
 	[Test]
 	public async Task OrphanSnapshotDoesNotAdvanceDownloadRevision()
 	{
-		await File.WriteAllBytesAsync(Path.Combine(_store.DatasetDirectory, "snapshot_8.db"), [9]);
+		await File.WriteAllBytesAsync(Path.Combine(_store.DatasetDirectory, StorageValues.SnapshotFileName(8)), [9]);
 		using ServiceProvider provider = _store.CreateProvider();
 		DownloadResponse result = await Download(provider, Request());
 		using Stream content = result.Content;
@@ -101,7 +103,7 @@ public sealed class MasterDownloadTests
 	[Test]
 	public void MissingPublishedSnapshotFailsAndCleansDirectory()
 	{
-		File.Delete(Path.Combine(_store.DatasetDirectory, "snapshot_7.db"));
+		File.Delete(Path.Combine(_store.DatasetDirectory, StorageValues.SnapshotFileName(7)));
 		using ServiceProvider provider = _store.CreateProvider();
 		Assert.ThrowsAsync<FileNotFoundException>(() => Download(provider, Request()));
 		Assert.That(Directory.GetDirectories(_store.TempRoot), Is.Empty);
@@ -134,7 +136,7 @@ public sealed class MasterDownloadTests
 		{
 			string name = call.ArgAt<string>(0);
 			Stream destination = call.ArgAt<Stream>(1);
-			if (name.EndsWith("snapshot_7.db", StringComparison.Ordinal))
+			if (name.EndsWith(StorageValues.SnapshotFileName(7), StringComparison.Ordinal))
 			{
 				temporaryFile = destination;
 				Assert.That(call.ArgAt<IStorageLock?>(2), Is.Null);

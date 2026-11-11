@@ -1,3 +1,4 @@
+using Business.Models.Constants;
 using Master.Contracts.Services;
 using Master.Contracts.Services.Synchronizations;
 using Master.Impl.Operations.MasterStorage;
@@ -53,10 +54,10 @@ public sealed class MasterStorageOperationTests
 		{
 			string name = call.ArgAt<string>(0);
 			writes.Add(name);
-			bool snapshot = name.EndsWith("snapshot_1.db", StringComparison.Ordinal);
+			bool snapshot = name.EndsWith(StorageValues.SnapshotFileName(1), StringComparison.Ordinal);
 			FileStream source = (FileStream)call.ArgAt<Stream>(1);
-			Assert.That(source.Name, Is.EqualTo(Path.Combine(_store.TempRoot, "Master_master", "snapshot_1.db")));
-			Assert.That(Directory.Exists(Path.Combine(_store.TempRoot, "Master_master", "Upload")), Is.False);
+			Assert.That(source.Name, Is.EqualTo(Path.Combine(_store.TempRoot, StorageValues.MasterDirectoryName("master"), StorageValues.SnapshotFileName(1))));
+			Assert.That(Directory.Exists(Path.Combine(_store.TempRoot, StorageValues.MasterDirectoryName("master"), "Upload")), Is.False);
 			Assert.That(call.ArgAt<IStorageLock?>(3) is null, Is.EqualTo(snapshot));
 			if (snapshot == failSnapshot)
 			{
@@ -79,7 +80,7 @@ public sealed class MasterStorageOperationTests
 			Assert.That((await scope.ServiceProvider.GetRequiredService<IMasterService>().Synchronize(Request("replacement"))).Revision, Is.EqualTo(1));
 		}
 		Assert.That(await _store.Scalar("SELECT COUNT(*) FROM LocalSyncBatch WHERE SyncKey = 'replacement'"), Is.EqualTo(1));
-		await using Microsoft.Data.Sqlite.SqliteConnection snapshotConnection = new($"Data Source={Path.Combine(_store.DatasetDirectory, "snapshot_1.db")};Pooling=False");
+		await using Microsoft.Data.Sqlite.SqliteConnection snapshotConnection = new($"Data Source={Path.Combine(_store.DatasetDirectory, StorageValues.SnapshotFileName(1))};Pooling=False");
 		await snapshotConnection.OpenAsync();
 		await using var command = snapshotConnection.CreateCommand();
 		command.CommandText = "SELECT COUNT(*) FROM LocalSyncBatch WHERE SyncKey = 'replacement'";
@@ -94,7 +95,7 @@ public sealed class MasterStorageOperationTests
 		{
 			await scope.ServiceProvider.GetRequiredService<IMasterService>().Synchronize(Request("first"));
 		}
-		string path = Path.Combine(_store.DatasetDirectory, "snapshot_1.db");
+		string path = Path.Combine(_store.DatasetDirectory, StorageValues.SnapshotFileName(1));
 		byte[] original = await File.ReadAllBytesAsync(path);
 		using (IServiceScope scope = provider.CreateScope())
 		{

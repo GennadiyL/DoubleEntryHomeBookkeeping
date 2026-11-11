@@ -21,7 +21,7 @@ namespace UnitTests.EntityFramework.SqLite;
 
 /// <summary>
 /// Exercises SQLite cumulative SQL and its real service transaction boundaries.
-/// Each test uses a fresh in-memory database and production DAL registration.
+/// Each test uses a fresh temporary SQLite database and production DAL registration.
 /// Fixtures seed the required currency, account group and system configuration.
 /// Tests cover binary ordering, ranged rebuilding and absent predecessors.
 /// Mutation tests verify downstream balances and aggregate replacement.
@@ -34,6 +34,7 @@ namespace UnitTests.EntityFramework.SqLite;
 public sealed class CumulativeTransactionTests
 {
 	private ServiceProvider _provider = null!;
+	private string _directory = null!;
 	private SqliteConnection _databaseLifetime = null!;
 	private IServiceScope _scope = null!;
 	private AppDbContext _context = null!;
@@ -52,11 +53,12 @@ public sealed class CumulativeTransactionTests
 		services.AddSharedModule();
 		services.AddSharedMockModule();
 		services.AddBusinessModule();
-		string connectionString = "Data Source=rollback-" + Guid.NewGuid() + ";Mode=Memory;Cache=Shared;Pooling=False";
+		_directory = Directory.CreateTempSubdirectory("dehb-local-tests-").FullName;
+		string connectionString = $"Data Source={Path.Combine(_directory, StorageValues.LocalFileName)};Pooling=False";
 		_databaseLifetime = new SqliteConnection(connectionString);
 		await _databaseLifetime.OpenAsync();
 		IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
-			new Dictionary<string, string?> { ["ConnectionStrings:DehbSqLite"] = connectionString }).Build();
+			new Dictionary<string, string?> { [StorageValues.LocalDirectoryConfigurationKey] = _directory }).Build();
 		services.AddLocalDataAccessSqLiteModule(configuration);
 		_provider = services.BuildServiceProvider(true);
 		_scope = _provider.CreateScope();
@@ -89,6 +91,7 @@ public sealed class CumulativeTransactionTests
 		_scope?.Dispose();
 		_provider?.Dispose();
 		_databaseLifetime?.Dispose();
+		Directory.Delete(_directory, true);
 	}
 
 	[TestCase(TransactionState.Draft)]

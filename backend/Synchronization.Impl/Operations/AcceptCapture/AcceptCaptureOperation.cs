@@ -15,46 +15,47 @@ namespace Synchronization.Impl.Operations.AcceptCapture;
 /// </summary>
 internal sealed class AcceptCaptureOperation : IAcceptCaptureOperation
 {
-	private readonly IAppUnitOfWork _unitOfWork;
+	private readonly IUnitOfWorkFactory _unitOfWorkFactory;
 
-	public AcceptCaptureOperation(IAppUnitOfWork unitOfWork)
+	public AcceptCaptureOperation(IUnitOfWorkFactory unitOfWorkFactory)
 	{
-		_unitOfWork = unitOfWork;
+		_unitOfWorkFactory = unitOfWorkFactory;
 	}
 
 	public async Task Run(CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		await _unitOfWork.TransactionRepo.HardDelete(cancellationToken);
-		await _unitOfWork.TemplateRepo.HardDelete(cancellationToken);
-		await _unitOfWork.ReportRepo.HardDelete(cancellationToken);
-		await _unitOfWork.AccountRepo.HardDelete(cancellationToken);
-		await _unitOfWork.CurrencyRateRepo.HardDelete(cancellationToken);
-		await _unitOfWork.CategoryRepo.HardDelete(cancellationToken);
-		await _unitOfWork.CorrespondentRepo.HardDelete(cancellationToken);
-		await _unitOfWork.ProjectRepo.HardDelete(cancellationToken);
-		await _unitOfWork.AccountGroupRepo.HardDelete(cancellationToken);
-		await _unitOfWork.TemplateGroupRepo.HardDelete(cancellationToken);
-		await _unitOfWork.ReportGroupRepo.HardDelete(cancellationToken);
-		await _unitOfWork.CategoryGroupRepo.HardDelete(cancellationToken);
-		await _unitOfWork.CorrespondentGroupRepo.HardDelete(cancellationToken);
-		await _unitOfWork.ProjectGroupRepo.HardDelete(cancellationToken);
-		await _unitOfWork.CurrencyRepo.HardDelete(cancellationToken);
+		ILocalUnitOfWork unitOfWork = _unitOfWorkFactory.CreateLocal();
+		await unitOfWork.TransactionRepo.HardDelete(cancellationToken);
+		await unitOfWork.TemplateRepo.HardDelete(cancellationToken);
+		await unitOfWork.ReportRepo.HardDelete(cancellationToken);
+		await unitOfWork.AccountRepo.HardDelete(cancellationToken);
+		await unitOfWork.CurrencyRateRepo.HardDelete(cancellationToken);
+		await unitOfWork.CategoryRepo.HardDelete(cancellationToken);
+		await unitOfWork.CorrespondentRepo.HardDelete(cancellationToken);
+		await unitOfWork.ProjectRepo.HardDelete(cancellationToken);
+		await unitOfWork.AccountGroupRepo.HardDelete(cancellationToken);
+		await unitOfWork.TemplateGroupRepo.HardDelete(cancellationToken);
+		await unitOfWork.ReportGroupRepo.HardDelete(cancellationToken);
+		await unitOfWork.CategoryGroupRepo.HardDelete(cancellationToken);
+		await unitOfWork.CorrespondentGroupRepo.HardDelete(cancellationToken);
+		await unitOfWork.ProjectGroupRepo.HardDelete(cancellationToken);
+		await unitOfWork.CurrencyRepo.HardDelete(cancellationToken);
 
-		await _unitOfWork.TransactionRepo.AcceptChanges(cancellationToken);
-		await _unitOfWork.TemplateRepo.AcceptChanges(cancellationToken);
-		await _unitOfWork.ReportRepo.AcceptChanges(cancellationToken);
-		await _unitOfWork.AccountRepo.AcceptChanges(cancellationToken);
-		await _unitOfWork.CurrencyRateRepo.AcceptChanges(cancellationToken);
-		await _unitOfWork.CategoryRepo.AcceptChanges(cancellationToken);
-		await _unitOfWork.CorrespondentRepo.AcceptChanges(cancellationToken);
-		await _unitOfWork.ProjectRepo.AcceptChanges(cancellationToken);
-		await _unitOfWork.AccountGroupRepo.AcceptChanges(cancellationToken);
-		await _unitOfWork.TemplateGroupRepo.AcceptChanges(cancellationToken);
-		await _unitOfWork.ReportGroupRepo.AcceptChanges(cancellationToken);
-		await _unitOfWork.CategoryGroupRepo.AcceptChanges(cancellationToken);
-		await _unitOfWork.CorrespondentGroupRepo.AcceptChanges(cancellationToken);
-		await _unitOfWork.ProjectGroupRepo.AcceptChanges(cancellationToken);
-		await _unitOfWork.CurrencyRepo.AcceptChanges(cancellationToken);
+		await unitOfWork.TransactionRepo.AcceptChanges(cancellationToken);
+		await unitOfWork.TemplateRepo.AcceptChanges(cancellationToken);
+		await unitOfWork.ReportRepo.AcceptChanges(cancellationToken);
+		await unitOfWork.AccountRepo.AcceptChanges(cancellationToken);
+		await unitOfWork.CurrencyRateRepo.AcceptChanges(cancellationToken);
+		await unitOfWork.CategoryRepo.AcceptChanges(cancellationToken);
+		await unitOfWork.CorrespondentRepo.AcceptChanges(cancellationToken);
+		await unitOfWork.ProjectRepo.AcceptChanges(cancellationToken);
+		await unitOfWork.AccountGroupRepo.AcceptChanges(cancellationToken);
+		await unitOfWork.TemplateGroupRepo.AcceptChanges(cancellationToken);
+		await unitOfWork.ReportGroupRepo.AcceptChanges(cancellationToken);
+		await unitOfWork.CategoryGroupRepo.AcceptChanges(cancellationToken);
+		await unitOfWork.CorrespondentGroupRepo.AcceptChanges(cancellationToken);
+		await unitOfWork.ProjectGroupRepo.AcceptChanges(cancellationToken);
+		await unitOfWork.CurrencyRepo.AcceptChanges(cancellationToken);
 	}
 }

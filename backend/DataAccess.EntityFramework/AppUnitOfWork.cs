@@ -9,7 +9,7 @@ namespace DataAccess.EntityFramework;
 
 /// <summary>
 /// Shares repository access and transaction behavior between database roles.
-/// Derived units supply their context and an optional legacy repository key.
+/// Derived units supply their factory-owned context.
 /// Repositories are resolved lazily through the current scoped service provider.
 /// Factory-created units cache repositories constructed with their own context.
 /// Repository writes and unit-of-work saves use the same role-specific context.
@@ -19,15 +19,7 @@ namespace DataAccess.EntityFramework;
 /// </summary>
 public abstract class AppUnitOfWork : UnitOfWork<AppDbContext>, IAppUnitOfWork, IEntityFrameworkUnitOfWork, IDisposable
 {
-	private readonly Type? _databaseKey;
 	private readonly Dictionary<Type, object> _repositories = new();
-
-	protected AppUnitOfWork(
-		AppDbContext context,
-		IServiceProvider serviceProvider,
-		Type databaseKey) :
-		base(context, new Lazy<IServiceProvider>(() => serviceProvider)) =>
-		_databaseKey = databaseKey;
 
 	protected AppUnitOfWork(AppDbContext context, IServiceProvider serviceProvider) :
 		base(context, new Lazy<IServiceProvider>(() => serviceProvider))
@@ -36,10 +28,6 @@ public abstract class AppUnitOfWork : UnitOfWork<AppDbContext>, IAppUnitOfWork, 
 
 	private TRepository GetRepository<TRepository>() where TRepository : class
 	{
-		if (_databaseKey is not null)
-		{
-			return ServiceProvider.Value.GetRequiredKeyedService<TRepository>(_databaseKey);
-		}
 		if (!_repositories.TryGetValue(typeof(TRepository), out object? repository))
 		{
 			Func<AppDbContext, TRepository> create = ServiceProvider.Value.GetRequiredService<Func<AppDbContext, TRepository>>();

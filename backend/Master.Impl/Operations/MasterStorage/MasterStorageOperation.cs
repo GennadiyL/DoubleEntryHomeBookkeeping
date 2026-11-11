@@ -1,3 +1,4 @@
+using DataAccess.Contracts.Commands;
 using Shared.Contracts;
 using Shared.Contracts.Storage;
 
@@ -17,11 +18,14 @@ internal sealed class MasterStorageOperation : IMasterStorageOperation
 {
 	private readonly ISharedContext _sharedContext;
 	private readonly IStorageProcessorFactory _storageProcessorFactory;
+	private readonly ICleanDataFilesCommand _cleanDataFiles;
 
 	public MasterStorageOperation(
 		ISharedContext sharedContext,
-		IStorageProcessorFactory storageProcessorFactory)
+		IStorageProcessorFactory storageProcessorFactory,
+		ICleanDataFilesCommand cleanDataFiles)
 	{
+		_cleanDataFiles = cleanDataFiles;
 		_sharedContext = sharedContext;
 		_storageProcessorFactory = storageProcessorFactory;
 	}
@@ -38,10 +42,7 @@ internal sealed class MasterStorageOperation : IMasterStorageOperation
 		cancellationToken.ThrowIfCancellationRequested();
 		access?.CancellationToken.ThrowIfCancellationRequested();
 		_sharedContext.DirectoryService.CreateDirectory(directoryPath);
-		foreach (string suffix in new[] { "-wal", "-shm", "-journal" })
-		{
-			_sharedContext.FileService.Delete(destinationFilePath + suffix);
-		}
+		_cleanDataFiles.CleanAll(destinationFilePath);
 		await using FileStream destination = _sharedContext.FileService.Open(destinationFilePath, new FileStreamOptions
 		{
 			Mode = FileMode.Create,

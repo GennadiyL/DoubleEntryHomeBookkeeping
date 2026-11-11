@@ -71,8 +71,8 @@ public sealed class MasterSynchronizationTests
 	public async Task EachCommittedBatchPublishesSnapshotAndRemovesWorkingDirectory()
 	{
 		await Synchronize(Request(Batch("first"), Batch("second")));
-		Assert.That(File.Exists(Path.Combine(_store.DatasetDirectory, "snapshot_1.db")), Is.True);
-		Assert.That(File.Exists(Path.Combine(_store.DatasetDirectory, "snapshot_2.db")), Is.True);
+		Assert.That(File.Exists(Path.Combine(_store.DatasetDirectory, StorageValues.SnapshotFileName(1))), Is.True);
+		Assert.That(File.Exists(Path.Combine(_store.DatasetDirectory, StorageValues.SnapshotFileName(2))), Is.True);
 		Assert.That(Directory.GetDirectories(_store.TempRoot), Is.Empty);
 		Assert.That(await Scalar("SELECT CurrentRevision FROM SystemConfig"), Is.EqualTo(2));
 	}
@@ -182,9 +182,9 @@ public sealed class MasterSynchronizationTests
 			case "schema": request.Container.SchemaVersion = 2; break;
 			case "master":
 				request.Container.MasterDatasetKey = "other-master";
-				string otherDirectory = Path.Combine(_store.StorageRoot, "Master_other-master");
+				string otherDirectory = Path.Combine(_store.StorageRoot, StorageValues.MasterDirectoryName("other-master"));
 				Directory.CreateDirectory(otherDirectory);
-				File.Copy(_store.DatabasePath, Path.Combine(otherDirectory, "master.db"));
+				File.Copy(_store.DatabasePath, Path.Combine(otherDirectory, StorageValues.MasterFileName));
 				break;
 			case "local": request.Container.LocalDatasetKey = "unknown-local"; break;
 		}

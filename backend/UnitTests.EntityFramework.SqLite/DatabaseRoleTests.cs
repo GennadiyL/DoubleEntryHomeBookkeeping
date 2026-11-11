@@ -43,9 +43,9 @@ public sealed class DatabaseRoleTests
 	public async Task SetUp()
 	{
 		_directory = Directory.CreateTempSubdirectory("dehb-roles-").FullName;
-		Directory.CreateDirectory(Path.Combine(_directory, "Master_master"));
-		_local = new SqliteConnection($"Data Source={Path.Combine(_directory, "Local.db")};Pooling=False");
-		_master = new SqliteConnection($"Data Source={Path.Combine(_directory, "Master_master", "master.db")};Pooling=False");
+		Directory.CreateDirectory(Path.Combine(_directory, StorageValues.MasterDirectoryName("master")));
+		_local = new SqliteConnection($"Data Source={Path.Combine(_directory, StorageValues.LocalFileName)};Pooling=False");
+		_master = new SqliteConnection($"Data Source={Path.Combine(_directory, StorageValues.MasterDirectoryName("master"), StorageValues.MasterFileName)};Pooling=False");
 		foreach (SqliteConnection connection in new[] { _local, _master })
 		{
 			await connection.OpenAsync();
@@ -58,7 +58,7 @@ public sealed class DatabaseRoleTests
 		}
 		_configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
 		{
-			["DataAccess:LocalDirectory"] = _directory,
+			[StorageValues.LocalDirectoryConfigurationKey] = _directory,
 		}).Build();
 	}
 

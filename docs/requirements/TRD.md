@@ -4,6 +4,8 @@
 
 ## Document Control and BRD Reference
 
+- Revision 0.236, 2026-11-11: record the synchronization review and implementation handoff: implemented in-process business flow, pending host/UI wiring, confirmed cancellation boundaries and UI editing exclusion, and deferred Azure integration and persistent snapshot retention cleanup. This is a status and decision record, not a claim that UI or Azure integration is implemented.
+
 - Revision 0.235, 2026-11-02: implement the confirmed session-free Master lifecycle: temporary working copies for both storage backends, snapshot-before-main publication, isolated memory-backed downloads, acknowledgement metadata publication, and complete temporary-directory cleanup before releasing Master access. Persistent snapshot retention cleanup remains deferred.
 
 - Revision 0.234, 2026-11-02: record the user-confirmed Master directory layout shared by server Temp and persistent Storage, revision snapshot filenames, and isolated per-request download directories. MasterDatasetKey appears only in the dataset directory name. Documentation only; no implementation changes or full-document approval inferred.
@@ -777,8 +779,70 @@ Storage/
 - Each `Download` creates its own `Temp/Download_{RequestId}/master.db`, reads the latest published CurrentRevision and validates Local registration, then downloads that revision's published snapshot into snapshot_{Revision}.db in the same temporary directory without a storage lock. MasterService reads this file into a MemoryStream and closes the file before cleanup. Ignore unpublished higher revision snapshots. For initial revision zero, return the downloaded main database. MinimumRevision remains a lower bound.
 - RequestId is generated on the server with `Guid.NewGuid().ToString("N")`. Downloads require no Master lock and never share temporary files. Close the database and delete the download directory before returning the MemoryStream positioned at zero; the response consumer owns that stream.
 - Scoped `IConfigurationService.GetTempDirectory()` owns the temporary root. It lazily allocates a unique directory under the platform temporary path, caches that path, and uses `IDirectoryService` to create or recreate it. All consumers in one dependency scope receive the same root; different scopes receive different roots. Synchronous or asynchronous scope disposal deletes the owned root and its contents after database consumers are disposed. Temporary paths are not application configuration settings. Business operations access this service through `ISharedContext`; the UOW factory uses the same scoped service. Filesystem persistent storage remains configured separately through `fileStorage:Root`. The scoped factory accepts the isolated download directory when opening that copy.
+- The scoped UOW factory exposes explicit CloseLocal, CloseCandidate, CloseMaster and CloseSnapshot operations. Each operation awaits disposal of the cached UOW and removes it from the cache; a subsequent Create returns a new UOW and DbContext. Closing an uncached unit is a no-op. Master copies in isolated download directories have a matching CloseMaster overload. SQLite connections use Pooling=false so disposed connections are not retained in a pool. CandidateUnitOfWork implements the empty ICandidateUnitOfWork interface and opens an existing candidate.db beside local.db; file download, preparation and installation remain operation responsibilities.
 - Session objects and their OpenSession/CloseSession APIs are removed. MasterService closes its unit of work, calls `IMasterStorageOperation.Close(directoryPath)` in finally, then releases the Master lock. Cleanup removes the complete operation directory, including all temporary snapshots. The next request recreates the directory.
 - This lifecycle supersedes the historical Local/Remote session descriptions below. One MasterStorageOperation uses the configured storage processor for either backend.
+
+#### Confirmed Local Candidate installation — 2026-11-04
+
+This decision supersedes the legacy LocalAppUnitOfWork snapshot methods and activation through SQLite BackupDatabase.
+
+- Local data access uses the factory-owned ILocalUnitOfWork. ICandidateUnitOfWork is an empty role interface backed by the same AppDbContext implementation.
+- ICleanDataFilesCommand.CleanAll(databaseFilePath) removes a closed database and its provider-specific auxiliary files. The SQLite implementation owns the WAL, shared-memory and rollback-journal suffixes. Master and Synchronization operations inject the command and do not enumerate these suffixes.
+- StorageValues is the shared source for database filenames, revision snapshot names, directory prefixes, the Local directory configuration key. All database filenames are lowercase: local.db, master.db, candidate.db and snapshot_{Revision}.db.
+- DataAccess:LocalDirectory contains local.db and the temporary candidate.db. Download writes candidate.db, closes the transfer stream, and validates SQLite integrity, foreign keys, schema, Master identity, immutable settings and actual revision.
+- Candidate preparation copies LocalConfig, sets SnapshotRevision, and persists LocalJson after removing batches confirmed by receipts in the downloaded database. If a submitted batch is not confirmed, installation is rejected. Cumulative amounts are rebuilt against Candidate, within the preparation transaction.
+- Installation completes SQLite journals, closes both units through the factory, and atomically replaces local.db with candidate.db. It does not delete local.db before replacement. Factory cache entries are removed so subsequent access creates a new context.
+- Acknowledgement occurs only after successful installation. Acknowledgement failure retains the installed Local database and its pruned JSON for retry.
+- Failed preparation or cancellation before replacement preserves the existing Local database. Candidate files and sidecars are cleaned after the Candidate connection closes; leftovers from interrupted attempts are discarded before the next download.
+- The existing synchronization semaphore serializes synchronization attempts. The host must continue to exclude business editing throughout synchronization; this semaphore alone does not lock independent business operations.
+
+#### Synchronization review and implementation handoff — 2026-11-11
+
+Source: requesting user, this conversation. Use this section together with the confirmed Master storage and Local Candidate sections above as the starting point for review in another chat. It records the current implementation baseline and remaining integration work; it supersedes historical descriptions of unimplemented synchronization scaffolds, session-based storage and post-acknowledgement Local JSON cleanup. Unrelated UI requirements remain applicable.
+
+**Implemented in-process baseline**
+
+- The agreed business flow is implemented: authorization preflight, Local capture and acceptance, durable LocalJson, Master batch merge and revision snapshot publication, Candidate download/validation/preparation, atomic Local replacement and acknowledgement.
+- ISynchronizationService.Synchronize(CancellationToken) is the Local workflow entry point. IMasterService exposes Synchronize, Download and Acknowledge. LocalMasterAdapter invokes Master in a fresh DI scope for each call. This path is exercised by tests but is not yet wired into the application host/UI.
+- IUnitOfWorkFactory creates and caches Local, Candidate, Master and Snapshot units and explicitly closes/removes them from its cache. MasterService and ApplySyncBatchOperation keep the selected Master UOW local to the call rather than in mutable service fields.
+- IValidateCandidateCommand.Validate checks database integrity and schema. IPrepareCandidateCommand.Prepare copies Local configuration/recovery JSON and rebuilds cumulative amounts within the caller's transaction. IInstallCandidateCommand.Install closes the relevant units and performs atomic replacement. DownloadOperation owns their sequencing and dataset/revision validation.
+- ICleanDataFilesCommand.CleanAll hides provider-specific auxiliary-file cleanup from Master and Synchronization. StorageValues owns shared database filenames; provider-specific SQLite suffixes remain private to the DAL implementation.
+- Business-layer readiness applies to this agreed in-process workflow under exclusive Local editing. It does not mean that application integration, remote authorization or Azure synchronization is complete.
+
+**Next increment: host and UI wiring**
+
+1. When Sync starts, block new editing and new write actions, then finish any active save and save the current edits. If saving fails, report the error and do not start synchronization. There must be no gap in which another edit/save can start between saving and synchronization.
+2. Show the modal synchronization window with Cancel. Create a CancellationTokenSource and a dedicated DI scope, resolve ISynchronizationService, and invoke Synchronize with its token through the in-process adapter. Keep the UI responsive so Cancel can be handled.
+3. Cancel requests cooperative cancellation. Keep the modal window and editing restriction active while cancellation is being handled; show a cancelling state rather than closing the window immediately.
+4. Await actual task completion, including rollback where applicable, database close, cleanup and scope disposal. Only then reload Local-backed UI state and release the editing restriction. Reload is required after cancellation or failure as well as success because installation may already have completed. Do not continue using a disposed UOW or stale pre-installation UI state.
+5. Present the returned outcome or exception using the existing UI result/error requirements. The current entry point returns SynchronizeInfo; do not assume that a separate stage-progress or cancellation API has already been implemented.
+6. Test the host/UI integration for save failure, editing exclusion, cancellation on both sides of Local replacement, acknowledgement failure, retry, UI refresh and scope cleanup.
+
+The accepted locking boundary is the UI/host. SynchronizationGate only serializes Synchronize calls and does not block independent business services. No additional shared business-write semaphore is required for this increment provided that the application is the sole writer, all active writes finish before synchronization, and no background operations write to Local while it runs. If background writers are introduced, they must participate in the same exclusion policy; a modal window alone does not protect against them.
+
+**Cancellation and durable state**
+
+The workflow is idempotent across Local/Master boundaries and uses Local transactions plus atomic file replacement. There is no distributed transaction and Cancel does not invalidate or roll back already committed work.
+
+| Cancellation boundary | Durable state and retry behavior |
+|---|---|
+| Before the capture/acceptance transaction commits | Roll back that transaction. Existing Local changes and any previously durable pending JSON remain available for retry; the new capture is not committed. |
+| After capture commits, while submitting to Master | Keep the saved batches and original SyncKeys. Master may already have applied them even if no response is received. Retry the same identities; Master deduplicates them. |
+| During Download or Candidate preparation, before replacement | Discard the Candidate after closing its connection. Preserve the current Local database and its durable pending JSON. Retry later. |
+| Local replacement has completed | Keep the installed database. It already contains the copied LocalConfig, updated SnapshotRevision and LocalJson with confirmed batches removed. Cancellation cannot revert this installation. |
+| During acknowledgement | Keep the installed Local database and its pruned JSON container. Master may or may not have recorded the receipt; repeating acknowledgement is safe. Confirmed batches are not retained until acknowledgement. |
+| Acknowledgement succeeds | Master records LocalRegistration.SyncRevision and related acknowledgement metadata. No additional Local database write or JSON cleanup is required after this response. A late Cancel request does not make the successful operation invalid. |
+
+The transaction commit and atomic replacement are the relevant boundaries, not the instant the user clicks Cancel. UI editing remains blocked until the task and cleanup actually finish.
+
+**Deferred Azure increment**
+
+- The next tester-facing integration is in-process only. Remote synchronization is a separate major increment, after the requesting user has reviewed Azure.
+- Azure storage/lock implementations and Master.Azure composition already exist. This is not a completed remote synchronization endpoint/client path: Azure endpoints, a remote IMasterAdapter, authentication/authorization integration and end-to-end remote validation remain to be implemented.
+- LocalMasterAdapter.CheckAuthorization currently returns Authorized. Treat it as the trusted in-process path, not evidence of implemented remote access control.
+- The Azure increment must preserve the same batch identities, retry semantics, publication order, Candidate installation and cancellation boundaries. Select the concrete remote transport/authentication details during that increment; this handoff does not invent those decisions.
+- Keep all persistent revision snapshots for now. Obsolete snapshot retention/deletion remains explicitly deferred and is not a prerequisite for the in-process UI increment.
 
 #### Confirmed snapshot versions and deletion acknowledgement
 

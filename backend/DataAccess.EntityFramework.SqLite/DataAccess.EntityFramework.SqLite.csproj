@@ -20,6 +20,7 @@
         <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       </None>
       <None Update="Assets\dehb.db">
+        <TargetPath>Assets\local.db</TargetPath>
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
     </ItemGroup>

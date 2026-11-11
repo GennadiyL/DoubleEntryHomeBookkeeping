@@ -1,4 +1,4 @@
-using System.Globalization;
+using Business.Models.Constants;
 using DataAccess.Contracts;
 using DataAccess.Contracts.Commands;
 using DataAccess.EntityFramework.Contracts;
@@ -38,7 +38,7 @@ internal sealed class CreateSnapshotCommand : ICreateSnapshotCommand
 		SqliteConnection source = (SqliteConnection)database.GetDbConnection();
 		string snapshotPath = Path.Combine(
 			Path.GetDirectoryName(Path.GetFullPath(source.DataSource))!,
-			$"snapshot_{revision.ToString(CultureInfo.InvariantCulture)}.db");
+			StorageValues.SnapshotFileName(revision));
 		await database.OpenConnectionAsync(cancellationToken);
 		await using SqliteConnection destination = new(new SqliteConnectionStringBuilder
 		{

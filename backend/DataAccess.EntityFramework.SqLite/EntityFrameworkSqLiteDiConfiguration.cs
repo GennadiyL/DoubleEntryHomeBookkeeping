@@ -2,6 +2,7 @@ using DataAccess.Contracts;
 using DataAccess.Contracts.Commands;
 using DataAccess.EntityFramework.SqLite.Commands;
 using Microsoft.Extensions.DependencyInjection;
+using DataAccess.EntityFramework;
 
 namespace DataAccess.EntityFramework.SqLite;
 
@@ -21,7 +22,11 @@ public static class EntityFrameworkSqLiteDiConfiguration
 	{
 		services.AddScoped<IUnitOfWorkFactory, UnitOfWorkFactory>();
 		services.AddScoped<ICreateSnapshotCommand, CreateSnapshotCommand>();
+		services.AddScoped<ICleanDataFilesCommand, CleanDataFilesCommand>();
+		services.AddScoped<IPrepareCandidateCommand, PrepareCandidateCommand>();
+		services.AddScoped<IValidateCandidateCommand, ValidateCandidateCommand>();
+		services.AddScoped<IInstallCandidateCommand, InstallCandidateCommand>();
 		services.AddScoped<ICumulativeAmountCommand, CumulativeAmountCommand>();
-		services.AddDataAccessEntityFrameworkModule();
+		services.AddEntityFrameworkModule();
 	}
 }

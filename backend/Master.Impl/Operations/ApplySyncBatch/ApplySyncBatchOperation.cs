@@ -29,7 +29,6 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 {
 	private readonly ISharedContext _sharedContext;
 	private readonly IUnitOfWorkFactory _unitOfWorkFactory;
-	private IMasterUnitOfWork _unitOfWork = null!;
 
 	public ApplySyncBatchOperation(ISharedContext sharedContext, IUnitOfWorkFactory unitOfWorkFactory)
 	{
@@ -45,24 +44,27 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		CancellationToken cancellationToken = default)
 	{
 		ValidateBatch(syncBatch, localRegistrationId, revision, cancellationToken);
-		_unitOfWork = _unitOfWorkFactory.CreateMaster(masterDatasetKey);
+		IMasterUnitOfWork unitOfWork = _unitOfWorkFactory.CreateMaster(masterDatasetKey);
 		SystemConfig configuration = await LoadConfiguration(
+			unitOfWork,
 			localRegistrationId,
 			revision,
 			cancellationToken);
 		Dictionary<long, Guid> sources = await LoadRevisionSources(
+			unitOfWork,
 			syncBatch,
 			localRegistrationId,
 			revision,
 			cancellationToken);
-		Dictionary<string, SyncEntitySet> sets = await LoadSets(cancellationToken);
-		(ICollection<TransactionEntry> transactions, ICollection<TemplateEntry> templates) = await LoadEntries(cancellationToken);
+		Dictionary<string, SyncEntitySet> sets = await LoadSets(unitOfWork, cancellationToken);
+		(ICollection<TransactionEntry> transactions, ICollection<TemplateEntry> templates) = await LoadEntries(unitOfWork, cancellationToken);
 		AttachEntries(sets, transactions, templates);
 		MergeChanges(syncBatch, localRegistrationId, revision, sets, sources, cancellationToken);
 		ValidateResult(sets, configuration, syncBatch.Priority, cancellationToken);
 		List<(SyncEntitySet Set, SyncMergeRow Row)> changed = PrepareChanges(sets, revision);
 		ValidateEntryOwners(changed, transactions, templates);
 		await PersistChanges(
+			unitOfWork,
 			changed,
 			transactions,
 			templates,
@@ -80,16 +82,17 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		}
 	}
 
-	private async Task<SystemConfig> LoadConfiguration(
+	private static async Task<SystemConfig> LoadConfiguration(
+		IMasterUnitOfWork unitOfWork,
 		Guid localRegistrationId,
 		long revision,
 		CancellationToken cancellationToken)
 	{
-		if (await _unitOfWork.LocalRegistrationRepo.GetById(localRegistrationId, cancellationToken) is null)
+		if (await unitOfWork.LocalRegistrationRepo.GetById(localRegistrationId, cancellationToken) is null)
 		{
 			throw new InvalidSyncBatchException("The submitting Local is not registered on this Master.");
 		}
-		ICollection<SystemConfig> configurations = await _unitOfWork.SystemConfigRepo.GetAll(cancellationToken);
+		ICollection<SystemConfig> configurations = await unitOfWork.SystemConfigRepo.GetAll(cancellationToken);
 		if (configurations.Count != 1 || configurations.Single().CurrentRevision >= revision)
 		{
 			throw new InvalidSyncBatchException("The Master configuration or allocated revision is invalid.");
@@ -97,13 +100,14 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		return configurations.Single();
 	}
 
-	private async Task<Dictionary<long, Guid>> LoadRevisionSources(
+	private static async Task<Dictionary<long, Guid>> LoadRevisionSources(
+		IMasterUnitOfWork unitOfWork,
 		SyncBatch batch,
 		Guid localRegistrationId,
 		long revision,
 		CancellationToken cancellationToken)
 	{
-		ICollection<LocalSyncBatch> receipts = await _unitOfWork.LocalSyncBatchRepo.GetAll(cancellationToken);
+		ICollection<LocalSyncBatch> receipts = await unitOfWork.LocalSyncBatchRepo.GetAll(cancellationToken);
 		if (receipts.Any(receipt => receipt.Revision >= revision ||
 			(receipt.LocalRegistrationId == localRegistrationId && receipt.SyncKey == batch.SyncKey)) ||
 			receipts.GroupBy(receipt => receipt.Revision).Any(group => group.Count() != 1))
@@ -113,17 +117,24 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		return receipts.ToDictionary(receipt => receipt.Revision, receipt => receipt.LocalRegistrationId);
 	}
 
-	private async Task<Dictionary<string, SyncEntitySet>> LoadSets(CancellationToken cancellationToken)
+	private static async Task<Dictionary<string, SyncEntitySet>> LoadSets(
+		IMasterUnitOfWork unitOfWork,
+		CancellationToken cancellationToken)
 	{
-		Dictionary<string, SyncEntitySet> sets = CreateSets();
-		foreach (SyncEntitySet set in sets.Values) { await set.Load(cancellationToken); }
+		Dictionary<string, SyncEntitySet> sets = CreateSets(unitOfWork);
+		foreach (SyncEntitySet set in sets.Values)
+		{
+			await set.Load(cancellationToken);
+		}
 		return sets;
 	}
 
-	private async Task<(ICollection<TransactionEntry> Transactions, ICollection<TemplateEntry> Templates)> LoadEntries(CancellationToken cancellationToken)
+	private static async Task<(ICollection<TransactionEntry> Transactions, ICollection<TemplateEntry> Templates)> LoadEntries(
+		IMasterUnitOfWork unitOfWork,
+		CancellationToken cancellationToken)
 	{
-		ICollection<TransactionEntry> transactions = await _unitOfWork.TransactionEntryRepo.GetAll(cancellationToken);
-		ICollection<TemplateEntry> templates = await _unitOfWork.TemplateEntryRepo.GetAll(cancellationToken);
+		ICollection<TransactionEntry> transactions = await unitOfWork.TransactionEntryRepo.GetAll(cancellationToken);
+		ICollection<TemplateEntry> templates = await unitOfWork.TemplateEntryRepo.GetAll(cancellationToken);
 		return (transactions, templates);
 	}
 
@@ -210,23 +221,27 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		_ => false
 	};
 
-	private async Task PersistChanges(
+	private static async Task PersistChanges(
+		IMasterUnitOfWork unitOfWork,
 		List<(SyncEntitySet Set, SyncMergeRow Row)> changed,
 		ICollection<TransactionEntry> transactions,
 		ICollection<TemplateEntry> templates,
 		CancellationToken cancellationToken)
 	{
 		await SaveEntities(
+			unitOfWork,
 			changed,
 			cancellationToken);
 		await SaveEntries(
+			unitOfWork,
 			changed,
 			transactions,
 			templates,
 			cancellationToken);
 	}
 
-	private async Task SaveEntities(
+	private static async Task SaveEntities(
+		IMasterUnitOfWork unitOfWork,
 		List<(SyncEntitySet Set, SyncMergeRow Row)> changed,
 		CancellationToken cancellationToken)
 	{
@@ -234,10 +249,11 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		{
 			set.Persist(row);
 		}
-		await _unitOfWork.SaveChanges(cancellationToken);
+		await unitOfWork.SaveChanges(cancellationToken);
 	}
 
-	private async Task SaveEntries(
+	private static async Task SaveEntries(
+		IMasterUnitOfWork unitOfWork,
 		List<(SyncEntitySet Set, SyncMergeRow Row)> changed,
 		ICollection<TransactionEntry> transactions,
 		ICollection<TemplateEntry> templates,
@@ -248,16 +264,18 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		foreach ((SyncEntitySet set, SyncMergeRow row) in changed)
 		{
 			await SaveAggregateEntries(
+				unitOfWork,
 				set,
 				row,
 				transactionsByParent,
 				templatesByParent,
 				cancellationToken);
 		}
-		await _unitOfWork.SaveChanges(cancellationToken);
+		await unitOfWork.SaveChanges(cancellationToken);
 	}
 
-	private async Task SaveAggregateEntries(
+	private static async Task SaveAggregateEntries(
+		IMasterUnitOfWork unitOfWork,
 		SyncEntitySet set,
 		SyncMergeRow row,
 		ILookup<Guid, TransactionEntry> transactions,
@@ -267,6 +285,7 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		if (row.Entity is Transaction transaction)
 		{
 			await SaveTransactionEntries(
+				unitOfWork,
 				transaction,
 				transactions[transaction.Id].ToList(),
 				cancellationToken);
@@ -274,30 +293,39 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		else if (row.Entity is Template template && set.ContentChanged(row))
 		{
 			await SaveTemplateEntries(
+				unitOfWork,
 				template,
 				templates[template.Id].ToList(),
 				cancellationToken);
 		}
 	}
 
-	private async Task SaveTransactionEntries(
+	private static async Task SaveTransactionEntries(
+		IMasterUnitOfWork unitOfWork,
 		Transaction transaction,
 		List<TransactionEntry> old,
 		CancellationToken cancellationToken)
 	{
-		await _unitOfWork.TransactionEntryRepo.RemoveRange(
+		await unitOfWork.TransactionEntryRepo.RemoveRange(
 			old.Where(entry => transaction.Entries.All(current => current.Id != entry.Id)), cancellationToken);
-		SaveCurrentEntries(_unitOfWork.TransactionEntryRepo, transaction.Entries, old.Select(entry => entry.Id).ToHashSet());
+		SaveCurrentEntries(
+			unitOfWork.TransactionEntryRepo,
+			transaction.Entries,
+			old.Select(entry => entry.Id).ToHashSet());
 	}
 
-	private async Task SaveTemplateEntries(
+	private static async Task SaveTemplateEntries(
+		IMasterUnitOfWork unitOfWork,
 		Template template,
 		List<TemplateEntry> old,
 		CancellationToken cancellationToken)
 	{
-		await _unitOfWork.TemplateEntryRepo.RemoveRange(
+		await unitOfWork.TemplateEntryRepo.RemoveRange(
 			old.Where(entry => template.Entries.All(current => current.Id != entry.Id)), cancellationToken);
-		SaveCurrentEntries(_unitOfWork.TemplateEntryRepo, template.Entries, old.Select(entry => entry.Id).ToHashSet());
+		SaveCurrentEntries(
+			unitOfWork.TemplateEntryRepo,
+			template.Entries,
+			old.Select(entry => entry.Id).ToHashSet());
 	}
 
 	private static void SaveCurrentEntries<T>(IRepository<T> repository, ICollection<T> entries, HashSet<Guid> oldIds)
@@ -310,65 +338,127 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		}
 	}
 
-	private Dictionary<string, SyncEntitySet> CreateSets() =>
-		CreateCurrencySets().Concat(CreateGroupSets()).Concat(CreateElementSets()).Concat(CreateAggregateSets())
+	private static Dictionary<string, SyncEntitySet> CreateSets(IMasterUnitOfWork unitOfWork) =>
+		CreateCurrencySets(unitOfWork)
+			.Concat(CreateGroupSets(unitOfWork))
+			.Concat(CreateElementSets(unitOfWork))
+			.Concat(CreateAggregateSets(unitOfWork))
 			.ToDictionary(set => set.Type, StringComparer.Ordinal);
 
-	private SyncEntitySet[] CreateCurrencySets() =>
+	private static SyncEntitySet[] CreateCurrencySets(IMasterUnitOfWork unitOfWork) =>
 	[
-		SyncEntitySet.Create("currency", _unitOfWork.CurrencyRepo,
+		SyncEntitySet.Create(
+			"currency",
+			unitOfWork.CurrencyRepo,
 			["Code", "Symbol", "EnglishName", "Name", "IsFavorite"]),
-		SyncEntitySet.Create("currencyRate", _unitOfWork.CurrencyRateRepo,
+		SyncEntitySet.Create(
+			"currencyRate",
+			unitOfWork.CurrencyRateRepo,
 			["CurrencyId", "Date", "Rate", "Description"])
 	];
 
-	private SyncEntitySet[] CreateGroupSets()
+	private static SyncEntitySet[] CreateGroupSets(IMasterUnitOfWork unitOfWork)
 	{
 		string[] properties = ["Name", "Description", "IsFavorite", "ParentId"];
 		return
 		[
-			SyncEntitySet.Create("accountGroup", _unitOfWork.AccountGroupRepo, properties,
-				RootsIds.AccountGroupId, "accountGroup", "parentId"),
-			SyncEntitySet.Create("categoryGroup", _unitOfWork.CategoryGroupRepo, properties,
-				RootsIds.CategoryGroupId, "categoryGroup", "parentId"),
-			SyncEntitySet.Create("correspondentGroup", _unitOfWork.CorrespondentGroupRepo, properties,
-				RootsIds.CorrespondentGroupId, "correspondentGroup", "parentId"),
-			SyncEntitySet.Create("projectGroup", _unitOfWork.ProjectGroupRepo, properties,
-				RootsIds.ProjectGroupId, "projectGroup", "parentId"),
-			SyncEntitySet.Create("templateGroup", _unitOfWork.TemplateGroupRepo, properties,
-				RootsIds.TemplateGroupId, "templateGroup", "parentId"),
-			SyncEntitySet.Create("reportGroup", _unitOfWork.ReportGroupRepo, properties,
-				RootsIds.ReportGroupId, "reportGroup", "parentId")
+			SyncEntitySet.Create(
+				"accountGroup",
+				unitOfWork.AccountGroupRepo,
+				properties,
+				RootsIds.AccountGroupId,
+				"accountGroup",
+				"parentId"),
+			SyncEntitySet.Create(
+				"categoryGroup",
+				unitOfWork.CategoryGroupRepo,
+				properties,
+				RootsIds.CategoryGroupId,
+				"categoryGroup",
+				"parentId"),
+			SyncEntitySet.Create(
+				"correspondentGroup",
+				unitOfWork.CorrespondentGroupRepo,
+				properties,
+				RootsIds.CorrespondentGroupId,
+				"correspondentGroup",
+				"parentId"),
+			SyncEntitySet.Create(
+				"projectGroup",
+				unitOfWork.ProjectGroupRepo,
+				properties,
+				RootsIds.ProjectGroupId,
+				"projectGroup",
+				"parentId"),
+			SyncEntitySet.Create(
+				"templateGroup",
+				unitOfWork.TemplateGroupRepo,
+				properties,
+				RootsIds.TemplateGroupId,
+				"templateGroup",
+				"parentId"),
+			SyncEntitySet.Create(
+				"reportGroup",
+				unitOfWork.ReportGroupRepo,
+				properties,
+				RootsIds.ReportGroupId,
+				"reportGroup",
+				"parentId")
 		];
 	}
 
-	private SyncEntitySet[] CreateElementSets()
+	private static SyncEntitySet[] CreateElementSets(IMasterUnitOfWork unitOfWork)
 	{
 		string[] properties = ["Name", "Description", "IsFavorite", "GroupId"];
 		return
 		[
-			SyncEntitySet.Create("category", _unitOfWork.CategoryRepo,
-				properties, parentType: "categoryGroup", parentField: "groupId"),
-			SyncEntitySet.Create("correspondent", _unitOfWork.CorrespondentRepo,
-				properties, parentType: "correspondentGroup", parentField: "groupId"),
-			SyncEntitySet.Create("project", _unitOfWork.ProjectRepo,
-				properties, parentType: "projectGroup", parentField: "groupId"),
-			SyncEntitySet.Create("account", _unitOfWork.AccountRepo,
+			SyncEntitySet.Create(
+				"category",
+				unitOfWork.CategoryRepo,
+				properties,
+				parentType: "categoryGroup",
+				parentField: "groupId"),
+			SyncEntitySet.Create(
+				"correspondent",
+				unitOfWork.CorrespondentRepo,
+				properties,
+				parentType: "correspondentGroup",
+				parentField: "groupId"),
+			SyncEntitySet.Create(
+				"project",
+				unitOfWork.ProjectRepo,
+				properties,
+				parentType: "projectGroup",
+				parentField: "groupId"),
+			SyncEntitySet.Create(
+				"account",
+				unitOfWork.AccountRepo,
 				[.. properties, "CurrencyId", "CategoryId", "CorrespondentId", "ProjectId"],
-				parentType: "accountGroup", parentField: "groupId")
+				parentType: "accountGroup",
+				parentField: "groupId")
 		];
 	}
 
-	private SyncEntitySet[] CreateAggregateSets()
+	private static SyncEntitySet[] CreateAggregateSets(IMasterUnitOfWork unitOfWork)
 	{
 		string[] properties = ["Name", "Description", "IsFavorite", "GroupId"];
 		return
 		[
-			SyncEntitySet.Create("template", _unitOfWork.TemplateRepo,
-				[.. properties, "Entries"], parentType: "templateGroup", parentField: "groupId"),
-			SyncEntitySet.Create("report", _unitOfWork.ReportRepo,
-				[.. properties, "Json"], parentType: "reportGroup", parentField: "groupId"),
-			SyncEntitySet.Create("transaction", _unitOfWork.TransactionRepo,
+			SyncEntitySet.Create(
+				"template",
+				unitOfWork.TemplateRepo,
+				[.. properties, "Entries"],
+				parentType: "templateGroup",
+				parentField: "groupId"),
+			SyncEntitySet.Create(
+				"report",
+				unitOfWork.ReportRepo,
+				[.. properties, "Json"],
+				parentType: "reportGroup",
+				parentField: "groupId"),
+			SyncEntitySet.Create(
+				"transaction",
+				unitOfWork.TransactionRepo,
 				["DateTime", "State", "Description", "Entries"])
 		];
 	}

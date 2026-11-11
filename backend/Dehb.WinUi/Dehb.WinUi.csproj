@@ -69,7 +69,7 @@
   </ItemGroup>
   <Target Name="CopyInitialDatabase" AfterTargets="Build">
     <MakeDir Directories="$(OutDir)Assets" />
-    <Copy SourceFiles="..\DataAccess.EntityFramework.SqLite\Assets\dehb.db" DestinationFiles="$(OutDir)Assets\dehb.db" Condition="!Exists('$(OutDir)Assets\dehb.db')" />
+    <Copy SourceFiles="..\DataAccess.EntityFramework.SqLite\Assets\dehb.db" DestinationFiles="$(OutDir)Assets\local.db" Condition="!Exists('$(OutDir)Assets\local.db')" />
   </Target>
   <Target Name="CopyUiSettingsToOutput" AfterTargets="Build">
     <MakeDir Directories="$(OutDir)Assets" />

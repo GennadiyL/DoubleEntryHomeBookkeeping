@@ -66,7 +66,7 @@ public sealed class MasterSynchronizationAccessTests
 		_lost = new CancellationTokenSource();
 		_releasedBeforeRollback = false;
 		_handle.CancellationToken.Returns(_lost.Token);
-		_storageLockFactory.TryAcquire("Master_master/master.db", Arg.Any<CancellationToken>()).Returns(_handle);
+		_storageLockFactory.TryAcquire(MasterStorageNames.MasterRelativePath("master"), Arg.Any<CancellationToken>()).Returns(_handle);
 		ConfigureStorage();
 		ConfigurePersistence();
 		_provider = BuildProvider();
@@ -82,7 +82,7 @@ public sealed class MasterSynchronizationAccessTests
 	[Test]
 	public async Task BusyMasterIsRejectedBeforeDatabaseAccess()
 	{
-		_storageLockFactory.TryAcquire("Master_master/master.db", Arg.Any<CancellationToken>()).Returns((IStorageLock?)null);
+		_storageLockFactory.TryAcquire(MasterStorageNames.MasterRelativePath("master"), Arg.Any<CancellationToken>()).Returns((IStorageLock?)null);
 		Assert.ThrowsAsync<MasterBusyException>(() => Synchronize(Request("first")));
 		await _unit.DidNotReceive().BeginTransaction(Arg.Any<CancellationToken>());
 		await _apply.DidNotReceiveWithAnyArgs().Run("master", default!, default, default, default);
@@ -166,7 +166,7 @@ public sealed class MasterSynchronizationAccessTests
 			return Task.CompletedTask;
 		});
 		Assert.That((await Synchronize(Request("first", "second"))).Revision, Is.EqualTo(2));
-		await _storageLockFactory.Received(1).TryAcquire("Master_master/master.db", Arg.Any<CancellationToken>());
+		await _storageLockFactory.Received(1).TryAcquire(MasterStorageNames.MasterRelativePath("master"), Arg.Any<CancellationToken>());
 		await _unit.Received(2).CommitTransaction(Arg.Any<IUnitOfWorkTransaction>(), Arg.Any<CancellationToken>());
 		await _handle.Received(1).DisposeAsync();
 	}
@@ -222,7 +222,7 @@ public sealed class MasterSynchronizationAccessTests
 	public async Task AcquisitionFailurePropagatesWithoutDatabaseAccess()
 	{
 		InvalidOperationException failure = new("Storage unavailable.");
-		_storageLockFactory.TryAcquire("Master_master/master.db", Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+		_storageLockFactory.TryAcquire(MasterStorageNames.MasterRelativePath("master"), Arg.Any<CancellationToken>()).ThrowsAsync(failure);
 		Assert.That(Assert.ThrowsAsync<InvalidOperationException>(() => Synchronize(Request("first"))), Is.SameAs(failure));
 		await _unit.DidNotReceive().BeginTransaction(Arg.Any<CancellationToken>());
 		await _handle.DidNotReceive().DisposeAsync();
@@ -271,6 +271,7 @@ public sealed class MasterSynchronizationAccessTests
 		ServiceCollection services = new();
 		services.AddSharedModule();
 		services.AddMasterModule();
+		services.AddSingleton(Substitute.For<ICleanDataFilesCommand>());
 		services.AddSingleton(_factory);
 		services.AddSingleton(_createSnapshot);
 		services.AddSingleton(_apply);
@@ -307,14 +308,15 @@ public sealed class MasterSynchronizationAccessTests
 	private List<string> RecordStorageLifecycle()
 	{
 		List<string> events = [];
-		_storageLockFactory.TryAcquire("Master_master/master.db", Arg.Any<CancellationToken>()).Returns(_ => { events.Add("acquire"); return _handle; });
+		bool opened = false;
+		_storageLockFactory.TryAcquire(MasterStorageNames.MasterRelativePath("master"), Arg.Any<CancellationToken>()).Returns(_ => { events.Add("acquire"); return _handle; });
 		_storage.DownloadMaster("master", Arg.Any<string>(), _handle, Arg.Any<CancellationToken>()).Returns(_ => { events.Add("storage-open"); return Task.CompletedTask; });
-		_factory.CreateMaster("master").Returns(_ => { events.Add("database-open"); return _unit; });
+		_factory.CreateMaster("master").Returns(_ => { events.Add("database-open"); opened = true; return _unit; });
 		_unit.CommitTransaction(Arg.Any<IUnitOfWorkTransaction>(), Arg.Any<CancellationToken>()).Returns(_ => Record(events, "commit"));
 		_createSnapshot.CreateSnapshot(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ => Record(events, "snapshot"));
 		_storage.UploadSnapshot("master", Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ => Record(events, "upload-snapshot"));
 		_storage.UploadMaster("master", Arg.Any<string>(), Arg.Any<IStorageLock>(), Arg.Any<CancellationToken>()).Returns(_ => Record(events, "upload-master"));
-		_unit.DisposeAsync().Returns(_ => new ValueTask(Record(events, "database-close")));
+		_factory.CloseMaster("master").Returns(_ => opened ? Record(events, "database-close") : Task.CompletedTask);
 		_storage.When(storage => storage.Close(Arg.Any<string>())).Do(_ => events.Add("storage-dispose"));
 		_handle.DisposeAsync().Returns(_ => new ValueTask(Record(events, "release")));
 		return events;

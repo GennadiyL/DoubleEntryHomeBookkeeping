@@ -1,3 +1,4 @@
+using Business.Models.Constants;
 using NSubstitute;
 using Shared.Contracts.Config;
 using Business.Models.Entities.Synchronizations;
@@ -27,8 +28,8 @@ internal sealed class MasterTestStore : IDisposable
 	public string Root { get; } = Directory.CreateTempSubdirectory("dehb-master-tests-").FullName;
 	public string StorageRoot => Path.Combine(Root, "storage");
 	public string TempRoot => Path.Combine(Root, "temp");
-	public string DatasetDirectory => Path.Combine(StorageRoot, "Master_master");
-	public string DatabasePath => Path.Combine(DatasetDirectory, "master.db");
+	public string DatasetDirectory => Path.Combine(StorageRoot, StorageValues.MasterDirectoryName("master"));
+	public string DatabasePath => Path.Combine(DatasetDirectory, StorageValues.MasterFileName);
 
 	public async Task Initialize(long revision = 0)
 	{
@@ -60,7 +61,7 @@ internal sealed class MasterTestStore : IDisposable
 		ServiceCollection services = new();
 		IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
 		{
-			["DataAccess:LocalDirectory"] = Root,
+			[StorageValues.LocalDirectoryConfigurationKey] = Root,
 			["fileStorage:Root"] = StorageRoot
 		}).Build();
 		services.AddSingleton(configuration);
@@ -95,7 +96,7 @@ internal sealed class MasterTestStore : IDisposable
 		return (long)(await command.ExecuteScalarAsync())!;
 	}
 
-	public void Snapshot(long revision) => File.Copy(DatabasePath, Path.Combine(DatasetDirectory, $"snapshot_{revision}.db"), true);
+	public void Snapshot(long revision) => File.Copy(DatabasePath, Path.Combine(DatasetDirectory, StorageValues.SnapshotFileName(revision)), true);
 
 	public void Dispose() => Directory.Delete(Root, true);
 }

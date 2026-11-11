@@ -12,7 +12,6 @@ using Synchronization.Contracts.Adapters.Master;
 using Synchronization.Contracts.Services;
 using Synchronization.Contracts.Services.Synchronizations;
 using Synchronization.Impl.Operations.AcceptCapture;
-using Synchronization.Impl.Operations.Acknowledge;
 using Synchronization.Impl.Operations.CaptureChanges;
 using Synchronization.Impl.Operations.Download;
 
@@ -33,31 +32,28 @@ internal sealed class SynchronizationService : ISynchronizationService
 {
 	private readonly SynchronizationGate _synchronizationGate;
 	private readonly ISharedContext _sharedContext;
-	private readonly ILocalAppUnitOfWork _unitOfWork;
+	private readonly IUnitOfWorkFactory _unitOfWorkFactory;
 	private readonly IMasterAdapter _masterAdapter;
 	private readonly ICaptureChangesOperation _captureChangesOperation;
 	private readonly IAcceptCaptureOperation _acceptCaptureOperation;
 	private readonly IDownloadOperation _downloadOperation;
-	private readonly IAcknowledgeOperation _acknowledgeOperation;
 
 	public SynchronizationService(
 		ISharedContext sharedContext,
-		ILocalAppUnitOfWork unitOfWork,
+		IUnitOfWorkFactory unitOfWorkFactory,
 		IMasterAdapter masterAdapter,
 		ICaptureChangesOperation captureChangesOperation,
 		IAcceptCaptureOperation acceptCaptureOperation,
 		IDownloadOperation downloadOperation,
-		IAcknowledgeOperation acknowledgeOperation,
 		SynchronizationGate synchronizationGate)
 	{
 		_synchronizationGate = synchronizationGate;
 		_sharedContext = sharedContext;
-		_unitOfWork = unitOfWork;
+		_unitOfWorkFactory = unitOfWorkFactory;
 		_masterAdapter = masterAdapter;
 		_captureChangesOperation = captureChangesOperation;
 		_acceptCaptureOperation = acceptCaptureOperation;
 		_downloadOperation = downloadOperation;
-		_acknowledgeOperation = acknowledgeOperation;
 	}
 
 	public async Task<SynchronizeInfo> Synchronize(CancellationToken cancellationToken = default)
@@ -73,24 +69,32 @@ internal sealed class SynchronizationService : ISynchronizationService
 
 		try
 		{
-			return await Run(cancellationToken);
+			ILocalUnitOfWork unitOfWork = _unitOfWorkFactory.CreateLocal();
+			return await Run(unitOfWork, cancellationToken);
 		}
 		finally
 		{
-			_synchronizationGate.Semaphore.Release();
+			try
+			{
+				await _unitOfWorkFactory.CloseLocal();
+			}
+			finally
+			{
+				_synchronizationGate.Semaphore.Release();
+			}
 		}
 	}
 
-	private async Task<SynchronizeInfo> Run(CancellationToken cancellationToken)
+	private async Task<SynchronizeInfo> Run(ILocalUnitOfWork unitOfWork, CancellationToken cancellationToken)
 	{
-		LocalJson? row = await _unitOfWork.LocalJsonRepo.GetById(EntitiesIds.LocalJsonId, CancellationToken.None);
+		LocalJson? row = await unitOfWork.LocalJsonRepo.GetById(EntitiesIds.LocalJsonId, CancellationToken.None);
 		SyncContainer? container = ReadSyncContainer(row);
 		SynchronizationCheckpoint checkpoint = SynchronizationCheckpoint.None;
 		try
 		{
 			cancellationToken.ThrowIfCancellationRequested();
-			SystemConfig system = (await _unitOfWork.SystemConfigRepo.GetAll(cancellationToken)).Single();
-			LocalConfig local = (await _unitOfWork.LocalConfigRepo.GetAll(cancellationToken)).Single();
+			SystemConfig system = (await unitOfWork.SystemConfigRepo.GetAll(cancellationToken)).Single();
+			LocalConfig local = (await unitOfWork.LocalConfigRepo.GetAll(cancellationToken)).Single();
 			if (string.IsNullOrWhiteSpace(system.MasterDatasetKey) || string.IsNullOrWhiteSpace(local.LocalDatasetKey))
 			{
 				throw new InvalidSyncBatchException("Synchronization requires both dataset identities.");
@@ -117,7 +121,12 @@ internal sealed class SynchronizationService : ISynchronizationService
 					checkpoint);
 			}
 			
-			container = await Capture(container, system, local, cancellationToken);
+			container = await Capture(
+				unitOfWork,
+				container,
+				system,
+				local,
+				cancellationToken);
 			checkpoint = SynchronizationCheckpoint.Captured;
 			cancellationToken.ThrowIfCancellationRequested();
 			
@@ -146,7 +155,7 @@ internal sealed class SynchronizationService : ISynchronizationService
 			checkpoint = SynchronizationCheckpoint.Installed;
 			cancellationToken.ThrowIfCancellationRequested();
 			
-			AcknowledgeResponse result = await _acknowledgeOperation.Run(new AcknowledgeRequest
+			AcknowledgeResponse result = await _masterAdapter.Acknowledge(new AcknowledgeRequest
 			{
 				MasterDatasetKey = container.MasterDatasetKey,
 				LocalDatasetKey = container.LocalDatasetKey,
@@ -208,12 +217,13 @@ internal sealed class SynchronizationService : ISynchronizationService
 	}
 
 	private async Task<SyncContainer> Capture(
+		ILocalUnitOfWork unitOfWork,
 		SyncContainer? previous,
 		SystemConfig system,
 		LocalConfig local,
 		CancellationToken cancellationToken)
 	{
-		await using IUnitOfWorkTransaction transaction = await _unitOfWork.BeginTransaction(cancellationToken);
+		await using IUnitOfWorkTransaction transaction = await unitOfWork.BeginTransaction(cancellationToken);
 		try
 		{
 			SyncBatch batch = await _captureChangesOperation.Run(cancellationToken);
@@ -236,26 +246,26 @@ internal sealed class SynchronizationService : ISynchronizationService
 				container.Batches.Add(batch);
 			}
 			
-			LocalJson? row = await _unitOfWork.LocalJsonRepo.GetById(EntitiesIds.LocalJsonId, cancellationToken);
+			LocalJson? row = await unitOfWork.LocalJsonRepo.GetById(EntitiesIds.LocalJsonId, cancellationToken);
 			string json = _sharedContext.JsonService.Serialize(container);
 			if (row is null)
 			{
-				_unitOfWork.LocalJsonRepo.Add(new LocalJson { Json = json });
+				unitOfWork.LocalJsonRepo.Add(new LocalJson { Json = json });
 			}
 			else
 			{
 				row.Json = json;
-				_unitOfWork.LocalJsonRepo.Update(row);
+				unitOfWork.LocalJsonRepo.Update(row);
 			}
 			
-			await _unitOfWork.SaveChanges(cancellationToken);
+			await unitOfWork.SaveChanges(cancellationToken);
 			await _acceptCaptureOperation.Run(cancellationToken);
-			await _unitOfWork.CommitTransaction(transaction, CancellationToken.None);
+			await unitOfWork.CommitTransaction(transaction, CancellationToken.None);
 			return container;
 		}
 		catch
 		{
-			await _unitOfWork.RollbackTransaction(transaction, CancellationToken.None);
+			await unitOfWork.RollbackTransaction(transaction, CancellationToken.None);
 			throw;
 		}
 	}

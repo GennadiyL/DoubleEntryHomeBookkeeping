@@ -1,3 +1,4 @@
+using Business.Models.Constants;
 using Adapter.WinUi;
 using Business.Impl;
 using DataAccess.Contracts;
@@ -5,7 +6,6 @@ using DataAccess.EntityFramework.SqLite;
 using Business.Models.Entities.Config;
 using DataAccess.Core.Entities;
 using Messaging.InProcessBus;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shared.Impl;
@@ -22,13 +22,13 @@ internal sealed partial class BusinessHost : IDisposable
 		_sharedContext = sharedContext;
 		IConfigurationRoot configuration = new ConfigurationBuilder().SetBasePath(AppContext.BaseDirectory)
 			.AddJsonFile("appsettings.json", false).Build();
-		SqliteConnectionStringBuilder connection = new(configuration.GetConnectionString("DehbSqLite"));
-		connection.DataSource = Path.GetFullPath(connection.DataSource, AppContext.BaseDirectory);
-		if (!_sharedContext.FileService.Exists(connection.DataSource))
+		string directory = Path.GetFullPath(configuration[StorageValues.LocalDirectoryConfigurationKey]!, AppContext.BaseDirectory);
+		string localPath = Path.Combine(directory, StorageValues.LocalFileName);
+		if (!_sharedContext.FileService.Exists(localPath))
 		{
-			throw new FileNotFoundException("The configured Local database was not found.", connection.DataSource);
+			throw new FileNotFoundException("The configured Local database was not found.", localPath);
 		}
-		configuration["ConnectionStrings:DehbSqLite"] = connection.ToString();
+		configuration[StorageValues.LocalDirectoryConfigurationKey] = directory;
 		ServiceCollection services = new();
 		services.AddLogging();
 		services.AddSingleton<IConfiguration>(configuration);

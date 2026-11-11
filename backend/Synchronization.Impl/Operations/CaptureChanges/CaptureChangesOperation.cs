@@ -25,19 +25,20 @@ namespace Synchronization.Impl.Operations.CaptureChanges;
 /// </summary>
 internal sealed class CaptureChangesOperation : ICaptureChangesOperation
 {
-	private readonly IAppUnitOfWork _unitOfWork;
+	private readonly IUnitOfWorkFactory _unitOfWorkFactory;
 	private readonly ISharedContext _sharedContext;
 
-	public CaptureChangesOperation(ISharedContext sharedContext, IAppUnitOfWork unitOfWork)
+	public CaptureChangesOperation(ISharedContext sharedContext, IUnitOfWorkFactory unitOfWorkFactory)
 	{
 		_sharedContext = sharedContext;
-		_unitOfWork = unitOfWork;
+		_unitOfWorkFactory = unitOfWorkFactory;
 	}
 
 	public async Task<SyncBatch> Run(CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		ICollection<LocalConfig> configurations = await _unitOfWork.LocalConfigRepo.GetAll(cancellationToken);
+		ILocalUnitOfWork unitOfWork = _unitOfWorkFactory.CreateLocal();
+		ICollection<LocalConfig> configurations = await unitOfWork.LocalConfigRepo.GetAll(cancellationToken);
 		if (configurations.Count != 1)
 		{
 			throw new InvalidOperationException("The Local configuration singleton is missing or invalid.");
@@ -54,22 +55,22 @@ internal sealed class CaptureChangesOperation : ICaptureChangesOperation
 			CreatedAt = _sharedContext.DateTimeService.UtcNow,
 			Priority = priority
 		};
-		await Capture(_unitOfWork.CurrencyRepo, "currency", item => Properties(
+		await Capture(unitOfWork.CurrencyRepo, "currency", item => Properties(
 			("code", item.Code), ("symbol", item.Symbol), ("englishName", item.EnglishName),
 			("name", item.Name), ("isFavorite", item.IsFavorite)), batch, cancellationToken);
-		await Capture(_unitOfWork.CurrencyRateRepo, "currencyRate", item => Properties(
+		await Capture(unitOfWork.CurrencyRateRepo, "currencyRate", item => Properties(
 			("currencyId", item.CurrencyId), ("date", item.Date), ("rate", item.Rate),
 			("description", item.Description)), batch, cancellationToken);
-		await Capture(_unitOfWork.AccountGroupRepo, "accountGroup", GroupProperties, batch, cancellationToken);
-		await Capture(_unitOfWork.CategoryGroupRepo, "categoryGroup", GroupProperties, batch, cancellationToken);
-		await Capture(_unitOfWork.CorrespondentGroupRepo, "correspondentGroup", GroupProperties, batch, cancellationToken);
-		await Capture(_unitOfWork.ProjectGroupRepo, "projectGroup", GroupProperties, batch, cancellationToken);
-		await Capture(_unitOfWork.TemplateGroupRepo, "templateGroup", GroupProperties, batch, cancellationToken);
-		await Capture(_unitOfWork.ReportGroupRepo, "reportGroup", GroupProperties, batch, cancellationToken);
-		await Capture(_unitOfWork.CategoryRepo, "category", ElementProperties, batch, cancellationToken);
-		await Capture(_unitOfWork.CorrespondentRepo, "correspondent", ElementProperties, batch, cancellationToken);
-		await Capture(_unitOfWork.ProjectRepo, "project", ElementProperties, batch, cancellationToken);
-		await Capture(_unitOfWork.AccountRepo, "account", item =>
+		await Capture(unitOfWork.AccountGroupRepo, "accountGroup", GroupProperties, batch, cancellationToken);
+		await Capture(unitOfWork.CategoryGroupRepo, "categoryGroup", GroupProperties, batch, cancellationToken);
+		await Capture(unitOfWork.CorrespondentGroupRepo, "correspondentGroup", GroupProperties, batch, cancellationToken);
+		await Capture(unitOfWork.ProjectGroupRepo, "projectGroup", GroupProperties, batch, cancellationToken);
+		await Capture(unitOfWork.TemplateGroupRepo, "templateGroup", GroupProperties, batch, cancellationToken);
+		await Capture(unitOfWork.ReportGroupRepo, "reportGroup", GroupProperties, batch, cancellationToken);
+		await Capture(unitOfWork.CategoryRepo, "category", ElementProperties, batch, cancellationToken);
+		await Capture(unitOfWork.CorrespondentRepo, "correspondent", ElementProperties, batch, cancellationToken);
+		await Capture(unitOfWork.ProjectRepo, "project", ElementProperties, batch, cancellationToken);
+		await Capture(unitOfWork.AccountRepo, "account", item =>
 		{
 			Dictionary<string, object?> properties = ElementProperties(item);
 			properties.Add("currencyId", item.CurrencyId);
@@ -78,7 +79,7 @@ internal sealed class CaptureChangesOperation : ICaptureChangesOperation
 			properties.Add("projectId", item.ProjectId);
 			return properties;
 		}, batch, cancellationToken);
-		await Capture(_unitOfWork.TemplateRepo, "template", item =>
+		await Capture(unitOfWork.TemplateRepo, "template", item =>
 		{
 			Dictionary<string, object?> properties = ElementProperties(item);
 			properties.Add("entries", item.Entries.OrderBy(entry => entry.Position).Select(entry => Properties(
@@ -86,12 +87,12 @@ internal sealed class CaptureChangesOperation : ICaptureChangesOperation
 				("amount", entry.Amount))).ToArray());
 			return properties;
 		}, batch, cancellationToken);
-		await Capture(_unitOfWork.TransactionRepo, "transaction", item => Properties(
+		await Capture(unitOfWork.TransactionRepo, "transaction", item => Properties(
 			("dateTime", item.DateTime), ("state", item.State), ("description", item.Description),
 			("entries", item.Entries.OrderBy(entry => entry.Position).Select(entry => Properties(
 				("id", entry.Id), ("accountId", entry.AccountId), ("position", entry.Position),
 				("amount", entry.Amount), ("rate", entry.Rate))).ToArray())), batch, cancellationToken);
-		await Capture(_unitOfWork.ReportRepo, "report", item =>
+		await Capture(unitOfWork.ReportRepo, "report", item =>
 		{
 			Dictionary<string, object?> properties = ElementProperties(item);
 			properties.Add("json", item.Json);

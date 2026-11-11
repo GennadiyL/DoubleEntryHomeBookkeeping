@@ -24,4 +24,40 @@ public interface IUnitOfWorkFactory
 	/// This creates no snapshot file; its lifetime is owned by the factory's dependency scope.
 	/// </summary>
 	public ISnapshotUnitOfWork CreateSnapshot(string masterDatasetKey, long revision);
+
+	/// <summary>
+	/// Gets the candidate.db unit cached beside the Local database for download preparation.
+	/// The database file must already exist.
+	/// </summary>
+	public ICandidateUnitOfWork CreateCandidate();
+
+	/// <summary>
+	/// Disposes the cached Local unit and removes it so the next CreateLocal opens a new context.
+	/// Does nothing when no Local unit is cached.
+	/// </summary>
+	public Task CloseLocal();
+
+	/// <summary>
+	/// Disposes the cached Candidate unit and removes it before database replacement.
+	/// Does nothing when no Candidate unit is cached.
+	/// </summary>
+	public Task CloseCandidate();
+
+	/// <summary>
+	/// Disposes and removes the cached Master unit in its standard working directory.
+	/// Does nothing when the unit is not cached.
+	/// </summary>
+	public Task CloseMaster(string masterDatasetKey);
+
+	/// <summary>
+	/// Disposes and removes the cached Master copy in the supplied operation directory.
+	/// Does nothing when the unit is not cached.
+	/// </summary>
+	public Task CloseMaster(string masterDatasetKey, string directoryPath);
+
+	/// <summary>
+	/// Disposes and removes the cached snapshot identified by dataset and revision.
+	/// Does nothing when the unit is not cached.
+	/// </summary>
+	public Task CloseSnapshot(string masterDatasetKey, long revision);
 }

@@ -2,7 +2,6 @@ using Synchronization.Contracts.Services;
 using Synchronization.Impl.Services;
 using Synchronization.Contracts.Adapters;
 using Synchronization.Impl.Adapters;
-using Synchronization.Impl.Operations.Acknowledge;
 using Synchronization.Impl.Operations.Download;
 using Microsoft.Extensions.DependencyInjection;
 using Synchronization.Impl.Operations.AcceptCapture;
@@ -12,7 +11,7 @@ namespace Synchronization.Impl;
 
 /// <summary>
 /// Provides the Synchronization module's dependency injection entry point.
-/// Registers internal capture, acceptance, download and acknowledgement operations.
+/// Registers internal capture, acceptance and download operations.
 /// Each operation has a scoped lifetime for the local workflow scope.
 /// Infrastructure hosts select this module when composing Local execution.
 /// Registration exposes interfaces while retaining internal implementations.
@@ -31,6 +30,5 @@ public static class SynchronizationDiConfiguration
 		services.AddScoped<ICaptureChangesOperation, CaptureChangesOperation>();
 		services.AddScoped<IAcceptCaptureOperation, AcceptCaptureOperation>();
 		services.AddScoped<IDownloadOperation, DownloadOperation>();
-		services.AddScoped<IAcknowledgeOperation, AcknowledgeOperation>();
 	}
 }

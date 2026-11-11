@@ -1,4 +1,4 @@
-using System.Globalization;
+using Business.Models.Constants;
 
 namespace Master.Impl.Operations.MasterStorage;
 
@@ -24,13 +24,13 @@ internal static class MasterStorageNames
 		{
 			throw new ArgumentException("The dataset key must be a filename component.", nameof(masterDatasetKey));
 		}
-		return $"Master_{masterDatasetKey}";
+		return StorageValues.MasterDirectoryName(masterDatasetKey);
 	}
 
-	public static string MasterRelativePath(string masterDatasetKey) => $"{Directory(masterDatasetKey)}/master.db";
+	public static string MasterRelativePath(string masterDatasetKey) => $"{Directory(masterDatasetKey)}/{StorageValues.MasterFileName}";
 
 	public static string SnapshotRelativePath(string masterDatasetKey, long revision) =>
 		$"{Directory(masterDatasetKey)}/{SnapshotFile(revision)}";
 
-	public static string SnapshotFile(long revision) => $"snapshot_{revision.ToString(CultureInfo.InvariantCulture)}.db";
+	public static string SnapshotFile(long revision) => StorageValues.SnapshotFileName(revision);
 }

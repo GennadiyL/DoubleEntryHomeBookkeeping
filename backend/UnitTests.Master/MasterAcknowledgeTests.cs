@@ -1,3 +1,5 @@
+using Master.Impl.Operations.MasterStorage;
+using Business.Models.Constants;
 using Business.Models.Entities.Config;
 using Business.Models.Entities.Synchronizations;
 using Business.Models.Exceptions;
@@ -124,8 +126,8 @@ public sealed class MasterAcknowledgeTests
 		using ServiceProvider provider = BuildProvider();
 		if (masterKey == "wrong")
 		{
-			string directory = Directory.CreateDirectory(Path.Combine(_store.StorageRoot, "Master_wrong")).FullName;
-			File.Copy(DatabasePath, Path.Combine(directory, "master.db"));
+			string directory = Directory.CreateDirectory(Path.Combine(_store.StorageRoot, StorageValues.MasterDirectoryName("wrong"))).FullName;
+			File.Copy(DatabasePath, Path.Combine(directory, StorageValues.MasterFileName));
 		}
 		Assert.ThrowsAsync<InvalidSyncBatchException>(() => Acknowledge(provider,
 			new AcknowledgeRequest { MasterDatasetKey = masterKey, LocalDatasetKey = localKey, InstalledRevision = revision }));
@@ -136,7 +138,7 @@ public sealed class MasterAcknowledgeTests
 	public async Task BusyMasterCanBeRetriedAfterRelease()
 	{
 		using ServiceProvider provider = BuildProvider();
-		IStorageLock access = (await provider.GetRequiredService<IStorageLockFactory>().TryAcquire("Master_master/master.db"))!;
+		IStorageLock access = (await provider.GetRequiredService<IStorageLockFactory>().TryAcquire(MasterStorageNames.MasterRelativePath("master")))!;
 		await using (access)
 		{
 			Assert.ThrowsAsync<MasterBusyException>(() => Acknowledge(provider, Request(7)));

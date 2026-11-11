@@ -5,7 +5,7 @@ namespace Synchronization.Impl.Operations.Download;
 
 /// <summary>
 /// Defines the internal download and installation stage of synchronization.
-/// Run receives the minimum snapshot revision and dataset identities.
+/// Install receives the minimum snapshot revision and dataset identities.
 /// The implementation must download into a candidate database before activation.
 /// Schema checks, Local settings preservation and cumulative rebuild precede activation.
 /// Returns the actual installed version only after successful activation.

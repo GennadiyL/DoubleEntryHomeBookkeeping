@@ -1,4 +1,4 @@
-using System.Globalization;
+using Business.Models.Constants;
 using Shared.Contracts.Config;
 using DataAccess.Contracts;
 using Microsoft.Data.Sqlite;
@@ -32,7 +32,7 @@ internal sealed class UnitOfWorkFactory : IUnitOfWorkFactory, IDisposable, IAsyn
 		IConfigurationService configurationService)
 	{
 		_serviceProvider = serviceProvider;
-		_localDirectory = GetDirectory(configuration, "LocalDirectory");
+		_localDirectory = GetDirectory(configuration, StorageValues.LocalDirectoryConfigurationKey);
 		_configurationService = configurationService;
 	}
 
@@ -40,11 +40,11 @@ internal sealed class UnitOfWorkFactory : IUnitOfWorkFactory, IDisposable, IAsyn
 		GetOrCreate(
 			typeof(ILocalUnitOfWork),
 			0,
-			Path.Combine(_localDirectory, "Local.db"),
+			Path.Combine(_localDirectory, StorageValues.LocalFileName),
 			(context, provider) => new LocalUnitOfWork(context, provider));
 
 	public IMasterUnitOfWork CreateMaster(string masterDatasetKey) =>
-		CreateMaster(masterDatasetKey, Path.Combine(_configurationService.GetTempDirectory(), $"Master_{masterDatasetKey}"));
+		CreateMaster(masterDatasetKey, Path.Combine(_configurationService.GetTempDirectory(), StorageValues.MasterDirectoryName(masterDatasetKey)));
 
 	public IMasterUnitOfWork CreateMaster(string masterDatasetKey, string directoryPath)
 	{
@@ -52,7 +52,7 @@ internal sealed class UnitOfWorkFactory : IUnitOfWorkFactory, IDisposable, IAsyn
 		return GetOrCreate(
 			typeof(IMasterUnitOfWork),
 			0,
-			Path.Combine(Path.GetFullPath(directoryPath), "master.db"),
+			Path.Combine(Path.GetFullPath(directoryPath), StorageValues.MasterFileName),
 			(context, provider) => new MasterUnitOfWork(
 				context,
 				provider,
@@ -63,19 +63,75 @@ internal sealed class UnitOfWorkFactory : IUnitOfWorkFactory, IDisposable, IAsyn
 	{
 		ValidateKey(masterDatasetKey);
 		ArgumentOutOfRangeException.ThrowIfNegative(revision);
-		string version = revision.ToString(CultureInfo.InvariantCulture);
 		return GetOrCreate(
 			typeof(ISnapshotUnitOfWork),
 			revision,
 			Path.Combine(
 				_configurationService.GetTempDirectory(),
-				$"Master_{masterDatasetKey}",
-				$"snapshot_{version}.db"),
+				StorageValues.MasterDirectoryName(masterDatasetKey),
+				StorageValues.SnapshotFileName(revision)),
 			(context, provider) => new SnapshotUnitOfWork(
 				context,
 				provider,
 				masterDatasetKey,
 				revision));
+	}
+
+	public ICandidateUnitOfWork CreateCandidate() =>
+		GetOrCreate(
+			typeof(ICandidateUnitOfWork),
+			0,
+			Path.Combine(_localDirectory, StorageValues.CandidateFileName),
+			(context, provider) => new CandidateUnitOfWork(context, provider));
+
+	public Task CloseLocal() =>
+		Close(
+			typeof(ILocalUnitOfWork),
+			Path.Combine(_localDirectory, StorageValues.LocalFileName),
+			0);
+
+	public Task CloseCandidate() =>
+		Close(
+			typeof(ICandidateUnitOfWork),
+			Path.Combine(_localDirectory, StorageValues.CandidateFileName),
+			0);
+
+	public Task CloseMaster(string masterDatasetKey) =>
+		CloseMaster(masterDatasetKey, Path.Combine(_configurationService.GetTempDirectory(), StorageValues.MasterDirectoryName(masterDatasetKey)));
+
+	public Task CloseMaster(string masterDatasetKey, string directoryPath)
+	{
+		ValidateKey(masterDatasetKey);
+		return Close(
+			typeof(IMasterUnitOfWork),
+			Path.Combine(Path.GetFullPath(directoryPath), StorageValues.MasterFileName),
+			0);
+	}
+
+	public Task CloseSnapshot(string masterDatasetKey, long revision)
+	{
+		ValidateKey(masterDatasetKey);
+		ArgumentOutOfRangeException.ThrowIfNegative(revision);
+		return Close(
+			typeof(ISnapshotUnitOfWork),
+			Path.Combine(
+				_configurationService.GetTempDirectory(),
+				StorageValues.MasterDirectoryName(masterDatasetKey),
+				StorageValues.SnapshotFileName(revision)),
+			revision);
+	}
+
+	private async Task Close(
+		Type role,
+		string path,
+		long revision)
+	{
+		ObjectDisposedException.ThrowIf(_disposed, this);
+		if (_units.TryGetValue((role, path, revision), out (IAppUnitOfWork Unit, AppDbContext Context) entry))
+		{
+			await entry.Unit.DisposeAsync();
+			_units.Remove((role, path, revision));
+		}
 	}
 
 	private TUnit GetOrCreate<TUnit>(
@@ -115,9 +171,8 @@ internal sealed class UnitOfWorkFactory : IUnitOfWorkFactory, IDisposable, IAsyn
 		}
 	}
 
-	private static string GetDirectory(IConfiguration configuration, string name)
+	private static string GetDirectory(IConfiguration configuration, string key)
 	{
-		string key = $"DataAccess:{name}";
 		string? directory = configuration[key];
 		if (string.IsNullOrWhiteSpace(directory))
 		{

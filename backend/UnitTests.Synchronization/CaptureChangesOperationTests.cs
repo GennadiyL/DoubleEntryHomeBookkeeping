@@ -34,7 +34,7 @@ public sealed class CaptureChangesOperationTests
 	private static readonly string[] CurrencyContentPropertyNames = ["code", "symbol", "englishName", "name", "isFavorite"];
 	private ServiceProvider _provider = null!;
 	private IServiceScope _scope = null!;
-	private IAppUnitOfWork _unit = null!;
+	private ILocalUnitOfWork _unit = null!;
 	private ISharedContext _shared = null!;
 	private ICaptureChangesOperation _operation = null!;
 	private readonly DateTime _now = new(2026, 10, 21, 12, 0, 0, DateTimeKind.Utc);
@@ -42,7 +42,7 @@ public sealed class CaptureChangesOperationTests
 	[SetUp]
 	public void SetUp()
 	{
-		_unit = Substitute.For<IAppUnitOfWork>();
+		_unit = Substitute.For<ILocalUnitOfWork>();
 		_shared = Substitute.For<ISharedContext>();
 		_shared.DateTimeService.UtcNow.Returns(_now);
 		_unit.LocalConfigRepo.GetAll(Arg.Any<CancellationToken>()).Returns(new List<LocalConfig> { new() });
@@ -64,7 +64,9 @@ public sealed class CaptureChangesOperationTests
 		ServiceCollection services = new();
 		services.AddSharedModule();
 		services.AddSynchronizationModule();
-		services.AddScoped<IAppUnitOfWork>(_ => _unit);
+		IUnitOfWorkFactory factory = Substitute.For<IUnitOfWorkFactory>();
+		factory.CreateLocal().Returns(_unit);
+		services.AddScoped<IUnitOfWorkFactory>(_ => factory);
 		services.AddScoped<ISharedContext>(_ => _shared);
 		_provider = services.BuildServiceProvider(true);
 		_scope = _provider.CreateScope();

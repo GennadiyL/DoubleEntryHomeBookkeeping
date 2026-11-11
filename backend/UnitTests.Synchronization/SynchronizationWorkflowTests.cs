@@ -42,8 +42,8 @@ public sealed class SynchronizationWorkflowTests
 	private IMasterAdapter _adapter = null!;
 	private LocalMasterAdapter _real = null!;
 	private Guid _categoryId;
-	private string LocalPath => Path.Combine(_directory.FullName, "local.db");
-	private string MasterPath => Path.Combine(_directory.FullName, "storage", "Master_00000000-0000-0000-0000-000000000004", "master.db");
+	private string LocalPath => Path.Combine(_directory.FullName, StorageValues.LocalFileName);
+	private string MasterPath => Path.Combine(_directory.FullName, "storage", StorageValues.MasterDirectoryName("00000000-0000-0000-0000-000000000004"), StorageValues.MasterFileName);
 
 	[SetUp]
 	public async Task SetUp()
@@ -64,7 +64,7 @@ public sealed class SynchronizationWorkflowTests
 		IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
 		{
 			["ConnectionStrings:DehbSqLite"] = $"Data Source={LocalPath};Pooling=False",
-			["DataAccess:LocalDirectory"] = _directory.FullName,
+			[StorageValues.LocalDirectoryConfigurationKey] = _directory.FullName,
 			["fileStorage:Root"] = Path.Combine(_directory.FullName, "storage")
 		}).Build();
 		ServiceCollection services = new();
@@ -80,7 +80,7 @@ public sealed class SynchronizationWorkflowTests
 		_real = new LocalMasterAdapter(_provider.GetRequiredService<IServiceScopeFactory>());
 		ResetAdapter();
 		using IServiceScope scope = _provider.CreateScope();
-		ILocalAppUnitOfWork local = scope.ServiceProvider.GetRequiredService<ILocalAppUnitOfWork>();
+		ILocalUnitOfWork local = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateLocal();
 		IMasterUnitOfWork master = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateMaster("00000000-0000-0000-0000-000000000004", Path.GetDirectoryName(MasterPath)!);
 		LocalConfig config = (await local.LocalConfigRepo.GetAll()).Single();
 		config.AccountNameSeparator = "|";
@@ -112,7 +112,7 @@ public sealed class SynchronizationWorkflowTests
 			master.SystemConfigRepo.Update(config);
 			await master.SaveChanges();
 			await master.DisposeAsync();
-			File.Copy(MasterPath, Path.Combine(Path.GetDirectoryName(MasterPath)!, "snapshot_2.db"));
+			File.Copy(MasterPath, Path.Combine(Path.GetDirectoryName(MasterPath)!, StorageValues.SnapshotFileName(2)));
 			return await _real.Download(call.Arg<DownloadRequest>(), call.Arg<CancellationToken>());
 		});
 		SynchronizeInfo result = await Run();
@@ -120,7 +120,7 @@ public sealed class SynchronizationWorkflowTests
 		Assert.That(result.Checkpoint, Is.EqualTo(SynchronizationCheckpoint.None));
 		Assert.That(result.Revision, Is.EqualTo(2));
 		using IServiceScope scope = _provider.CreateScope();
-		ILocalAppUnitOfWork local = scope.ServiceProvider.GetRequiredService<ILocalAppUnitOfWork>();
+		ILocalUnitOfWork local = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateLocal();
 		LocalConfig config = (await local.LocalConfigRepo.GetAll()).Single();
 		Assert.That(config.SnapshotRevision, Is.EqualTo(2));
 		Assert.That(config.AccountNameSeparator, Is.EqualTo("|"));
@@ -212,7 +212,7 @@ public sealed class SynchronizationWorkflowTests
 		Assert.That(result.Checkpoint, Is.EqualTo(SynchronizationCheckpoint.None));
 		Assert.That(await ReadPending(), Is.Null);
 		using IServiceScope scope = _provider.CreateScope();
-		Assert.That((await scope.ServiceProvider.GetRequiredService<ILocalAppUnitOfWork>().CategoryRepo.GetById(_categoryId))!.EditRevision, Is.Null);
+		Assert.That((await scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateLocal().CategoryRepo.GetById(_categoryId))!.EditRevision, Is.Null);
 		await _adapter.DidNotReceive().Synchronize(Arg.Any<SynchronizeRequest>(), Arg.Any<CancellationToken>());
 	}
 
@@ -226,7 +226,7 @@ public sealed class SynchronizationWorkflowTests
 		Assert.ThrowsAsync<SqliteException>(() => Run());
 		Assert.That((await ReadPending())!.Batches.Count, Is.EqualTo(1));
 		using IServiceScope scope = _provider.CreateScope();
-		Assert.That((await scope.ServiceProvider.GetRequiredService<ILocalAppUnitOfWork>().LocalConfigRepo.GetAll()).Single().SnapshotRevision, Is.Zero);
+		Assert.That((await scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateLocal().LocalConfigRepo.GetAll()).Single().SnapshotRevision, Is.Zero);
 		await _adapter.DidNotReceive().Acknowledge(Arg.Any<AcknowledgeRequest>(), Arg.Any<CancellationToken>());
 	}
 
@@ -238,7 +238,7 @@ public sealed class SynchronizationWorkflowTests
 		Assert.That(await ReadPending(), Is.Null);
 		using (IServiceScope scope = _provider.CreateScope())
 		{
-			Assert.That((await scope.ServiceProvider.GetRequiredService<ILocalAppUnitOfWork>().CategoryRepo.GetById(_categoryId))!.EditRevision, Is.Null);
+			Assert.That((await scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateLocal().CategoryRepo.GetById(_categoryId))!.EditRevision, Is.Null);
 		}
 		await _adapter.DidNotReceive().Synchronize(Arg.Any<SynchronizeRequest>(), Arg.Any<CancellationToken>());
 		await ExecuteLocal("DROP TRIGGER reject_accept;");
@@ -289,6 +289,39 @@ public sealed class SynchronizationWorkflowTests
 		Assert.ThrowsAsync<InvalidSyncBatchException>(() => Run());
 		Assert.That((await ReadPending())!.Batches.Count, Is.EqualTo(1));
 		await _adapter.DidNotReceive().Acknowledge(Arg.Any<AcknowledgeRequest>(), Arg.Any<CancellationToken>());
+	}
+
+	[Test]
+	public async Task RepeatedSynchronizationInOneScopeUsesReopenedLocal()
+	{
+		await using AsyncServiceScope scope = _provider.CreateAsyncScope();
+		IUnitOfWorkFactory factory = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>();
+		ILocalUnitOfWork before = factory.CreateLocal();
+		ISynchronizationService service = scope.ServiceProvider.GetRequiredService<ISynchronizationService>();
+
+		Assert.That((await service.Synchronize()).Outcome, Is.EqualTo(SynchronizationOutcome.Complete));
+		Assert.ThrowsAsync<ObjectDisposedException>(async () => await before.SaveChanges());
+		Assert.That((await service.Synchronize()).Outcome, Is.EqualTo(SynchronizationOutcome.Complete));
+		Assert.That((await factory.CreateLocal().LocalConfigRepo.GetAll()).Single().SnapshotRevision, Is.EqualTo(1));
+		Assert.That(File.Exists(Path.Combine(_directory.FullName, StorageValues.CandidateFileName)), Is.False);
+	}
+
+	[Test]
+	public async Task InterruptedCandidateIsDiscardedBeforeNextDownload()
+	{
+		string path = Path.Combine(_directory.FullName, StorageValues.CandidateFileName);
+		foreach (string suffix in new[] { "", "-wal", "-shm", "-journal" })
+		{
+			await File.WriteAllTextAsync(path + suffix, "interrupted download");
+		}
+
+		Assert.That((await Run()).Outcome, Is.EqualTo(SynchronizationOutcome.Complete));
+
+		foreach (string suffix in new[] { "", "-wal", "-shm", "-journal" })
+		{
+			Assert.That(File.Exists(path + suffix), Is.False);
+		}
+		Assert.That((await ReadPending())!.Batches, Is.Empty);
 	}
 
 	private async Task ExecuteLocal(string sql)
@@ -363,7 +396,7 @@ public sealed class SynchronizationWorkflowTests
 	{
 		await Run();
 		using IServiceScope scope = _provider.CreateScope();
-		LocalJson row = (await scope.ServiceProvider.GetRequiredService<ILocalAppUnitOfWork>().LocalJsonRepo.GetById(EntitiesIds.LocalJsonId))!;
+		LocalJson row = (await scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateLocal().LocalJsonRepo.GetById(EntitiesIds.LocalJsonId))!;
 		using System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(row.Json);
 		Assert.That(document.RootElement.GetProperty("revision").GetInt64(), Is.EqualTo(1));
 		Assert.That(document.RootElement.GetProperty("batches").GetArrayLength(), Is.Zero);
@@ -379,7 +412,7 @@ public sealed class SynchronizationWorkflowTests
 		string originalKey = (await ReadPending())!.Batches.Single().SyncKey;
 		using (IServiceScope scope = _provider.CreateScope())
 		{
-			ILocalAppUnitOfWork local = scope.ServiceProvider.GetRequiredService<ILocalAppUnitOfWork>();
+			ILocalUnitOfWork local = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateLocal();
 			Category category = (await local.CategoryRepo.GetById(_categoryId))!;
 			category.Name = "Edited while offline";
 			category.ModificationType = Business.Models.Enums.ModificationType.Content;
@@ -402,7 +435,7 @@ public sealed class SynchronizationWorkflowTests
 	{
 		_adapter.Download(Arg.Any<DownloadRequest>(), Arg.Any<CancellationToken>()).Returns(async call =>
 		{
-			await using SqliteConnection connection = new($"Data Source={Path.Combine(Path.GetDirectoryName(MasterPath)!, "snapshot_1.db")};Pooling=False");
+			await using SqliteConnection connection = new($"Data Source={Path.Combine(Path.GetDirectoryName(MasterPath)!, StorageValues.SnapshotFileName(1))};Pooling=False");
 			await connection.OpenAsync();
 			await using SqliteCommand command = connection.CreateCommand();
 			command.CommandText = "DELETE FROM LocalSyncBatch;";
@@ -415,7 +448,7 @@ public sealed class SynchronizationWorkflowTests
 		Assert.That(container.Batches.Count, Is.EqualTo(1));
 		Assert.That(container.Revision, Is.Zero);
 		using IServiceScope scope = _provider.CreateScope();
-		LocalConfig local = (await scope.ServiceProvider.GetRequiredService<ILocalAppUnitOfWork>().LocalConfigRepo.GetAll()).Single();
+		LocalConfig local = (await scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateLocal().LocalConfigRepo.GetAll()).Single();
 		Assert.That(local.SnapshotRevision, Is.Zero);
 		await _adapter.DidNotReceive().Acknowledge(Arg.Any<AcknowledgeRequest>(), Arg.Any<CancellationToken>());
 	}
@@ -440,7 +473,7 @@ public sealed class SynchronizationWorkflowTests
 	private async Task<SyncContainer?> ReadPending()
 	{
 		using IServiceScope scope = _provider.CreateScope();
-		LocalJson? row = await scope.ServiceProvider.GetRequiredService<ILocalAppUnitOfWork>().LocalJsonRepo.GetById(EntitiesIds.LocalJsonId);
+		LocalJson? row = await scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateLocal().LocalJsonRepo.GetById(EntitiesIds.LocalJsonId);
 		return row is null || row.Json.Length == 0 ? null : scope.ServiceProvider.GetRequiredService<ISharedContext>().JsonService.Deserialize<SyncContainer>(row.Json);
 	}
 }

@@ -61,3 +61,4 @@ nunit-*.xml
 /docs/reviews/
 /docs/postman/
 /docs/sources/
+/docs/build/

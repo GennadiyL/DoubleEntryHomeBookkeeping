@@ -25,7 +25,7 @@ public sealed class AcceptCaptureOperationTests
 {
 	private ServiceProvider _provider = null!;
 	private IServiceScope _scope = null!;
-	private IAppUnitOfWork _unit = null!;
+	private ILocalUnitOfWork _unit = null!;
 	private IAcceptCaptureOperation _operation = null!;
 	private readonly List<string> _calls = new();
 	private string? _failure;
@@ -55,7 +55,7 @@ public sealed class AcceptCaptureOperationTests
 		_calls.Clear();
 		_failure = null;
 		_expectedToken = default;
-		_unit = Substitute.For<IAppUnitOfWork>();
+		_unit = Substitute.For<ILocalUnitOfWork>();
 		Observe(_unit.TransactionRepo, "Transaction");
 		Observe(_unit.TemplateRepo, "Template");
 		Observe(_unit.ReportRepo, "Report");
@@ -73,7 +73,9 @@ public sealed class AcceptCaptureOperationTests
 		Observe(_unit.CurrencyRepo, "Currency");
 		ServiceCollection services = new();
 		services.AddSynchronizationModule();
-		services.AddScoped<IAppUnitOfWork>(_ => _unit);
+		IUnitOfWorkFactory factory = Substitute.For<IUnitOfWorkFactory>();
+		factory.CreateLocal().Returns(_unit);
+		services.AddScoped<IUnitOfWorkFactory>(_ => factory);
 		_provider = services.BuildServiceProvider();
 		_scope = _provider.CreateScope();
 		_operation = _scope.ServiceProvider.GetRequiredService<IAcceptCaptureOperation>();

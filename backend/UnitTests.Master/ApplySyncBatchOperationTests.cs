@@ -52,11 +52,11 @@ public sealed class ApplySyncBatchOperationTests
 	public async Task SetUp()
 	{
 		_directory = Path.Combine(Path.GetTempPath(), $"dehb-apply-master-{Guid.NewGuid():N}");
-		string workDirectory = Path.Combine(_directory, "Master_master");
+		string workDirectory = Path.Combine(_directory, StorageValues.MasterDirectoryName("master"));
 		Directory.CreateDirectory(workDirectory);
 		_connection = new SqliteConnection(new SqliteConnectionStringBuilder
 		{
-			DataSource = Path.Combine(workDirectory, "master.db"),
+			DataSource = Path.Combine(workDirectory, StorageValues.MasterFileName),
 			Pooling = false
 		}.ToString());
 		await _connection.OpenAsync();
@@ -73,7 +73,7 @@ public sealed class ApplySyncBatchOperationTests
 		services.AddSingleton(directories);
 		IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
 		{
-			["DataAccess:LocalDirectory"] = _directory,
+			[StorageValues.LocalDirectoryConfigurationKey] = _directory,
 		}).Build();
 		services.AddSingleton(configuration);
 		services.AddEntityFrameworkSqLiteModule();

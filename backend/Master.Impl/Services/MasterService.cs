@@ -1,3 +1,4 @@
+using Business.Models.Constants;
 using System.Text.Json;
 using Business.Models.Entities.Config;
 using Business.Models.Entities.Synchronizations;
@@ -71,10 +72,10 @@ internal sealed class MasterService : IMasterService
 		{
 			await _masterStorageOperation.DownloadMaster(
 				container.MasterDatasetKey,
-				Path.Combine(directory, "master.db"),
+				Path.Combine(directory, StorageValues.MasterFileName),
 				storageLock,
 				cancellation.Token);
-			await using IMasterUnitOfWork unitOfWork = _unitOfWorkFactory.CreateMaster(container.MasterDatasetKey);
+			IMasterUnitOfWork unitOfWork = _unitOfWorkFactory.CreateMaster(container.MasterDatasetKey);
 			long revision = await ProcessBatches(
 				unitOfWork,
 				container,
@@ -85,6 +86,7 @@ internal sealed class MasterService : IMasterService
 		}
 		finally
 		{
+			await _unitOfWorkFactory.CloseMaster(container.MasterDatasetKey);
 			_masterStorageOperation.Close(directory);
 		}
 	}
@@ -381,18 +383,19 @@ internal sealed class MasterService : IMasterService
 		{
 			throw new InvalidSyncBatchException("Download requires both dataset identities and a nonnegative minimum revision.");
 		}
-		string directory = Path.Combine(_sharedContext.ConfigurationService.GetTempDirectory(), $"Download_{Guid.NewGuid():N}");
+		string directory = Path.Combine(_sharedContext.ConfigurationService.GetTempDirectory(), StorageValues.DownloadDirectoryName(Guid.NewGuid()));
 		MemoryStream content = new();
 		try
 		{
 			await _masterStorageOperation.DownloadMaster(
 				download.MasterDatasetKey,
-				Path.Combine(directory, "master.db"),
+				Path.Combine(directory, StorageValues.MasterFileName),
 				null,
 				cancellationToken);
 			long revision;
-			await using (IMasterUnitOfWork unitOfWork = _unitOfWorkFactory.CreateMaster(download.MasterDatasetKey, directory))
+			try
 			{
+				IMasterUnitOfWork unitOfWork = _unitOfWorkFactory.CreateMaster(download.MasterDatasetKey, directory);
 				SystemConfig config = await GetConfiguration(
 					unitOfWork,
 					download.MasterDatasetKey,
@@ -407,7 +410,11 @@ internal sealed class MasterService : IMasterService
 					throw new InvalidSyncBatchException("The Master revision is below the requested minimum revision.");
 				}
 			}
-			string path = Path.Combine(directory, "master.db");
+			finally
+			{
+				await _unitOfWorkFactory.CloseMaster(download.MasterDatasetKey, directory);
+			}
+			string path = Path.Combine(directory, StorageValues.MasterFileName);
 			if (revision != 0)
 			{
 				path = Path.Combine(directory, MasterStorageNames.SnapshotFile(revision));
@@ -464,10 +471,10 @@ internal sealed class MasterService : IMasterService
 		{
 			await _masterStorageOperation.DownloadMaster(
 				acknowledgement.MasterDatasetKey,
-				Path.Combine(directory, "master.db"),
+				Path.Combine(directory, StorageValues.MasterFileName),
 				storageLock,
 				cancellation.Token);
-			await using IMasterUnitOfWork unitOfWork = _unitOfWorkFactory.CreateMaster(acknowledgement.MasterDatasetKey);
+			IMasterUnitOfWork unitOfWork = _unitOfWorkFactory.CreateMaster(acknowledgement.MasterDatasetKey);
 			if (await AcknowledgeTransaction(
 				unitOfWork,
 				acknowledgement,
@@ -489,6 +496,7 @@ internal sealed class MasterService : IMasterService
 		}
 		finally
 		{
+			await _unitOfWorkFactory.CloseMaster(acknowledgement.MasterDatasetKey);
 			_masterStorageOperation.Close(directory);
 		}
 	}
