@@ -520,7 +520,6 @@ public abstract class GroupService<TGroup, TElement> :
 		source.Children.Clear();
 		source.Elements.Clear();
 		source.SetDeleted();
-		source.SetEditedContent();
 		_repository.Update(source);
 		await _unitOfWork.SaveChanges(cancellationToken);
 	}

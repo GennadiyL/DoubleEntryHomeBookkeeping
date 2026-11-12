@@ -205,7 +205,7 @@ internal sealed class SynchronizationService : ISynchronizationService
 		SyncContainer container =
 			_sharedContext.JsonService.Deserialize<SyncContainer>(row.Json)
 			?? throw new InvalidSyncBatchException("Synchronization JSON is empty.");
-		if (container.FormatVersion != 1 ||
+		if (container.FormatVersion != SyncContainer.CurrentFormatVersion ||
 		    container.SchemaVersion != 1 ||
 		    container.Revision < 0 ||
 			string.IsNullOrWhiteSpace(container.MasterDatasetKey) ||
@@ -229,7 +229,7 @@ internal sealed class SynchronizationService : ISynchronizationService
 			SyncBatch batch = await _captureChangesOperation.Run(cancellationToken);
 			SyncContainer container = new()
 			{
-				FormatVersion = 1,
+				FormatVersion = SyncContainer.CurrentFormatVersion,
 				SchemaVersion = 1,
 				Revision = local.SnapshotRevision,
 				MasterDatasetKey = system.MasterDatasetKey,

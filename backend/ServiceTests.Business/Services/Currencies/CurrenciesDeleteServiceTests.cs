@@ -32,6 +32,12 @@ public sealed class CurrenciesDeleteServiceTests : CurrenciesServiceTestsBase
 		Currency.ModificationType = flags;
 		CurrencyRate initial = new() { Id = Guid.NewGuid(), Currency = Currency, CurrencyId = Currency.Id, Date = AppValues.InitialDate, Rate = 1m };
 		Currency.Rates.Add(initial);
+		CurrencyRate dated = new()
+		{
+			Id = Guid.NewGuid(), CurrencyId = Currency.Id, Currency = Currency, Date = new DateOnly(2026, 1, 2),
+			Rate = 2m, EditRevision = revision, DeleteRevision = 4
+		};
+		Unit.CurrencyRateRepo.GetAllByCurrencyId(Currency.Id, Arg.Any<CancellationToken>()).Returns(new List<CurrencyRate> { initial, dated });
 		Currency survivor = AddCurrency("EUR", 9);
 		survivor.ModificationType = ModificationType.Content;
 		Currency deleted = AddCurrency("JPY", 12);
@@ -42,12 +48,15 @@ public sealed class CurrenciesDeleteServiceTests : CurrenciesServiceTestsBase
 		Assert.That(Currency.DeleteRevision, Is.Zero);
 		Assert.That(Currency.EditRevision, Is.EqualTo(revision));
 		Assert.That(Currency.ModificationType, Is.EqualTo(flags));
-		Assert.That(initial.DeleteRevision, Is.Null);
+		Assert.That(initial.DeleteRevision, Is.Zero);
+		Assert.That(initial.ModificationType, Is.EqualTo(ModificationType.None));
+		Assert.That((dated.DeleteRevision, dated.EditRevision, dated.Rate), Is.EqualTo(((long?)0, revision, 2m)));
 		Assert.That(Currency.Rates.Single(), Is.SameAs(initial));
 		Assert.That(survivor.Order, Is.EqualTo(1));
 		Assert.That(survivor.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
 		Assert.That(deleted.Order, Is.EqualTo(12));
-		Unit.CurrencyRateRepo.DidNotReceiveWithAnyArgs().Update(default!);
+		Unit.CurrencyRateRepo.Received(1).Update(initial);
+		Unit.CurrencyRateRepo.Received(1).Update(dated);
 		Unit.SystemConfigRepo.DidNotReceiveWithAnyArgs().Update(default!);
 		await Unit.Received(1).SaveChanges();
 	}

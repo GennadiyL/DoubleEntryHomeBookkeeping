@@ -1,3 +1,4 @@
+using Business.Models.Constants;
 using Business.Core.Entities;
 using Business.Models.Entities.Interfaces;
 using Business.Models.Enums;
@@ -14,10 +15,10 @@ namespace DataAccess.EntityFramework.Repositories.Base;
 /// Keeps synchronization metadata dependencies outside the generic Core repository.
 /// New rows qualify by their null edit revision regardless of flags.
 /// Existing rows qualify through any uncaptured modification flags.
-/// Deletion state does not exclude a qualifying row.
+/// Local deletion markers qualify independently of edit flags.
 /// Derived aggregate repositories extend the query with owned entry loading.
 /// Results are detached business models mapped after one database query.
-/// Bulk acceptance clears flags and replaces null edit revisions with the zero sentinel.
+/// Bulk acceptance clears flags and assigns zero to all captured new rows, including deleted creations.
 /// Bulk deletion removes local deletion markers using the configured database cascades.
 /// The caller owns durability, dependency ordering, transaction lifetime and tracking-scope freshness.
 /// </summary>
@@ -31,6 +32,7 @@ internal abstract class TrackedRepository<TB, TD> : Repository<AppDbContext, TB,
 
 	protected IQueryable<TD> Changes => Entities.AsNoTracking().Where(entity =>
 		EF.Property<long?>(entity, nameof(ITrackedEntity.EditRevision)) == null ||
+		EF.Property<long?>(entity, nameof(ITrackedEntity.DeleteRevision)) == AppValues.LocalDeleteRevision ||
 		EF.Property<ModificationType>(entity, nameof(ITrackedEntity.ModificationType)) != ModificationType.None);
 
 	public virtual async Task<ICollection<TB>> GetChanges(CancellationToken cancellationToken = default)
@@ -40,7 +42,7 @@ internal abstract class TrackedRepository<TB, TD> : Repository<AppDbContext, TB,
 	}
 
 	public Task<int> HardDelete(CancellationToken cancellationToken = default) =>
-		Entities.Where(entity => EF.Property<long?>(entity, nameof(ITrackedEntity.DeleteRevision)) == 0)
+		Entities.Where(entity => EF.Property<long?>(entity, nameof(ITrackedEntity.DeleteRevision)) == AppValues.LocalDeleteRevision)
 			.ExecuteDeleteAsync(cancellationToken);
 
 	public Task<int> AcceptChanges(CancellationToken cancellationToken = default) =>

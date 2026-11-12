@@ -50,7 +50,13 @@ public abstract class SqLiteAppDbContext : AppDbContext
 		modelBuilder.Entity<SystemConfig>().ToTable(nameof(SystemConfig));
 		modelBuilder.Entity<LocalConfig>().ToTable(nameof(LocalConfig));
 		modelBuilder.Entity<LocalJson>().ToTable(nameof(LocalJson));
-		modelBuilder.Entity<SystemConfig>().HasOne<Currency>().WithMany().HasForeignKey(config => config.BaseCurrencyId);
+		modelBuilder.Entity<SystemConfig>().HasOne<Currency>().WithMany().HasForeignKey(config => config.BaseCurrencyId).OnDelete(DeleteBehavior.Restrict);
+		modelBuilder.Entity<Account>().HasOne(entity => entity.Currency).WithMany()
+			.HasForeignKey(entity => entity.CurrencyId).OnDelete(DeleteBehavior.Restrict);
+		modelBuilder.Entity<TransactionEntry>().HasOne(entity => entity.Account).WithMany()
+			.HasForeignKey(entity => entity.AccountId).OnDelete(DeleteBehavior.Restrict);
+		modelBuilder.Entity<TemplateEntry>().HasOne(entity => entity.Account).WithMany()
+			.HasForeignKey(entity => entity.AccountId).OnDelete(DeleteBehavior.Restrict);
 		modelBuilder.Entity<LocalRegistration>().ToTable(nameof(LocalRegistration));
 		modelBuilder.Entity<LocalRegistration>().HasIndex(entity => entity.LocalDatasetKey).IsUnique();
 		modelBuilder.Entity<Transaction>().Property(entity => entity.DateTime)

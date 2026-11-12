@@ -1,3 +1,4 @@
+using Business.Models.Constants;
 using System.Text.Json;
 using Business.Models.Exceptions;
 using Shared.Contracts;
@@ -71,8 +72,8 @@ internal sealed class CurrencyOperation : ICurrencyOperation
 			throw new InvalidCurrencyException("Assets/currencies.json must contain a valid currency profile array.");
 		}
 		if (profiles is null || profiles.Count == 0 || profiles.Any(profile => profile is null ||
-			profile.Id == Guid.Empty || string.IsNullOrWhiteSpace(profile.Code) || profile.Code.Length != 3 ||
-			profile.Code.Any(character => character is < 'A' or > 'Z') || profile.Code == "XXX" ||
+			profile.Id == Guid.Empty || string.IsNullOrWhiteSpace(profile.Code) || profile.Code.Length != AppValues.CurrencyCodeLength ||
+			profile.Code.Any(character => character is < 'A' or > 'Z') || profile.Code == MiskValues.NoCurrencyCode ||
 			string.IsNullOrWhiteSpace(profile.Symbol) || string.IsNullOrWhiteSpace(profile.EnglishName)) ||
 			profiles.Select(profile => profile.Id).Distinct().Count() != profiles.Count ||
 			profiles.Select(profile => profile.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count() != profiles.Count)

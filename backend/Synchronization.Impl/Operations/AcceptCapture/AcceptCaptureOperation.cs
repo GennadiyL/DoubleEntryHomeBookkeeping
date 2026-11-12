@@ -6,9 +6,9 @@ namespace Synchronization.Impl.Operations.AcceptCapture;
 /// Accepts the captured Local state through immediate bulk repository operations.
 /// The caller must durably secure the batch and prevent intervening edits.
 /// The caller supplies a fresh unit-of-work scope and owns the active transaction.
-/// Deletes referencing entities before their referenced catalog entities.
-/// Owned transaction and template entries are removed by database cascades.
-/// All deletions finish before any surviving entity tracking is accepted.
+/// Hard-deletes captured Local deletions in dependency order.
+/// Owned entries are removed through aggregate cascades.
+/// Surviving new rows receive zero edit revisions; restore ends at durable capture.
 /// Repository failures propagate so the caller can roll back the entire operation.
 /// Live references must already be resolved; this operation does not rewrite business data.
 /// No file persistence, transaction commit or Master acknowledgement occurs here.
@@ -26,6 +26,7 @@ internal sealed class AcceptCaptureOperation : IAcceptCaptureOperation
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		ILocalUnitOfWork unitOfWork = _unitOfWorkFactory.CreateLocal();
+
 		await unitOfWork.TransactionRepo.HardDelete(cancellationToken);
 		await unitOfWork.TemplateRepo.HardDelete(cancellationToken);
 		await unitOfWork.ReportRepo.HardDelete(cancellationToken);

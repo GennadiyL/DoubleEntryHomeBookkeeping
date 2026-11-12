@@ -153,7 +153,7 @@ public sealed class MasterStorageOperationTests
 
 	private static SynchronizeRequest Request(string syncKey)
 	{
-		SyncContainer container = new() { FormatVersion = 1, SchemaVersion = 1, MasterDatasetKey = "master", LocalDatasetKey = "local" };
+		SyncContainer container = new() { FormatVersion = SyncContainer.CurrentFormatVersion, SchemaVersion = 1, MasterDatasetKey = "master", LocalDatasetKey = "local" };
 		container.Batches.Add(new SyncBatch { SyncKey = syncKey, CreatedAt = DateTime.UtcNow, Priority = ConflictPriority.Local });
 		return new SynchronizeRequest { Container = container };
 	}

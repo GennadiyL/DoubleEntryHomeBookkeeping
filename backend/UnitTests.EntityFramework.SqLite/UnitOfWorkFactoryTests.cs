@@ -62,6 +62,93 @@ public sealed class UnitOfWorkFactoryTests
 		}
 	}
 
+
+	[TestCase(0)]
+	[TestCase(9)]
+	public async Task CandidatePreparationRemovesAllDeletedTypesAndPreservesLocal(int revision)
+	{
+		File.Copy(DatabasePath(), Path.Combine(_directory, StorageValues.CandidateFileName));
+		await using ServiceProvider provider = CreateProvider();
+		await using AsyncServiceScope scope = provider.CreateAsyncScope();
+		IUnitOfWorkFactory factory = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>();
+		ICandidateUnitOfWork candidate = factory.CreateCandidate();
+		Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade database = ((IEntityFrameworkUnitOfWork)candidate).Database;
+		await database.ExecuteSqlRawAsync(await File.ReadAllTextAsync(
+			Path.Combine(TestContext.CurrentContext.TestDirectory, "SqlAssets", "003-test-data.sql")));
+		string[] tables = ["Transaction", "Template", "Report", "Account", "CurrencyRate", "Category", "Correspondent", "Project",
+			"AccountGroup", "TemplateGroup", "ReportGroup", "CategoryGroup", "CorrespondentGroup", "ProjectGroup", "Currency"];
+		foreach (string table in tables)
+		{
+			string predicate = table.EndsWith("Group", StringComparison.Ordinal) ? "Id <> ParentId" :
+				table == "Currency" ? "Id NOT IN (SELECT BaseCurrencyId FROM SystemConfig)" :
+				table == "CurrencyRate" ? "CurrencyId NOT IN (SELECT BaseCurrencyId FROM SystemConfig)" : "1=1";
+			string update = $"UPDATE \"{table}\" SET DeleteRevision={{0}} WHERE {predicate}";
+			await database.ExecuteSqlRawAsync(update, revision);
+		}
+		LocalConfig configuration = (await factory.CreateLocal().LocalConfigRepo.GetAll()).Single();
+		IPrepareCandidateCommand prepare = scope.ServiceProvider.GetRequiredService<IPrepareCandidateCommand>();
+		await using (IUnitOfWorkTransaction transaction = await candidate.BeginTransaction())
+		{
+			await prepare.Prepare(configuration, new LocalJson { Json = "cleaned" });
+			await candidate.CommitTransaction(transaction);
+		}
+		foreach (string table in tables)
+		{
+			string count = $"SELECT COUNT(*) AS Value FROM \"{table}\" WHERE DeleteRevision IS NOT NULL";
+			Assert.That(await database.SqlQueryRaw<int>(count).SingleAsync(), Is.Zero, table);
+		}
+		Assert.That(await database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM TransactionEntry").SingleAsync(), Is.Zero);
+		Assert.That(await database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM TemplateEntry").SingleAsync(), Is.Zero);
+		Assert.That((await candidate.LocalJsonRepo.GetAll()).Single().Json, Is.EqualTo("cleaned"));
+		Assert.That((await factory.CreateLocal().LocalJsonRepo.GetAll()).SingleOrDefault()?.Json, Is.Not.EqualTo("cleaned"));
+	}
+
+	[Test]
+	public async Task CandidateCleanupRollsBackOnForeignKeyViolation()
+	{
+		File.Copy(DatabasePath(), Path.Combine(_directory, StorageValues.CandidateFileName));
+		await using ServiceProvider provider = CreateProvider();
+		await using AsyncServiceScope scope = provider.CreateAsyncScope();
+		IUnitOfWorkFactory factory = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>();
+		ICandidateUnitOfWork candidate = factory.CreateCandidate();
+		Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade database = ((IEntityFrameworkUnitOfWork)candidate).Database;
+		await database.ExecuteSqlRawAsync("UPDATE Currency SET DeleteRevision=5;");
+		LocalConfig configuration = (await factory.CreateLocal().LocalConfigRepo.GetAll()).Single();
+		await using IUnitOfWorkTransaction transaction = await candidate.BeginTransaction();
+		Assert.ThrowsAsync<SqliteException>(() => scope.ServiceProvider.GetRequiredService<IPrepareCandidateCommand>()
+			.Prepare(configuration, new LocalJson { Json = "must not persist" }));
+		await candidate.RollbackTransaction(transaction);
+		await using AsyncServiceScope verification = provider.CreateAsyncScope();
+		ICandidateUnitOfWork reopened = verification.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateCandidate();
+		Assert.That(await reopened.CurrencyRepo.GetAll(), Is.Not.Empty);
+		Assert.That((await reopened.LocalJsonRepo.GetAll()).SingleOrDefault()?.Json, Is.Not.EqualTo("must not persist"));
+	}
+
+	[Test]
+	public async Task CandidateCleanupRollsBackWhenConfigurationWriteFails()
+	{
+		File.Copy(DatabasePath(), Path.Combine(_directory, StorageValues.CandidateFileName));
+		await using ServiceProvider provider = CreateProvider();
+		await using AsyncServiceScope scope = provider.CreateAsyncScope();
+		IUnitOfWorkFactory factory = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>();
+		ICandidateUnitOfWork candidate = factory.CreateCandidate();
+		Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade database = ((IEntityFrameworkUnitOfWork)candidate).Database;
+		await database.ExecuteSqlRawAsync("""
+			UPDATE CurrencyRate SET DeleteRevision=5;
+			CREATE TRIGGER RejectConfiguration BEFORE INSERT ON LocalConfig BEGIN SELECT RAISE(ABORT, 'Injected write failure'); END;
+			""");
+		LocalConfig configuration = (await factory.CreateLocal().LocalConfigRepo.GetAll()).Single();
+		await using IUnitOfWorkTransaction transaction = await candidate.BeginTransaction();
+		Assert.ThrowsAsync<DbUpdateException>(() => scope.ServiceProvider.GetRequiredService<IPrepareCandidateCommand>()
+			.Prepare(configuration, new LocalJson { Json = "must not persist" }));
+		await candidate.RollbackTransaction(transaction);
+		await using AsyncServiceScope verification = provider.CreateAsyncScope();
+		ICandidateUnitOfWork reopened = verification.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateCandidate();
+		Assert.That((await reopened.CurrencyRateRepo.GetAll()).Any(row => row.DeleteRevision is not null), Is.True);
+		Assert.That(await reopened.LocalConfigRepo.GetAll(), Has.Count.EqualTo(1));
+		Assert.That((await reopened.LocalJsonRepo.GetAll()).SingleOrDefault()?.Json, Is.Not.EqualTo("must not persist"));
+	}
+
 	private string DatabasePath(string? masterDatasetKey = null, long? revision = null)
 	{
 		string directory = masterDatasetKey is null

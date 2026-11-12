@@ -358,7 +358,7 @@ public sealed class MasterSynchronizationAccessTests
 
 	private static SynchronizeRequest Request(params string[] keys)
 	{
-		SyncContainer container = new() { FormatVersion = 1, SchemaVersion = 1, MasterDatasetKey = "master", LocalDatasetKey = "local" };
+		SyncContainer container = new() { FormatVersion = SyncContainer.CurrentFormatVersion, SchemaVersion = 1, MasterDatasetKey = "master", LocalDatasetKey = "local" };
 		container.Batches.AddRange(keys.Select(key => new SyncBatch
 		{
 			SyncKey = key, CreatedAt = new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc), Priority = ConflictPriority.Local

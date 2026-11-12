@@ -411,7 +411,7 @@ public sealed class GroupsCombineGroupsServiceTests<TGroup, TElement, TService, 
 		{
 			Assert.That(_group.EditRevision, Is.EqualTo(revision));
 			Assert.That(_group.DeleteRevision, Is.EqualTo(0));
-			Assert.That(_group.ModificationType, Is.EqualTo(flags | ModificationType.Content));
+			Assert.That(_group.ModificationType, Is.EqualTo(flags));
 			Assert.That(child.EditRevision, Is.EqualTo(revision));
 			Assert.That(element.EditRevision, Is.EqualTo(revision));
 			Assert.That(child.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));

@@ -398,8 +398,8 @@ public sealed class SynchronizationWorkflowTests
 		using IServiceScope scope = _provider.CreateScope();
 		LocalJson row = (await scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateLocal().LocalJsonRepo.GetById(EntitiesIds.LocalJsonId))!;
 		using System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(row.Json);
-		Assert.That(document.RootElement.GetProperty("revision").GetInt64(), Is.EqualTo(1));
-		Assert.That(document.RootElement.GetProperty("batches").GetArrayLength(), Is.Zero);
+		Assert.That(document.RootElement.GetProperty(nameof(SyncContainer.Revision)).GetInt64(), Is.EqualTo(1));
+		Assert.That(document.RootElement.GetProperty(nameof(SyncContainer.Batches)).GetArrayLength(), Is.Zero);
 		Assert.That(document.RootElement.TryGetProperty("container", out _), Is.False);
 		Assert.That(document.RootElement.TryGetProperty("checkpoint", out _), Is.False);
 	}
@@ -452,6 +452,118 @@ public sealed class SynchronizationWorkflowTests
 		Assert.That(local.SnapshotRevision, Is.Zero);
 		await _adapter.DidNotReceive().Acknowledge(Arg.Any<AcknowledgeRequest>(), Arg.Any<CancellationToken>());
 	}
+
+	[Test]
+	public async Task NeverSubmittedDeletionCreatesBatchRevisionAndCleanSnapshot()
+	{
+		await ExecuteLocal("UPDATE Category SET DeleteRevision=0, ModificationType=0;");
+		SynchronizeInfo result = await Run();
+		Assert.That(result.Outcome, Is.EqualTo(SynchronizationOutcome.Complete));
+		Assert.That(result.Revision, Is.EqualTo(1));
+		await _adapter.Received(1).Download(Arg.Any<DownloadRequest>(), Arg.Any<CancellationToken>());
+		using IServiceScope scope = _provider.CreateScope();
+		ILocalUnitOfWork local = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateLocal();
+		Assert.That(await local.CategoryRepo.GetById(_categoryId), Is.Null);
+		Assert.That((await ReadPending())!.Batches, Is.Empty);
+		await _adapter.Received().Synchronize(Arg.Is<SynchronizeRequest>(request =>
+			request.Container.Batches.Count == 1 && request.Container.Batches[0].Deleted.Count == 1 &&
+			request.Container.Batches[0].Deleted[0].EditRevision == null), Arg.Any<CancellationToken>());
+	}
+
+	[TestCase(false)]
+	[TestCase(true)]
+	public async Task FailedDownloadKeepsDeletionBatchButAcceptsCleanLocal(bool previouslySynchronized)
+	{
+		if (previouslySynchronized)
+		{
+			Assert.That((await Run()).Outcome, Is.EqualTo(SynchronizationOutcome.Complete));
+		}
+		await ExecuteLocal("UPDATE Category SET DeleteRevision=0, ModificationType=0;");
+		_adapter.Download(Arg.Any<DownloadRequest>(), Arg.Any<CancellationToken>())
+			.Returns<Task<DownloadResponse>>(_ => throw new MasterRequestException(SynchronizationStopReason.ConnectionLost, "Download failed."));
+		Assert.That((await Run()).Outcome, Is.EqualTo(SynchronizationOutcome.Deferred));
+		SyncContainer pending = (await ReadPending())!;
+		string key = pending.Batches.Single().SyncKey;
+		Assert.That(pending.Batches.Single().Deleted.Single().Id, Is.EqualTo(_categoryId));
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			ILocalUnitOfWork local = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateLocal();
+			Assert.That(await local.CategoryRepo.GetById(_categoryId), Is.Null);
+			Assert.That(await local.CategoryRepo.GetChanges(), Is.Empty);
+		}
+		ResetAdapter();
+		SynchronizeInfo result = await Run();
+		Assert.That(result.Outcome, Is.EqualTo(SynchronizationOutcome.Complete));
+		Assert.That(result.Revision, Is.EqualTo(previouslySynchronized ? 2 : 1));
+		await _adapter.Received().Synchronize(Arg.Is<SynchronizeRequest>(request =>
+			request.Container.Batches.Count == 1 && request.Container.Batches[0].SyncKey == key), Arg.Any<CancellationToken>());
+		Assert.That((await ReadPending())!.Batches, Is.Empty);
+	}
+
+	[Test]
+	public async Task FailedHardDeleteRollsBackJsonAndEarlierAggregateDeletion()
+	{
+		await ExecuteLocal("""
+			INSERT INTO "Transaction" (Id, DateTime, State, ModificationType, DeleteRevision) VALUES (randomblob(16), '2026-01-01 00:00:00', 0, 0, 0);
+			UPDATE Category SET DeleteRevision=0, ModificationType=0;
+			CREATE TRIGGER reject_delete BEFORE DELETE ON Category BEGIN SELECT RAISE(ABORT, 'delete failed'); END;
+			""");
+		Assert.ThrowsAsync<SqliteException>(() => Run());
+		Assert.That(await ReadPending(), Is.Null);
+		using IServiceScope scope = _provider.CreateScope();
+		ILocalUnitOfWork local = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateLocal();
+		Assert.That((await local.CategoryRepo.GetById(_categoryId))!.DeleteRevision, Is.Zero);
+		Assert.That(await local.TransactionRepo.GetAll(), Has.Count.EqualTo(1));
+		await _adapter.DidNotReceive().Synchronize(Arg.Any<SynchronizeRequest>(), Arg.Any<CancellationToken>());
+	}
+
+	[Test]
+	public async Task NewDeletedCurrencyAndAllRatesPassThroughMasterAsOneBatch()
+	{
+		Guid id = Guid.NewGuid();
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			ILocalUnitOfWork local = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateLocal();
+			Currency currency = new()
+			{
+				Id = id, Code = "EUR", Name = "Euro", EnglishName = "Euro", Symbol = "EUR",
+				DeleteRevision = 0, ModificationType = ModificationType.None
+			};
+			local.CurrencyRepo.Add(currency);
+			foreach (DateOnly date in new[] { AppValues.InitialDate, new DateOnly(2026, 1, 2), new DateOnly(2026, 1, 3) })
+			{
+				local.CurrencyRateRepo.Add(new CurrencyRate
+				{
+					Id = Guid.NewGuid(), CurrencyId = id, Currency = currency, Date = date, Rate = 2m,
+					DeleteRevision = 0, ModificationType = ModificationType.None
+				});
+			}
+			await local.SaveChanges();
+		}
+		_adapter.Synchronize(Arg.Any<SynchronizeRequest>(), Arg.Any<CancellationToken>())
+			.Returns(Task.FromException<SynchronizeResponse>(new MasterBusyException()));
+		Assert.That((await Run()).Outcome, Is.EqualTo(SynchronizationOutcome.Deferred));
+		SyncBatch captured = (await ReadPending())!.Batches.Single();
+		Assert.That(captured.Deleted, Has.Count.EqualTo(4));
+		using (IServiceScope accepted = _provider.CreateScope())
+		{
+			ILocalUnitOfWork clean = accepted.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateLocal();
+			Assert.That(await clean.CurrencyRepo.GetById(id), Is.Null);
+			Assert.That(await clean.CurrencyRateRepo.GetAllByCurrencyId(id), Is.Empty);
+		}
+		ResetAdapter();
+		SynchronizeInfo result = await Run();
+		Assert.That(result.Outcome, Is.EqualTo(SynchronizationOutcome.Complete));
+		Assert.That(result.Revision, Is.EqualTo(1));
+		await _adapter.Received().Synchronize(Arg.Is<SynchronizeRequest>(request =>
+			request.Container.Batches.Count == 1 && request.Container.Batches[0].Deleted.Count == 4), Arg.Any<CancellationToken>());
+		using IServiceScope verification = _provider.CreateScope();
+		ILocalUnitOfWork installed = verification.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateLocal();
+		Assert.That(await installed.CurrencyRepo.GetById(id), Is.Null);
+		Assert.That(await installed.CurrencyRateRepo.GetAllByCurrencyId(id), Is.Empty);
+		Assert.That(await installed.CategoryRepo.GetById(_categoryId), Is.Not.Null);
+	}
+
 	private void ResetAdapter()
 	{
 		_adapter.CheckAuthorization(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())

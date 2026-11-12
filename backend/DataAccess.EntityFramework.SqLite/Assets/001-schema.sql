@@ -226,7 +226,7 @@ CREATE TABLE "Account" (
     CONSTRAINT "FK_Account_AccountGroup_GroupId" FOREIGN KEY ("GroupId") REFERENCES "AccountGroup" ("Id") ON DELETE CASCADE,
     CONSTRAINT "FK_Account_Category_CategoryId" FOREIGN KEY ("CategoryId") REFERENCES "Category" ("Id"),
     CONSTRAINT "FK_Account_Correspondent_CorrespondentId" FOREIGN KEY ("CorrespondentId") REFERENCES "Correspondent" ("Id"),
-    CONSTRAINT "FK_Account_Currency_CurrencyId" FOREIGN KEY ("CurrencyId") REFERENCES "Currency" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_Account_Currency_CurrencyId" FOREIGN KEY ("CurrencyId") REFERENCES "Currency" ("Id") ON DELETE RESTRICT,
     CONSTRAINT "FK_Account_Project_ProjectId" FOREIGN KEY ("ProjectId") REFERENCES "Project" ("Id")
 );
 
@@ -238,7 +238,7 @@ CREATE TABLE "SystemConfig" (
     "CurrentRevision" INTEGER NOT NULL,
     "AmountPrecision" INTEGER NOT NULL,
     "RatePrecision" INTEGER NOT NULL,
-    CONSTRAINT "FK_SystemConfig_Currency_BaseCurrencyId" FOREIGN KEY ("BaseCurrencyId") REFERENCES "Currency" ("Id") ON DELETE CASCADE
+    CONSTRAINT "FK_SystemConfig_Currency_BaseCurrencyId" FOREIGN KEY ("BaseCurrencyId") REFERENCES "Currency" ("Id") ON DELETE RESTRICT
 );
 
 
@@ -248,7 +248,7 @@ CREATE TABLE "TemplateEntry" (
     "AccountId" BLOB NOT NULL,
     "Position" INTEGER NOT NULL,
     "Amount" INTEGER NOT NULL,
-    CONSTRAINT "FK_TemplateEntry_Account_AccountId" FOREIGN KEY ("AccountId") REFERENCES "Account" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_TemplateEntry_Account_AccountId" FOREIGN KEY ("AccountId") REFERENCES "Account" ("Id") ON DELETE RESTRICT,
     CONSTRAINT "FK_TemplateEntry_Template_TemplateId" FOREIGN KEY ("TemplateId") REFERENCES "Template" ("Id") ON DELETE CASCADE
 );
 
@@ -261,7 +261,7 @@ CREATE TABLE "TransactionEntry" (
     "CumulativeAmount" INTEGER NOT NULL,
     "Amount" INTEGER NOT NULL,
     "Rate" INTEGER NOT NULL,
-    CONSTRAINT "FK_TransactionEntry_Account_AccountId" FOREIGN KEY ("AccountId") REFERENCES "Account" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_TransactionEntry_Account_AccountId" FOREIGN KEY ("AccountId") REFERENCES "Account" ("Id") ON DELETE RESTRICT,
     CONSTRAINT "FK_TransactionEntry_Transaction_TransactionId" FOREIGN KEY ("TransactionId") REFERENCES "Transaction" ("Id") ON DELETE CASCADE
 );
 

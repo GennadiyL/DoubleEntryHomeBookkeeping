@@ -16,22 +16,24 @@ namespace Exchange.Models.Synchronizations;
 /// </summary>
 public record SyncContainer
 {
-	[JsonPropertyName("formatVersion")]
+	public const int CurrentFormatVersion = 2;
+
+	[JsonPropertyName(nameof(FormatVersion))]
 	public required int FormatVersion { get; set; }
 
-	[JsonPropertyName("schemaVersion")]
+	[JsonPropertyName(nameof(SchemaVersion))]
 	public required int SchemaVersion { get; set; }
 
-	[JsonPropertyName("masterDatasetKey")]
+	[JsonPropertyName(nameof(MasterDatasetKey))]
 	public required string MasterDatasetKey { get; set; }
 
-	[JsonPropertyName("localDatasetKey")]
+	[JsonPropertyName(nameof(LocalDatasetKey))]
 	public required string LocalDatasetKey { get; set; }
 
-	[JsonPropertyName("revision")]
+	[JsonPropertyName(nameof(Revision))]
 	public long Revision { get; set; }
 
-	[JsonPropertyName("batches")]
+	[JsonPropertyName(nameof(Batches))]
 	[JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
 	public List<SyncBatch> Batches { get; } = new List<SyncBatch>();
 }

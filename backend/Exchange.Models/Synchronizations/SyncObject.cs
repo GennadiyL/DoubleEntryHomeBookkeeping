@@ -17,19 +17,19 @@ namespace Exchange.Models.Synchronizations;
 /// </summary>
 public record SyncObject
 {
-	[JsonPropertyName("type")]
+	[JsonPropertyName(nameof(Type))]
 	public required string Type { get; set; }
 
-	[JsonPropertyName("id")]
+	[JsonPropertyName(nameof(Id))]
 	public required Guid Id { get; set; }
 
-	[JsonPropertyName("editRevision")]
+	[JsonPropertyName(nameof(EditRevision))]
 	public required long? EditRevision { get; set; }
 
-	[JsonPropertyName("modificationType")]
+	[JsonPropertyName(nameof(ModificationType))]
 	public required ModificationType ModificationType { get; set; }
 
-	[JsonPropertyName("properties")]
+	[JsonPropertyName(nameof(Properties))]
 	[JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
 	public Dictionary<string, JsonElement> Properties { get; } = new Dictionary<string, JsonElement>();
 }

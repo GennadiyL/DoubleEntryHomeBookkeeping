@@ -137,7 +137,7 @@ public sealed class MasterSynchronizationTests
 		batch.Added.Add(Category(Guid.NewGuid(), "Original"));
 		await Synchronize(Request(batch));
 		if (changePriority) { batch.Priority = ConflictPriority.Master; }
-		else { batch.Added[0].Properties["name"] = JsonSerializer.SerializeToElement("Changed"); }
+		else { batch.Added[0].Properties[nameof(Business.Models.Entities.Category.Name)] = JsonSerializer.SerializeToElement("Changed"); }
 		Assert.ThrowsAsync<InvalidSyncBatchException>(async () => await Synchronize(Request(batch)));
 		Assert.That(await Scalar("SELECT CurrentRevision FROM SystemConfig"), Is.EqualTo(1));
 		Assert.That(await Scalar("SELECT COUNT(*) FROM LocalSyncBatch"), Is.EqualTo(1));
@@ -169,6 +169,7 @@ public sealed class MasterSynchronizationTests
 		Assert.That(await Scalar("SELECT COUNT(*) FROM LocalSyncBatch"), Is.EqualTo(1));
 	}
 
+	[TestCase("legacyFormat")]
 	[TestCase("format")]
 	[TestCase("schema")]
 	[TestCase("master")]
@@ -178,7 +179,8 @@ public sealed class MasterSynchronizationTests
 		SynchronizeRequest request = Request();
 		switch (field)
 		{
-			case "format": request.Container.FormatVersion = 2; break;
+			case "legacyFormat": request.Container.FormatVersion = 1; break;
+			case "format": request.Container.FormatVersion = SyncContainer.CurrentFormatVersion + 1; break;
 			case "schema": request.Container.SchemaVersion = 2; break;
 			case "master":
 				request.Container.MasterDatasetKey = "other-master";
@@ -314,7 +316,7 @@ public sealed class MasterSynchronizationTests
 
 	private SynchronizeRequest Request(params SyncBatch[] batches)
 	{
-		SyncContainer container = new() { FormatVersion = 1, SchemaVersion = 1, MasterDatasetKey = _masterKey, LocalDatasetKey = "local-one" };
+		SyncContainer container = new() { FormatVersion = SyncContainer.CurrentFormatVersion, SchemaVersion = 1, MasterDatasetKey = _masterKey, LocalDatasetKey = "local-one" };
 		container.Batches.AddRange(batches);
 		return new SynchronizeRequest { Container = container };
 	}
@@ -323,12 +325,12 @@ public sealed class MasterSynchronizationTests
 
 	private static SyncObject Category(Guid id, string name, long? revision = null)
 	{
-		SyncObject item = new() { Type = "category", Id = id, EditRevision = revision, ModificationType = ModificationType.Content };
-		item.Properties.Add("name", JsonSerializer.SerializeToElement(name));
-		item.Properties.Add("description", JsonSerializer.SerializeToElement((string?)null));
-		item.Properties.Add("isFavorite", JsonSerializer.SerializeToElement(false));
-		item.Properties.Add("groupId", JsonSerializer.SerializeToElement(RootsIds.CategoryGroupId));
-		if (revision is null) { item.Properties.Add("order", JsonSerializer.SerializeToElement(0)); }
+		SyncObject item = new() { Type = nameof(Business.Models.Entities.Category), Id = id, EditRevision = revision, ModificationType = ModificationType.Content };
+		item.Properties.Add(nameof(Business.Models.Entities.Category.Name), JsonSerializer.SerializeToElement(name));
+		item.Properties.Add(nameof(Business.Models.Entities.Category.Description), JsonSerializer.SerializeToElement((string?)null));
+		item.Properties.Add(nameof(Business.Models.Entities.Category.IsFavorite), JsonSerializer.SerializeToElement(false));
+		item.Properties.Add(nameof(Business.Models.Entities.Category.GroupId), JsonSerializer.SerializeToElement(RootsIds.CategoryGroupId));
+		if (revision is null) { item.Properties.Add(nameof(Business.Models.Entities.Category.Order), JsonSerializer.SerializeToElement(0)); }
 		return item;
 	}
 

@@ -13,7 +13,7 @@ namespace DataAccess.EntityFramework.SqLite.Commands;
 /// Prepares the downloaded Candidate database through its factory-owned context.
 /// Runs after the caller validates the downloaded database.
 /// Replaces Local-only configuration and synchronization recovery JSON.
-/// Rebuilds account balances in the same Candidate transaction.
+/// Removes deletion markers and rebuilds balances in the same Candidate transaction.
 /// Repository writes and SQL use the same Candidate connection.
 /// The caller decides which pending batches are confirmed.
 /// This command neither installs files nor closes units of work.
@@ -37,6 +37,23 @@ internal sealed class PrepareCandidateCommand : IPrepareCandidateCommand
 		{
 			throw new InvalidOperationException("Candidate preparation requires a transaction.");
 		}
+		await unit.Database.ExecuteSqlRawAsync("""
+			DELETE FROM "Transaction" WHERE "DeleteRevision" IS NOT NULL;
+			DELETE FROM "Template" WHERE "DeleteRevision" IS NOT NULL;
+			DELETE FROM "Report" WHERE "DeleteRevision" IS NOT NULL;
+			DELETE FROM "Account" WHERE "DeleteRevision" IS NOT NULL;
+			DELETE FROM "CurrencyRate" WHERE "DeleteRevision" IS NOT NULL;
+			DELETE FROM "Category" WHERE "DeleteRevision" IS NOT NULL;
+			DELETE FROM "Correspondent" WHERE "DeleteRevision" IS NOT NULL;
+			DELETE FROM "Project" WHERE "DeleteRevision" IS NOT NULL;
+			DELETE FROM "AccountGroup" WHERE "DeleteRevision" IS NOT NULL;
+			DELETE FROM "TemplateGroup" WHERE "DeleteRevision" IS NOT NULL;
+			DELETE FROM "ReportGroup" WHERE "DeleteRevision" IS NOT NULL;
+			DELETE FROM "CategoryGroup" WHERE "DeleteRevision" IS NOT NULL;
+			DELETE FROM "CorrespondentGroup" WHERE "DeleteRevision" IS NOT NULL;
+			DELETE FROM "ProjectGroup" WHERE "DeleteRevision" IS NOT NULL;
+			DELETE FROM "Currency" WHERE "DeleteRevision" IS NOT NULL;
+			""", cancellationToken);
 		await context.Set<DataAccess.EntityFramework.Models.LocalConfig>().ExecuteDeleteAsync(cancellationToken);
 		await context.Set<DataAccess.EntityFramework.Models.LocalJson>().ExecuteDeleteAsync(cancellationToken);
 		candidate.LocalConfigRepo.Add(configuration);

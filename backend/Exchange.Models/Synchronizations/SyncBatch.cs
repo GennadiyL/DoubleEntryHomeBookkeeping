@@ -15,24 +15,24 @@ namespace Exchange.Models.Synchronizations;
 /// </summary>
 public record SyncBatch
 {
-	[JsonPropertyName("syncKey")]
+	[JsonPropertyName(nameof(SyncKey))]
 	public required string SyncKey { get; set; }
 
-	[JsonPropertyName("createdAt")]
+	[JsonPropertyName(nameof(CreatedAt))]
 	public required DateTime CreatedAt { get; set; }
 
-	[JsonPropertyName("priority")]
+	[JsonPropertyName(nameof(Priority))]
 	public required ConflictPriority Priority { get; set; }
 
-	[JsonPropertyName("added")]
+	[JsonPropertyName(nameof(Added))]
 	[JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
 	public List<SyncObject> Added { get; } = new List<SyncObject>();
 
-	[JsonPropertyName("updated")]
+	[JsonPropertyName(nameof(Updated))]
 	[JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
 	public List<SyncObject> Updated { get; } = new List<SyncObject>();
 
-	[JsonPropertyName("deleted")]
+	[JsonPropertyName(nameof(Deleted))]
 	[JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
 	public List<SyncObject> Deleted { get; } = new List<SyncObject>();
 }

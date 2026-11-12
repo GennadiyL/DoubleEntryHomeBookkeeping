@@ -32,7 +32,7 @@ public abstract class CurrenciesServiceTestsBase
 	protected SystemConfig Config { get; private set; } = null!;
 	protected CurrencyParam Param { get; private set; } = null!;
 	private ServiceProvider _provider = null!;
-	private IServiceScope _scope = null!;
+	private AsyncServiceScope _scope;
 
 	[SetUp]
 	public void SetUp()
@@ -49,16 +49,16 @@ public abstract class CurrenciesServiceTestsBase
 		services.AddBusinessModule();
 		services.AddScoped<IAppUnitOfWork>(_ => Unit);
 		_provider = services.BuildServiceProvider(true);
-		_scope = _provider.CreateScope();
+		_scope = _provider.CreateAsyncScope();
 		Service = _scope.ServiceProvider.GetRequiredService<ICurrencyService>();
 		Param = new CurrencyParam { Name = "  Euro  " };
 	}
 
 	[TearDown]
-	public void TearDown()
+	public async Task TearDown()
 	{
-		_scope.Dispose();
-		_provider.Dispose();
+		await _scope.DisposeAsync();
+		await _provider.DisposeAsync();
 	}
 
 	protected Currency AddCurrency(string code, int order)

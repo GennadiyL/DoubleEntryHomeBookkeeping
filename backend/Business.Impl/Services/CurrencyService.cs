@@ -21,7 +21,7 @@ namespace Business.Impl.Services;
 /// Validates rates using the shared configuration operation.
 /// Preserves currency identities and immutable ISO codes on editing.
 /// Protects the base currency and currencies referenced by accounts.
-/// Soft deletion preserves rate history and existing content flags.
+/// Soft deletion and restoration cover all rates while preserving historical values.
 /// Orders live currencies independently from their content changes.
 /// </summary>
 internal sealed class CurrencyService : ICurrencyService
@@ -69,6 +69,9 @@ internal sealed class CurrencyService : ICurrencyService
 		}
 		CurrencyRate? initial = await _unitOfWork.CurrencyRateRepo.GetByCurrencyAndDate(profile.Id, AppValues.InitialDate, cancellationToken);
 		bool created = currency is null;
+		ICollection<CurrencyRate> retainedRates = created
+			? new List<CurrencyRate>()
+			: await _unitOfWork.CurrencyRateRepo.GetAllByCurrencyId(profile.Id, cancellationToken);
 		currency ??= new Currency
 		{
 			Id = profile.Id, Code = profile.Code, Name = profile.Code, Symbol = profile.Symbol, EnglishName = profile.EnglishName,
@@ -82,7 +85,6 @@ internal sealed class CurrencyService : ICurrencyService
 		else
 		{
 			currency.SetAlive();
-			currency.SetEditedContent();
 			if (currency.Order != maxOrder + 1)
 			{
 				currency.Order = maxOrder + 1;
@@ -101,12 +103,20 @@ internal sealed class CurrencyService : ICurrencyService
 			currency.Rates.Add(initial);
 			_unitOfWork.CurrencyRateRepo.Add(initial);
 		}
-		else if (initial.IsDeleted() || initial.Rate != rate)
+		else if (created && (initial.IsDeleted() || initial.Rate != rate))
 		{
 			initial.SetAlive();
 			initial.Rate = rate;
 			initial.SetEditedContent();
 			_unitOfWork.CurrencyRateRepo.Update(initial);
+		}
+		foreach (CurrencyRate retained in retainedRates)
+		{
+			if (retained.IsDeleted())
+			{
+				retained.SetAlive();
+				_unitOfWork.CurrencyRateRepo.Update(retained);
+			}
 		}
 		await _unitOfWork.SaveChanges(cancellationToken);
 		return currency.Id;
@@ -137,6 +147,12 @@ internal sealed class CurrencyService : ICurrencyService
 		ICollection<Currency> currencies = await _unitOfWork.CurrencyRepo.GetAll(cancellationToken);
 		List<Currency> survivors = [.. currencies.Where(item => item.Id != currencyId && !item.IsDeleted())
 			.OrderBy(item => item.Order).ThenBy(item => item.Id.ToString("D"), StringComparer.Ordinal)];
+		ICollection<CurrencyRate> rates = await _unitOfWork.CurrencyRateRepo.GetAllByCurrencyId(currencyId, cancellationToken);
+		foreach (CurrencyRate owned in rates)
+		{
+			owned.SetDeleted();
+			_unitOfWork.CurrencyRateRepo.Update(owned);
+		}
 		currency.SetDeleted();
 		_unitOfWork.CurrencyRepo.Update(currency);
 		for (int index = 0; index < survivors.Count; index++)
@@ -231,7 +247,7 @@ internal sealed class CurrencyService : ICurrencyService
 
 	private static void ValidateMetadata(CurrencyParam param)
 	{
-		if (param is null || string.IsNullOrWhiteSpace(param.Name) || param.Name.Trim().Length > 6)
+		if (param is null || string.IsNullOrWhiteSpace(param.Name) || param.Name.Trim().Length > AppValues.MaxCurrencyNameLength)
 		{
 			throw new InvalidCurrencyException("Currency Name must contain 1 to 6 characters.");
 		}

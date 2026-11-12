@@ -97,12 +97,12 @@ internal sealed class MasterService : IMasterService
 		ArgumentNullException.ThrowIfNull(request.Container);
 		cancellationToken.ThrowIfCancellationRequested();
 		SyncContainer container = request.Container;
-		if (container.FormatVersion != 1 ||
+		if (container.FormatVersion != SyncContainer.CurrentFormatVersion ||
 			container.SchemaVersion != 1 ||
 			string.IsNullOrWhiteSpace(container.MasterDatasetKey) ||
 			string.IsNullOrWhiteSpace(container.LocalDatasetKey))
 		{
-			throw new InvalidSyncBatchException("Synchronization requires format/schema version 1 and both dataset identities.");
+			throw new InvalidSyncBatchException($"Synchronization requires format version {SyncContainer.CurrentFormatVersion}, schema version 1 and both dataset identities.");
 		}
 	}
 

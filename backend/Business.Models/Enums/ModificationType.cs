@@ -4,7 +4,8 @@ namespace Business.Models.Enums;
 /// Identifies subsequent local edits not yet captured in a durable outgoing batch.
 /// None is zero and is the initial value for every new tracked entity.
 /// New creations are detected by null EditRevision, without requiring either flag.
-/// Content marks content edits, favorite changes and soft deletion.
+/// Content marks content edits and favorite changes without conflating deletion.
+/// DeleteRevision tracks pending deletion without changing these edit flags.
 /// Order marks catalog position changes independently of content; both flags may combine.
 /// Content edits preserve Order, and order-only edits preserve Content without adding it.
 /// Entry positions belong to parent aggregate content rather than independent Order flags.

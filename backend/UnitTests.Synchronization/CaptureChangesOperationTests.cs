@@ -1,4 +1,6 @@
+using Business.Models.Entities.Base;
 using System.Text.Json;
+using Business.Contracts.Utils.Merging;
 using Business.Core.Entities;
 using Business.Models.Entities;
 using Business.Models.Entities.Config;
@@ -30,8 +32,8 @@ namespace UnitTests.Synchronization;
 [TestFixture(Category = "Local")]
 public sealed class CaptureChangesOperationTests
 {
-	private static readonly string[] OrderPropertyNames = ["order"];
-	private static readonly string[] CurrencyContentPropertyNames = ["code", "symbol", "englishName", "name", "isFavorite"];
+	private static readonly string[] OrderPropertyNames = [nameof(IOrderedEntity.Order)];
+	private static readonly string[] CurrencyContentPropertyNames = [nameof(Currency.Code), nameof(Currency.Symbol), nameof(Currency.EnglishName), nameof(CatalogEntity.Name), nameof(CatalogEntity.IsFavorite)];
 	private ServiceProvider _provider = null!;
 	private IServiceScope _scope = null!;
 	private ILocalUnitOfWork _unit = null!;
@@ -81,28 +83,54 @@ public sealed class CaptureChangesOperationTests
 		_provider.Dispose();
 	}
 
+	[TestCase(null, ModificationType.None)]
+	[TestCase(7L, ModificationType.None)]
+	[TestCase(7L, ModificationType.Content)]
+	[TestCase(7L, ModificationType.Order)]
+	[TestCase(7L, ModificationType.Content | ModificationType.Order)]
+	public async Task DeleteRestoreBeforeCapturePreservesOriginalState(long? revision, ModificationType flags)
+	{
+		Currency entity = CreateCurrency();
+		entity.EditRevision = revision;
+		entity.ModificationType = flags;
+		_unit.CurrencyRepo.GetChanges(Arg.Any<CancellationToken>()).Returns(new[] { entity });
+		entity.SetDeleted();
+		Assert.That(entity.ModificationType, Is.EqualTo(flags));
+		SyncBatch deleted = await _operation.Run();
+		Assert.That(deleted.Deleted.Single().EditRevision, Is.EqualTo(revision));
+		Assert.That(deleted.Deleted.Single().ModificationType.HasFlag(Exchange.Models.Enums.ModificationType.Content), Is.True);
+		entity.SetAlive();
+		Assert.That(entity.EditRevision, Is.EqualTo(revision));
+		Assert.That(entity.DeleteRevision, Is.Null);
+		Assert.That(entity.ModificationType, Is.EqualTo(flags));
+		SyncBatch restored = await _operation.Run();
+		Assert.That(restored.Deleted, Is.Empty);
+		Assert.That(restored.Added.Count, Is.EqualTo(revision is null ? 1 : 0));
+		Assert.That(restored.Updated.Count, Is.EqualTo(revision is not null && flags != ModificationType.None ? 1 : 0));
+	}
+
 	[Test]
 	public async Task Run_ClassifiesChangesWithoutAcceptingThem()
 	{
-		Currency added = Currency();
-		Currency edited = Currency(); edited.EditRevision = 7; edited.ModificationType = ModificationType.Content;
-		Currency deleted = Currency(); deleted.EditRevision = 0; deleted.DeleteRevision = 0; deleted.ModificationType = ModificationType.Content;
-		Currency discarded = Currency(); discarded.DeleteRevision = 0; discarded.ModificationType = ModificationType.Content;
-		Currency captured = Currency(); captured.EditRevision = 0; captured.DeleteRevision = 0;
+		Currency added = CreateCurrency();
+		Currency edited = CreateCurrency(); edited.EditRevision = 7; edited.ModificationType = ModificationType.Content;
+		Currency deleted = CreateCurrency(); deleted.EditRevision = 0; deleted.DeleteRevision = 0; deleted.ModificationType = ModificationType.Content;
+		Currency discarded = CreateCurrency(); discarded.DeleteRevision = 0;
+		Currency captured = CreateCurrency(); captured.EditRevision = 0; captured.DeleteRevision = 0;
 		_unit.CurrencyRepo.GetChanges(Arg.Any<CancellationToken>()).Returns(new[] { added, edited, deleted, discarded, captured });
 		SyncBatch batch = await _operation.Run();
 		Assert.Multiple(() =>
 		{
 			Assert.That(batch.Added.Select(item => item.Id), Is.EqualTo(new[] { added.Id }));
 			Assert.That(batch.Updated.Select(item => item.Id), Is.EqualTo(new[] { edited.Id }));
-			Assert.That(batch.Deleted.Select(item => item.Id), Is.EqualTo(new[] { deleted.Id }));
+			Assert.That(batch.Deleted.Select(item => item.Id), Is.EqualTo(new[] { deleted.Id, discarded.Id, captured.Id }));
 			Assert.That(batch.CreatedAt, Is.EqualTo(_now));
 			Assert.That(batch.Priority, Is.EqualTo(Exchange.Models.Enums.ConflictPriority.Local));
 			Assert.That(Guid.TryParse(batch.SyncKey, out _), Is.True);
 			Assert.That(added.EditRevision, Is.Null);
 			Assert.That(edited.ModificationType, Is.EqualTo(ModificationType.Content));
 			Assert.That(deleted.DeleteRevision, Is.Zero);
-			Assert.That(batch.Deleted.Single().Properties["name"].GetString(), Is.EqualTo(deleted.Name));
+			Assert.That(batch.Deleted.First().Properties[nameof(CatalogEntity.Name)].GetString(), Is.EqualTo(deleted.Name));
 		});
 		await _unit.DidNotReceive().SaveChanges(Arg.Any<CancellationToken>());
 		_unit.CurrencyRepo.DidNotReceive().Update(Arg.Any<Currency>());
@@ -111,21 +139,21 @@ public sealed class CaptureChangesOperationTests
 	[Test]
 	public async Task Run_SeparatesOrderFromWholeContent()
 	{
-		Currency order = Currency(); order.EditRevision = 5; order.Order = 3; order.ModificationType = ModificationType.Order;
-		Currency content = Currency(); content.EditRevision = 5; content.ModificationType = ModificationType.Content;
-		Currency both = Currency(); both.EditRevision = 5; both.ModificationType = ModificationType.Content | ModificationType.Order;
+		Currency order = CreateCurrency(); order.EditRevision = 5; order.Order = 3; order.ModificationType = ModificationType.Order;
+		Currency content = CreateCurrency(); content.EditRevision = 5; content.ModificationType = ModificationType.Content;
+		Currency both = CreateCurrency(); both.EditRevision = 5; both.ModificationType = ModificationType.Content | ModificationType.Order;
 		_unit.CurrencyRepo.GetChanges(Arg.Any<CancellationToken>()).Returns(new[] { order, content, both });
 		SyncBatch batch = await _operation.Run();
 		Assert.Multiple(() =>
 		{
 			Assert.That(batch.Updated[0].Properties.Keys, Is.EqualTo(OrderPropertyNames));
-			Assert.That(batch.Updated[0].Properties["order"].GetInt32(), Is.EqualTo(3));
+			Assert.That(batch.Updated[0].Properties[nameof(IOrderedEntity.Order)].GetInt32(), Is.EqualTo(3));
 			Assert.That(batch.Updated[1].Properties.Keys, Is.EquivalentTo(CurrencyContentPropertyNames));
-			Assert.That(batch.Updated[2].Properties.ContainsKey("order"), Is.True);
+			Assert.That(batch.Updated[2].Properties.ContainsKey(nameof(IOrderedEntity.Order)), Is.True);
 			Assert.That((int)batch.Updated[2].ModificationType, Is.EqualTo(3));
 		});
 		content.Name = "Later";
-		Assert.That(batch.Updated[1].Properties["name"].GetString(), Is.EqualTo("Euro"));
+		Assert.That(batch.Updated[1].Properties[nameof(CatalogEntity.Name)].GetString(), Is.EqualTo("Euro"));
 	}
 
 	[Test]
@@ -140,19 +168,25 @@ public sealed class CaptureChangesOperationTests
 		_unit.TransactionRepo.GetChanges(Arg.Any<CancellationToken>()).Returns(new[] { transaction });
 		_unit.TemplateRepo.GetChanges(Arg.Any<CancellationToken>()).Returns(new[] { template });
 		SyncBatch batch = await _operation.Run();
-		JsonElement entries = batch.Added.Single(item => item.Type == "transaction").Properties["entries"];
+		JsonElement entries = batch.Added.Single(item => item.Type == nameof(Transaction)).Properties[nameof(Transaction.Entries)];
 		Assert.Multiple(() =>
 		{
 			Assert.That(entries.GetArrayLength(), Is.EqualTo(2));
-			Assert.That(entries[0].GetProperty("position").GetInt32(), Is.Zero);
-			Assert.That(entries[1].GetProperty("amount").GetDecimal(), Is.EqualTo(2.1234m));
-			Assert.That(entries[1].GetProperty("rate").GetDecimal(), Is.EqualTo(1.25m));
-			Assert.That(entries[0].TryGetProperty("cumulativeAmount", out _), Is.False);
-			Assert.That(entries[0].TryGetProperty("account", out _), Is.False);
-			Assert.That(entries[0].TryGetProperty("transaction", out _), Is.False);
-			Assert.That(batch.Added.Single(item => item.Type == "template").Properties["entries"].GetArrayLength(), Is.EqualTo(1));
+			Assert.That(entries[0].GetProperty(nameof(TransactionEntry.Position)).GetInt32(), Is.Zero);
+			Assert.That(entries[1].GetProperty(nameof(TransactionEntry.Amount)).GetDecimal(), Is.EqualTo(2.1234m));
+			Assert.That(entries[1].GetProperty(nameof(TransactionEntry.Rate)).GetDecimal(), Is.EqualTo(1.25m));
+			Assert.That(entries[0].TryGetProperty(nameof(TransactionEntry.CumulativeAmount), out _), Is.False);
+			Assert.That(entries[0].TryGetProperty(nameof(Account), out _), Is.False);
+			Assert.That(entries[0].TryGetProperty(nameof(Transaction), out _), Is.False);
+			Assert.That(batch.Added.Single(item => item.Type == nameof(Template)).Properties[nameof(Transaction.Entries)].GetArrayLength(), Is.EqualTo(1));
 		});
-		SyncBatch copy = _shared.JsonService.Deserialize<SyncBatch>(_shared.JsonService.Serialize(batch))!;
+		string json = _shared.JsonService.Serialize(batch);
+		using JsonDocument document = JsonDocument.Parse(json);
+		JsonElement serializedTransaction = document.RootElement.GetProperty("Added").EnumerateArray()
+			.Single(item => item.GetProperty("Type").GetString() == "Transaction");
+		Assert.That(serializedTransaction.GetProperty("Properties").GetProperty("Entries")[0]
+			.GetProperty("AccountId").GetGuid(), Is.EqualTo(accountId));
+		SyncBatch copy = _shared.JsonService.Deserialize<SyncBatch>(json)!;
 		Assert.That(copy.Added, Has.Count.EqualTo(2));
 	}
 
@@ -181,7 +215,7 @@ public sealed class CaptureChangesOperationTests
 		Assert.ThrowsAsync<InvalidOperationException>(() => _operation.Run());
 	}
 
-	private static Currency Currency() => new() { Id = Guid.NewGuid(), Code = "EUR", Symbol = "E", EnglishName = "Euro", Name = "Euro" };
+	private static Currency CreateCurrency() => new() { Id = Guid.NewGuid(), Code = "EUR", Symbol = "E", EnglishName = "Euro", Name = "Euro" };
 
 	private static void Empty<T>(ITrackedRepository<T> repository) where T : class, IBaseEntity, ITrackedEntity
 	{

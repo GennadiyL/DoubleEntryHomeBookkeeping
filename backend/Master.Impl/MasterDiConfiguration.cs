@@ -1,6 +1,10 @@
 using Master.Contracts.Services;
 using Master.Impl.Operations.ApplySyncBatch;
 using Master.Impl.Operations.MasterStorage;
+using Master.Impl.Operations.RestoreConsistency;
+using Master.Impl.Operations.ValidateSyncBatch;
+using Master.Impl.Operations.MergeSyncBatch;
+using Master.Impl.Operations.MapSyncEntity;
 using Master.Impl.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shared.Contracts;
@@ -23,6 +27,10 @@ public static class MasterDiConfiguration
 	{
 		services.AddScoped<IMasterService, MasterService>();
 		services.AddScoped<IApplySyncBatchOperation, ApplySyncBatchOperation>();
+		services.AddScoped<IMergeSyncBatchOperation, MergeSyncBatchOperation>();
+		services.AddScoped<IMapSyncEntityOperation, MapSyncEntityOperation>();
+		services.AddScoped<IRestoreConsistencyOperation, RestoreConsistencyOperation>();
+		services.AddScoped<IValidateSyncBatchOperation, ValidateSyncBatchOperation>();
 		services.AddScoped<IMasterStorageOperation, MasterStorageOperation>();
 	}
 }

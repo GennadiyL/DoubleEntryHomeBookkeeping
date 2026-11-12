@@ -14,8 +14,8 @@ namespace UnitTests.Synchronization;
 /// Verifies bulk acceptance through the registered internal operation.
 /// Substitute repositories observe ordering without accessing a database.
 /// All tracked repositories participate in deletion and tracking acceptance.
-/// Referencing rows are deleted before their referenced catalog parents.
-/// No acceptance runs before the full deletion phase succeeds.
+/// Captured deleted rows are removed in dependency order.
+/// The caller transaction secures JSON and all acceptance writes together.
 /// Failures and cancellation propagate instead of implying completion.
 /// Transaction ownership and durable batch persistence remain with the caller.
 /// Local configuration and entry repositories are not bulk-accepted directly.
@@ -89,18 +89,18 @@ public sealed class AcceptCaptureOperationTests
 	}
 
 	[Test]
-	public async Task Run_DeletesBeforeAcceptanceAndPreservesCallerTransactionOwnership()
+	public async Task Run_DeletesCapturedRowsAndPreservesCallerTransactionOwnership()
 	{
 		using CancellationTokenSource cancellation = new();
 		_expectedToken = cancellation.Token;
 		await _operation.Run(_expectedToken);
-		Assert.That(_calls, Is.EqualTo(Repositories.Select(name => name + ".HardDelete")
-			.Concat(Repositories.Select(name => name + ".AcceptChanges"))));
+		Assert.That(_calls, Is.EqualTo(Repositories.Select(name => name + ".HardDelete").Concat(Repositories.Select(name => name + ".AcceptChanges"))));
 		Assert.That(_unit.ReceivedCalls().All(call => call.GetMethodInfo().Name.StartsWith("get_", StringComparison.Ordinal)), Is.True);
 		Assert.That(_unit.LocalConfigRepo.ReceivedCalls(), Is.Empty);
 		Assert.That(_unit.TransactionEntryRepo.ReceivedCalls(), Is.Empty);
 		Assert.That(_unit.TemplateEntryRepo.ReceivedCalls(), Is.Empty);
 	}
+
 
 	[TestCase("Account.HardDelete")]
 	[TestCase("Account.AcceptChanges")]
@@ -109,8 +109,7 @@ public sealed class AcceptCaptureOperationTests
 		_failure = failure;
 		InvalidOperationException? exception = Assert.ThrowsAsync<InvalidOperationException>(() => _operation.Run());
 		Assert.That(exception!.Message, Is.EqualTo(failure));
-		List<string> allCalls = Repositories.Select(name => name + ".HardDelete")
-			.Concat(Repositories.Select(name => name + ".AcceptChanges")).ToList();
+		List<string> allCalls = Repositories.Select(name => name + ".HardDelete").Concat(Repositories.Select(name => name + ".AcceptChanges")).ToList();
 		Assert.That(_calls, Is.EqualTo(allCalls.Take(allCalls.IndexOf(failure) + 1)));
 		Assert.That(_unit.ReceivedCalls().All(call => call.GetMethodInfo().Name.StartsWith("get_", StringComparison.Ordinal)), Is.True);
 	}

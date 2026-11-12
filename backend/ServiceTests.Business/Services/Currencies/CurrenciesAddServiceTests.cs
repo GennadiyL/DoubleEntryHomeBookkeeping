@@ -106,6 +106,12 @@ public sealed class CurrenciesAddServiceTests : CurrenciesServiceTestsBase
 			Rate = 1m, Description = "Preserved", EditRevision = editRevision, DeleteRevision = deleteRevision
 		};
 		Guid rateId = initial.Id;
+		CurrencyRate dated = new()
+		{
+			Id = Guid.NewGuid(), CurrencyId = Currency.Id, Currency = Currency, Date = new DateOnly(2026, 1, 2),
+			Rate = 2.5m, Description = "History", EditRevision = 3, DeleteRevision = 0
+		};
+		Unit.CurrencyRateRepo.GetAllByCurrencyId(Currency.Id, Arg.Any<CancellationToken>()).Returns(new List<CurrencyRate> { initial, dated });
 		Unit.CurrencyRateRepo.GetByCurrencyAndDate(Currency.Id, AppValues.InitialDate, Arg.Any<CancellationToken>()).Returns(initial);
 
 		Guid id = await Service.Add(" gBp ", 1.25m);
@@ -113,9 +119,12 @@ public sealed class CurrenciesAddServiceTests : CurrenciesServiceTestsBase
 		Assert.That(id, Is.EqualTo(Currency.Id).And.EqualTo(CatalogId("GBP")));
 		Assert.That((Currency.Name, Currency.IsFavorite, Currency.Order, Currency.DeleteRevision, Currency.EditRevision),
 			Is.EqualTo(("Pound", true, 1, (long?)null, editRevision)));
-		Assert.That(Currency.ModificationType, Is.EqualTo(ModificationType.Content | ModificationType.Order));
+		Assert.That(Currency.ModificationType, Is.EqualTo(ModificationType.Order));
 		Assert.That((initial.Id, initial.Rate, initial.Description, initial.DeleteRevision, initial.EditRevision, initial.ModificationType),
-			Is.EqualTo((rateId, 1.25m, "Preserved", (long?)null, editRevision, ModificationType.Content)));
+			Is.EqualTo((rateId, 1m, "Preserved", (long?)null, editRevision, ModificationType.None)));
+		Assert.That((dated.Rate, dated.Description, dated.DeleteRevision, dated.EditRevision, dated.ModificationType),
+			Is.EqualTo((2.5m, "History", (long?)null, (long?)3, ModificationType.None)));
+		Unit.CurrencyRateRepo.Received(1).Update(dated);
 		Unit.CurrencyRepo.DidNotReceiveWithAnyArgs().Add(default!);
 		Unit.CurrencyRepo.Received(1).Update(Currency);
 		Unit.CurrencyRateRepo.DidNotReceiveWithAnyArgs().Add(default!);

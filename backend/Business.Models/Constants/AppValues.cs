@@ -1,7 +1,7 @@
 namespace Business.Models.Constants;
 
 /// <summary>
-/// Defines shared date values for bookkeeping models and validation services.
+/// Defines shared limits, tracking markers and date values for bookkeeping models.
 /// InitialDate identifies the hidden fallback currency-rate date.
 /// MinDate and MaxDate expose calendar-date boundaries to consuming operations.
 /// MinDateTime provides the minimum transaction instant with an explicit UTC kind.
@@ -15,6 +15,11 @@ public static class AppValues
 	public static readonly DateOnly MaxDate = new(2100, 1, 1);
 	public static readonly DateTime MinDateTime = new(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 	public const int MaxTransactionListCount = 300;
+	public const int MaxPrecision = 4;
+	public const int MaxCurrencyNameLength = 6;
+	public const int CurrencyCodeLength = 3;
+	public const int MinTransactionEntryCount = 2;
+	public const long LocalDeleteRevision = 0;
 	public const decimal MinDecimal = long.MinValue / 10000m;
 	public const decimal MaxDecimal = long.MaxValue / 10000m;
 

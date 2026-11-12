@@ -215,7 +215,7 @@ public sealed class GroupsDeleteServiceTests<TGroup, TElement, TService, TReposi
 		await _service.Delete(_group.Id);
 		_repository.Received(1).Update(Arg.Is<TGroup>(group =>
 			group.Id == _group.Id && group.EditRevision == revision && group.DeleteRevision == 0 &&
-			group.ModificationType == flags));
+			group.ModificationType == (flags)));
 		await _unitOfWork.Received(1).SaveChanges();
 	}
 

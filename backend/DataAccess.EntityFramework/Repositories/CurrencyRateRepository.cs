@@ -35,6 +35,13 @@ internal sealed class CurrencyRateRepository : TrackedRepository<CurrencyRateEnt
 		return Mapper.Map<CurrencyRate, CurrencyRateEntity>(rates);
 	}
 
+	public async Task<ICollection<CurrencyRateEntity>> GetAllByCurrencyId(Guid currencyId, CancellationToken cancellationToken = default)
+	{
+		List<CurrencyRate> rates = await Entities.AsNoTracking()
+			.Where(item => item.CurrencyId == currencyId).ToListAsync(cancellationToken);
+		return Mapper.Map<CurrencyRate, CurrencyRateEntity>(rates);
+	}
+
 	public async Task<ICollection<CurrencyRateEntity>> GetByCurrencyAndDateRange(Guid currencyId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default)
 	{
 		List<CurrencyRate> rates = await Entities.AsNoTracking()

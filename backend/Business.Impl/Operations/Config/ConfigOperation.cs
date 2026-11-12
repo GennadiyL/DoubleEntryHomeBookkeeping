@@ -1,3 +1,4 @@
+using Business.Models.Constants;
 using Business.Contracts.Services.Configs;
 using Business.Models.Entities.Config;
 using Business.Models.Enums;
@@ -49,7 +50,7 @@ internal sealed class ConfigOperation : IConfigOperation
 			throw new InvalidOperationException("The System configuration singleton is missing or invalid.");
 		}
 		SystemConfig config = configurations.Single();
-		if (config.AmountPrecision is < 0 or > 4 || config.RatePrecision is < 0 or > 4 ||
+		if (config.AmountPrecision is < 0 or > AppValues.MaxPrecision || config.RatePrecision is < 0 or > AppValues.MaxPrecision ||
 			config.BaseCurrencyId == Guid.Empty || config.CurrentRevision < 0)
 		{
 			throw new InvalidOperationException("The System configuration singleton is missing or invalid.");

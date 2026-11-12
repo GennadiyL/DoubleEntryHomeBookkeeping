@@ -15,6 +15,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\Business.Contracts\Business.Contracts.csproj" />
         <ProjectReference Include="..\Shared.Impl\Shared.Impl.csproj" />
         <ProjectReference Include="..\Synchronization.Impl\Synchronization.Impl.csproj" />
         <ProjectReference Include="..\DataAccess.EntityFramework.SqLite\DataAccess.EntityFramework.SqLite.csproj" />

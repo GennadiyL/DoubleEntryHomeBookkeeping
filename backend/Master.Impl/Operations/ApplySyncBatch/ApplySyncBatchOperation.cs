@@ -1,3 +1,8 @@
+using Master.Impl.Operations.MergeSyncBatch;
+using Master.Impl.Operations.MapSyncEntity;
+using DataAccess.Contracts.Repositories.Base;
+using Business.Models.Entities.Reporting;
+using Business.Models.Entities.Base;
 using Business.Core.Entities;
 using Business.Models.Constants;
 using Business.Models.Entities;
@@ -11,6 +16,8 @@ using Exchange.Models.Enums;
 using Exchange.Models.Synchronizations;
 using Shared.Contracts;
 using StoredModificationType = Business.Models.Enums.ModificationType;
+using Master.Impl.Operations.RestoreConsistency;
+using Master.Impl.Operations.ValidateSyncBatch;
 
 namespace Master.Impl.Operations.ApplySyncBatch;
 
@@ -27,13 +34,20 @@ namespace Master.Impl.Operations.ApplySyncBatch;
 /// </summary>
 internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 {
-	private readonly ISharedContext _sharedContext;
+	private readonly IMergeSyncBatchOperation _mergeSyncBatchOperation;
+	private readonly IMapSyncEntityOperation _mapSyncEntityOperation;
 	private readonly IUnitOfWorkFactory _unitOfWorkFactory;
+	private readonly IRestoreConsistencyOperation _restoreConsistencyOperation;
+	private readonly IValidateSyncBatchOperation _validateSyncBatchOperation;
 
-	public ApplySyncBatchOperation(ISharedContext sharedContext, IUnitOfWorkFactory unitOfWorkFactory)
+	public ApplySyncBatchOperation(IUnitOfWorkFactory unitOfWorkFactory, IMergeSyncBatchOperation mergeSyncBatchOperation, IMapSyncEntityOperation mapSyncEntityOperation,
+		IRestoreConsistencyOperation restoreConsistencyOperation, IValidateSyncBatchOperation validateSyncBatchOperation)
 	{
-		_sharedContext = sharedContext;
+		_mergeSyncBatchOperation = mergeSyncBatchOperation;
+		_mapSyncEntityOperation = mapSyncEntityOperation;
 		_unitOfWorkFactory = unitOfWorkFactory;
+		_restoreConsistencyOperation = restoreConsistencyOperation;
+		_validateSyncBatchOperation = validateSyncBatchOperation;
 	}
 
 	public async Task Run(
@@ -56,12 +70,13 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 			localRegistrationId,
 			revision,
 			cancellationToken);
-		Dictionary<string, SyncEntitySet> sets = await LoadSets(unitOfWork, cancellationToken);
+		Dictionary<string, SyncEntityState> sets = await LoadSets(unitOfWork, cancellationToken);
 		(ICollection<TransactionEntry> transactions, ICollection<TemplateEntry> templates) = await LoadEntries(unitOfWork, cancellationToken);
 		AttachEntries(sets, transactions, templates);
-		MergeChanges(syncBatch, localRegistrationId, revision, sets, sources, cancellationToken);
-		ValidateResult(sets, configuration, syncBatch.Priority, cancellationToken);
-		List<(SyncEntitySet Set, SyncMergeRow Row)> changed = PrepareChanges(sets, revision);
+		_mergeSyncBatchOperation.Run(syncBatch, localRegistrationId, revision, sets, sources, cancellationToken);
+		_restoreConsistencyOperation.Run(sets, configuration, cancellationToken);
+		_validateSyncBatchOperation.Run(sets, configuration, syncBatch.Priority, cancellationToken);
+		List<(SyncEntityState Set, SyncMergeRow Row)> changed = PrepareChanges(sets, revision);
 		ValidateEntryOwners(changed, transactions, templates);
 		await PersistChanges(
 			unitOfWork,
@@ -117,14 +132,32 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		return receipts.ToDictionary(receipt => receipt.Revision, receipt => receipt.LocalRegistrationId);
 	}
 
-	private static async Task<Dictionary<string, SyncEntitySet>> LoadSets(
+	private async Task<Dictionary<string, SyncEntityState>> LoadSets(
 		IMasterUnitOfWork unitOfWork,
 		CancellationToken cancellationToken)
 	{
-		Dictionary<string, SyncEntitySet> sets = CreateSets(unitOfWork);
-		foreach (SyncEntitySet set in sets.Values)
+		Dictionary<string, SyncEntityState> sets = CreateSets();
+		foreach (SyncEntityState set in sets.Values)
 		{
-			await set.Load(cancellationToken);
+			await (set.Type switch
+			{
+				nameof(Currency) => LoadEntities(set, unitOfWork.CurrencyRepo, cancellationToken),
+				nameof(CurrencyRate) => LoadEntities(set, unitOfWork.CurrencyRateRepo, cancellationToken),
+				nameof(AccountGroup) => LoadEntities(set, unitOfWork.AccountGroupRepo, cancellationToken),
+				nameof(CategoryGroup) => LoadEntities(set, unitOfWork.CategoryGroupRepo, cancellationToken),
+				nameof(CorrespondentGroup) => LoadEntities(set, unitOfWork.CorrespondentGroupRepo, cancellationToken),
+				nameof(ProjectGroup) => LoadEntities(set, unitOfWork.ProjectGroupRepo, cancellationToken),
+				nameof(TemplateGroup) => LoadEntities(set, unitOfWork.TemplateGroupRepo, cancellationToken),
+				nameof(ReportGroup) => LoadEntities(set, unitOfWork.ReportGroupRepo, cancellationToken),
+				nameof(Category) => LoadEntities(set, unitOfWork.CategoryRepo, cancellationToken),
+				nameof(Correspondent) => LoadEntities(set, unitOfWork.CorrespondentRepo, cancellationToken),
+				nameof(Project) => LoadEntities(set, unitOfWork.ProjectRepo, cancellationToken),
+				nameof(Account) => LoadEntities(set, unitOfWork.AccountRepo, cancellationToken),
+				nameof(Template) => LoadEntities(set, unitOfWork.TemplateRepo, cancellationToken),
+				nameof(Report) => LoadEntities(set, unitOfWork.ReportRepo, cancellationToken),
+				nameof(Transaction) => LoadEntities(set, unitOfWork.TransactionRepo, cancellationToken),
+				_ => throw new InvalidOperationException("Unsupported synchronization entity type.")
+			});
 		}
 		return sets;
 	}
@@ -138,49 +171,35 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		return (transactions, templates);
 	}
 
-	private static void AttachEntries(Dictionary<string, SyncEntitySet> sets,
+	private void AttachEntries(Dictionary<string, SyncEntityState> sets,
 		ICollection<TransactionEntry> transactions, ICollection<TemplateEntry> templates)
 	{
-		AttachTransactionEntries(sets["transaction"], transactions.ToLookup(entry => entry.TransactionId));
-		AttachTemplateEntries(sets["template"], templates.ToLookup(entry => entry.TemplateId));
+		AttachTransactionEntries(sets[nameof(Transaction)], transactions.ToLookup(entry => entry.TransactionId));
+		AttachTemplateEntries(sets[nameof(Template)], templates.ToLookup(entry => entry.TemplateId));
 	}
 
-	private static void AttachTransactionEntries(SyncEntitySet set, ILookup<Guid, TransactionEntry> entries)
+	private void AttachTransactionEntries(SyncEntityState set, ILookup<Guid, TransactionEntry> entries)
 	{
 		foreach (SyncMergeRow row in set.Rows.Values)
 		{
 			((Transaction)row.Entity).Entries = entries[row.Entity.Id].OrderBy(entry => entry.Position).ToList();
-			set.RememberAggregate(row);
+			_mapSyncEntityOperation.RememberAggregate(set, row);
 		}
 	}
 
-	private static void AttachTemplateEntries(SyncEntitySet set, ILookup<Guid, TemplateEntry> entries)
+	private void AttachTemplateEntries(SyncEntityState set, ILookup<Guid, TemplateEntry> entries)
 	{
 		foreach (SyncMergeRow row in set.Rows.Values)
 		{
 			((Template)row.Entity).Entries = entries[row.Entity.Id].OrderBy(entry => entry.Position).ToList();
-			set.RememberAggregate(row);
+			_mapSyncEntityOperation.RememberAggregate(set, row);
 		}
 	}
 
-	private void MergeChanges(SyncBatch batch, Guid localRegistrationId, long revision,
-		Dictionary<string, SyncEntitySet> sets, Dictionary<long, Guid> sources, CancellationToken cancellationToken)
+	private List<(SyncEntityState Set, SyncMergeRow Row)> PrepareChanges(Dictionary<string, SyncEntityState> sets, long revision)
 	{
-		SyncBatchMerge merge = new(batch, localRegistrationId, revision, sets, sources, _sharedContext.LogService);
-		merge.Run(cancellationToken);
-	}
-
-	private void ValidateResult(Dictionary<string, SyncEntitySet> sets, SystemConfig configuration,
-		ConflictPriority priority, CancellationToken cancellationToken)
-	{
-		SyncBatchValidation validation = new(sets, configuration, _sharedContext.LogService, priority);
-		validation.Run(cancellationToken);
-	}
-
-	private static List<(SyncEntitySet Set, SyncMergeRow Row)> PrepareChanges(Dictionary<string, SyncEntitySet> sets, long revision)
-	{
-		List<(SyncEntitySet Set, SyncMergeRow Row)> changed = new();
-		foreach (SyncEntitySet set in sets.Values)
+		List<(SyncEntityState Set, SyncMergeRow Row)> changed = new();
+		foreach (SyncEntityState set in sets.Values)
 		{
 			foreach (SyncMergeRow row in set.Rows.Values)
 			{
@@ -190,21 +209,21 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		return changed;
 	}
 
-	private static bool StampChanges(SyncEntitySet set, SyncMergeRow row, long revision)
+	private bool StampChanges(SyncEntityState set, SyncMergeRow row, long revision)
 	{
-		bool contentChanged = set.ContentChanged(row) || row.IsLive != row.OriginalDeleteRevision is null;
+		bool contentChanged = _mapSyncEntityOperation.ContentChanged(set, row) || row.IsLive != row.OriginalDeleteRevision is null;
 		row.Tracking.EditRevision = contentChanged ? revision : row.OriginalEditRevision;
 		row.Tracking.DeleteRevision = row.IsLive ? null : contentChanged ? revision : row.OriginalDeleteRevision;
 		row.Tracking.ModificationType = StoredModificationType.None;
 		return contentChanged || (row.Entity as IOrderedEntity)?.Order != row.OriginalOrder;
 	}
 
-	private static void ValidateEntryOwners(List<(SyncEntitySet Set, SyncMergeRow Row)> changed,
+	private static void ValidateEntryOwners(List<(SyncEntityState Set, SyncMergeRow Row)> changed,
 		ICollection<TransactionEntry> transactions, ICollection<TemplateEntry> templates)
 	{
 		Dictionary<Guid, Guid> transactionOwners = transactions.ToDictionary(entry => entry.Id, entry => entry.TransactionId);
 		Dictionary<Guid, Guid> templateOwners = templates.ToDictionary(entry => entry.Id, entry => entry.TemplateId);
-		foreach ((SyncEntitySet _, SyncMergeRow row) in changed)
+		foreach ((SyncEntityState _, SyncMergeRow row) in changed)
 		{
 			if (HasChangedEntryOwner(row.Entity, transactionOwners, templateOwners))
 			{
@@ -221,9 +240,9 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		_ => false
 	};
 
-	private static async Task PersistChanges(
+	private async Task PersistChanges(
 		IMasterUnitOfWork unitOfWork,
-		List<(SyncEntitySet Set, SyncMergeRow Row)> changed,
+		List<(SyncEntityState Set, SyncMergeRow Row)> changed,
 		ICollection<TransactionEntry> transactions,
 		ICollection<TemplateEntry> templates,
 		CancellationToken cancellationToken)
@@ -240,28 +259,46 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 			cancellationToken);
 	}
 
-	private static async Task SaveEntities(
+	private async Task SaveEntities(
 		IMasterUnitOfWork unitOfWork,
-		List<(SyncEntitySet Set, SyncMergeRow Row)> changed,
+		List<(SyncEntityState Set, SyncMergeRow Row)> changed,
 		CancellationToken cancellationToken)
 	{
-		foreach ((SyncEntitySet set, SyncMergeRow row) in changed)
+		foreach ((SyncEntityState set, SyncMergeRow row) in changed)
 		{
-			set.Persist(row);
+			switch (row.Entity)
+			{
+				case Currency entity: PersistEntity(unitOfWork.CurrencyRepo, entity, row.IsNew); break;
+				case CurrencyRate entity: PersistEntity(unitOfWork.CurrencyRateRepo, entity, row.IsNew); break;
+				case AccountGroup entity: PersistEntity(unitOfWork.AccountGroupRepo, entity, row.IsNew); break;
+				case CategoryGroup entity: PersistEntity(unitOfWork.CategoryGroupRepo, entity, row.IsNew); break;
+				case CorrespondentGroup entity: PersistEntity(unitOfWork.CorrespondentGroupRepo, entity, row.IsNew); break;
+				case ProjectGroup entity: PersistEntity(unitOfWork.ProjectGroupRepo, entity, row.IsNew); break;
+				case TemplateGroup entity: PersistEntity(unitOfWork.TemplateGroupRepo, entity, row.IsNew); break;
+				case ReportGroup entity: PersistEntity(unitOfWork.ReportGroupRepo, entity, row.IsNew); break;
+				case Category entity: PersistEntity(unitOfWork.CategoryRepo, entity, row.IsNew); break;
+				case Correspondent entity: PersistEntity(unitOfWork.CorrespondentRepo, entity, row.IsNew); break;
+				case Project entity: PersistEntity(unitOfWork.ProjectRepo, entity, row.IsNew); break;
+				case Account entity: PersistEntity(unitOfWork.AccountRepo, entity, row.IsNew); break;
+				case Template entity: PersistEntity(unitOfWork.TemplateRepo, entity, row.IsNew); break;
+				case Report entity: PersistEntity(unitOfWork.ReportRepo, entity, row.IsNew); break;
+				case Transaction entity: PersistEntity(unitOfWork.TransactionRepo, entity, row.IsNew); break;
+				default: throw new InvalidOperationException("Unsupported synchronization entity type.");
+			}
 		}
 		await unitOfWork.SaveChanges(cancellationToken);
 	}
 
-	private static async Task SaveEntries(
+	private async Task SaveEntries(
 		IMasterUnitOfWork unitOfWork,
-		List<(SyncEntitySet Set, SyncMergeRow Row)> changed,
+		List<(SyncEntityState Set, SyncMergeRow Row)> changed,
 		ICollection<TransactionEntry> transactions,
 		ICollection<TemplateEntry> templates,
 		CancellationToken cancellationToken)
 	{
 		ILookup<Guid, TransactionEntry> transactionsByParent = transactions.ToLookup(entry => entry.TransactionId);
 		ILookup<Guid, TemplateEntry> templatesByParent = templates.ToLookup(entry => entry.TemplateId);
-		foreach ((SyncEntitySet set, SyncMergeRow row) in changed)
+		foreach ((SyncEntityState set, SyncMergeRow row) in changed)
 		{
 			await SaveAggregateEntries(
 				unitOfWork,
@@ -274,9 +311,9 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		await unitOfWork.SaveChanges(cancellationToken);
 	}
 
-	private static async Task SaveAggregateEntries(
+	private async Task SaveAggregateEntries(
 		IMasterUnitOfWork unitOfWork,
-		SyncEntitySet set,
+		SyncEntityState set,
 		SyncMergeRow row,
 		ILookup<Guid, TransactionEntry> transactions,
 		ILookup<Guid, TemplateEntry> templates,
@@ -290,7 +327,7 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 				transactions[transaction.Id].ToList(),
 				cancellationToken);
 		}
-		else if (row.Entity is Template template && set.ContentChanged(row))
+		else if (row.Entity is Template template && _mapSyncEntityOperation.ContentChanged(set, row))
 		{
 			await SaveTemplateEntries(
 				unitOfWork,
@@ -338,128 +375,128 @@ internal sealed class ApplySyncBatchOperation : IApplySyncBatchOperation
 		}
 	}
 
-	private static Dictionary<string, SyncEntitySet> CreateSets(IMasterUnitOfWork unitOfWork) =>
-		CreateCurrencySets(unitOfWork)
-			.Concat(CreateGroupSets(unitOfWork))
-			.Concat(CreateElementSets(unitOfWork))
-			.Concat(CreateAggregateSets(unitOfWork))
+	private static Dictionary<string, SyncEntityState> CreateSets() =>
+		CreateCurrencySets()
+			.Concat(CreateGroupSets())
+			.Concat(CreateElementSets())
+			.Concat(CreateAggregateSets())
 			.ToDictionary(set => set.Type, StringComparer.Ordinal);
 
-	private static SyncEntitySet[] CreateCurrencySets(IMasterUnitOfWork unitOfWork) =>
+	private static SyncEntityState[] CreateCurrencySets() =>
 	[
-		SyncEntitySet.Create(
-			"currency",
-			unitOfWork.CurrencyRepo,
-			["Code", "Symbol", "EnglishName", "Name", "IsFavorite"]),
-		SyncEntitySet.Create(
-			"currencyRate",
-			unitOfWork.CurrencyRateRepo,
-			["CurrencyId", "Date", "Rate", "Description"])
+		CreateState<Currency>(nameof(Currency),
+			[nameof(Currency.Code), nameof(Currency.Symbol), nameof(Currency.EnglishName), nameof(Currency.Name), nameof(Currency.IsFavorite)]),
+		CreateState<CurrencyRate>(nameof(CurrencyRate),
+			[nameof(CurrencyRate.CurrencyId), nameof(CurrencyRate.Date), nameof(CurrencyRate.Rate), nameof(CurrencyRate.Description)])
 	];
 
-	private static SyncEntitySet[] CreateGroupSets(IMasterUnitOfWork unitOfWork)
+	private static SyncEntityState[] CreateGroupSets()
 	{
-		string[] properties = ["Name", "Description", "IsFavorite", "ParentId"];
+		string[] properties = [nameof(CatalogEntity.Name), nameof(CatalogEntity.Description), nameof(CatalogEntity.IsFavorite)];
 		return
 		[
-			SyncEntitySet.Create(
-				"accountGroup",
-				unitOfWork.AccountGroupRepo,
-				properties,
+			CreateState<AccountGroup>(nameof(AccountGroup),
+				[.. properties, nameof(AccountGroup.ParentId)],
 				RootsIds.AccountGroupId,
-				"accountGroup",
-				"parentId"),
-			SyncEntitySet.Create(
-				"categoryGroup",
-				unitOfWork.CategoryGroupRepo,
-				properties,
+				nameof(AccountGroup),
+				nameof(AccountGroup.ParentId)),
+			CreateState<CategoryGroup>(nameof(CategoryGroup),
+				[.. properties, nameof(CategoryGroup.ParentId)],
 				RootsIds.CategoryGroupId,
-				"categoryGroup",
-				"parentId"),
-			SyncEntitySet.Create(
-				"correspondentGroup",
-				unitOfWork.CorrespondentGroupRepo,
-				properties,
+				nameof(CategoryGroup),
+				nameof(CategoryGroup.ParentId)),
+			CreateState<CorrespondentGroup>(nameof(CorrespondentGroup),
+				[.. properties, nameof(CorrespondentGroup.ParentId)],
 				RootsIds.CorrespondentGroupId,
-				"correspondentGroup",
-				"parentId"),
-			SyncEntitySet.Create(
-				"projectGroup",
-				unitOfWork.ProjectGroupRepo,
-				properties,
+				nameof(CorrespondentGroup),
+				nameof(CorrespondentGroup.ParentId)),
+			CreateState<ProjectGroup>(nameof(ProjectGroup),
+				[.. properties, nameof(ProjectGroup.ParentId)],
 				RootsIds.ProjectGroupId,
-				"projectGroup",
-				"parentId"),
-			SyncEntitySet.Create(
-				"templateGroup",
-				unitOfWork.TemplateGroupRepo,
-				properties,
+				nameof(ProjectGroup),
+				nameof(ProjectGroup.ParentId)),
+			CreateState<TemplateGroup>(nameof(TemplateGroup),
+				[.. properties, nameof(TemplateGroup.ParentId)],
 				RootsIds.TemplateGroupId,
-				"templateGroup",
-				"parentId"),
-			SyncEntitySet.Create(
-				"reportGroup",
-				unitOfWork.ReportGroupRepo,
-				properties,
+				nameof(TemplateGroup),
+				nameof(TemplateGroup.ParentId)),
+			CreateState<ReportGroup>(nameof(ReportGroup),
+				[.. properties, nameof(ReportGroup.ParentId)],
 				RootsIds.ReportGroupId,
-				"reportGroup",
-				"parentId")
+				nameof(ReportGroup),
+				nameof(ReportGroup.ParentId))
 		];
 	}
 
-	private static SyncEntitySet[] CreateElementSets(IMasterUnitOfWork unitOfWork)
+	private static SyncEntityState[] CreateElementSets()
 	{
-		string[] properties = ["Name", "Description", "IsFavorite", "GroupId"];
+		string[] properties = [nameof(CatalogEntity.Name), nameof(CatalogEntity.Description), nameof(CatalogEntity.IsFavorite)];
 		return
 		[
-			SyncEntitySet.Create(
-				"category",
-				unitOfWork.CategoryRepo,
-				properties,
-				parentType: "categoryGroup",
-				parentField: "groupId"),
-			SyncEntitySet.Create(
-				"correspondent",
-				unitOfWork.CorrespondentRepo,
-				properties,
-				parentType: "correspondentGroup",
-				parentField: "groupId"),
-			SyncEntitySet.Create(
-				"project",
-				unitOfWork.ProjectRepo,
-				properties,
-				parentType: "projectGroup",
-				parentField: "groupId"),
-			SyncEntitySet.Create(
-				"account",
-				unitOfWork.AccountRepo,
-				[.. properties, "CurrencyId", "CategoryId", "CorrespondentId", "ProjectId"],
-				parentType: "accountGroup",
-				parentField: "groupId")
+			CreateState<Category>(nameof(Category),
+				[.. properties, nameof(Category.GroupId)],
+				parentType: nameof(CategoryGroup),
+				parentField: nameof(Category.GroupId)),
+			CreateState<Correspondent>(nameof(Correspondent),
+				[.. properties, nameof(Correspondent.GroupId)],
+				parentType: nameof(CorrespondentGroup),
+				parentField: nameof(Correspondent.GroupId)),
+			CreateState<Project>(nameof(Project),
+				[.. properties, nameof(Project.GroupId)],
+				parentType: nameof(ProjectGroup),
+				parentField: nameof(Project.GroupId)),
+			CreateState<Account>(nameof(Account),
+				[.. properties, nameof(Account.GroupId), nameof(Account.CurrencyId), nameof(Account.CategoryId), nameof(Account.CorrespondentId), nameof(Account.ProjectId)],
+				parentType: nameof(AccountGroup),
+				parentField: nameof(Account.GroupId))
 		];
 	}
 
-	private static SyncEntitySet[] CreateAggregateSets(IMasterUnitOfWork unitOfWork)
+	private static SyncEntityState[] CreateAggregateSets()
 	{
-		string[] properties = ["Name", "Description", "IsFavorite", "GroupId"];
+		string[] properties = [nameof(CatalogEntity.Name), nameof(CatalogEntity.Description), nameof(CatalogEntity.IsFavorite)];
 		return
 		[
-			SyncEntitySet.Create(
-				"template",
-				unitOfWork.TemplateRepo,
-				[.. properties, "Entries"],
-				parentType: "templateGroup",
-				parentField: "groupId"),
-			SyncEntitySet.Create(
-				"report",
-				unitOfWork.ReportRepo,
-				[.. properties, "Json"],
-				parentType: "reportGroup",
-				parentField: "groupId"),
-			SyncEntitySet.Create(
-				"transaction",
-				unitOfWork.TransactionRepo,
-				["DateTime", "State", "Description", "Entries"])
+			CreateState<Template>(nameof(Template),
+				[.. properties, nameof(Template.GroupId), nameof(Template.Entries)],
+				parentType: nameof(TemplateGroup),
+				parentField: nameof(Template.GroupId)),
+			CreateState<Report>(nameof(Report),
+				[.. properties, nameof(Report.GroupId), nameof(Report.Json)],
+				parentType: nameof(ReportGroup),
+				parentField: nameof(Report.GroupId)),
+			CreateState<Transaction>(nameof(Transaction),
+				[nameof(Transaction.DateTime), nameof(Transaction.State), nameof(Transaction.Description), nameof(Transaction.Entries)])
 		];
 	}
+	private async Task LoadEntities<T>(SyncEntityState set, ITrackedRepository<T> repository, CancellationToken cancellationToken)
+		where T : BaseEntity, ITrackedEntity
+	{
+		foreach (T entity in await repository.GetAll(cancellationToken))
+		{
+			set.Rows.Add(entity.Id, new SyncMergeRow
+			{
+				Entity = entity, Original = _mapSyncEntityOperation.Snapshot(set, entity),
+				OriginalEditRevision = entity.EditRevision, OriginalDeleteRevision = entity.DeleteRevision,
+				OriginalOrder = (entity as IOrderedEntity)?.Order
+			});
+		}
+	}
+
+	private static void PersistEntity<T>(ITrackedRepository<T> repository, T entity, bool isNew)
+		where T : BaseEntity, ITrackedEntity
+	{
+		if (isNew) { repository.Add(entity); }
+		else { repository.Update(entity); }
+	}
+
+	private static SyncEntityState CreateState<T>(string type, string[] fields,
+		Guid? rootId = null, string? parentType = null, string? parentField = null)
+		where T : BaseEntity, ITrackedEntity
+		=> new()
+		{
+			Type = type, EntityType = typeof(T), ContentFields = fields,
+			RootId = rootId, ParentType = parentType, ParentField = parentField,
+			IsOrdered = typeof(IOrderedEntity).IsAssignableFrom(typeof(T))
+		};
 }

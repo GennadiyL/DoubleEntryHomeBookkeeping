@@ -100,7 +100,7 @@ internal sealed class TransactionService : ITransactionService
 			HashSet<Guid> accounts = [.. oldEntries.Select(entry => entry.AccountId), .. entries.Select(entry => entry.AccountId)];
 			entity.DateTime = param.DateTime;
 			entity.Description = param.Description;
-			entity.State = entries.Count >= 2 && baseTotal == 0m ? param.State : TransactionState.Draft;
+			entity.State = entries.Count >= AppValues.MinTransactionEntryCount && baseTotal == 0m ? param.State : TransactionState.Draft;
 			entity.Entries = entries;
 			if (entityId.HasValue)
 			{

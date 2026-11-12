@@ -1,4 +1,8 @@
+using Business.Models.Entities.Reporting;
+using Business.Models.Entities.Interfaces;
+using Business.Models.Entities.Base;
 using Shared.Contracts.Config;
+using Shared.Contracts;
 using NSubstitute;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -15,6 +19,9 @@ using DataAccess.EntityFramework.SqLite;
 using Exchange.Models.Synchronizations;
 using Master.Impl;
 using Master.Impl.Operations.ApplySyncBatch;
+using Master.Impl.Operations.RestoreConsistency;
+using Master.Impl.Operations.ValidateSyncBatch;
+using Master.Impl.Operations.MergeSyncBatch;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,6 +47,7 @@ namespace UnitTests.Master;
 [TestFixture(Category = "Local")]
 public sealed class ApplySyncBatchOperationTests
 {
+	private static readonly string[] ExpectedOperationOrder = ["merge", "restore", "validate"];
 	private SqliteConnection _connection = null!;
 	private string _directory = null!;
 	private ServiceProvider _provider = null!;
@@ -127,7 +135,7 @@ public sealed class ApplySyncBatchOperationTests
 			});
 		}
 		SyncBatch batch = Batch(priority);
-		batch.Updated.Add(Catalog("category", id, "Local", RootsIds.CategoryGroupId, incomingRevision));
+		batch.Updated.Add(Catalog(nameof(Category), id, "Local", RootsIds.CategoryGroupId, incomingRevision));
 		await Apply(batch);
 		await WithUnit(async unit =>
 		{
@@ -141,7 +149,7 @@ public sealed class ApplySyncBatchOperationTests
 	{
 		Guid id = await SeedCategory(revision: 9);
 		SyncBatch batch = Batch(ConflictPriority.Master);
-		batch.Updated.Add(Catalog("category", id, "Newest", RootsIds.CategoryGroupId, 8));
+		batch.Updated.Add(Catalog(nameof(Category), id, "Newest", RootsIds.CategoryGroupId, 8));
 		await Apply(batch);
 		await WithUnit(async unit => Assert.That((await unit.CategoryRepo.GetById(id))!.Name, Is.EqualTo("Newest")));
 	}
@@ -151,7 +159,7 @@ public sealed class ApplySyncBatchOperationTests
 	{
 		Guid id = await SeedCategory();
 		SyncBatch batch = Batch();
-		batch.Updated.Add(Catalog("category", id, "Master", RootsIds.CategoryGroupId, 10));
+		batch.Updated.Add(Catalog(nameof(Category), id, "Master", RootsIds.CategoryGroupId, 10));
 		await Apply(batch);
 		await WithUnit(async unit => Assert.That((await unit.CategoryRepo.GetById(id))!.EditRevision, Is.EqualTo(10)));
 	}
@@ -164,8 +172,8 @@ public sealed class ApplySyncBatchOperationTests
 		Guid second = await SeedCategory("Second", 1);
 		SyncBatch batch = Batch(ConflictPriority.Master);
 		SyncObject item = contentFlag
-			? Catalog("category", second, "Rejected", RootsIds.CategoryGroupId, 8, -1, ModificationType.Content | ModificationType.Order)
-			: Object("category", second, 8, ModificationType.Order, ("order", -1));
+			? Catalog(nameof(Category), second, "Rejected", RootsIds.CategoryGroupId, 8, -1, ModificationType.Content | ModificationType.Order)
+			: Object(nameof(Category), second, 8, ModificationType.Order, (nameof(IOrderedEntity.Order), -1));
 		batch.Updated.Add(item);
 		await Apply(batch);
 		await WithUnit(async unit =>
@@ -182,8 +190,8 @@ public sealed class ApplySyncBatchOperationTests
 	{
 		Guid id = await SeedCategory();
 		SyncBatch deletion = Batch();
-		SyncObject deleted = Catalog("category", id, "Master", RootsIds.CategoryGroupId, 10);
-		deleted.Properties.Add("order", JsonSerializer.SerializeToElement(0));
+		SyncObject deleted = Catalog(nameof(Category), id, "Master", RootsIds.CategoryGroupId, 10);
+		deleted.Properties.Add(nameof(IOrderedEntity.Order), JsonSerializer.SerializeToElement(0));
 		deletion.Deleted.Add(deleted);
 		await Apply(deletion);
 		await WithUnit(async unit =>
@@ -192,7 +200,7 @@ public sealed class ApplySyncBatchOperationTests
 			Assert.That((row.EditRevision, row.DeleteRevision), Is.EqualTo(((long?)11, (long?)11)));
 		});
 		SyncBatch restoration = Batch(ConflictPriority.Master);
-		restoration.Updated.Add(Catalog("category", id, "Restored", RootsIds.CategoryGroupId, 10));
+		restoration.Updated.Add(Catalog(nameof(Category), id, "Restored", RootsIds.CategoryGroupId, 10));
 		await Apply(restoration, 12);
 		await WithUnit(async unit =>
 		{
@@ -256,23 +264,23 @@ public sealed class ApplySyncBatchOperationTests
 		Guid templateId = Guid.NewGuid();
 		Guid reportId = Guid.NewGuid();
 		Guid transactionId = Guid.NewGuid();
-		Dictionary<string, Guid> groups = ((string[])["account", "category", "correspondent", "project", "template", "report"]).ToDictionary(type => type, _ => Guid.NewGuid());
+		Dictionary<string, Guid> groups = ((string[])[nameof(Account), nameof(Category), nameof(Correspondent), nameof(Project), nameof(Template), nameof(Report)]).ToDictionary(type => type, _ => Guid.NewGuid());
 		SyncBatch batch = Batch();
 		batch.Added.Add(TransactionObject(transactionId, null, [Entry(accountId, 3m, 0), Entry(accountId, -3m, 1)]));
-		SyncObject template = Catalog("template", templateId, "Template", groups["template"]);
-		template.Properties.Add("entries", JsonSerializer.SerializeToElement(new[] { new { id = Guid.NewGuid(), accountId, position = 0, amount = 1.2345m } }));
+		SyncObject template = Catalog(nameof(Template), templateId, "Template", groups[nameof(Template)]);
+		template.Properties.Add(nameof(Transaction.Entries), JsonSerializer.SerializeToElement(new[] { new { Id = Guid.NewGuid(), AccountId = accountId, Position = 0, Amount = 1.2345m } }));
 		batch.Added.Add(template);
-		SyncObject report = Catalog("report", reportId, "Report", groups["report"]);
-		report.Properties.Add("json", JsonSerializer.SerializeToElement("{}"));
+		SyncObject report = Catalog(nameof(Report), reportId, "Report", groups[nameof(Report)]);
+		report.Properties.Add(nameof(Report.Json), JsonSerializer.SerializeToElement("{}"));
 		batch.Added.Add(report);
-		SyncObject account = AccountObject(accountId, groups["account"], currencyId);
-		account.Properties["categoryId"] = JsonSerializer.SerializeToElement(categoryId);
-		account.Properties["correspondentId"] = JsonSerializer.SerializeToElement(correspondentId);
-		account.Properties["projectId"] = JsonSerializer.SerializeToElement(projectId);
+		SyncObject account = AccountObject(accountId, groups[nameof(Account)], currencyId);
+		account.Properties[nameof(Account.CategoryId)] = JsonSerializer.SerializeToElement(categoryId);
+		account.Properties[nameof(Account.CorrespondentId)] = JsonSerializer.SerializeToElement(correspondentId);
+		account.Properties[nameof(Account.ProjectId)] = JsonSerializer.SerializeToElement(projectId);
 		batch.Added.Add(account);
-		batch.Added.Add(Catalog("category", categoryId, "Category", groups["category"]));
-		batch.Added.Add(Catalog("correspondent", correspondentId, "Correspondent", groups["correspondent"]));
-		batch.Added.Add(Catalog("project", projectId, "Project", groups["project"]));
+		batch.Added.Add(Catalog(nameof(Category), categoryId, "Category", groups[nameof(Category)]));
+		batch.Added.Add(Catalog(nameof(Correspondent), correspondentId, "Correspondent", groups[nameof(Correspondent)]));
+		batch.Added.Add(Catalog(nameof(Project), projectId, "Project", groups[nameof(Project)]));
 		batch.Added.Add(RateObject(Guid.NewGuid(), currencyId, AppValues.InitialDate, 1m));
 		batch.Added.Add(CurrencyObject(currencyId, "EUR", "Euro"));
 		Guid[] roots = [RootsIds.AccountGroupId, RootsIds.CategoryGroupId, RootsIds.CorrespondentGroupId, RootsIds.ProjectGroupId, RootsIds.TemplateGroupId, RootsIds.ReportGroupId];
@@ -336,7 +344,7 @@ public sealed class ApplySyncBatchOperationTests
 			await unit.SaveChanges();
 		});
 		SyncBatch batch = Batch(priority);
-		batch.Updated.Add(Catalog("categoryGroup", parent, "Parent", child, 10));
+		batch.Updated.Add(Catalog(nameof(CategoryGroup), parent, "Parent", child, 10));
 		await Apply(batch);
 		await WithUnit(async unit =>
 		{
@@ -352,7 +360,7 @@ public sealed class ApplySyncBatchOperationTests
 		Guid original = await SeedCategory("Same");
 		Guid added = Guid.NewGuid();
 		SyncBatch batch = Batch(priority);
-		batch.Added.Add(Catalog("category", added, " Same ", RootsIds.CategoryGroupId));
+		batch.Added.Add(Catalog(nameof(Category), added, " Same ", RootsIds.CategoryGroupId));
 		await Apply(batch);
 		await WithUnit(async unit =>
 		{
@@ -368,14 +376,14 @@ public sealed class ApplySyncBatchOperationTests
 		Guid templateId = Guid.NewGuid();
 		SyncBatch first = Batch();
 		first.Added.Add(TransactionObject(transactionId, null, [Entry(EntitiesIds.BalancingAccountId, 1m, 0), Entry(EntitiesIds.BalancingAccountId, -1m, 1)]));
-		SyncObject template = Catalog("template", templateId, "Template", RootsIds.TemplateGroupId);
-		template.Properties.Add("entries", JsonSerializer.SerializeToElement(new[] { new { id = Guid.NewGuid(), accountId = EntitiesIds.BalancingAccountId, position = 0, amount = 2m } }));
+		SyncObject template = Catalog(nameof(Template), templateId, "Template", RootsIds.TemplateGroupId);
+		template.Properties.Add(nameof(Transaction.Entries), JsonSerializer.SerializeToElement(new[] { new { Id = Guid.NewGuid(), AccountId = EntitiesIds.BalancingAccountId, Position = 0, Amount = 2m } }));
 		first.Added.Add(template);
 		SyncBatch second = Batch(ConflictPriority.Master);
 		SyncObject replacement = TransactionObject(transactionId, 0, [Entry(EntitiesIds.BalancingAccountId, 5m, 0), Entry(EntitiesIds.BalancingAccountId, -5m, 1)]);
 		second.Updated.Add(replacement);
-		SyncObject updatedTemplate = Catalog("template", templateId, "Template", RootsIds.TemplateGroupId, 0);
-		updatedTemplate.Properties.Add("entries", JsonSerializer.SerializeToElement(Array.Empty<object>()));
+		SyncObject updatedTemplate = Catalog(nameof(Template), templateId, "Template", RootsIds.TemplateGroupId, 0);
+		updatedTemplate.Properties.Add(nameof(Transaction.Entries), JsonSerializer.SerializeToElement(Array.Empty<object>()));
 		second.Updated.Add(updatedTemplate);
 		using (IServiceScope scope = _provider.CreateScope())
 		{
@@ -399,14 +407,14 @@ public sealed class ApplySyncBatchOperationTests
 	public async Task InvalidBatch_LeavesDatabaseAndRevisionUnchanged(string scenario)
 	{
 		SyncBatch batch = Batch();
-		SyncObject item = Catalog("category", Guid.NewGuid(), "Valid", RootsIds.CategoryGroupId);
+		SyncObject item = Catalog(nameof(Category), Guid.NewGuid(), "Valid", RootsIds.CategoryGroupId);
 		batch.Added.Add(item);
 		switch (scenario)
 		{
 			case "unknownType": item.Type = "systemConfig"; break;
-			case "missingField": item.Properties.Remove("name"); break;
+			case "missingField": item.Properties.Remove(nameof(CatalogEntity.Name)); break;
 			case "unknownField": item.Properties.Add("deleteRevision", JsonSerializer.SerializeToElement(99)); break;
-			case "missingParent": item.Properties["groupId"] = JsonSerializer.SerializeToElement(Guid.NewGuid()); break;
+			case "missingParent": item.Properties[nameof(Account.GroupId)] = JsonSerializer.SerializeToElement(Guid.NewGuid()); break;
 			case "duplicateObject": batch.Added.Add(item); break;
 			case "invalidFlags": item.ModificationType = (ModificationType)8; break;
 		}
@@ -423,7 +431,7 @@ public sealed class ApplySyncBatchOperationTests
 	public async Task CallerRollback_RevertsPersistedRowsWithoutReceipt()
 	{
 		SyncBatch batch = Batch();
-		batch.Added.Add(Catalog("category", Guid.NewGuid(), "Rollback", RootsIds.CategoryGroupId));
+		batch.Added.Add(Catalog(nameof(Category), Guid.NewGuid(), "Rollback", RootsIds.CategoryGroupId));
 		using (IServiceScope scope = _provider.CreateScope())
 		{
 			IMasterUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateMaster("master");
@@ -485,8 +493,8 @@ public sealed class ApplySyncBatchOperationTests
 		Guid initialId = Guid.Empty;
 		await WithUnit(async unit => initialId = (await unit.CurrencyRateRepo.GetAll()).Single().Id);
 		batch.Deleted.Add(RateObject(initialId, _baseCurrency, AppValues.InitialDate, 1m, 0));
-		SyncObject root = Catalog("accountGroup", RootsIds.AccountGroupId, "Changed root", Guid.NewGuid(), 0);
-		root.Properties["isFavorite"] = JsonSerializer.SerializeToElement(true);
+		SyncObject root = Catalog(nameof(AccountGroup), RootsIds.AccountGroupId, "Changed root", Guid.NewGuid(), 0);
+		root.Properties[nameof(CatalogEntity.IsFavorite)] = JsonSerializer.SerializeToElement(true);
 		batch.Updated.Add(root);
 		await Apply(batch);
 		await WithUnit(async unit =>
@@ -507,7 +515,7 @@ public sealed class ApplySyncBatchOperationTests
 		SyncObject item = AccountObject(EntitiesIds.BalancingAccountId, RootsIds.AccountGroupId, foreign);
 		item.EditRevision = 0;
 		item.ModificationType = ModificationType.Content;
-		item.Properties.Remove("order");
+		item.Properties.Remove(nameof(IOrderedEntity.Order));
 		SyncBatch batch = Batch();
 		batch.Updated.Add(item);
 		await Apply(batch);
@@ -520,10 +528,10 @@ public sealed class ApplySyncBatchOperationTests
 		Guid lower = Guid.Parse("00000001-0000-0000-0000-000000000000");
 		Guid higher = Guid.Parse("01000000-0000-0000-0000-000000000000");
 		SyncBatch batch = Batch();
-		batch.Added.Add(Catalog("category", higher, "Higher", RootsIds.CategoryGroupId));
-		batch.Added.Add(Catalog("category", lower, "Lower", RootsIds.CategoryGroupId));
+		batch.Added.Add(Catalog(nameof(Category), higher, "Higher", RootsIds.CategoryGroupId));
+		batch.Added.Add(Catalog(nameof(Category), lower, "Lower", RootsIds.CategoryGroupId));
 		Guid group = Guid.NewGuid();
-		batch.Added.Add(Catalog("categoryGroup", group, "Group", RootsIds.CategoryGroupId));
+		batch.Added.Add(Catalog(nameof(CategoryGroup), group, "Group", RootsIds.CategoryGroupId));
 		await Apply(batch);
 		await WithUnit(async unit =>
 		{
@@ -536,11 +544,11 @@ public sealed class ApplySyncBatchOperationTests
 	[Test]
 	public async Task NameCorrection_DoesNotStealAnAlreadyUniqueSuffixedName()
 	{
-		await SeedCategory("Name");
+		await SeedCategory(nameof(CatalogEntity.Name));
 		Guid suffixed = await SeedCategory("Name_1");
 		Guid added = Guid.NewGuid();
 		SyncBatch batch = Batch(ConflictPriority.Master);
-		batch.Added.Add(Catalog("category", added, "Name", RootsIds.CategoryGroupId));
+		batch.Added.Add(Catalog(nameof(Category), added, nameof(CatalogEntity.Name), RootsIds.CategoryGroupId));
 		await Apply(batch);
 		await WithUnit(async unit =>
 		{
@@ -571,18 +579,18 @@ public sealed class ApplySyncBatchOperationTests
 		Dictionary<string, object> second = Entry(EntitiesIds.BalancingAccountId, -1m, 1);
 		switch (scenario)
 		{
-			case "missingAccount": first["accountId"] = Guid.NewGuid(); break;
-			case "negativeRate": first["rate"] = -1m; break;
-			case "baseRate": first["rate"] = 2m; break;
-			case "amountOverflow": first["amount"] = decimal.MaxValue; break;
-			case "badPosition": first["position"] = 1; break;
-			case "duplicateEntry": second["id"] = first["id"]; break;
+			case "missingAccount": first[nameof(TransactionEntry.AccountId)] = Guid.NewGuid(); break;
+			case "negativeRate": first[nameof(CurrencyRate.Rate)] = -1m; break;
+			case "baseRate": first[nameof(CurrencyRate.Rate)] = 2m; break;
+			case "amountOverflow": first[nameof(TransactionEntry.Amount)] = decimal.MaxValue; break;
+			case "badPosition": first[nameof(TransactionEntry.Position)] = 1; break;
+			case "duplicateEntry": second[nameof(TransactionEntry.Id)] = first[nameof(TransactionEntry.Id)]; break;
 		}
 		SyncObject item = TransactionObject(Guid.NewGuid(), null, [first, second]);
-		if (scenario == "invalidState") { item.Properties["state"] = JsonSerializer.SerializeToElement(9); }
-		if (scenario == "localDate") { item.Properties["dateTime"] = JsonSerializer.SerializeToElement("2026-10-20T12:00:00"); }
+		if (scenario == "invalidState") { item.Properties[nameof(Transaction.State)] = JsonSerializer.SerializeToElement(9); }
+		if (scenario == "localDate") { item.Properties[nameof(Transaction.DateTime)] = JsonSerializer.SerializeToElement("2026-10-20T12:00:00"); }
 		SyncBatch batch = Batch();
-		batch.Added.Add(Catalog("category", Guid.NewGuid(), "Valid", RootsIds.CategoryGroupId));
+		batch.Added.Add(Catalog(nameof(Category), Guid.NewGuid(), "Valid", RootsIds.CategoryGroupId));
 		batch.Added.Add(item);
 		Assert.ThrowsAsync<InvalidSyncBatchException>(async () => await Apply(batch));
 		await WithUnit(async unit =>
@@ -654,8 +662,8 @@ public sealed class ApplySyncBatchOperationTests
 		Dictionary<string, object> secondEntry = Entry(EntitiesIds.BalancingAccountId, -2m, 1);
 		SyncBatch first = Batch();
 		first.Added.Add(TransactionObject(id, null, [firstEntry, secondEntry]));
-		firstEntry["amount"] = 4m;
-		secondEntry["amount"] = -4m;
+		firstEntry[nameof(TransactionEntry.Amount)] = 4m;
+		secondEntry[nameof(TransactionEntry.Amount)] = -4m;
 		SyncBatch second = Batch();
 		second.Updated.Add(TransactionObject(id, 11, [firstEntry, secondEntry]));
 		using (IServiceScope scope = _provider.CreateScope())
@@ -666,7 +674,7 @@ public sealed class ApplySyncBatchOperationTests
 		await WithUnit(async unit =>
 		{
 			ICollection<TransactionEntry> entries = await unit.TransactionEntryRepo.GetByTransactionId(id);
-			Assert.That(entries.Select(entry => entry.Id), Is.EquivalentTo(new[] { (Guid)firstEntry["id"], (Guid)secondEntry["id"] }));
+			Assert.That(entries.Select(entry => entry.Id), Is.EquivalentTo(new[] { (Guid)firstEntry[nameof(TransactionEntry.Id)], (Guid)secondEntry[nameof(TransactionEntry.Id)] }));
 			Assert.That(entries.Select(entry => entry.Amount), Is.EquivalentTo((decimal[])[4m, -4m]));
 			Assert.That(entries.Select(entry => entry.CumulativeAmount), Is.EquivalentTo((decimal[])[0m, 0m]));
 		});
@@ -702,13 +710,60 @@ public sealed class ApplySyncBatchOperationTests
 		});
 		Guid id = Guid.NewGuid();
 		SyncBatch batch = Batch(ConflictPriority.Master);
-		batch.Added.Add(Catalog("category", id, "Offline", groupId));
+		batch.Added.Add(Catalog(nameof(Category), id, "Offline", groupId));
 		await Apply(batch);
 		await WithUnit(async unit =>
 		{
 			Assert.That((await unit.CategoryGroupRepo.GetById(groupId))!.DeleteRevision, Is.Null);
 			Assert.That((await unit.CategoryRepo.GetById(id))!.GroupId, Is.EqualTo(groupId));
 		});
+	}
+
+	[Test]
+	public async Task ApplyUsesInjectedRestorationAndValidationInOrder()
+	{
+		using IServiceScope scope = _provider.CreateScope();
+		IUnitOfWorkFactory factory = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>();
+		IRestoreConsistencyOperation restore = Substitute.For<IRestoreConsistencyOperation>();
+		IMergeSyncBatchOperation merge = Substitute.For<IMergeSyncBatchOperation>();
+		IMergeSyncBatchOperation realMerge = scope.ServiceProvider.GetRequiredService<IMergeSyncBatchOperation>();
+		IValidateSyncBatchOperation validate = Substitute.For<IValidateSyncBatchOperation>();
+		Guid id = Guid.NewGuid();
+		List<string> calls = new();
+		merge.When(operation => operation.Run(Arg.Any<SyncBatch>(), Arg.Any<Guid>(), Arg.Any<long>(), Arg.Any<Dictionary<string, SyncEntityState>>(), Arg.Any<Dictionary<long, Guid>>(), Arg.Any<CancellationToken>()))
+			.Do(call =>
+			{
+				calls.Add("merge");
+				realMerge.Run(call.Arg<SyncBatch>(), call.Arg<Guid>(), call.Arg<long>(), call.Arg<Dictionary<string, SyncEntityState>>(), call.Arg<Dictionary<long, Guid>>(), call.Arg<CancellationToken>());
+			});
+		restore.When(operation => operation.Run(Arg.Any<Dictionary<string, SyncEntityState>>(), Arg.Any<SystemConfig>(), Arg.Any<CancellationToken>()))
+			.Do(call =>
+			{
+				calls.Add("restore");
+				((Category)call.Arg<Dictionary<string, SyncEntityState>>()[nameof(Category)].Rows[id].Entity).Name = "Restored";
+			});
+		validate.When(operation => operation.Run(Arg.Any<Dictionary<string, SyncEntityState>>(), Arg.Any<SystemConfig>(), Arg.Any<ConflictPriority>(), Arg.Any<CancellationToken>()))
+			.Do(call =>
+			{
+				calls.Add("validate");
+				Category category = (Category)call.Arg<Dictionary<string, SyncEntityState>>()[nameof(Category)].Rows[id].Entity;
+				Assert.That(category.Name, Is.EqualTo("Restored"));
+				category.Name = "Validated";
+			});
+		ServiceCollection services = new();
+		services.AddMasterModule();
+		services.AddSingleton(factory);
+		services.AddSingleton(scope.ServiceProvider.GetRequiredService<ISharedContext>());
+		services.AddSingleton(restore);
+		services.AddSingleton(merge);
+		services.AddSingleton(validate);
+		using ServiceProvider provider = services.BuildServiceProvider();
+		using IServiceScope operationScope = provider.CreateScope();
+		SyncBatch batch = Batch();
+		batch.Added.Add(Catalog(nameof(Category), id, "Input", RootsIds.CategoryGroupId));
+		await ApplyInScope(operationScope, batch, 11);
+		Assert.That(calls, Is.EqualTo(ExpectedOperationOrder));
+		Assert.That((await factory.CreateMaster("master").CategoryRepo.GetById(id))!.Name, Is.EqualTo("Validated"));
 	}
 
 	private async Task<Guid> SeedCategory(string name = "Master", int order = 0, long revision = 10)
@@ -720,6 +775,129 @@ public sealed class ApplySyncBatchOperationTests
 			await unit.SaveChanges();
 		});
 		return id;
+	}
+
+	[TestCase(false)]
+	[TestCase(true)]
+	public async Task RestoringCurrencyRestoresAllRetainedRatesWithTheirHistory(bool dependencyDriven)
+	{
+		Guid id = await SeedForeignCurrency();
+		Guid datedId = Guid.NewGuid();
+		await WithUnit(async unit =>
+		{
+			Currency currency = (await unit.CurrencyRepo.GetById(id))!;
+			currency.DeleteRevision = 10;
+			unit.CurrencyRepo.Update(currency);
+			CurrencyRate initial = (await unit.CurrencyRateRepo.GetAllByCurrencyId(id)).Single();
+			initial.DeleteRevision = 10;
+			unit.CurrencyRateRepo.Update(initial);
+			unit.CurrencyRateRepo.Add(new CurrencyRate
+			{
+				Id = datedId, CurrencyId = id, Currency = currency, Date = new DateOnly(2026, 1, 2), Rate = 42m,
+				Description = "Retained history", EditRevision = 9, DeleteRevision = 9
+			});
+			await unit.SaveChanges();
+		});
+		SyncBatch batch = Batch();
+		SyncObject restore = CurrencyObject(id, "EUR", "EUR");
+		restore.EditRevision = 10;
+		restore.ModificationType = ModificationType.Content;
+		restore.Properties.Remove(nameof(IOrderedEntity.Order));
+		if (dependencyDriven)
+		{
+			batch.Added.Add(AccountObject(Guid.NewGuid(), RootsIds.AccountGroupId, id));
+		}
+		else
+		{
+			batch.Updated.Add(restore);
+		}
+		await Apply(batch);
+		await WithUnit(async unit =>
+		{
+			ICollection<CurrencyRate> rates = await unit.CurrencyRateRepo.GetAllByCurrencyId(id);
+			Assert.That(rates, Has.Count.EqualTo(2));
+			Assert.That(rates.All(rate => rate.DeleteRevision is null && rate.EditRevision == 11), Is.True);
+			CurrencyRate dated = rates.Single(rate => rate.Id == datedId);
+			Assert.That((dated.Rate, dated.Description), Is.EqualTo((42m, "Retained history")));
+		});
+	}
+
+	[TestCase(false)]
+	[TestCase(true)]
+	public async Task UnchangedLiveRateRestoresCurrencyAndRetainedHistory(bool deletedByBatch)
+	{
+		Guid currencyId = await SeedForeignCurrency();
+		Guid historyId = Guid.NewGuid();
+		await WithUnit(async unit =>
+		{
+			Currency currency = (await unit.CurrencyRepo.GetById(currencyId))!;
+			if (!deletedByBatch)
+			{
+				currency.DeleteRevision = 10;
+				unit.CurrencyRepo.Update(currency);
+			}
+			unit.CurrencyRateRepo.Add(new CurrencyRate
+			{
+				Id = historyId, CurrencyId = currencyId, Currency = currency,
+				Date = new DateOnly(2026, 1, 2), Rate = 42m, Description = "Retained",
+				EditRevision = 9, DeleteRevision = 9
+			});
+			await unit.SaveChanges();
+		});
+		SyncBatch batch = Batch();
+		if (deletedByBatch)
+		{
+			SyncObject deletion = CurrencyObject(currencyId, "EUR", "EUR");
+			deletion.Properties[nameof(Currency.Symbol)] = JsonSerializer.SerializeToElement("E");
+			deletion.Properties[nameof(Currency.EnglishName)] = JsonSerializer.SerializeToElement("Euro");
+			deletion.EditRevision = 10;
+			deletion.ModificationType = ModificationType.Content;
+			batch.Deleted.Add(deletion);
+		}
+		else
+		{
+			batch.Added.Add(Catalog(nameof(Category), Guid.NewGuid(), "Unrelated", RootsIds.CategoryGroupId));
+		}
+		await Apply(batch);
+		await WithUnit(async unit =>
+		{
+			Currency currency = (await unit.CurrencyRepo.GetById(currencyId))!;
+			Assert.That(currency.DeleteRevision, Is.Null);
+			Assert.That(currency.EditRevision, Is.EqualTo(deletedByBatch ? 10 : 11));
+			ICollection<CurrencyRate> rates = await unit.CurrencyRateRepo.GetAllByCurrencyId(currencyId);
+			Assert.That(rates.All(rate => rate.DeleteRevision is null), Is.True);
+			Assert.That(rates.Single(rate => rate.IsInitial).EditRevision, Is.EqualTo(10));
+			CurrencyRate history = rates.Single(rate => rate.Id == historyId);
+			Assert.That((history.Rate, history.Description, history.EditRevision), Is.EqualTo((42m, "Retained", (long?)11)));
+		});
+	}
+
+	[Test]
+	public async Task UnchangedLiveElementRestoresDeletedAncestorChain()
+	{
+		Guid parentId = Guid.NewGuid();
+		Guid groupId = Guid.NewGuid();
+		Guid categoryId = Guid.NewGuid();
+		await WithUnit(async unit =>
+		{
+			unit.CategoryGroupRepo.Add(new CategoryGroup { Id = parentId, Name = "Parent", ParentId = RootsIds.CategoryGroupId, EditRevision = 10, DeleteRevision = 10 });
+			unit.CategoryGroupRepo.Add(new CategoryGroup { Id = groupId, Name = "Child", ParentId = parentId, EditRevision = 10, DeleteRevision = 10 });
+			unit.CategoryRepo.Add(new Category { Id = categoryId, Name = "Live", GroupId = groupId, EditRevision = 10 });
+			await unit.SaveChanges();
+		});
+		SyncBatch batch = Batch();
+		batch.Added.Add(Catalog(nameof(Category), Guid.NewGuid(), "Unrelated", RootsIds.CategoryGroupId));
+		await Apply(batch);
+		await WithUnit(async unit =>
+		{
+			foreach (Guid id in new[] { parentId, groupId })
+			{
+				CategoryGroup group = (await unit.CategoryGroupRepo.GetById(id))!;
+				Assert.That(group.DeleteRevision, Is.Null);
+				Assert.That(group.EditRevision, Is.EqualTo(11));
+			}
+			Assert.That((await unit.CategoryRepo.GetById(categoryId))!.EditRevision, Is.EqualTo(10));
+		});
 	}
 
 	private async Task<Guid> SeedForeignCurrency()
@@ -787,31 +965,31 @@ public sealed class ApplySyncBatchOperationTests
 	private static SyncObject Catalog(string type, Guid id, string name, Guid parent, long? revision = null, int order = 0, ModificationType flags = ModificationType.Content)
 	{
 		SyncObject item = Object(type, id, revision, revision is null ? ModificationType.None : flags,
-			("name", name), ("description", null), ("isFavorite", false), (type.EndsWith("Group", StringComparison.Ordinal) ? "parentId" : "groupId", parent));
-		if (revision is null || flags.HasFlag(ModificationType.Order)) { item.Properties.Add("order", JsonSerializer.SerializeToElement(order)); }
+			(nameof(CatalogEntity.Name), name), (nameof(CatalogEntity.Description), null), (nameof(CatalogEntity.IsFavorite), false), (type.EndsWith("Group", StringComparison.Ordinal) ? nameof(AccountGroup.ParentId) : nameof(Account.GroupId), parent));
+		if (revision is null || flags.HasFlag(ModificationType.Order)) { item.Properties.Add(nameof(IOrderedEntity.Order), JsonSerializer.SerializeToElement(order)); }
 		return item;
 	}
 
-	private static SyncObject CurrencyObject(Guid id, string code, string name) => Object("currency", id, null, ModificationType.None,
-		("code", code), ("name", name), ("symbol", code), ("englishName", code), ("isFavorite", false), ("order", 1));
+	private static SyncObject CurrencyObject(Guid id, string code, string name) => Object(nameof(Currency), id, null, ModificationType.None,
+		(nameof(Currency.Code), code), (nameof(CatalogEntity.Name), name), (nameof(Currency.Symbol), code), (nameof(Currency.EnglishName), code), (nameof(CatalogEntity.IsFavorite), false), (nameof(IOrderedEntity.Order), 1));
 
-	private static SyncObject RateObject(Guid id, Guid currency, DateOnly date, decimal rate, long? revision = null) => Object("currencyRate", id, revision,
-		revision is null ? ModificationType.None : ModificationType.Content, ("currencyId", currency), ("date", date), ("rate", rate), ("description", null));
+	private static SyncObject RateObject(Guid id, Guid currency, DateOnly date, decimal rate, long? revision = null) => Object(nameof(CurrencyRate), id, revision,
+		revision is null ? ModificationType.None : ModificationType.Content, (nameof(Account.CurrencyId), currency), (nameof(CurrencyRate.Date), date), (nameof(CurrencyRate.Rate), rate), (nameof(CatalogEntity.Description), null));
 
 	private static SyncObject AccountObject(Guid id, Guid group, Guid currency)
 	{
-		SyncObject item = Catalog("account", id, "Account", group);
-		item.Properties.Add("currencyId", JsonSerializer.SerializeToElement(currency));
-		foreach (string name in new[] { "categoryId", "correspondentId", "projectId" }) { item.Properties.Add(name, JsonSerializer.SerializeToElement((Guid?)null)); }
+		SyncObject item = Catalog(nameof(Account), id, "Account", group);
+		item.Properties.Add(nameof(Account.CurrencyId), JsonSerializer.SerializeToElement(currency));
+		foreach (string name in new[] { nameof(Account.CategoryId), nameof(Account.CorrespondentId), nameof(Account.ProjectId) }) { item.Properties.Add(name, JsonSerializer.SerializeToElement((Guid?)null)); }
 		return item;
 	}
 
 	private static Dictionary<string, object> Entry(Guid account, decimal amount, int position) => new()
 	{
-		["id"] = Guid.NewGuid(), ["accountId"] = account, ["position"] = position, ["amount"] = amount, ["rate"] = 1m
+		[nameof(TransactionEntry.Id)] = Guid.NewGuid(), [nameof(TransactionEntry.AccountId)] = account, [nameof(TransactionEntry.Position)] = position, [nameof(TransactionEntry.Amount)] = amount, [nameof(CurrencyRate.Rate)] = 1m
 	};
 
-	private static SyncObject TransactionObject(Guid id, long? revision, Dictionary<string, object>[] entries) => Object("transaction", id, revision,
-		revision is null ? ModificationType.None : ModificationType.Content, ("dateTime", new DateTime(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc)),
-		("state", TransactionState.Confirmed), ("description", "Test"), ("entries", entries));
+	private static SyncObject TransactionObject(Guid id, long? revision, Dictionary<string, object>[] entries) => Object(nameof(Transaction), id, revision,
+		revision is null ? ModificationType.None : ModificationType.Content, (nameof(Transaction.DateTime), new DateTime(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc)),
+		(nameof(Transaction.State), TransactionState.Confirmed), (nameof(CatalogEntity.Description), "Test"), (nameof(Transaction.Entries), entries));
 }

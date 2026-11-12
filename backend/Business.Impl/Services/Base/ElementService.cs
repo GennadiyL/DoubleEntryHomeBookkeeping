@@ -250,7 +250,6 @@ public abstract class ElementService<TGroup, TElement> :
 		}
 
 		source.SetDeleted();
-		source.SetEditedContent();
 		_repository.Update(source);
 		NormalizeElements(group.Elements.Where(item => item.Id != source.Id && !item.IsDeleted()));
 		await _unitOfWork.SaveChanges(cancellationToken);

@@ -1,3 +1,6 @@
+using Business.Models.Constants;
+using Business.Models.Entities.Reporting;
+using Business.Models.Entities;
 using System.Text.Json;
 using Business.Core.Entities;
 using Business.Models.Entities.Base;
@@ -19,7 +22,7 @@ namespace Synchronization.Impl.Operations.CaptureChanges;
 /// Captures a new identity, UTC time and the current Local conflict priority.
 /// Explicit mappings exclude navigation graphs, Local settings and derived caches.
 /// Transactions and templates carry their owned entries in stored position order.
-/// Never-captured creations already deleted locally are omitted for later cleanup.
+/// Never-captured deleted creations are included as full-content deletions.
 /// Reads do not clear flags, change revisions, delete rows or persist the batch.
 /// The caller must prevent concurrent edits and coordinate durable capture acceptance.
 /// </summary>
@@ -55,47 +58,47 @@ internal sealed class CaptureChangesOperation : ICaptureChangesOperation
 			CreatedAt = _sharedContext.DateTimeService.UtcNow,
 			Priority = priority
 		};
-		await Capture(unitOfWork.CurrencyRepo, "currency", item => Properties(
-			("code", item.Code), ("symbol", item.Symbol), ("englishName", item.EnglishName),
-			("name", item.Name), ("isFavorite", item.IsFavorite)), batch, cancellationToken);
-		await Capture(unitOfWork.CurrencyRateRepo, "currencyRate", item => Properties(
-			("currencyId", item.CurrencyId), ("date", item.Date), ("rate", item.Rate),
-			("description", item.Description)), batch, cancellationToken);
-		await Capture(unitOfWork.AccountGroupRepo, "accountGroup", GroupProperties, batch, cancellationToken);
-		await Capture(unitOfWork.CategoryGroupRepo, "categoryGroup", GroupProperties, batch, cancellationToken);
-		await Capture(unitOfWork.CorrespondentGroupRepo, "correspondentGroup", GroupProperties, batch, cancellationToken);
-		await Capture(unitOfWork.ProjectGroupRepo, "projectGroup", GroupProperties, batch, cancellationToken);
-		await Capture(unitOfWork.TemplateGroupRepo, "templateGroup", GroupProperties, batch, cancellationToken);
-		await Capture(unitOfWork.ReportGroupRepo, "reportGroup", GroupProperties, batch, cancellationToken);
-		await Capture(unitOfWork.CategoryRepo, "category", ElementProperties, batch, cancellationToken);
-		await Capture(unitOfWork.CorrespondentRepo, "correspondent", ElementProperties, batch, cancellationToken);
-		await Capture(unitOfWork.ProjectRepo, "project", ElementProperties, batch, cancellationToken);
-		await Capture(unitOfWork.AccountRepo, "account", item =>
+		await Capture(unitOfWork.CurrencyRepo, nameof(Currency), item => Properties(
+			(nameof(item.Code), item.Code), (nameof(item.Symbol), item.Symbol), (nameof(item.EnglishName), item.EnglishName),
+			(nameof(item.Name), item.Name), (nameof(item.IsFavorite), item.IsFavorite)), batch, cancellationToken);
+		await Capture(unitOfWork.CurrencyRateRepo, nameof(CurrencyRate), item => Properties(
+			(nameof(item.CurrencyId), item.CurrencyId), (nameof(item.Date), item.Date), (nameof(item.Rate), item.Rate),
+			(nameof(item.Description), item.Description)), batch, cancellationToken);
+		await Capture(unitOfWork.AccountGroupRepo, nameof(AccountGroup), GroupProperties, batch, cancellationToken);
+		await Capture(unitOfWork.CategoryGroupRepo, nameof(CategoryGroup), GroupProperties, batch, cancellationToken);
+		await Capture(unitOfWork.CorrespondentGroupRepo, nameof(CorrespondentGroup), GroupProperties, batch, cancellationToken);
+		await Capture(unitOfWork.ProjectGroupRepo, nameof(ProjectGroup), GroupProperties, batch, cancellationToken);
+		await Capture(unitOfWork.TemplateGroupRepo, nameof(TemplateGroup), GroupProperties, batch, cancellationToken);
+		await Capture(unitOfWork.ReportGroupRepo, nameof(ReportGroup), GroupProperties, batch, cancellationToken);
+		await Capture(unitOfWork.CategoryRepo, nameof(Category), ElementProperties, batch, cancellationToken);
+		await Capture(unitOfWork.CorrespondentRepo, nameof(Correspondent), ElementProperties, batch, cancellationToken);
+		await Capture(unitOfWork.ProjectRepo, nameof(Project), ElementProperties, batch, cancellationToken);
+		await Capture(unitOfWork.AccountRepo, nameof(Account), item =>
 		{
 			Dictionary<string, object?> properties = ElementProperties(item);
-			properties.Add("currencyId", item.CurrencyId);
-			properties.Add("categoryId", item.CategoryId);
-			properties.Add("correspondentId", item.CorrespondentId);
-			properties.Add("projectId", item.ProjectId);
+			properties.Add(nameof(item.CurrencyId), item.CurrencyId);
+			properties.Add(nameof(item.CategoryId), item.CategoryId);
+			properties.Add(nameof(item.CorrespondentId), item.CorrespondentId);
+			properties.Add(nameof(item.ProjectId), item.ProjectId);
 			return properties;
 		}, batch, cancellationToken);
-		await Capture(unitOfWork.TemplateRepo, "template", item =>
+		await Capture(unitOfWork.TemplateRepo, nameof(Template), item =>
 		{
 			Dictionary<string, object?> properties = ElementProperties(item);
-			properties.Add("entries", item.Entries.OrderBy(entry => entry.Position).Select(entry => Properties(
-				("id", entry.Id), ("accountId", entry.AccountId), ("position", entry.Position),
-				("amount", entry.Amount))).ToArray());
+			properties.Add(nameof(item.Entries), item.Entries.OrderBy(entry => entry.Position).Select(entry => Properties(
+				(nameof(entry.Id), entry.Id), (nameof(entry.AccountId), entry.AccountId), (nameof(entry.Position), entry.Position),
+				(nameof(entry.Amount), entry.Amount))).ToArray());
 			return properties;
 		}, batch, cancellationToken);
-		await Capture(unitOfWork.TransactionRepo, "transaction", item => Properties(
-			("dateTime", item.DateTime), ("state", item.State), ("description", item.Description),
-			("entries", item.Entries.OrderBy(entry => entry.Position).Select(entry => Properties(
-				("id", entry.Id), ("accountId", entry.AccountId), ("position", entry.Position),
-				("amount", entry.Amount), ("rate", entry.Rate))).ToArray())), batch, cancellationToken);
-		await Capture(unitOfWork.ReportRepo, "report", item =>
+		await Capture(unitOfWork.TransactionRepo, nameof(Transaction), item => Properties(
+			(nameof(item.DateTime), item.DateTime), (nameof(item.State), item.State), (nameof(item.Description), item.Description),
+			(nameof(item.Entries), item.Entries.OrderBy(entry => entry.Position).Select(entry => Properties(
+				(nameof(entry.Id), entry.Id), (nameof(entry.AccountId), entry.AccountId), (nameof(entry.Position), entry.Position),
+				(nameof(entry.Amount), entry.Amount), (nameof(entry.Rate), entry.Rate))).ToArray())), batch, cancellationToken);
+		await Capture(unitOfWork.ReportRepo, nameof(Report), item =>
 		{
 			Dictionary<string, object?> properties = ElementProperties(item);
-			properties.Add("json", item.Json);
+			properties.Add(nameof(item.Json), item.Json);
 			return properties;
 		}, batch, cancellationToken);
 		return batch;
@@ -115,9 +118,9 @@ internal sealed class CaptureChangesOperation : ICaptureChangesOperation
 				throw new InvalidOperationException("Invalid synchronization metadata.");
 			}
 			bool added = entity.EditRevision is null;
-			bool deleted = entity.DeleteRevision == 0;
-			if (entity.DeleteRevision > 0 || (added && deleted) ||
-				(!added && entity.ModificationType == ModificationType.None))
+			bool deleted = entity.DeleteRevision == AppValues.LocalDeleteRevision;
+			if (entity.DeleteRevision > AppValues.LocalDeleteRevision ||
+				(!added && !deleted && entity.ModificationType == ModificationType.None))
 			{
 				continue;
 			}
@@ -127,19 +130,15 @@ internal sealed class CaptureChangesOperation : ICaptureChangesOperation
 			{
 				throw new InvalidOperationException("An unordered entity has an ordering modification.");
 			}
-			if (deleted && !hasContent)
-			{
-				throw new InvalidOperationException("An uncaptured deletion must have a content modification.");
-			}
 			Dictionary<string, object?> properties = added || deleted || hasContent
 				? content(entity)
 				: new Dictionary<string, object?>();
 			if (entity is IOrderedEntity ordered && (added || deleted || hasOrder))
 			{
-				properties.Add("order", ordered.Order);
+				properties.Add(nameof(IOrderedEntity.Order), ordered.Order);
 			}
 			ExchangeModificationType flags = ExchangeModificationType.None;
-			if (hasContent)
+			if (hasContent || deleted)
 			{
 				flags |= ExchangeModificationType.Content;
 			}
@@ -180,14 +179,14 @@ internal sealed class CaptureChangesOperation : ICaptureChangesOperation
 		=> values.ToDictionary(value => value.Name, value => value.Value);
 
 	private static Dictionary<string, object?> CatalogProperties(CatalogEntity entity)
-		=> Properties(("name", entity.Name), ("description", entity.Description), ("isFavorite", entity.IsFavorite));
+		=> Properties((nameof(entity.Name), entity.Name), (nameof(entity.Description), entity.Description), (nameof(entity.IsFavorite), entity.IsFavorite));
 
 	private static Dictionary<string, object?> GroupProperties<TGroup, TElement>(GroupEntity<TGroup, TElement> entity)
 		where TGroup : class, IGroupEntity<TGroup, TElement>
 		where TElement : class, IElementEntity<TGroup, TElement>
 	{
 		Dictionary<string, object?> properties = CatalogProperties(entity);
-		properties.Add("parentId", entity.ParentId);
+		properties.Add(nameof(entity.ParentId), entity.ParentId);
 		return properties;
 	}
 
@@ -196,7 +195,7 @@ internal sealed class CaptureChangesOperation : ICaptureChangesOperation
 		where TElement : class, IElementEntity<TGroup, TElement>
 	{
 		Dictionary<string, object?> properties = CatalogProperties(entity);
-		properties.Add("groupId", entity.GroupId);
+		properties.Add(nameof(entity.GroupId), entity.GroupId);
 		return properties;
 	}
 }

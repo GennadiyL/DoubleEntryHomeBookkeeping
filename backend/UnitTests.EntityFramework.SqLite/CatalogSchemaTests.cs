@@ -111,6 +111,130 @@ public sealed class CatalogSchemaTests
 		Assert.That(await check.ExecuteScalarAsync(), Is.EqualTo(2L));
 	}
 
+	[TestCase(false)]
+	[TestCase(true)]
+	public async Task CurrencyAggregateWriteFailureRollsBackAllChanges(bool restore)
+	{
+		Guid id;
+		using (IServiceScope setup = _provider.CreateScope())
+		{
+			ICurrencyService service = setup.ServiceProvider.GetRequiredService<ICurrencyService>();
+			id = await service.Add("EUR", 40m);
+			if (restore)
+			{
+				await service.Delete(id);
+			}
+		}
+		await using SqliteCommand trigger = _lifetime.CreateCommand();
+		trigger.CommandText = "CREATE TRIGGER RejectRateUpdate BEFORE UPDATE ON CurrencyRate BEGIN SELECT RAISE(ABORT, 'Injected rate failure'); END;";
+		await trigger.ExecuteNonQueryAsync();
+		using (IServiceScope mutation = _provider.CreateScope())
+		{
+			ICurrencyService service = mutation.ServiceProvider.GetRequiredService<ICurrencyService>();
+			Assert.ThrowsAsync<DbUpdateException>(async () =>
+			{
+				if (restore)
+				{
+					await service.Add("EUR", 99m);
+				}
+				else
+				{
+					await service.Delete(id);
+				}
+			});
+		}
+		using IServiceScope verification = _provider.CreateScope();
+		IAppUnitOfWork unit = verification.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+		Assert.That((await unit.CurrencyRepo.GetById(id))!.DeleteRevision is not null, Is.EqualTo(restore));
+		CurrencyRate rate = (await unit.CurrencyRateRepo.GetAllByCurrencyId(id)).Single();
+		Assert.That(rate.DeleteRevision is not null, Is.EqualTo(restore));
+		Assert.That(rate.Rate, Is.EqualTo(40m));
+	}
+
+	[TestCase(null)]
+	[TestCase(0L)]
+	[TestCase(7L)]
+	public async Task BeforeCaptureDeletedCurrencyAndAllRatesCanBeRestored(long? revision)
+	{
+		Guid id;
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			id = await scope.ServiceProvider.GetRequiredService<ICurrencyService>().Add("EUR", 40m);
+		}
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+			Currency currency = (await unit.CurrencyRepo.GetById(id))!;
+			currency.EditRevision = revision;
+			unit.CurrencyRepo.Update(currency);
+			unit.CurrencyRateRepo.Add(new CurrencyRate
+			{
+				Id = Guid.NewGuid(), CurrencyId = id, Currency = currency, Date = new DateOnly(2026, 1, 2), Rate = 42m,
+				EditRevision = revision, DeleteRevision = 0, Description = "Previously deleted"
+			});
+			await unit.SaveChanges();
+		}
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			await scope.ServiceProvider.GetRequiredService<ICurrencyService>().Delete(id);
+		}
+		Dictionary<Guid, decimal> history;
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+			history = (await unit.CurrencyRateRepo.GetAllByCurrencyId(id)).ToDictionary(rate => rate.Id, rate => rate.Rate);
+			Assert.That(history.Count, Is.EqualTo(2));
+			Assert.That((await unit.CurrencyRateRepo.GetAllByCurrencyId(id)).All(rate => rate.DeleteRevision == 0), Is.True);
+		}
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			await scope.ServiceProvider.GetRequiredService<ICurrencyService>().Add("EUR", 99m);
+		}
+		using (IServiceScope scope = _provider.CreateScope())
+		{
+			IAppUnitOfWork unit = scope.ServiceProvider.GetRequiredService<IAppUnitOfWork>();
+			ICollection<CurrencyRate> rates = await unit.CurrencyRateRepo.GetAllByCurrencyId(id);
+			Assert.That(rates.ToDictionary(rate => rate.Id, rate => rate.Rate), Is.EquivalentTo(history));
+			Assert.That(rates.All(rate => rate.DeleteRevision is null), Is.True);
+			Currency restored = (await unit.CurrencyRepo.GetById(id))!;
+			Assert.That(restored.EditRevision, Is.EqualTo(revision));
+			Assert.That(restored.DeleteRevision, Is.Null);
+		}
+	}
+
+	[TestCase("Account", "CurrencyId", "Currency")]
+	[TestCase("TransactionEntry", "AccountId", "Account")]
+	[TestCase("TemplateEntry", "AccountId", "Account")]
+	[TestCase("SystemConfig", "BaseCurrencyId", "Currency")]
+	public async Task ReferencesRestrictHardDeleteInSchemaAndModel(string child, string foreignKey, string parent)
+	{
+		using IServiceScope scope = _provider.CreateScope();
+		AppDbContext context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+		IEntityType entity = context.Model.GetEntityTypes().Single(type => type.GetTableName() == child);
+		Assert.That(entity.GetForeignKeys().Single(key => key.Properties.Any(property => property.Name == foreignKey)).DeleteBehavior,
+			Is.EqualTo(DeleteBehavior.Restrict));
+		await using SqliteCommand command = _lifetime.CreateCommand();
+		command.CommandText = $"PRAGMA foreign_key_list(\"{child}\");";
+		await using (SqliteDataReader reader = await command.ExecuteReaderAsync())
+		{
+			bool found = false;
+			while (await reader.ReadAsync())
+			{
+				if (reader.GetString(3) == foreignKey)
+				{
+					Assert.That(reader.GetString(6), Is.EqualTo("RESTRICT"));
+					found = true;
+				}
+			}
+			Assert.That(found, Is.True);
+		}
+		command.CommandText = $"DELETE FROM \"{parent}\" WHERE Id = (SELECT \"{foreignKey}\" FROM \"{child}\" LIMIT 1);";
+		SqliteException? exception = Assert.ThrowsAsync<SqliteException>(async () => await command.ExecuteNonQueryAsync());
+		Assert.That(exception!.SqliteErrorCode, Is.EqualTo(19));
+		command.CommandText = $"SELECT COUNT(*) FROM \"{child}\";";
+		Assert.That((long)(await command.ExecuteScalarAsync())!, Is.GreaterThan(0));
+	}
+
 	[Test]
 	public async Task Scripts_StoreGuidValuesAsSixteenByteBlobs()
 	{
@@ -197,7 +321,7 @@ public sealed class CatalogSchemaTests
 			Assert.That((await unit.CurrencyRepo.GetAll()).Count(currency => currency.Code == "EUR"), Is.EqualTo(1));
 			Assert.That((await unit.CurrencyRateRepo.GetAll()).Count(rate => rate.CurrencyId == deletedId), Is.EqualTo(1));
 			List<CurrencyRateInfo> rates = await scope.ServiceProvider.GetRequiredService<ICurrencyRateService>().GetRates(newId);
-			Assert.That(rates.Single().Rate, Is.EqualTo(54.2654m));
+			Assert.That(rates.Single().Rate, Is.EqualTo(40m));
 			Assert.That(rates.Single().IsInitial, Is.True);
 			Assert.ThrowsAsync<Business.Models.Exceptions.InvalidCurrencyException>(async () => await service.Add("EUR", 1m));
 		}
@@ -319,6 +443,8 @@ public sealed class CatalogSchemaTests
 	}
 
 	[TestCase(null, null, ModificationType.None, true)]
+	[TestCase(null, 0L, ModificationType.None, true)]
+	[TestCase(5L, 0L, ModificationType.None, true)]
 	[TestCase(null, 0L, ModificationType.Content, true)]
 	[TestCase(0L, null, ModificationType.None, false)]
 	[TestCase(5L, null, ModificationType.None, false)]
@@ -327,7 +453,7 @@ public sealed class CatalogSchemaTests
 	[TestCase(5L, null, ModificationType.Content | ModificationType.Order, true)]
 	[TestCase(0L, 0L, ModificationType.Content, true)]
 	[TestCase(5L, 0L, ModificationType.Content, true)]
-	[TestCase(5L, 0L, ModificationType.None, false)]
+	[TestCase(5L, 0L, ModificationType.None, true)]
 	[TestCase(5L, 5L, ModificationType.None, false)]
 	public async Task GetChanges_SelectsUncapturedRowsIncludingDeletions(long? editRevision, long? deleteRevision, ModificationType flags, bool expected)
 	{

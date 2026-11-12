@@ -61,7 +61,7 @@ internal sealed partial class BusinessHost : IDisposable
 	public SystemConfig ReadSettings() => Call<IAppUnitOfWork, SystemConfig>(async unit =>
 	{
 		SystemConfig settings = (await unit.SystemConfigRepo.GetAll().ConfigureAwait(false)).Single();
-		if (settings.BaseCurrencyId == Guid.Empty || settings.AmountPrecision is < 0 or > 4 || settings.RatePrecision is < 0 or > 4)
+		if (settings.BaseCurrencyId == Guid.Empty || settings.AmountPrecision is < 0 or > AppValues.MaxPrecision || settings.RatePrecision is < 0 or > AppValues.MaxPrecision)
 		{
 			throw new InvalidDataException("Invalid database precision settings.");
 		}
