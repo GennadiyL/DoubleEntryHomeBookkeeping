@@ -1,82 +1,118 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
-    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <RootNamespace>Dehb.WinUi</RootNamespace>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Platforms>x86;x64;ARM64</Platforms>
-    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
-    <PublishProfile>win-$(Platform).pubxml</PublishProfile>
-    <UseWinUI>true</UseWinUI>
-    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
-    <WinUISDKReferences>false</WinUISDKReferences>
-    <EnableMsixTooling>true</EnableMsixTooling>
-    <Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><WindowsPackageType>None</WindowsPackageType>
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+        <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+        <RootNamespace>Dehb.WinUi</RootNamespace>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <Platforms>x86;x64;ARM64</Platforms>
+        <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+        <PublishProfile>win-$(Platform).pubxml</PublishProfile>
+        <UseWinUI>true</UseWinUI>
+        <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+        <WinUISDKReferences>false</WinUISDKReferences>
+        <EnableMsixTooling>true</EnableMsixTooling>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <WindowsPackageType>None</WindowsPackageType>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
+        <Version>1.0.0.4</Version>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <Content Include="Assets\UserGuide.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="Assets\Icons\*.svg" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-  </ItemGroup>
+    <ItemGroup>
+        <Content Include="Assets\UserGuide.md" CopyToOutputDirectory="PreserveNewest"
+                 CopyToPublishDirectory="PreserveNewest" />
+        <Content Include="Assets\Icons\*.svg" CopyToOutputDirectory="PreserveNewest"
+                 CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <Manifest Include="$(ApplicationManifest)" />
-  </ItemGroup>
+    <ItemGroup>
+        <Manifest Include="$(ApplicationManifest)" />
+    </ItemGroup>
 
-  <!--
+    <!--
     Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
     Tools extension to be activated for this project even if the Windows App SDK Nuget
     package has not yet been restored.
   -->
-  <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
-    <ProjectCapability Include="Msix" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
-  </ItemGroup>
+    <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+        <ProjectCapability Include="Msix" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+        <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    </ItemGroup>
 
-  <!--
+    <!--
     Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
     Explorer "Package and Publish" context menu entry to be enabled for this project even if
     the Windows App SDK Nuget package has not yet been restored.
   -->
-  <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
-    <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
-  </PropertyGroup>
+    <PropertyGroup
+        Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+        <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
+    </PropertyGroup>
 
-  <!-- Publish Properties -->
-  <PropertyGroup>
-    <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
-    <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
-    <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
-    <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
-  </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\WinUi.Controls\WinUi.Controls.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Business.Impl\Business.Impl.csproj" />
-    <ProjectReference Include="..\Adapter.WinUi\Adapter.WinUi.csproj" />
-    <ProjectReference Include="..\DataAccess.EntityFramework.SqLite\DataAccess.EntityFramework.SqLite.csproj" />
-    <ProjectReference Include="..\Shared.Impl\Shared.Impl.csproj" />
-    <ProjectReference Include="..\Messaging.InProcessBus\Messaging.InProcessBus.csproj" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.12" />
-    <Content Include="Assets\uisettings.default.json" TargetPath="Assets\uisettings.default.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-  </ItemGroup>
-  <Target Name="CopyInitialDatabase" AfterTargets="Build">
-    <MakeDir Directories="$(OutDir)Assets" />
-    <Copy SourceFiles="..\DataAccess.EntityFramework.SqLite\Assets\dehb.db" DestinationFiles="$(OutDir)Assets\local.db" Condition="!Exists('$(OutDir)Assets\local.db')" />
-  </Target>
-  <Target Name="CopyUiSettingsToOutput" AfterTargets="Build">
-    <MakeDir Directories="$(OutDir)Assets" />
-    <Copy SourceFiles="Assets\uisettings.json" DestinationFiles="$(OutDir)Assets\uisettings.json" Condition="!Exists('$(OutDir)Assets\uisettings.json')" />
-  </Target>
-  <Target Name="CopyUiSettingsToPublish" AfterTargets="Publish">
-    <MakeDir Directories="$(PublishDir)Assets" />
-    <Copy SourceFiles="Assets\uisettings.json" DestinationFiles="$(PublishDir)Assets\uisettings.json" Condition="!Exists('$(PublishDir)Assets\uisettings.json')" />
-  </Target>
+    <!-- Publish Properties -->
+    <PropertyGroup>
+        <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
+        <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
+        <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
+        <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\WinUi.Controls\WinUi.Controls.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Business.Impl\Business.Impl.csproj" />
+        <ProjectReference Include="..\Adapter.WinUi\Adapter.WinUi.csproj" />
+        <ProjectReference Include="..\DataAccess.EntityFramework.SqLite\DataAccess.EntityFramework.SqLite.csproj" />
+        <ProjectReference Include="..\Shared.Impl\Shared.Impl.csproj" />
+        <ProjectReference Include="..\Messaging.InProcessBus\Messaging.InProcessBus.csproj" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.12" />
+        <Content Include="Assets\uisettings.default.json" TargetPath="Assets\uisettings.default.json"
+                 CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+        <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest"
+                 CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+    <Target Name="CopyInitialDatabase" AfterTargets="Build">
+        <MakeDir Directories="$(OutDir)Assets" />
+        <Copy SourceFiles="..\DataAccess.EntityFramework.SqLite\Assets\dehb.db"
+              DestinationFiles="$(OutDir)Assets\local.db" Condition="!Exists('$(OutDir)Assets\local.db')" />
+    </Target>
+    <Target Name="CopyUiSettingsToOutput" AfterTargets="Build">
+        <MakeDir Directories="$(OutDir)Assets" />
+        <Copy SourceFiles="Assets\uisettings.json" DestinationFiles="$(OutDir)Assets\uisettings.json"
+              Condition="!Exists('$(OutDir)Assets\uisettings.json')" />
+    </Target>
+    <Target Name="CopyUiSettingsToPublish" AfterTargets="Publish">
+        <MakeDir Directories="$(PublishDir)Assets" />
+        <Copy SourceFiles="Assets\uisettings.json" DestinationFiles="$(PublishDir)Assets\uisettings.json"
+              Condition="!Exists('$(PublishDir)Assets\uisettings.json')" />
+    </Target>
+    <ItemGroup>
+        <WinUiResourceLanguage Include="en-US;uk-UA;pl-PL" />
+    </ItemGroup>
+    <Target Name="RemoveUnusedWinUiBuildResources" AfterTargets="Build"
+            Condition="'$(WindowsAppSDKSelfContained)' == 'true' and '$(OutDir)' != ''">
+        <ItemGroup>
+            <_UnusedWinUiBuildResource Include="$(OutDir)*\Microsoft.UI.Xaml*.dll.mui"
+                                       Exclude="@(WinUiResourceLanguage->'$(OutDir)%(Identity)\Microsoft.UI.Xaml*.dll.mui')" />
+            <_UnusedWinUiBuildResourceDirectory Include="@(_UnusedWinUiBuildResource->'%(RootDir)%(Directory)')" />
+        </ItemGroup>
+        <Delete Files="@(_UnusedWinUiBuildResource)" />
+        <RemoveDir Directories="@(_UnusedWinUiBuildResourceDirectory->Distinct())"
+                   Condition="Exists('%(_UnusedWinUiBuildResourceDirectory.Identity)') and $([System.IO.Directory]::GetFiles('%(_UnusedWinUiBuildResourceDirectory.Identity)').Length) == 0 and $([System.IO.Directory]::GetDirectories('%(_UnusedWinUiBuildResourceDirectory.Identity)').Length) == 0" />
+    </Target>
+    <Target Name="RemoveUnusedWinUiPublishResources" AfterTargets="Publish"
+            Condition="'$(WindowsAppSDKSelfContained)' == 'true' and '$(PublishDir)' != ''">
+        <ItemGroup>
+            <_UnusedWinUiPublishResource Include="$(PublishDir)*\Microsoft.UI.Xaml*.dll.mui"
+                                         Exclude="@(WinUiResourceLanguage->'$(PublishDir)%(Identity)\Microsoft.UI.Xaml*.dll.mui')" />
+            <_UnusedWinUiPublishResourceDirectory Include="@(_UnusedWinUiPublishResource->'%(RootDir)%(Directory)')" />
+        </ItemGroup>
+        <Delete Files="@(_UnusedWinUiPublishResource)" />
+        <RemoveDir Directories="@(_UnusedWinUiPublishResourceDirectory->Distinct())"
+                   Condition="Exists('%(_UnusedWinUiPublishResourceDirectory.Identity)') and $([System.IO.Directory]::GetFiles('%(_UnusedWinUiPublishResourceDirectory.Identity)').Length) == 0 and $([System.IO.Directory]::GetDirectories('%(_UnusedWinUiPublishResourceDirectory.Identity)').Length) == 0" />
+    </Target>
 </Project>
