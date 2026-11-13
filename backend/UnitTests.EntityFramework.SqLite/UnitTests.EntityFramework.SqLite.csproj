@@ -20,6 +20,7 @@
     <ProjectReference Include="..\Tests.Common\Tests.Common.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\DataAccess.EntityFramework.SqLite\Assets\*.sql" Link="SqlAssets\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\DataAccess.EntityFramework.SqLite\Assets\001-schema.sql" Link="SqlAssets\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\docs\testing\sql-fixtures\*.sql" Link="SqlAssets\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

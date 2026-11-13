@@ -4,6 +4,20 @@
 
 ## Document Control and BRD Reference
 
+- Revision 0.249, 2026-11-13: implement separate Master/Local SQL test seeds with PLN base, four currencies, English catalogs/templates and 500 balanced transactions. Keep 002 dataset-independent; preserve old automated-test fixtures separately. Database deployment and UI integration are not performed in this change.
+
+- Revision 0.248, 2026-11-13: confirm per-call IProgress<SynchronizationStage> alongside CancellationToken, seven stage identifiers and separation from final SynchronizationOutcome. Current manual WinUI behavior is clarified; test data remains a separate deferred discussion. Documentation only.
+
+- Revision 0.247, 2026-11-13: confirm popup cancellation/dismissal, separate result summary and implementation-time selection of popup dimensions stored in uisettings.json. Explain the proposed Microsoft TAP progress pattern; the user requested clarification of that contract rather than approving it. Documentation only.
+
+- Revision 0.246, 2026-11-13: defer LoadLastVersion and Setup/registration implementation. Restore the single Synchronize command against pre-provisioned Master and Local databases; allocate seed script 003 to Master and 004 to Local. Test-data contents and database generation will be discussed separately. Earlier two-command and bootstrap proposals are superseded for the current increment.
+
+- Revision 0.245, 2026-11-13: accept sequential-only multi-Local testing as the inproc limitation; record proposed first attachment with registration, a new revision/snapshot and fresh Local initialization. Distinguish this proposal from existing-Local reload; registration semantics remain under discussion. Documentation only.
+
+- Revision 0.244, 2026-11-13: record confirmed spinner/stages, shared C:\Server storage, two manual commands and LoadLastVersion with explicit discard confirmation. Preserve normal Synchronize semantics; record cross-process locking and initial registration prerequisites. Documentation only; prior inproc approval does not imply implementation or full-document approval of this extension.
+
+- Revision 0.243, 2026-11-13: record the WinUI manual synchronization discussion, proposed Server storage and live progress. Initial Master provisioning and proposed UI details remain open; no application implementation or additional approval is inferred.
+
 - Revision 0.242, 2026-11-12: complete the anemic Master merge boundary. IMergeSyncBatchOperation owns conflict resolution and invocation-local indexes; IMapSyncEntityOperation owns payload mapping and content snapshots. SyncEntityState carries only metadata and rows, while SyncBatchMergeState carries only per-invocation inputs/indexes. Remove rich SyncBatchMerge and SyncEntitySet, including repository callbacks; ApplySyncBatchOperation loads and persists through typed repositories and invokes all behavior through injected operations. No business-rule, protocol or transaction change.
 
 - Revision 0.241, 2026-11-12: Master restoration and validation are independently replaceable stateless operations, IRestoreConsistencyOperation and IValidateSyncBatchOperation, registered through DI. Invocation data is supplied through Run parameters using a data-only SyncEntityState graph, SystemConfig and captured conflict priority. Traversal collections remain local to each call. ApplySyncBatchOperation explicitly invokes restoration before validation; neither operation owns persistence or transactions. No protocol or business-rule change.
@@ -46,7 +60,7 @@
 
 - Controlled revision 0.223, 2026-10-08: requesting user explicitly requested the four-rule cleanup, aligned to BRD 0.217. Local is the default conflict priority; Currency has no Description while CurrencyRate retains it; AmountPrecision and RatePrecision govern calculation and display; Drafts have no separate entry-count limit, but every present entry must be valid and have an Account. Confirmed state still requires at least two valid entries and exact balance. No complete-document approval is inferred.
 
-- Version: **0.238**. Full-document status: **Draft**. Master/Synchronization inproc scope: **Approved**, with the user-confirmed 2026-11-12 lifecycle amendment. Date: **2026-11-12**.
+- Version: **0.249**. Full-document status: **Draft**. Master/Synchronization inproc scope: **Approved**, with the user-confirmed 2026-11-12 lifecycle amendment. Date: **2026-11-13**.
 - Business source: [BRD 0.218](BRD.md), Draft dated 2026-10-08, and the individually confirmed UI/business decisions in this conversation. Prior full-version approval covers BRD 0.32 only, requesting user, 2026-09-27. No approval of complete BRD 0.218 or TRD 0.236 is inferred. Individually confirmed requirements remain binding; Draft describes whole-document approval, not implementation progress.
 - Scope: core bookkeeping, synchronization, first use and Windows UI integration. Owner/intended approver: requesting user.
 - Revision basis: replaces legacy TRD 0.1 while retaining its parent-reference constraint. Discovery sources: [core](001-personal-bookkeeping/discovery.md), [synchronization](002-synchronization/discovery.md), [first use](003-first-using/discovery.md). Later BRD decisions supersede their historical statements.
@@ -429,7 +443,7 @@ The six catalogs include Reports/ReportGroup. Report checkbox filters are a sepa
 | Templates | OP-033–036/009/063; Name/Group/Description/Favorite, ordered Account/Amount/readonly currency entries | Unsaved preparation and refresh/reference rules retained |
 | Reports | OP-037–040/070; ReportGroup tree; double-click Run; period popup then readonly result/CSV | ReportGroup model conventions confirmed; update fresh initialization and service projections; date-only mutation remains TQ-16 |
 | Settings | OP-071/072; one Setup read and one atomic Setup save for Local/shared sections; staged Save/Cancel, readonly immutable values, eligible balancing-account picker | Combined operations and one-transaction Save confirmed 2026-10-08; existing flat ConfigurationInfo read shape retained; editable-only save payload confirmed |
-| Sync | OP-043–050; Ready/Recovery required, Sync now/Retry recovery, modal stages/cancel, readonly summary/TXT | Runtime signals/absent results TQ-04/07/15 |
+| Sync | OP-043–050; Synchronize, modal stages/cancel, readonly summary/TXT; OP-073 deferred | Runtime signals/absent results TQ-04/07/15 |
 | First start | OP-001–004; Continue after credentials, automatic attachment or same-dialog Create/Back | Auth/check/bootstrap/request details TQ-03/04/16 |
 | Help/shell | Fixed modal Help using helpPopup, horizontally centered controls, application name/version, enabled User guide and Close; guide opens Assets/UserGuide.md in Notepad | Markdown is the current deliverable; PDF is deferred. See Windows UI interaction contract below. |
 
@@ -662,7 +676,7 @@ Each row is a compact manual-test scenario specification: main flow states the a
 | UC-008-03 | Full settings Save normalizes edited selection; period Run updates From/To alone. | Read/run/hierarchy and period save never normalize saved identities/overrides or change other settings. | OP-038/039/070 |
 | UC-008-04 | Delete saved instructions only. | Accounts/transactions untouched; calculated results were not persistent business data. | OP-040 |
 | UC-009-01 | Staged Settings This device/Shared with Save/Cancel and unsaved navigation/exit prompt. | Immutable values readonly; balancing nullable/base-only; Add currency initially false; separator normalizes; failed Save retains entered/prior saved values. One Setup call commits both sections atomically under OP-072. | OP-071/072; Windows UI integration |
-| UC-009-02 | Manual Sync now/Retry recovery, modal stages/Cancel; close progress then auto-show latest summary for all outcomes. | Editing blocked while waiting/running/handling cancel; cancellation awaits service; recovery gates retained. | OP-043–050; Windows UI integration |
+| UC-009-02 | Manual Synchronize/retry against a pre-provisioned Local, modal stages/Cancel; close progress then auto-show latest summary for all outcomes. | Editing blocked while waiting/running/handling cancel; cancellation awaits service; recovery gates retained. | OP-043–050; Windows UI integration |
 | UC-009-03 | Automatic start/exit sync obeys connectivity/trigger rules and summary/navigation flow. | Startup access depends on recovery; successful exit may wait for correction/conflict summary; failed/canceled exit offers Retry/Exit/Cancel exit. | OP-043–050; Windows UI integration |
 | UC-009-04 | Resolve whole-item conflicts by priority, validity overriding; restore dependencies, deduplicate currencies and rename conflicts. | Unresolvable valid-result failure explains/logs; no weakened accounting/currency-immutability rules. No content-field merge; catalog ordering follows its separate contract. | OP-043, OP-045, OP-052 |
 | UC-009-05 | No-change synchronization does not allocate a business revision; download if Master is newer and acknowledge installation. | Registrations never expire; check both uncaptured changes and durable pending batches. | OP-043, OP-046, OP-047 |
@@ -861,6 +875,93 @@ The transaction commit and atomic replacement are the relevant boundaries, not t
 - LocalMasterAdapter.CheckAuthorization currently returns Authorized. Treat it as the trusted in-process path, not evidence of implemented remote access control.
 - The Azure increment must preserve the same batch identities, retry semantics, publication order, Candidate installation and cancellation boundaries. Select the concrete remote transport/authentication details during that increment; this handoff does not invent those decisions.
 - Keep all persistent revision snapshots for now. Obsolete snapshot retention/deletion remains explicitly deferred and is not a prerequisite for the in-process UI increment.
+
+#### WinUI manual synchronization — decisions 2026-11-13
+
+Source: requesting user, latest decision in this discussion. Current increment is manual Synchronize against pre-provisioned Master and Local databases. LoadLastVersion and Setup/registration implementation are deferred. This supersedes the earlier two-command and temporary first-load proposals. Spinner/stages, shared absolute storage root and accepted sequential-only inproc testing remain applicable. Full-document status remains Draft. Traceability: UC-009-02, UC-010-02/03, OP-043/046/047, TQ-04/07/15.
+
+**Command and popup**
+
+- Selecting Synchronization opens the main content area with one button, Synchronize. Navigation itself does not start synchronization.
+- Synchronize invokes ISynchronizationService.Synchronize and opens an owned modal popup with a current-stage label, an indeterminate spinner and Cancel. Show only stages actually executed, without simulated percentages or timers.
+- No Load Last Version button, discard confirmation or LoadLastVersion service implementation belongs to this increment.
+- Retain existing editing exclusion, dedicated scope, cancellation boundaries, cleanup and Local-backed UI reload after every outcome. Current synchronous BusinessHost.Call is unsuitable because it blocks the UI thread. The nonblocking execution boundary must also cover synchronous SQLite work inside asynchronous operations.
+- Confirmed 2026-11-13: Cancel, Escape and title-bar Close request cooperative cancellation. Show Cancelling..., disable Cancel and keep the popup open until task completion and cleanup. Ignore late stage notifications that would overwrite Cancelling.... No immediate popup disposal or promise of rollback.
+- Confirmed 2026-11-13: after every manual attempt, close progress and show a separate result popup containing outcome, stop reason/error when applicable, installed revision when known, and Close. Use the actual result or exception; SynchronizeInfo supplies Outcome, Reason, Checkpoint and Revision, not per-entity conflict/correction details. Do not invent an installed revision when unavailable.
+- Confirmed 2026-11-13: store progress/result popup dimensions in uisettings.json. Select suitable dimensions during implementation; no further requirements decision is needed solely to choose those values.
+
+**Shared in-process Master storage**
+
+Use the existing appsettings.json setting with an absolute local root for both installations:
+
+```json
+{
+  "fileStorage": {
+    "Root": "C:\\Server"
+  }
+}
+```
+
+```text
+<InstallationA>/Assets/local.db
+<InstallationB>/Assets/local.db
+C:\Server/
+  Master_<MasterDatasetKey>/
+    master.db
+    snapshot_1.db
+    snapshot_2.db
+```
+
+- Each installation retains its own DataAccess:LocalDirectory and candidate.db beside local.db. Both point to the same Master root and MasterDatasetKey, but must have distinct LocalDatasetKey identities and corresponding Master registrations. Two copies of one registered Local are not two independent Local registrations.
+- Keep the confirmed persistent snapshot layout and deferred retention cleanup. Temporary server working copies remain under scope-owned OS temporary directories. Root/dataset directories and a valid Master must exist before use; missing Master is not permission to create one silently.
+- Accepted inproc limitation, 2026-11-13: LocalStorageLockFactory coordinates only one service provider/process. The user will inform the tester to serialize complete operations across both applications sharing C:\Server; implementing cross-process filesystem locking is not required for this increment. Azure uses the existing Blob lease lock shared across processes when the host selects the Azure storage/lock providers. Remote endpoint integration and end-to-end validation remain deferred.
+- Azure clarification: persistent storage uses blobStorage:StorageUri, an absolute HTTPS container URL. Object names remain relative to that container (Master_<MasterDatasetKey>/master.db and snapshot_<Revision>.db). fileStorage:Root does not configure Azure Blob storage. The user's preference for relative Azure paths is represented by those existing relative object names, not a relative container URL.
+
+**Pre-provisioned databases and seed-script responsibilities**
+
+- The tester starts the application with an existing valid local.db in its configured Local directory (currently Assets) and master.db at C:\Server\Master_<MasterDatasetKey>\master.db. MasterKey in the user's path denotes MasterDatasetKey. Neither startup nor Synchronize creates or registers a Local in this increment.
+- Prepare matching Master/Local test databases through SQL initialization: 001-schema.sql defines schema; 002-initial-data.sql supplies only the six fixed catalog roots; 003-master-test-data.sql supplies Master test data; 004-local-test-data.sql supplies Local test data. Base currency, initial rates, Rebalancing and configuration are dataset-dependent and belong to Setup or role-specific seeds.
+- Scripts 003 and 004 target different database roles; 004 is not a migration to run after 003 against Master. The user supplied test-data requirements on 2026-11-13; the role-specific scripts are implemented as described below. No existing database files are overwritten or deployed.
+- Seed consistency must cover the shared MasterDatasetKey and business identities, compatible schema and immutable settings, a distinct LocalDatasetKey with its matching Master LocalRegistration, and coherent revision, tracking and pending-state metadata. Local cumulative values must be valid before normal use. Use initial revision 0, clean tracking and no pending batches; Master registration has SyncRevision 0 and null SyncDateTime. Do not fabricate acknowledged synchronization history.
+- Initial Master snapshots must agree with CurrentRevision and the existing download contract: revision zero can download master.db; a nonzero current revision requires its matching published snapshot. The supplied revision-zero seeds therefore need no pre-generated revision snapshot.
+- If testing two Local installations, seed two independent Local identities and matching registrations against the same Master, rather than distributing duplicates of one registered Local identity. Retain sequential-only inproc operation testing.
+
+**Implemented SQL test dataset — 2026-11-13**
+
+- Use PLN as base, plus UAH, EUR and USD with permanent bundled currency IDs. Initial PLN-per-unit rates are 1.0000, 0.0833, 4.4050 and 3.9750 respectively, dated 1970-01-01. All business names/descriptions are English.
+- Five Correspondent groups/15 people and companies; five Category groups/five income and ten expense categories; three Project groups/seven projects; 25 Accounts including permanent PLN Rebalancing; ten Templates. Categories have no debit/credit enum; balanced entry signs express income and expense accounting.
+- Exactly 500 Confirmed transactions with 1,175 entries, July 1 through October 31, 2026; two to five transactions every day and two or three entries each. Each rounded base total is exactly zero.
+- Master and Local share business IDs/content and revision 0. Master has one LocalRegistration and no LocalConfig; Local has matching LocalConfig and no LocalRegistration, as explicitly requested. Both start without LocalJson or LocalSyncBatch rows. Local cumulative amounts are calculated; Master caches are zero. Existing Candidate preparation obtains registration metadata from the downloaded Master.
+- Reproducible generator, validation and initialization instructions: [SQL test data](../testing/sql-test-data.md). Existing NUnit scenarios retain their previous small seed fixtures separately; the production schema remains shared.
+
+**Deferred reload and Setup**
+
+- Registration belongs only to Setup. Future LoadLastVersion requests the latest version for an already registered Local and does not register another Local or replace its identity. Its implementation and UI are deferred; OP-073 remains reserved for that future operation.
+- Future Setup creates a Master from scratch or attaches/registers a Local to an existing Master. Registration-driven revision allocation, snapshot publication, retry identity and fresh Local initialization are deferred design topics, not approved changes to the current batch-driven revision contract.
+- The earlier temporary instruction to invoke Load Last Version first is withdrawn. Prepared test databases replace that workaround. No discard path or attachment flow is required before testing current Synchronize.
+
+**Confirmed progress contract and presentation — 2026-11-13**
+
+Use service-originated per-attempt stage notifications through IProgress<SynchronizationStage>, passed to Synchronize alongside CancellationToken, with progress before the token. SynchronizationStage is an enum with the seven identifiers below; map identifiers to English labels in the UI. Synchronize still returns Task<SynchronizeInfo>. This is the agreed target contract, not a claim that the current cancellation-only implementation has been changed. SynchronizationCheckpoint is not a live progress API.
+Confirmed progress behavior: Microsoft TAP uses a per-call IProgress<T> parameter alongside CancellationToken. The caller supplies a progress receiver; the service calls Report with stage identifiers. Progress<T> captures SynchronizationContext when constructed and dispatches callbacks through it; if none exists, callbacks run on the thread pool. Construct the receiver on the UI thread with its valid context, or marshal explicitly through the UI dispatcher. IProgress<T> itself does not guarantee UI dispatch, and neither it nor async automatically moves synchronous database work off the UI thread. Progress delivery is notification only; actual task completion determines the outcome, and completed-attempt guards suppress queued late updates. Source: [Microsoft TAP overview](https://learn.microsoft.com/en-us/dotnet/standard/asynchronous-programming-patterns/task-based-asynchronous-pattern-tap). The user accepted the explained contract and enum/outcome separation in this discussion.
+
+| SynchronizationStage | Actual stage | UI label |
+| --- | --- | --- |
+| CheckingAccess | Authorization preflight | Checking synchronization access... |
+| CapturingChanges | Capture and atomic acceptance | Capturing local changes... |
+| SynchronizingWithMaster | Master submission, merge and publication | Synchronizing with Master... |
+| DownloadingSnapshot | Snapshot transfer | Downloading latest data... |
+| PreparingLocalData | Candidate validation/preparation and cumulative rebuild | Preparing local data... |
+| InstallingLocalData | Atomic Local replacement | Installing latest data... |
+| Acknowledging | Installed-revision acknowledgement | Confirming synchronization... |
+
+Complete and Cancelled belong to SynchronizationOutcome returned in SynchronizeInfo; they are not SynchronizationStage values. Cancelling is a UI state after a cancellation request, not a service stage. Failed attempts use the existing outcome/reason or exception contract; do not add an error stage. Final outcome remains authoritative even when a late cancellation request races with successful completion.
+
+Determine the outcome from actual completion, not the last stage or Cancel click. Ignore notifications from completed attempts. Reload Local-backed UI state after cleanup and scope disposal; if reload fails, report the error without exposing stale editable data.
+
+**Remaining details**
+
+Progress contract, popup dismissal and summary contents are confirmed; concrete dimensions will be selected during implementation. No further material UI-behavior decision is required for this manual increment. Test-data SQL scripts are supplied under the 2026-11-13 seed decision; deployment remains separate. Setup, registration and LoadLastVersion are deferred; they do not block integration against correctly prepared databases.
 
 #### Confirmed snapshot versions and deletion acknowledgement
 
@@ -1375,7 +1476,8 @@ For each operation the profile is its explicit authorization, transaction and id
 | OP-070 | SVC-008.SaveRunPeriod | L/W | DTO-036 → None (input/output proposed) | BR-026/028 requires a date-only existing-report mutation before Run: change From/To only, preserving Name/group/favorite/grouping and all saved classification IDs/overrides. ROLE-001/current local dataset and ordinary recovery/editing gates. Atomic update is proposed under the shared local-write rule; method/shape/errors/idempotency remain TQ-07/16. |
 | OP-041 | SVC-009.GetConfiguration | D read | None → LocalConfigurationInfo | Confirmed 2026-10-01: ILocalConfigService.GetConfiguration() returns the single Local configuration for the settings screen; no Id or other input parameter. Read only; no AcceptChanges. Local settings only; no business data access bypass. Local DTO fields are recorded in the current C# contract mapping. |
 | OP-042 | SVC-009.SaveConfiguration | L/W | SaveLocalConfiguration → None | Confirmed 2026-10-01: ILocalConfigService.SaveConfiguration(settings) updates the single Local configuration without an Id parameter. Validate settings before saving and commit the complete successful state-changing action with one AcceptChanges call, under the shared mutation/no-op rules. Preserve the existing LocalConfig identity. Local settings do not synchronize. BR-005/012/034; admission during recovery remains TQ-05; DTO fields are recorded in the current C# contract mapping. |
-| OP-043 | SVC-010.Synchronize | C | CancellationToken -> workflow SynchronizeInfo; Master exchange DTO-019 | Capture, durable batches, Master synchronization, download, candidate preparation, installation and acknowledgement. Master deduplicates per batch. Current handoff defines failure/cancellation boundaries. |
+| OP-043 | SVC-010.Synchronize | C | IProgress<SynchronizationStage>, CancellationToken -> workflow SynchronizeInfo; Master exchange DTO-019 | Capture, durable batches, Master synchronization, download, candidate preparation, installation and acknowledgement. Master deduplicates per batch. Current handoff defines failure/cancellation boundaries. |
+| OP-073 | Deferred: SVC-010.LoadLastVersion | - | Contract deferred | Future reload for an existing Local; must not register or change Local identity. No implementation or UI in the current increment. |
 | OP-044 | Retired: GetOutcome | - | - | OP-043 resolves outcomes using durable batches and receipts. ID reserved. |
 | OP-045 | Retired: Cancel | - | - | CancellationToken controls active workflow; no separate remote operation. ID reserved. |
 | OP-046 | Master.Download via IMasterAdapter | C | DTO-023 -> DTO-021 | Latest published consistent snapshot subject to MinimumRevision; no prior session. Validate/prepare candidate and rebuild cumulative amounts before activation. |
@@ -1519,8 +1621,8 @@ The application is not in production. For these pre-release schema changes, incl
 2. **Identifiers:** use the confirmed shared GUID business-entity identity contract, including stable report references. Configuration identities follow PM-011/012: SystemConfig.Id is generated on Master and shared through merges; LocalConfig.Id is generated and retained on Local without merging. Remaining registration/operation identity choices retain their stated decision status; this decision does not replace integer snapshot Versions with GUIDs.
 3. **Lifecycle/deletion:** apply the confirmed shared tracking and snapshot acknowledgement contracts. Full snapshots must not leak admin metadata or resurrect accepted deletion markers as live local rows. TQ-04 specifies safe preparation/installation.
 4. **Master publication:** implemented inproc: serialize per Master; commit each batch with receipt and CurrentRevision; create standalone backup; UploadSnapshot before UploadMaster. Main database defines published revision; ignore unpublished higher snapshots. Acknowledge publishes only master.db. Azure integration deferred to next iteration.
-5. **Transfer:** pin selected immutable version for a consistent download; safe local activation before receipt. Restart partial transfer. Keep prior outgoing data while outcome unresolved. Confirm installed snapshot version, not merely latest master known. State machine and file switching TQ-04.
-6. **Recovery:** resolve prior SyncKey before duplicate upload or disposal; recover latest master; repeat lost receipt safely. Inactivity never overrides preservation or recovery.
+5. **Transfer:** pin selected immutable version for a consistent download; safe local activation before receipt. Restart partial transfer. Keep prior outgoing data while outcome unresolved. OP-073 and its explicit discard flow are deferred. Confirm installed snapshot version, not merely latest master known. State machine and file switching TQ-04.
+6. **Recovery:** resolve prior SyncKey before duplicate upload or disposal; recover latest master; repeat lost receipt safely. No explicit discard flow is included in the current increment. Inactivity never overrides preservation or recovery.
 7. **Cleanup:** retain all persistent snapshots; retention cleanup deferred. Temporary working/download directories follow confirmed cleanup lifecycle. Incomplete initial-registration lifecycle remains open.
 8. **Catalog:** bundled Assets/currencies.json supplies permanent Id, Code, Symbol and EnglishName. Generated once from development RegionInfo; no runtime enumeration. Updates preserve IDs. Currency creation uses catalog identity; platform data does not rewrite saved metadata.
 9. **Migration — confirmed 2026-10-08:** store a database schema version and check compatibility before normal database use or accepting/activating a downloaded copy. If the database is newer than this application supports, show Please update the application, block use of that database and leave it unchanged. For an older database, automatically execute a provided supported migration when available; apply the migration completely or roll it back. If no supported migration exists, explain the incompatibility, block use and leave the database unchanged. Never activate an incompatible downloaded copy. These checks do not replace existence-only local setup mode selection. The schema version is an increasing integer, separate from the application version, changed only when database compatibility changes. Persist the new schema version in the same transaction as the migration; rollback restores the old version as well. Schema-only migrations preserve existing unsynchronized changes and their modification flags and do not mark every record as user-modified. In version one, Local and Master schema versions must match before exchanging business changes. On mismatch, stop synchronization, preserve unsynchronized work and explain which side needs updating; do not automatically downgrade either database. Only the Master service migrates the Master database; a Local application never directly upgrades it. Store the application schema version in SQLite PRAGMA user_version, the application-managed integer in the database header; no extra version table is required. SQLite does not run application migrations automatically. Treat version 0 in an existing database as unrecognized unless an explicit migration supports its known structure; never merely stamp it as current. Create a new database's current structure and set its user_version together before making it available for use. The first released database structure is schema version 1. When an upgrade spans multiple versions, apply the required migrations sequentially within one transaction for the full chain; any step failure rolls back the entire upgrade, including its version changes. On migration failure, show the source/target schema versions and a short error, log technical details subject to the existing sensitive-data exclusions, and do not retry automatically. Check and migrate an existing Local database at application startup before opening Ledger or initiating automatic synchronization. Master migrations and synchronization use the same per-dataset exclusive lock, preventing concurrent modification of that dataset. Migrate Master using a separate candidate copy; make the candidate active only after success, leaving the current Master copy unchanged on migration failure. After a Master service update, migrate each dataset on its first access before processing synchronization. A successful Master migration publishes a new snapshot version; existing published snapshots remain unchanged. Migration alone is not successful synchronization, does not renew Local expiry and does not clear Recovery required. Concrete supported migration mappings, publication primitives and coordination with already-pending synchronization recovery remain TQ-06. Reference: [SQLite user_version](https://www.sqlite.org/pragma.html#pragma_user_version).
@@ -1670,6 +1772,46 @@ Current assessment for TRD 0.238, 2026-11-12:
 - **Document approval:** TRD 0.236 is Approved for the agreed Master/Synchronization inproc requirements, including the confirmed Currency aggregate and deletion lifecycle. Remaining scope stays Draft/open. BUG-001 through BUG-003 were subsequently fixed under the user's implementation request; requirements approval alone does not assert implementation correctness.
 
 ## Clarification Log
+
+### 2026-11-13 — Stage progress contract confirmed
+
+- Question: is SynchronizationStage an enum, and are Complete and Cancelled excluded from it?
+- Accepted answer: yes; the user accepted the explanation and asked to continue. Confirm the per-call IProgress<SynchronizationStage> contract and the seven proposed enum identifiers; Complete and Cancelled remain final SynchronizationOutcome values, while Cancelling remains UI state.
+- Source: requesting user in this chat, 2026-11-13. Affected: OP-043, UC-009-02, WinUI progress contract, TQ-15. TRD Draft 0.248. No application code or test data changed; deferred work remains deferred.
+
+
+### 2026-11-13 — Popup cancellation, result summary and sizing confirmed
+
+- Source: requesting user in this chat, explicit acceptance of discussion items 2, 3 and 4.
+- Accepted decisions: Escape/X request Cancel and wait through cleanup; a separate result popup shows outcome, reason/error, installed revision and Close; dimensions are stored in uisettings.json and selected during implementation.
+- Item 1: the user asked whether IProgress<SynchronizationStage> is passed alongside CancellationToken and requested Microsoft's recommended pattern. This is clarification, not inferred approval of an API change.
+- Affected: WinUI manual synchronization, UC-009-02, TQ-15. TRD Draft 0.247; application code unchanged.
+
+
+### 2026-11-13 — Defer reload and Setup; use prepared test databases
+
+- Question: should registration occur only on first attachment while later LoadLastVersion retains the existing LocalDatasetKey?
+- Accepted answer: yes; registration belongs only to Setup. User additionally deferred LoadLastVersion implementation and replaced the first-load workaround with prepared Master and Local databases.
+- Confirmed direction: tester starts with local.db and C:\Server\Master_<MasterDatasetKey>\master.db. Script 003 supplies Master test data; script 004 supplies Local test data. Test-data contents will be a separate discussion. Current repository numbering is three digits.
+- Affected: UC-009-02, OP-043/073, WinUI manual synchronization, Data and Integration Requirements. Prior two-command and bootstrap proposals are superseded for this increment; registration-related revision semantics remain deferred.
+- Source: requesting user in this chat, 2026-11-13. TRD Draft 0.246. Documentation only; no scripts, application code or databases changed.
+
+
+### 2026-11-13 — Accepted inproc limitation and attachment proposal
+
+- Source: requesting user in this chat. Accepted answer: sequential-only access is an inproc limitation and will be communicated to the tester. Azure is expected to use its cross-process Blob lease coordination.
+- User proposal for review, not approval: register a new Local on Master, allocate a revision/snapshot, initialize and install Local without copying prior JSON, rebuild cumulative amounts and acknowledge. Recorded separately from the confirmed existing-Local reload contract.
+- Affected: WinUI manual synchronization decisions, OP-073 discussion, snapshot revision rules and first-use integration. Exact first-attachment versus repeated-reload semantics remain open. TRD Draft 0.245; no application code changed.
+
+
+### 2026-11-13 — Manual synchronization progress, shared Master and explicit reload
+
+- Question carried forward: "Does a matching master.db/Local pair already exist, or must a deliberate one-time provisioning procedure be designed for the current Local data?"
+- User answer/direction: start tester operation with Load Last Version; expose it beside Synchronize with Yes/No discard confirmation and the same cancellable progress popup. Share Download/installation/Acknowledge behavior with Synchronize. Future Setup creates a new Master or attaches to an existing one. This direction does not establish that an initialized Master or registrations already exist.
+- Additional explicit decisions: accept spinner/stages; configure both in-process installations with absolute fileStorage:Root C:\Server; retain relative Azure object paths. Azure container URI and cross-process locking limitations are factual implementation clarifications, not newly approved implementation choices.
+- Affected: UC-009-02, UC-010-02/03, OP-043/046/047/073, Data and Integration Requirements, WinUI manual synchronization section. New discard business behavior requires later BRD alignment; only TRD is edited as requested.
+- Source: requesting user in this chat, 2026-11-13. TRD becomes Draft 0.244. User explicitly stopped discussion here; no implementation or further answers are inferred.
+
 
 Historical decisions describe their dates. Superseded configuration, balancing selection, registration/attempt schemas, APIs, snapshot naming/retention and runtime currency catalog proposals are not active contracts; use the reconciled main sections and later decisions. The latest 2026-11-12 atomic capture/acceptance decision supersedes the 2026-11-11 snapshot-only Local cleanup rule. Version and readiness metadata were reconciled on 2026-11-11; Master/Synchronization inproc requirements are approved; remaining document scope stays Draft/open.
 
@@ -3429,7 +3571,7 @@ This section records the user-confirmed first-version configuration and the curr
 - All 17 physical table names are singular, matching their entity names. EF mappings, raw SQL, foreign keys and indexes must agree. Quote SQL identifiers such as "Transaction", which is a SQL keyword.
 - All Guid properties use 16-byte BLOB storage based on Guid.ToByteArray(), including primary keys and required/nullable foreign keys, preserving binary transaction ordering. String dataset keys retain their text representation. Monetary values and rates use signed integers scaled by 10,000; AmountPrecision and RatePrecision govern calculation and display, independently of that fixed storage scale.
 - The user manually initializes and migrates databases for the first version. WebApi startup does not call SqliteDatabaseInitialization, EnsureCreated or EF migrations. Existing plural-table databases require an explicit manual migration or recreation; changing mappings does not rename existing tables.
-- Maintained SQL scripts are in backend/DataAccess.EntityFramework.SqLite/Assets: 001-schema.sql, 002-initial-data.sql and optional 003-test-data.sql. Apply schema and seed scripts in that order to an empty database, with foreign keys enabled. Use a transaction around manual initialization. These scripts are not repeatable migrations.
+- Maintained SQL scripts are in backend/DataAccess.EntityFramework.SqLite/Assets: 001-schema.sql, 002-initial-data.sql and role-specific 003-master-test-data.sql or 004-local-test-data.sql. Apply 001, then 002, then exactly one role seed to an empty database with foreign keys enabled. Each seed owns its transaction; do not nest another transaction around it. These scripts are not repeatable migrations.
 - Initial data includes five canonical roots, UAH with initial rate 1, Rebalancing, SystemConfig and LocalConfig; AmountPrecision=2 and RatePrecision=4. Optional sample data adds USD/rate, child groups, classifications, accounts, a template and balanced confirmed transactions with cumulative amounts. Fixed dataset identities belong to the local demo.
 - SQL assets are maintained for manual execution; automatic copying to host build/publish output is no longer part of initialization. SqliteAssetsTests is an isolated schema/seed validation test, not application initialization. Its output-asset dependency currently needs alignment with manual asset handling; the latest broad test run excluded it.
 
@@ -3572,7 +3714,7 @@ Implements BRD section “Quick account filters — user request 2026-10-18”; 
 - LocalDatasetKey is unique within the database. LocalSyncBatch has a unique (LocalRegistrationId, SyncKey) index and a restrictive foreign key to LocalRegistration, preventing silent removal of deduplication evidence. Registration retirement and receipt retention require explicit Master lifecycle handling.
 - Both metadata tables belong to the shared business schema used by Master and Local, superseding the earlier PM-014 placement of registration acknowledgement metadata in Admin.db. Local does not capture or merge these rows. Owner credentials and authentication token hashes remain separate administration data and must never be exported in a business snapshot.
 - User approved one SQLite transaction per applied batch, including business changes, LocalSyncBatch receipt and SystemConfig.CurrentRevision. Copy-and-restore of the live Master is not the rollback mechanism. Consistent file snapshots remain necessary for download; snapshot publication and concurrent Master serialization remain separate implementation work. SyncAttempt/AttemptKey are not required for batch deduplication.
-- Fresh database creation uses 001-schema.sql followed by 002-initial-data.sql (user_version 2). 003-test-data.sql adds optional sample data. User requested no migration scripts; existing databases are not upgraded by these creation scripts.
+- Fresh test database creation uses 001-schema.sql followed by 002-initial-data.sql (user_version 2), then 003-master-test-data.sql or 004-local-test-data.sql for the selected database role. User requested no migration scripts; existing databases are not upgraded by these creation scripts.
 - Added repositories, mappings and DI registrations for both metadata entities. Persistence tests cover identity/FK constraints, UTC acknowledgement round trips, complete rollback/commit of business data plus revision plus receipt, and fresh schema creation. The Master merge service itself remains unimplemented.
 
 ### 2026-10-22 — Typed Local and Master data access
@@ -3589,7 +3731,7 @@ Implements BRD section “Quick account filters — user request 2026-10-18”; 
 - IMasterService no longer exposes Authenticate or CheckAuthorization and receives no raw token or MasterAuthorization DTO. Infrastructure validates credentials/tokens and authorizes requested Master/Local identities before invoking business methods; Master still validates registration state and synchronization rules.
 - Synchronize accepts SynchronizeRequest containing the shared Exchange.Models SyncContainer. No duplicate request-level attempt key, schema version, priority or opaque ChangesJson remains. SynchronizeInfo returns only Revision, observed after all submitted batches have been applied or recognized as already applied. Per-batch transaction and retry deduplication rules remain unchanged.
 - Download accepts DownloadRequest (MasterDatasetKey, LocalDatasetKey, MinimumRevision). It selects the latest consistent snapshot at snapshot creation, without requiring a prior synchronization or transfer descriptor. MinimumRevision is only a lower-bound validation; the returned DownloadInfo contains the actual Revision and caller-owned Content stream.
-- A clean Local can download a newer snapshot independently. Client must check both uncaptured database changes and durable pending JSON batches before replacing its database; empty tracking flags alone do not establish that no unsynchronized work exists.
+- A clean Local can download a newer snapshot independently. For ordinary nondestructive download, check both uncaptured database changes and durable pending JSON batches; empty tracking flags alone do not establish that no unsynchronized work exists. OP-073 was subsequently deferred on 2026-11-13; no explicit discard alternative is included in the current increment.
 - Acknowledge accepts AcknowledgeRequest (MasterDatasetKey, LocalDatasetKey, InstalledRevision) and returns AcknowledgeInfo with IsSuccess. It acknowledges successful installation, updates LocalRegistration.SyncRevision and SyncDateTime, and must be idempotent without allowing older receipts to decrease SyncRevision.
 - Removed the obsolete Master authentication, progress/status and duplicate priority DTOs. ReplaceExpired workflow remains deferred; its input is named ReplaceExpiredCopyRequest (request), its raw-token parameter was removed, and its payload fields and result remain unchanged. Its legacy transfer DTO remains until that workflow is discussed.
 - These changes affect Master.Contracts. Client adapter DTOs remain independent, and provider implementations and runtime enforcement of these rules remain implementation work.

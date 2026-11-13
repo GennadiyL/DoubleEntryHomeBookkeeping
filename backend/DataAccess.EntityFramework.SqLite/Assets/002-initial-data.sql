@@ -1,14 +1,11 @@
--- UAH base currency; six fixed roots; Rebalancing; singleton settings.
--- AmountPrecision=2, RatePrecision=4. Integers are scaled by 10,000.
--- Local demo dataset identities: do not use these fixed dataset keys for independent production books.
-INSERT INTO "Currency" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Code", "Symbol", "EnglishName", "Name", "IsFavorite", "Order") VALUES (X'577D66E54E1F26408A43D720A3CF9ED0', 0, NULL, 0, 'UAH', '₴', 'Ukrainian Hryvnia', 'UAH', 0, 0);
+-- Dataset-independent roots only. Apply after 001-schema.sql.
+-- Setup or a role-specific test seed supplies currency, Rebalancing and configuration.
+PRAGMA foreign_keys = ON;
+BEGIN IMMEDIATE;
 INSERT INTO "AccountGroup" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Name", "Description", "Order", "IsFavorite", "ParentId") VALUES (X'CCBBD022EC37F44AB5C79CAF34FEC1E9', 0, NULL, 0, 'Account', NULL, 0, 0, X'CCBBD022EC37F44AB5C79CAF34FEC1E9');
 INSERT INTO "CategoryGroup" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Name", "Description", "Order", "IsFavorite", "ParentId") VALUES (X'F633B0CD86862242B33F66B5A3BF2948', 0, NULL, 0, 'Category', NULL, 0, 0, X'F633B0CD86862242B33F66B5A3BF2948');
 INSERT INTO "CorrespondentGroup" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Name", "Description", "Order", "IsFavorite", "ParentId") VALUES (X'FEA1199C579C0347910579075987EE45', 0, NULL, 0, 'Correspondent', NULL, 0, 0, X'FEA1199C579C0347910579075987EE45');
 INSERT INTO "ProjectGroup" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Name", "Description", "Order", "IsFavorite", "ParentId") VALUES (X'F685937CF22847498B44E81DD8D01949', 0, NULL, 0, 'Project', NULL, 0, 0, X'F685937CF22847498B44E81DD8D01949');
 INSERT INTO "TemplateGroup" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Name", "Description", "Order", "IsFavorite", "ParentId") VALUES (X'4FA832B2D8476E42AA54BA8771B8B6DE', 0, NULL, 0, 'Template', NULL, 0, 0, X'4FA832B2D8476E42AA54BA8771B8B6DE');
 INSERT INTO "ReportGroup" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Name", "Description", "Order", "IsFavorite", "ParentId") VALUES (X'C78CD28FB2691C44A27BC85F56DF0D44', 0, NULL, 0, 'Report', NULL, 0, 0, X'C78CD28FB2691C44A27BC85F56DF0D44');
-INSERT INTO "Account" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "Name", "Description", "Order", "IsFavorite", "GroupId", "CurrencyId", "CategoryId", "CorrespondentId", "ProjectId") VALUES (X'DC54E0E3F897F44DBCC04CBCCC32726B', 0, NULL, 0, 'Rebalancing', NULL, 0, 0, X'CCBBD022EC37F44AB5C79CAF34FEC1E9', X'577D66E54E1F26408A43D720A3CF9ED0', NULL, NULL, NULL);
-INSERT INTO "CurrencyRate" ("Id", "EditRevision", "DeleteRevision", "ModificationType", "CurrencyId", "Date", "Rate", "Description") VALUES (X'B08D0AF3C530494E993D32EF526B5903', 0, NULL, 0, X'577D66E54E1F26408A43D720A3CF9ED0', '1970-01-01', 10000, NULL);
-INSERT INTO "SystemConfig" ("Id", "BaseCurrencyId", "MasterDatasetKey", "CurrentRevision", "AmountPrecision", "RatePrecision") VALUES (X'B23113E24F59A848BBACDFB246E41514', X'577D66E54E1F26408A43D720A3CF9ED0', '00000000-0000-0000-0000-000000000004', 0, 2, 4);
-INSERT INTO "LocalConfig" ("Id", "LocalDatasetKey", "AccountNameOrder", "ConflictPriority", "SyncTrigger", "SnapshotRevision", "AccountNameSeparator", "AccountNameAddCurrency") VALUES (X'94D01911BCB36D488B987825D5AFD016', '00000000-0000-0000-0000-000000000006', 1, 2, 0, 0, '/', 0);
+COMMIT;

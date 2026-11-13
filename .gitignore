@@ -62,3 +62,4 @@ nunit-*.xml
 /docs/postman/
 /docs/sources/
 /docs/build/
+/docs/testing/
