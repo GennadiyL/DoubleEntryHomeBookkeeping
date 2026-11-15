@@ -51,7 +51,7 @@ internal sealed class EntryLine
 			View.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(settings.AmountWidth) });
 			View.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(settings.CurrencyWidth) });
 			View.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32) });
-			_accountName = new TextBox { IsReadOnly = true, PlaceholderText = "Select account", MinWidth = 0 };
+			_accountName = new TextBox { IsReadOnly = true, PlaceholderText = "Select account", MinWidth = 0, VerticalAlignment = VerticalAlignment.Top };
 			Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_accountName, "Account");
 			_account.Content = "...";
 			_account.MinWidth = _account.MinHeight = 0;
@@ -60,7 +60,7 @@ internal sealed class EntryLine
 			ToolTipService.SetToolTip(_account, "Choose account");
 			Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_account, "Choose account");
 			_accountName.SizeChanged += (_, args) => _account.Width = _account.Height = args.NewSize.Height;
-			Grid accountPicker = new() { ColumnSpacing = 8 };
+			Grid accountPicker = new() { ColumnSpacing = 8, VerticalAlignment = VerticalAlignment.Top };
 			accountPicker.ColumnDefinitions.Add(new ColumnDefinition());
 			accountPicker.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 			accountPicker.Children.Add(_accountName);
@@ -100,7 +100,7 @@ internal sealed class EntryLine
 			View.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(settings.RateWidth + 40) });
 			View.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(settings.BaseAmountWidth) });
 			View.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32) });
-			_accountName = new TextBox { IsReadOnly = true, PlaceholderText = "Select account", MinWidth = 0 };
+			_accountName = new TextBox { IsReadOnly = true, PlaceholderText = "Select account", MinWidth = 0, VerticalAlignment = VerticalAlignment.Top };
 			Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_accountName, "Account");
 			_account.Content = "...";
 			_account.MinWidth = _account.MinHeight = 0;
@@ -109,7 +109,7 @@ internal sealed class EntryLine
 			ToolTipService.SetToolTip(_account, "Choose account");
 			Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_account, "Choose account");
 			_accountName.SizeChanged += (_, args) => _account.Width = _account.Height = args.NewSize.Height;
-			Grid accountPicker = new() { ColumnSpacing = 8 };
+			Grid accountPicker = new() { ColumnSpacing = 8, VerticalAlignment = VerticalAlignment.Top };
 			accountPicker.ColumnDefinitions.Add(new ColumnDefinition());
 			accountPicker.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 			accountPicker.Children.Add(_accountName);

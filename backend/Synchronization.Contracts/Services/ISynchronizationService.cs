@@ -20,4 +20,10 @@ public interface ISynchronizationService
 	/// Cancellation stops cooperative local work but cannot undo Master publication or discard durable pending work.
 	/// </summary>
 	public Task<SynchronizeInfo> Synchronize(CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// Synchronizes the current Local while reporting actual workflow stages to the caller.
+	/// The receiver is scoped to this attempt; the final result remains authoritative after cleanup.
+	/// </summary>
+	public Task<SynchronizeInfo> Synchronize(IProgress<SynchronizationStage>? progress, CancellationToken cancellationToken = default);
 }

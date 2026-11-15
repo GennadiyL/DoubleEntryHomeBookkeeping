@@ -10,6 +10,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shared.Impl;
 using Shared.Contracts;
+using Master.Impl;
+using Synchronization.Impl;
+using Synchronization.Contracts.Services;
+using Synchronization.Contracts.Services.Synchronizations;
 
 namespace Dehb.WinUi.Hosting;
 
@@ -36,6 +40,9 @@ internal sealed partial class BusinessHost : IDisposable
 		services.AddAdapterWinUiModule();
 		services.AddBusinessModule();
 		services.AddLocalDataAccessSqLiteModule(configuration);
+		services.AddMasterModule();
+		services.AddSynchronizationModule();
+		services.AddLocalMasterAdapter();
 		services.AddMessagingInProcessBusModule();
 		_services = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
 	}
@@ -57,6 +64,16 @@ internal sealed partial class BusinessHost : IDisposable
 		await operation(service).ConfigureAwait(false);
 		return true;
 	});
+
+	public Task<SynchronizeInfo> Synchronize(IProgress<SynchronizationStage> progress, CancellationToken cancellationToken) => Task.Run(async () =>
+	{
+		await using AsyncServiceScope scope = _services.CreateAsyncScope();
+		ISynchronizationService service = scope.ServiceProvider.GetRequiredService<ISynchronizationService>();
+		return await service.Synchronize(progress, cancellationToken).ConfigureAwait(false);
+	});
+
+	public long ReadInstalledRevision() => Call<IAppUnitOfWork, long>(async unit =>
+		(await unit.LocalConfigRepo.GetAll().ConfigureAwait(false)).Single().SnapshotRevision);
 
 	public SystemConfig ReadSettings() => Call<IAppUnitOfWork, SystemConfig>(async unit =>
 	{

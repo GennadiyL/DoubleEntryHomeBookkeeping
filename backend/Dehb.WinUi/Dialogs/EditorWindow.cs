@@ -31,6 +31,7 @@ internal sealed partial class EditorWindow : Window, IDisposable
 	public StackPanel RightCommands { get; } = new() { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
 	public Func<bool> IsDirty { get; set; } = () => false;
 	public Action? BeforeClose { get; set; }
+	public Action? CloseRequested { get; set; }
 	public EditorWindow(Window owner, PopupCoordinator coordinator, string key, string title, SizeInt32? fixedSize = null)
 	{
 		if (coordinator.IsActive(key))
@@ -112,6 +113,11 @@ internal sealed partial class EditorWindow : Window, IDisposable
 			}
 
 			e.Cancel = true;
+			if (CloseRequested is not null)
+			{
+				CloseRequested();
+				return;
+			}
 			if (_checking)
 			{
 				return;

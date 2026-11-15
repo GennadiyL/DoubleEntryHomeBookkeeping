@@ -86,6 +86,8 @@ public static class UiSettingsLoader
 		ValidateSize(settings.TemplateEditor.AmountWidth, "templateEditor.amountWidth");
 		ValidateSize(settings.TemplateEditor.CurrencyWidth, "templateEditor.currencyWidth");
 		ValidatePopup(settings.HelpPopup, "helpPopup");
+		ValidatePopup(settings.SynchronizationProgressPopup, "synchronizationProgressPopup");
+		ValidatePopup(settings.SynchronizationResultPopup, "synchronizationResultPopup");
 		ValidatePopup(settings.AccountEditor, "accountEditor");
 		ValidatePopup(settings.ElementEditor, "elementEditor");
 		ValidatePopup(settings.ElementTreeGridPopup, "elementTreeGridPopup");

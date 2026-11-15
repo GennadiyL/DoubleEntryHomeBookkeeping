@@ -4,6 +4,10 @@
 
 ## Document Control and BRD Reference
 
+- Revision 0.250, 2026-11-13: implement manual WinUI inproc synchronization, per-call stage progress, cooperative popup cancellation, result summary and Local-backed UI invalidation/reload. Compose LocalMasterAdapter/Master in the host and use C:\Server. Independent Local paths now have distinct application-instance keys. Setup and LoadLastVersion remain deferred.
+
+  Validation: WinUI x64 build passed (one existing CA1001 warning); all 48 Synchronization tests passed, including stage reporting and cancellation before installation/acknowledgement. An isolated native WinUI smoke run displayed progress and completed at installed revision 1; SQLite inspection confirmed Master merge, Local replacement, no pending batches and acknowledgement at revision 1. Native Cancel/Escape/Close interaction was not verified: automation could not target the owned result window; the completed smoke process was stopped separately. Existing active uisettings.json files must include the new SynchronizationProgressPopup and SynchronizationResultPopup settings from the source asset.
+
 - Revision 0.249, 2026-11-13: implement separate Master/Local SQL test seeds with PLN base, four currencies, English catalogs/templates and 500 balanced transactions. Keep 002 dataset-independent; preserve old automated-test fixtures separately. Database deployment and UI integration are not performed in this change.
 
 - Revision 0.248, 2026-11-13: confirm per-call IProgress<SynchronizationStage> alongside CancellationToken, seven stage identifiers and separation from final SynchronizationOutcome. Current manual WinUI behavior is clarified; test data remains a separate deferred discussion. Documentation only.
@@ -60,7 +64,7 @@
 
 - Controlled revision 0.223, 2026-10-08: requesting user explicitly requested the four-rule cleanup, aligned to BRD 0.217. Local is the default conflict priority; Currency has no Description while CurrencyRate retains it; AmountPrecision and RatePrecision govern calculation and display; Drafts have no separate entry-count limit, but every present entry must be valid and have an Account. Confirmed state still requires at least two valid entries and exact balance. No complete-document approval is inferred.
 
-- Version: **0.249**. Full-document status: **Draft**. Master/Synchronization inproc scope: **Approved**, with the user-confirmed 2026-11-12 lifecycle amendment. Date: **2026-11-13**.
+- Version: **0.250**. Full-document status: **Draft**. Master/Synchronization inproc scope: **Approved**, with the user-confirmed 2026-11-12 lifecycle amendment. Date: **2026-11-13**.
 - Business source: [BRD 0.218](BRD.md), Draft dated 2026-10-08, and the individually confirmed UI/business decisions in this conversation. Prior full-version approval covers BRD 0.32 only, requesting user, 2026-09-27. No approval of complete BRD 0.218 or TRD 0.236 is inferred. Individually confirmed requirements remain binding; Draft describes whole-document approval, not implementation progress.
 - Scope: core bookkeeping, synchronization, first use and Windows UI integration. Owner/intended approver: requesting user.
 - Revision basis: replaces legacy TRD 0.1 while retaining its parent-reference constraint. Discovery sources: [core](001-personal-bookkeeping/discovery.md), [synchronization](002-synchronization/discovery.md), [first use](003-first-using/discovery.md). Later BRD decisions supersede their historical statements.
@@ -836,11 +840,11 @@ Source: requesting user, this conversation. Use this section together with the c
 **Implemented in-process baseline**
 
 - The agreed business flow is implemented: authorization preflight, Local capture and acceptance, durable LocalJson, Master batch merge and revision snapshot publication, Candidate download/validation/preparation, atomic Local replacement and acknowledgement.
-- ISynchronizationService.Synchronize(CancellationToken) is the Local workflow entry point. IMasterService exposes Synchronize, Download and Acknowledge. LocalMasterAdapter invokes Master in a fresh DI scope for each call. This path is exercised by tests but is not yet wired into the application host/UI.
+- ISynchronizationService.Synchronize(CancellationToken) is the Local workflow entry point. IMasterService exposes Synchronize, Download and Acknowledge. LocalMasterAdapter invokes Master in a fresh DI scope for each call. This path is exercised by tests and wired into manual WinUI synchronization as of 2026-11-13; remote transport and Setup remain deferred.
 - IUnitOfWorkFactory creates and caches Local, Candidate, Master and Snapshot units and explicitly closes/removes them from its cache. MasterService and ApplySyncBatchOperation keep the selected Master UOW local to the call rather than in mutable service fields.
 - IValidateCandidateCommand.Validate checks database integrity and schema. IPrepareCandidateCommand.Prepare copies Local configuration/recovery JSON and rebuilds cumulative amounts within the caller's transaction. IInstallCandidateCommand.Install closes the relevant units and performs atomic replacement. DownloadOperation owns their sequencing and dataset/revision validation.
 - ICleanDataFilesCommand.CleanAll hides provider-specific auxiliary-file cleanup from Master and Synchronization. StorageValues owns shared database filenames; provider-specific SQLite suffixes remain private to the DAL implementation.
-- Business-layer readiness applies to this agreed in-process workflow under exclusive Local editing. It does not mean that application integration, remote authorization or Azure synchronization is complete.
+- The in-process workflow uses exclusive Local editing. Manual WinUI integration is implemented in revision 0.250; this does not imply implemented remote authorization, Azure synchronization or Setup.
 
 **Next increment: host and UI wiring**
 
@@ -848,7 +852,7 @@ Source: requesting user, this conversation. Use this section together with the c
 2. Show the modal synchronization window with Cancel. Create a CancellationTokenSource and a dedicated DI scope, resolve ISynchronizationService, and invoke Synchronize with its token through the in-process adapter. Keep the UI responsive so Cancel can be handled.
 3. Cancel requests cooperative cancellation. Keep the modal window and editing restriction active while cancellation is being handled; show a cancelling state rather than closing the window immediately.
 4. Await actual task completion, including rollback where applicable, database close, cleanup and scope disposal. Only then reload Local-backed UI state and release the editing restriction. Reload is required after cancellation or failure as well as success because installation may already have completed. Do not continue using a disposed UOW or stale pre-installation UI state.
-5. Present the returned outcome or exception using the existing UI result/error requirements. The current entry point returns SynchronizeInfo; do not assume that a separate stage-progress or cancellation API has already been implemented.
+5. Present the returned outcome or exception using the existing UI result/error requirements. The current entry point returns SynchronizeInfo and now provides a per-call IProgress<SynchronizationStage> overload. Cancellation continues to use CancellationToken, not a separate cancellation operation.
 6. Test the host/UI integration for save failure, editing exclusion, cancellation on both sides of Local replacement, acknowledgement failure, retry, UI refresh and scope cleanup.
 
 The accepted locking boundary is the UI/host. SynchronizationGate only serializes Synchronize calls and does not block independent business services. No additional shared business-write semaphore is required for this increment provided that the application is the sole writer, all active writes finish before synchronization, and no background operations write to Local while it runs. If background writers are introduced, they must participate in the same exclusion policy; a modal window alone does not protect against them.
@@ -942,7 +946,7 @@ C:\Server/
 
 **Confirmed progress contract and presentation — 2026-11-13**
 
-Use service-originated per-attempt stage notifications through IProgress<SynchronizationStage>, passed to Synchronize alongside CancellationToken, with progress before the token. SynchronizationStage is an enum with the seven identifiers below; map identifiers to English labels in the UI. Synchronize still returns Task<SynchronizeInfo>. This is the agreed target contract, not a claim that the current cancellation-only implementation has been changed. SynchronizationCheckpoint is not a live progress API.
+Use service-originated per-attempt stage notifications through IProgress<SynchronizationStage>, passed to Synchronize alongside CancellationToken, with progress before the token. SynchronizationStage is an enum with the seven identifiers below; map identifiers to English labels in the UI. Synchronize still returns Task<SynchronizeInfo>. The progress overload is implemented; the existing cancellation-only overload delegates to it without a progress receiver. SynchronizationCheckpoint is not a live progress API.
 Confirmed progress behavior: Microsoft TAP uses a per-call IProgress<T> parameter alongside CancellationToken. The caller supplies a progress receiver; the service calls Report with stage identifiers. Progress<T> captures SynchronizationContext when constructed and dispatches callbacks through it; if none exists, callbacks run on the thread pool. Construct the receiver on the UI thread with its valid context, or marshal explicitly through the UI dispatcher. IProgress<T> itself does not guarantee UI dispatch, and neither it nor async automatically moves synchronous database work off the UI thread. Progress delivery is notification only; actual task completion determines the outcome, and completed-attempt guards suppress queued late updates. Source: [Microsoft TAP overview](https://learn.microsoft.com/en-us/dotnet/standard/asynchronous-programming-patterns/task-based-asynchronous-pattern-tap). The user accepted the explained contract and enum/outcome separation in this discussion.
 
 | SynchronizationStage | Actual stage | UI label |
@@ -958,6 +962,16 @@ Confirmed progress behavior: Microsoft TAP uses a per-call IProgress<T> paramete
 Complete and Cancelled belong to SynchronizationOutcome returned in SynchronizeInfo; they are not SynchronizationStage values. Cancelling is a UI state after a cancellation request, not a service stage. Failed attempts use the existing outcome/reason or exception contract; do not add an error stage. Final outcome remains authoritative even when a late cancellation request races with successful completion.
 
 Determine the outcome from actual completion, not the last stage or Cancel click. Ignore notifications from completed attempts. Reload Local-backed UI state after cleanup and scope disposal; if reload fails, report the error without exposing stale editable data.
+
+**Manual WinUI implementation — 2026-11-13**
+
+- BusinessHost composes Synchronization, Master and LocalMasterAdapter with the existing Local SQLite and filesystem storage modules. The configured fileStorage:Root is C:\Server. No Master or registration is created automatically.
+- The host executes Synchronize on a worker thread and owns an async scope through service completion and disposal, including synchronous SQLite portions. The UI uses a per-attempt progress/cancellation ViewModel and the existing owned-popup coordinator. Escape, Cancel and title-bar Close request cancellation without closing the active popup; main-window closure also requests cancellation and waits.
+- Existing editors are modal and ordinary saves synchronous. The manual command is admitted only from the unblocked main window; the progress popup excludes further editing. No startup/exit automatic synchronization is added.
+- After every completed attempt and scope cleanup, reread Local settings/currencies and installed revision, invalidate cached screens and release progress. Screens are recreated from fresh service reads; screen-local selections/filters are reset by this invalidation. If reload fails, data-screen access remains blocked, while synchronization retry, Help and Exit remain available.
+- The separate result popup shows actual outcome, reason/error, and installed revision read from Local after cleanup. Unknown revision is shown as unavailable. A successful service outcome can coexist with a separately reported UI reload error.
+- Required portable settings: synchronizationProgressPopup (520 x 240) and synchronizationResultPopup (600 x 400). Both source JSON files include these objects. Existing deployed uisettings.json files must receive these objects manually; existing settings are not silently rewritten or defaulted.
+- Single-instance routing is keyed by normalized configured Local database path instead of one application-global key, permitting separate installations with distinct Local paths. The inproc Master lock is still process-local; shared-Master testing remains sequential.
 
 **Remaining details**
 

@@ -12,14 +12,28 @@ Edit commands need a selected row and focus in the grid. Entry commands act on t
 - Projects - Ctrl+F8
 - Templates - Ctrl+F9
 - Currencies - Ctrl+F10
+- Synchronization - Ctrl+F3
 - Help - Ctrl+F1
 - Exit - Ctrl+F4
 
 Reserved for currently disabled views:
 
 - Reports - Ctrl+F11
-- Synchronization - Ctrl+F3
 - Settings - Ctrl+F2
+
+## Manual synchronization
+
+Open Synchronization, then choose Synchronize. The progress popup shows the active stage and a spinner.
+Cancel, Escape and the popup Close button request cancellation; the popup stays open until cleanup finishes.
+Editing and main-window closing remain blocked while synchronization is running.
+A separate result popup shows the outcome, any stop reason/error and the installed Local revision.
+Already applied Master changes or an installed Local database are not rolled back by cancellation.
+Use Synchronize again to retry a stopped attempt. Cached data screens are recreated after every attempt.
+
+The in-process tester configuration uses fileStorage:Root in appsettings.json, initially C:\Server.
+Master and Local databases must already be initialized with matching identities and registration.
+Separate Local directories can run as separate application instances. Synchronize them sequentially;
+the in-process Master lock does not coordinate different processes.
 
 ## Focus and common controls
 

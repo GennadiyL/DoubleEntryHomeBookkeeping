@@ -576,6 +576,60 @@ public sealed class SynchronizationWorkflowTests
 		_adapter.Acknowledge(Arg.Any<AcknowledgeRequest>(), Arg.Any<CancellationToken>()).Returns(call => _real.Acknowledge(call.Arg<AcknowledgeRequest>(), call.Arg<CancellationToken>()));
 	}
 
+	[Test]
+	public async Task ProgressReportsExecutedStagesAndSkipsDownloadWhenAlreadyCurrent()
+	{
+		List<SynchronizationStage> stages = [];
+		IProgress<SynchronizationStage> progress = Substitute.For<IProgress<SynchronizationStage>>();
+		progress.When(receiver => receiver.Report(Arg.Any<SynchronizationStage>())).Do(call => stages.Add(call.Arg<SynchronizationStage>()));
+		await using (AsyncServiceScope scope = _provider.CreateAsyncScope())
+		{
+			SynchronizeInfo result = await scope.ServiceProvider.GetRequiredService<ISynchronizationService>().Synchronize(progress);
+			Assert.That(result.Outcome, Is.EqualTo(SynchronizationOutcome.Complete));
+		}
+		Assert.That(stages, Is.EqualTo(new[]
+		{
+			SynchronizationStage.CheckingAccess, SynchronizationStage.CapturingChanges,
+			SynchronizationStage.SynchronizingWithMaster, SynchronizationStage.DownloadingSnapshot,
+			SynchronizationStage.PreparingLocalData, SynchronizationStage.InstallingLocalData,
+			SynchronizationStage.Acknowledging
+		}));
+		stages.Clear();
+		await using (AsyncServiceScope scope = _provider.CreateAsyncScope())
+		{
+			await scope.ServiceProvider.GetRequiredService<ISynchronizationService>().Synchronize(progress);
+		}
+		Assert.That(stages, Is.EqualTo(new[]
+		{
+			SynchronizationStage.CheckingAccess, SynchronizationStage.CapturingChanges,
+			SynchronizationStage.SynchronizingWithMaster, SynchronizationStage.Acknowledging
+		}));
+	}
+
+	[TestCase(SynchronizationStage.InstallingLocalData, 0)]
+	[TestCase(SynchronizationStage.Acknowledging, 1)]
+	public async Task ProgressCancellationRespectsInstallationBoundaryAndAllowsRetry(SynchronizationStage cancelAt, long revision)
+	{
+		using CancellationTokenSource cancellation = new();
+		IProgress<SynchronizationStage> progress = Substitute.For<IProgress<SynchronizationStage>>();
+		progress.When(receiver => receiver.Report(cancelAt)).Do(_ => cancellation.Cancel());
+		await using (AsyncServiceScope scope = _provider.CreateAsyncScope())
+		{
+			SynchronizeInfo result = await scope.ServiceProvider.GetRequiredService<ISynchronizationService>().Synchronize(progress, cancellation.Token);
+			Assert.That(result.Outcome, Is.EqualTo(SynchronizationOutcome.Cancelled));
+		}
+		await using (AsyncServiceScope scope = _provider.CreateAsyncScope())
+		{
+			ILocalUnitOfWork local = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().CreateLocal();
+			Assert.That((await local.LocalConfigRepo.GetAll()).Single().SnapshotRevision, Is.EqualTo(revision));
+			Assert.That(await local.CategoryRepo.GetById(_categoryId), Is.Not.Null);
+		}
+		Assert.That((await ReadPending())!.Batches.Count, Is.EqualTo(revision == 0 ? 1 : 0));
+		Assert.That(File.Exists(Path.Combine(_directory.FullName, StorageValues.CandidateFileName)), Is.False);
+		ResetAdapter();
+		Assert.That((await Run()).Outcome, Is.EqualTo(SynchronizationOutcome.Complete));
+	}
+
 	private async Task<SynchronizeInfo> Run(CancellationToken token = default)
 	{
 		await using AsyncServiceScope scope = _provider.CreateAsyncScope();

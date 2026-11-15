@@ -18,16 +18,23 @@ public partial class App : Application
 	public App() => InitializeComponent();
 	protected override async void OnLaunched(LaunchActivatedEventArgs args)
 	{
-		AppInstance instance = AppInstance.FindOrRegisterForKey("DoubleEntryHomeBookkeeping.Local");
-		if (!instance.IsCurrent)
-		{
-			await instance.RedirectActivationToAsync(AppInstance.GetCurrent().GetActivatedEventArgs());
-			Exit();
-			return;
-		}
+		AppInstance instance;
 		try
 		{
 			ISharedContext sharedContext = InitializeSharedContext();
+			IConfiguration configuration = _sharedScope!.ServiceProvider.GetRequiredService<IConfiguration>();
+			string directory = Path.GetFullPath(configuration[Business.Models.Constants.StorageValues.LocalDirectoryConfigurationKey]
+				?? throw new InvalidDataException("DataAccess:LocalDirectory is required."), AppContext.BaseDirectory);
+			string localPath = Path.Combine(directory, Business.Models.Constants.StorageValues.LocalFileName).ToUpperInvariant();
+			string instanceKey = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(localPath)));
+			instance = AppInstance.FindOrRegisterForKey("DoubleEntryHomeBookkeeping.Local." + instanceKey);
+			if (!instance.IsCurrent)
+			{
+				await instance.RedirectActivationToAsync(AppInstance.GetCurrent().GetActivatedEventArgs());
+				DisposeSharedContext();
+				Exit();
+				return;
+			}
 			UiSettings = UiSettingsLoader.Load(sharedContext.FileService, Path.Combine(AppContext.BaseDirectory, "Assets", "uisettings.json"));
 		}
 		catch (InvalidDataException exception)

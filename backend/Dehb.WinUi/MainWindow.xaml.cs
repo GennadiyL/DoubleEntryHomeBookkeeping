@@ -15,6 +15,8 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System.Xml.Linq;
 using Shared.Contracts;
+using Dehb.WinUi.Synchronizations;
+using Synchronization.Contracts.Services.Synchronizations;
 
 namespace Dehb.WinUi;
 
@@ -23,6 +25,9 @@ public sealed partial class MainWindow : IDisposable
 	private readonly ISharedContext _sharedContext;
 	private readonly Dictionary<string, (Button Button, Image Icon)> _navigation = new();
 	private UiSession? _session;
+	private bool _synchronizing;
+	private bool _localReady = true;
+	private Action? _cancelSynchronization;
 	private readonly Dictionary<string, FrameworkElement> _screens = new();
 	private readonly ContentControl _screen = new() { IsTabStop = false, TabFocusNavigation = KeyboardNavigationMode.Cycle, HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
 	private readonly TextBlock _error = Ui.Text("");
@@ -35,6 +40,13 @@ public sealed partial class MainWindow : IDisposable
 		Root.Resources["SidebarBackground"] = new SolidColorBrush(Ui.ParseColor(((App)Application.Current).UiSettings.MainWindow.SideBarBackColor));
 		WindowPlacement.Attach(_sharedContext, this, ((App)Application.Current).UiSettings.MainWindow);
 		Start();
+		AppWindow.Closing += (_, args) =>
+		{
+			if (!_synchronizing) { return; }
+			args.Cancel = true;
+			_cancelSynchronization?.Invoke();
+			ActivateTop();
+		};
 		Activated += (_, args) =>
 		{
 			if (args.WindowActivationState != WindowActivationState.Deactivated &&
@@ -50,6 +62,7 @@ public sealed partial class MainWindow : IDisposable
 	private void Start()
 	{
 		Dispose();
+		_screens.Clear();
 		if (_error.Parent is Panel previousParent)
 		{
 			previousParent.Children.Remove(_error);
@@ -73,7 +86,7 @@ public sealed partial class MainWindow : IDisposable
 				AddSidebarItem(navigation, catalog, true, () => { Show(catalog); return Task.CompletedTask; });
 			}
 			AddSidebarHeading(navigation, "Application", true);
-			AddSidebarItem(navigation, "Synchronization", false, () => Task.CompletedTask);
+			AddSidebarItem(navigation, "Synchronization", true, () => { Show("Synchronization"); return Task.CompletedTask; });
 			AddSidebarItem(navigation, "Settings", false, () => Task.CompletedTask);
 			AddSidebarItem(navigation, "Help", true, async () =>
 			{
@@ -241,11 +254,13 @@ public sealed partial class MainWindow : IDisposable
 		{
 			return;
 		}
+		if (_synchronizing || !ReferenceEquals(_session.Coordinator.Top(this), this)) { return; }
+		if (!_localReady && name != "Synchronization") { throw new InvalidOperationException("Local refresh failed. Retry synchronization before opening data screens."); }
 
 		_session.Coordinator.DockedCatalog = name;
 		if (!_screens.TryGetValue(name, out FrameworkElement? view))
 		{
-			view = name == "Ledger" ? new LedgerView(_session, this) : name == "Currencies" ? new CurrencyView(_session, this) : new CatalogView(_session, this, name, false, false, false);
+			view = name == "Synchronization" ? CreateSynchronizationView() : name == "Ledger" ? new LedgerView(_session, this) : name == "Currencies" ? new CurrencyView(_session, this) : new CatalogView(_session, this, name, false, false, false);
 			_screens[name] = view;
 		}
 		else if (view is CatalogView catalog)
@@ -289,5 +304,95 @@ public sealed partial class MainWindow : IDisposable
 			view.Loaded -= OnViewLoaded;
 			QueueViewFocus();
 		}
+	}
+
+	private StackPanel CreateSynchronizationView()
+	{
+		StackPanel panel = new() { Spacing = 16 };
+		panel.Children.Add(Ui.Text("Synchronization"));
+		Button synchronize = Ui.AsyncButton("Synchronize", Synchronize, _error);
+		synchronize.HorizontalAlignment = HorizontalAlignment.Left;
+		panel.Children.Add(synchronize);
+		return panel;
+	}
+
+	private async Task Synchronize()
+	{
+		if (_session is null || _synchronizing || !ReferenceEquals(_session.Coordinator.Top(this), this)) { return; }
+		_synchronizing = true;
+		try
+		{
+			using SynchronizationViewModel model = new();
+			UiSettings settings = ((App)Application.Current).UiSettings;
+			using SynchronizationPopup popup = new(this, _session.Coordinator, model, settings.SynchronizationProgressPopup);
+			_cancelSynchronization = () => model.CancelCommand.Execute(null);
+			Task<bool> closed = popup.Show();
+			SynchronizeInfo? result = null;
+			Exception? failure = null;
+			long? installedRevision = null;
+			string? reloadError = null;
+			IProgress<SynchronizationStage> progress = new Progress<SynchronizationStage>(stage =>
+				DispatcherQueue.TryEnqueue(() => model.Report(stage)));
+			try
+			{
+				result = await _session.Host.Synchronize(progress, model.Token);
+			}
+			catch (Exception exception) { failure = exception; }
+			finally
+			{
+				model.Complete();
+				_cancelSynchronization = null;
+				_screens.Clear();
+				_screen.Content = null;
+				try
+				{
+					_session.ReloadSettings();
+					_session.Currencies();
+					installedRevision = _session.Host.ReadInstalledRevision();
+					_localReady = true;
+					_error.Text = "";
+				}
+				catch (Exception exception)
+				{
+					_localReady = false;
+					reloadError = "Local refresh failed: " + exception.Message;
+					_error.Text = reloadError;
+				}
+				popup.Finish();
+				await closed;
+			}
+			await ShowSynchronizationResult(result, failure, installedRevision, reloadError, settings.SynchronizationResultPopup);
+		}
+		finally
+		{
+			_cancelSynchronization = null;
+			_synchronizing = false;
+			Show("Synchronization");
+		}
+	}
+
+	private async Task ShowSynchronizationResult(SynchronizeInfo? result, Exception? failure, long? installedRevision, string? reloadError, UiEditorPopupSettings settings)
+	{
+		using EditorWindow summary = new(this, _session!.Coordinator, "Synchronization.Result", "Synchronization result", new SizeInt32(settings.Width, settings.Height));
+		List<string> lines = ["Outcome: " + (failure is null ? result?.Outcome.ToString() ?? "Unknown" : "Failed")];
+		if (failure is not null) { lines.Add("Error: " + failure.Message); }
+		if (result?.Reason is { } reason) { lines.Add("Reason: " + reason); }
+		lines.Add("Installed revision: " + (installedRevision?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "Unavailable"));
+		if (result?.Outcome != SynchronizationOutcome.Complete || failure is not null)
+		{
+			lines.Add("Changes already applied to Master or installed locally are not rolled back. You can retry Synchronize.");
+		}
+		if (reloadError is not null) { lines.Add(reloadError); }
+		TextBlock text = Ui.Text(string.Join("\n\n", lines));
+		text.TextWrapping = TextWrapping.Wrap;
+		text.IsTextSelectionEnabled = true;
+		text.Margin = new Thickness(0, 0, 24, 0);
+		summary.SetFieldContent(new ScrollViewer { Content = text, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled });
+		summary.Commands.HorizontalAlignment = HorizontalAlignment.Center;
+		Grid.SetColumnSpan(summary.Commands, 2);
+		Button closeButton = Ui.DialogButton("Close", summary.Close, summary.Error);
+		EditorToolTips.SetHint(closeButton, "Close (Escape)");
+		summary.Commands.Children.Add(closeButton);
+		await summary.Show();
 	}
 }

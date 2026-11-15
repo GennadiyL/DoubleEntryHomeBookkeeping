@@ -20,7 +20,8 @@ internal sealed partial class UiSession : IDisposable
 {
 	public BusinessHost Host { get; }
 	public PopupCoordinator Coordinator { get; } = new();
-	public SystemConfig Settings { get; }
+	public SystemConfig Settings { get; private set; }
+	public void ReloadSettings() => Settings = Host.ReadSettings();
 	public UiSession(ISharedContext sharedContext)
 	{
 		Host = new BusinessHost(sharedContext);

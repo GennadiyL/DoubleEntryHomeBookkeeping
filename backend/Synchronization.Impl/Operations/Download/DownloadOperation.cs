@@ -11,6 +11,7 @@ using Shared.Contracts;
 using Synchronization.Contracts.Adapters;
 using Synchronization.Contracts.Adapters.Master;
 using Exchange.Models.Synchronizations;
+using Synchronization.Contracts.Services.Synchronizations;
 
 namespace Synchronization.Impl.Operations.Download;
 
@@ -61,8 +62,10 @@ internal sealed class DownloadOperation : IDownloadOperation
 	public async Task<long> Run(
 		DownloadRequest command,
 		SyncContainer pending,
+		IProgress<SynchronizationStage>? progress,
 		CancellationToken cancellationToken = default)
 	{
+		progress?.Report(SynchronizationStage.DownloadingSnapshot);
 		DownloadResponse response = await _master.Download(command, cancellationToken);
 		await using Stream content = response.Content;
 		if (response.Revision < command.MinimumRevision)
@@ -85,12 +88,14 @@ internal sealed class DownloadOperation : IDownloadOperation
 				await content.CopyToAsync(destination, cancellationToken);
 				await destination.FlushAsync(cancellationToken);
 			}
+			progress?.Report(SynchronizationStage.PreparingLocalData);
 			await _validateCandidate.Validate(cancellationToken);
 			await Prepare(
 				command,
 				response.Revision,
 				pending,
 				cancellationToken);
+			progress?.Report(SynchronizationStage.InstallingLocalData);
 			await _installCandidate.Install(cancellationToken);
 			return response.Revision;
 		}

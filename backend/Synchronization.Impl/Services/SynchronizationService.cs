@@ -56,7 +56,9 @@ internal sealed class SynchronizationService : ISynchronizationService
 		_downloadOperation = downloadOperation;
 	}
 
-	public async Task<SynchronizeInfo> Synchronize(CancellationToken cancellationToken = default)
+	public Task<SynchronizeInfo> Synchronize(CancellationToken cancellationToken = default) => Synchronize(null, cancellationToken);
+
+	public async Task<SynchronizeInfo> Synchronize(IProgress<SynchronizationStage>? progress, CancellationToken cancellationToken = default)
 	{
 		try
 		{
@@ -70,7 +72,7 @@ internal sealed class SynchronizationService : ISynchronizationService
 		try
 		{
 			ILocalUnitOfWork unitOfWork = _unitOfWorkFactory.CreateLocal();
-			return await Run(unitOfWork, cancellationToken);
+			return await Run(unitOfWork, progress, cancellationToken);
 		}
 		finally
 		{
@@ -85,7 +87,7 @@ internal sealed class SynchronizationService : ISynchronizationService
 		}
 	}
 
-	private async Task<SynchronizeInfo> Run(ILocalUnitOfWork unitOfWork, CancellationToken cancellationToken)
+	private async Task<SynchronizeInfo> Run(ILocalUnitOfWork unitOfWork, IProgress<SynchronizationStage>? progress, CancellationToken cancellationToken)
 	{
 		LocalJson? row = await unitOfWork.LocalJsonRepo.GetById(EntitiesIds.LocalJsonId, CancellationToken.None);
 		SyncContainer? container = ReadSyncContainer(row);
@@ -107,6 +109,7 @@ internal sealed class SynchronizationService : ISynchronizationService
 				throw new InvalidSyncBatchException("Saved container does not match the Local dataset and installed revision.");
 			}
 			
+			progress?.Report(SynchronizationStage.CheckingAccess);
 			AuthorizationResult authorization =
 				await _masterAdapter.CheckAuthorization(
 					system.MasterDatasetKey,
@@ -121,6 +124,7 @@ internal sealed class SynchronizationService : ISynchronizationService
 					checkpoint);
 			}
 			
+			progress?.Report(SynchronizationStage.CapturingChanges);
 			container = await Capture(
 				unitOfWork,
 				container,
@@ -130,6 +134,7 @@ internal sealed class SynchronizationService : ISynchronizationService
 			checkpoint = SynchronizationCheckpoint.Captured;
 			cancellationToken.ThrowIfCancellationRequested();
 			
+			progress?.Report(SynchronizationStage.SynchronizingWithMaster);
 			SynchronizeResponse merged =
 				await _masterAdapter.Synchronize(new SynchronizeRequest { Container = container }, cancellationToken);
 			if (merged.Revision < container.Revision || merged.Revision < system.CurrentRevision)
@@ -149,12 +154,13 @@ internal sealed class SynchronizationService : ISynchronizationService
 					MasterDatasetKey = container.MasterDatasetKey,
 					LocalDatasetKey = container.LocalDatasetKey,
 					MinimumRevision = merged.Revision
-				}, container, cancellationToken);
+				}, container, progress, cancellationToken);
 				container = container with { Revision = installed };
 			}
 			checkpoint = SynchronizationCheckpoint.Installed;
 			cancellationToken.ThrowIfCancellationRequested();
 			
+			progress?.Report(SynchronizationStage.Acknowledging);
 			AcknowledgeResponse result = await _masterAdapter.Acknowledge(new AcknowledgeRequest
 			{
 				MasterDatasetKey = container.MasterDatasetKey,

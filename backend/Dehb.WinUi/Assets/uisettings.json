@@ -1,5 +1,13 @@
 {
   "version": 1,
+  "synchronizationProgressPopup": {
+    "width": 520,
+    "height": 240
+  },
+  "synchronizationResultPopup": {
+    "width": 600,
+    "height": 400
+  },
   "mainWindow": {
     "sideBarBackColor": "#BDD3FA",
     "sideBarFontSize": 17,

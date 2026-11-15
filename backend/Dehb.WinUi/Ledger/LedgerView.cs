@@ -345,14 +345,15 @@ internal sealed partial class LedgerView : UserControl
 		{ Refresh(await _session.EditTransaction(_owner, selected.Id, null, null)); }
 		catch (Exception e) { _error.Text = e.Message; }
 	}
-	public void Reload()
+	public void Reload() => Reload(null);
+	private void Reload(Guid? selected)
 	{
 		try
 		{
 			TransactionListInfo result = _accountId is Guid account ? _session.Host.Call<ITransactionService, TransactionListInfo>(s => s.GetTransactionsByAccount(account, Day)) : _session.Host.Call<ITransactionService, TransactionListInfo>(s => s.GetTransactions(Day));
 			_transactions = result.Transactions;
 			_notice.Text = result.LimitExceeded ? "Showing the newest 300 transactions. Choose an earlier date to view older transactions." : "";
-			Render(null);
+			Render(selected);
 		}
 		catch (Exception e) { Fail(e); }
 	}
@@ -362,7 +363,16 @@ internal sealed partial class LedgerView : UserControl
 		{
 			TransactionRefreshParam param = new() { Date = Day, AccountId = _accountId };
 			param.TransactionIds.AddRange(_transactions.Select(t => t.Id));
-			if (saved.HasValue && !param.TransactionIds.Contains(saved.Value) && param.TransactionIds.Count < 300)
+			if (saved.HasValue && !param.TransactionIds.Contains(saved.Value) && param.TransactionIds.Count >= AppValues.MaxTransactionListCount)
+			{
+				Reload(saved);
+				if (_ready && !_transactions.Any(t => t.Id == saved.Value))
+				{
+					_error.Text = "Saved transaction is outside the displayed selection. Navigate or retry to load the newest matching transactions.";
+				}
+				return;
+			}
+			if (saved.HasValue && !param.TransactionIds.Contains(saved.Value))
 			{
 				param.TransactionIds.Add(saved.Value);
 			}
